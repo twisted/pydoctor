@@ -46,8 +46,6 @@ def objects_order(o: model.Documentable) -> Tuple[int, int, str]:
 
     return (-o.privacyClass.value, -map_kind(o.kind).value if o.kind else 0, o.fullName().lower())
 
-def _format_decorators_fallback(_:Any, doc:'ParsedDocstring', __:model.Documentable) -> Tag:
-    return Tag('code')(node2stan.gettext(doc.to_node()))
 def format_decorators(obj: Union[model.Function, model.Attribute]) -> Iterator["Flattenable"]:
     for dec in obj.decorators or ():
         if isinstance(dec, ast.Call):
@@ -61,8 +59,9 @@ def format_decorators(obj: Union[model.Function, model.Attribute]) -> Iterator["
         # Colorize decorators!
         doc = colorize_inline_pyval(dec)
 
-        stan = epydoc2stan.safe_to_stan(doc, obj, compact=True, 
-            fallback=_format_decorators_fallback, section='rendering of decorators')
+        stan = epydoc2stan.safe_to_stan(doc, obj.docstring_linker, obj, compact=True, 
+            fallback=epydoc2stan.colorized_pyval_fallback, 
+            section='rendering of decorators')
         
         # Report eventual warnings. It warns when a regex failed to parse or the html2stan() function fails.
         epydoc2stan.reportWarnings(obj, doc.warnings)
@@ -277,7 +276,7 @@ class CommonPage(Page):
         """
         r: List[Tag] = []
         for extra in ob.extra_info:
-            r.append(epydoc2stan.safe_to_stan(extra, ob, compact=False, 
+            r.append(epydoc2stan.safe_to_stan(extra, ob.docstring_linker, ob, compact=False, 
                 fallback = lambda _,__,___:epydoc2stan.BROKEN, section='extra'))
         return r
 
@@ -421,14 +420,10 @@ class ClassPage(CommonPage):
 
     def classSignature(self) -> "Flattenable":
 
-        def _class_signature_fallback(errs: List['ParseError'], doc:'ParsedDocstring', ctx:model.Documentable) -> Tag:
-            return Tag('code')(node2stan.gettext(doc.to_node()))
-
         r: List["Flattenable"] = []
         # Here, we should use the parent's linker because a base name
         # can't be define in the class itself.
-        ctx =  self.ob.parent
-        _linker = ctx.docstring_linker
+        _linker = self.ob.parent.docstring_linker
         if self.ob.rawbases:
             r.append('(')
             with _linker.disable_same_page_optimazation():
@@ -439,8 +434,10 @@ class ClassPage(CommonPage):
 
                     # link to external class or internal class, using the colorizer here
                     # to link to classes with generics (subscripts and other AST expr).
-                    stan = epydoc2stan.safe_to_stan(colorize_inline_pyval(base_node), ctx, compact=False, 
-                        fallback = _class_signature_fallback, section='rendering of class signature', report_ctx=self.ob)
+                    stan = epydoc2stan.safe_to_stan(colorize_inline_pyval(base_node), _linker, self.ob, 
+                        compact=True, 
+                        fallback=epydoc2stan.colorized_pyval_fallback, 
+                        section='rendering of class signature')
                     r.extend(stan.children)
                     
             r.append(')')

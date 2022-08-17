@@ -15,7 +15,7 @@ import attr
 from pydoctor import model, linker, node2stan
 from pydoctor.epydoc.markup import Field as EpydocField, ParseError, get_parser_by_name
 from twisted.web.template import Tag, tags
-from pydoctor.epydoc.markup import ParsedDocstring
+from pydoctor.epydoc.markup import ParsedDocstring, DocstringLinker
 import pydoctor.epydoc.markup.plaintext
 from pydoctor.epydoc.markup._pyval_repr import colorize_pyval, colorize_inline_pyval
 
@@ -203,7 +203,7 @@ class Field:
 
     def format(self) -> Tag:
         """Present this field's body as HTML."""
-        return safe_to_stan(self.body, self.source, compact=True, 
+        return safe_to_stan(self.body, self.source.docstring_linker, self.source, compact=True, 
                     fallback=lambda _, __, ___:BROKEN)
 
     def report(self, message: str) -> None:
@@ -270,8 +270,8 @@ class FieldHandler:
             ) -> None:
         formatted_annotations = {
             name: None if value is None
-                       else safe_to_stan(colorize_inline_pyval(value), self.obj, compact=True, 
-                        fallback=_colorized_annotation_pyval_fallback, section='annotation')
+                       else safe_to_stan(colorize_inline_pyval(value), self.obj.docstring_linker, 
+                                self.obj, compact=True, fallback=colorized_pyval_fallback, section='annotation')
             for name, value in annotations.items()
             }
         ret_type = formatted_annotations.pop('return', None)
@@ -647,25 +647,37 @@ def get_to_stan_error(e: Exception) -> ParseError:
     return ParseError(f"{e.__class__.__name__}: {e}", 0)
 
 def safe_to_stan(parsed_doc: ParsedDocstring, 
+                 linker: 'DocstringLinker',
                  ctx: model.Documentable, 
                  compact: bool,
                  fallback: Callable[[List[ParseError], ParsedDocstring, model.Documentable], Tag],
                  report: bool = True,
-                 report_ctx: Optional[model.Documentable]=None, 
                  section:str='docstring') -> Tag:
     """
-    Wraps L{ParsedDocstring.to_stan()} to catch exception and handle them in C{fallback}
+    Wraps L{ParsedDocstring.to_stan()} to catch exception and handle them in C{fallback}.
+    This is used to convert docstrings as well as other colorized AST values to stan.
+
+    @param parsed_doc: The L{ParsedDocstring} to "stanify".
+    @param linker: The L{DocstringLinker} to use to resolve links.
+    @param ctx: The documentable context to use to report errors, passed to the C{fallback} function.
+    @param compact: Whether the generated html should be compact.
+    @param fallback: A callable that returns a fallback stan if the convertion failed.
+        It can also be used to set some state on the documentable context.
+        Signature::
+            (errs:List[ParseError], doc:ParsedDocstring, ctx:model.Documentable) -> Tag
+    @param report: Whether to report errors.
+    @param section: The thing we're doing, used for error messages.
     """
     try:
-        stan = parsed_doc.to_stan(ctx.docstring_linker, compact=compact)
+        stan = parsed_doc.to_stan(linker, compact=compact)
     except Exception as e:
         errs = [get_to_stan_error(e)]
         stan = fallback(errs, parsed_doc, ctx)
         if report:
-            reportErrors(report_ctx or ctx, errs, section=section)
+            reportErrors(ctx, errs, section=section)
     return stan
 
-def format_docstring_fallback(errs: List[ParseError], _:ParsedDocstring, ctx:model.Documentable) -> Tag:
+def format_docstring_fallback(errs: List[ParseError], parsed_doc:ParsedDocstring, ctx:model.Documentable) -> Tag:
     if ctx.docstring is None:
         stan = BROKEN
     else:
@@ -683,7 +695,7 @@ def format_docstring(obj: model.Documentable) -> Tag:
         ret(tags.p(class_='undocumented')("Undocumented"))
     else:
         assert obj.parsed_docstring is not None, "ensure_parsed_docstring() did not do it's job"
-        stan = safe_to_stan(obj.parsed_docstring, source, 
+        stan = safe_to_stan(obj.parsed_docstring, source.docstring_linker, source, 
                             compact=False, fallback=format_docstring_fallback)
         
         if stan.tagName:
@@ -703,7 +715,7 @@ def format_docstring(obj: model.Documentable) -> Tag:
     ret(fh.format())
     return ret
 
-def format_summary_fallback(errs: List[ParseError], _:ParsedDocstring, ctx:model.Documentable) -> Tag:
+def format_summary_fallback(errs: List[ParseError], parsed_doc:ParsedDocstring, ctx:model.Documentable) -> Tag:
     stan = BROKEN
     # override parsed_summary instance variable to remeber this one is broken.
     ctx.parsed_summary = ParsedStanOnly(stan)
@@ -721,7 +733,7 @@ def format_summary(obj: model.Documentable) -> Tag:
     with source.docstring_linker.disable_same_page_optimazation():
         # ParserErrors will likely be reported by the full docstring as well,
         # so don't spam the log, pass report=False.
-        stan = safe_to_stan(parsed_doc, source, compact=True, report=False,
+        stan = safe_to_stan(parsed_doc, source.docstring_linker, source, compact=True, report=False,
                 fallback=format_summary_fallback)
 
     return stan
@@ -764,8 +776,8 @@ def type2stan(obj: model.Documentable) -> Optional[Tag]:
     if parsed_type is None:
         return None
     else:
-        return safe_to_stan(parsed_type, obj, compact=True, 
-            fallback=_colorized_parsed_type_fallback, section='annotation')
+        return safe_to_stan(parsed_type, obj.docstring_linker, obj, compact=True, 
+            fallback=colorized_pyval_fallback, section='annotation')
 
 def get_parsed_type(obj: model.Documentable) -> Optional[ParsedDocstring]:
     parsed_type = obj.parsed_type
@@ -786,8 +798,8 @@ def format_toc(obj: model.Documentable) -> Optional[Tag]:
         if obj.system.options.sidebartocdepth > 0:
             toc = obj.parsed_docstring.get_toc(depth=obj.system.options.sidebartocdepth)
             if toc:
-                return safe_to_stan(toc, obj, compact=True, 
-                    fallback=_format_toc_fallback)
+                return safe_to_stan(toc, obj.docstring_linker, obj, compact=True, report=False,
+                    fallback=lambda _,__,___:BROKEN)
     return None
 
 
@@ -860,15 +872,8 @@ def format_kind(kind: model.DocumentableKind, plural: bool = False) -> str:
     else:
         return names[kind]
 
-# We use separate functions to track coverage.
-def _colorized_pyval_fallback(_: List[ParseError], doc:ParsedDocstring, __:model.Documentable) -> Tag:
+def colorized_pyval_fallback(_: List[ParseError], doc:ParsedDocstring, __:model.Documentable) -> Tag:
     return Tag('code')(node2stan.gettext(doc.to_node()))
-def _colorized_annotation_pyval_fallback(_: List[ParseError], doc:ParsedDocstring, __:model.Documentable) -> Tag:
-    return Tag('code')(node2stan.gettext(doc.to_node()))
-def _colorized_parsed_type_fallback(_: List[ParseError], doc:ParsedDocstring, __:model.Documentable) -> Tag:
-    return Tag('code')(node2stan.gettext(doc.to_node()))
-def _format_toc_fallback(_: List[ParseError], doc:ParsedDocstring, __:model.Documentable) -> Tag:
-    return BROKEN
 
 def _format_constant_value(obj: model.Attribute) -> Iterator["Flattenable"]:
 
@@ -882,8 +887,8 @@ def _format_constant_value(obj: model.Attribute) -> Iterator["Flattenable"]:
         linelen=obj.system.options.pyvalreprlinelen,
         maxlines=obj.system.options.pyvalreprmaxlines)
     
-    value_repr = safe_to_stan(doc, obj, compact=True, 
-        fallback=_colorized_pyval_fallback, section='rendering of constant')
+    value_repr = safe_to_stan(doc, obj.docstring_linker, obj, compact=True, 
+        fallback=colorized_pyval_fallback, section='rendering of constant')
 
     # Report eventual warnings. It warns when a regex failed to parse.
     reportWarnings(obj, doc.warnings, section='colorize-ast')

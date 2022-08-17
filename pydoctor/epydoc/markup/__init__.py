@@ -155,6 +155,8 @@ class ParsedDocstring(abc.ABC):
         @param docstring_linker: An HTML translator for crossreference
             links into and out of the docstring.
         @return: The docstring presented as a stan tree.
+        @raises Exception: If something went wrong. Callers should generally catch C{Exception}
+            when calling L{to_stan()}.
         """
         # The following three lines is a hack in order to still show p tags 
         # around docstrings content when there is only a single line text
@@ -319,6 +321,12 @@ class DocstringLinker:
 ##################################################
 
 def append_warnings(warns:List[str], errs:List['ParseError'], lineno:int) -> None:
+    """
+    Utility method to create non fatal L{ParseError}s and append them to the provided list.
+
+    @param warns: The warnings strings.
+    @param errs: The list of errors.
+    """
     for warn in warns:
         errs.append(ParseError(warn, linenum=lineno, is_fatal=False))
 
