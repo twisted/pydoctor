@@ -523,8 +523,14 @@ def reportWarnings(obj: model.Documentable, warns: Sequence[str], **kwargs:Any) 
         obj.report(message, **kwargs)
 
 def reportErrors(obj: model.Documentable, errs: Sequence[ParseError], section:str='docstring') -> None:
-    if errs and obj.fullName() not in obj.system.docstring_syntax_errors:
-        obj.system.docstring_syntax_errors.add(obj.fullName())
+    if not errs:
+        return
+    
+    errors = obj.system.parse_errors[section]
+
+    if obj.fullName() not in errors:
+        errors.add(obj.fullName())
+        
         for err in errs:
             obj.report(
                 f'bad {section}: ' + err.descr(),
@@ -638,13 +644,14 @@ def _get_parsed_summary(obj: model.Documentable) -> Tuple[Optional[model.Documen
     return (source, summary_parsed_doc)
 
 def get_to_stan_error(e: Exception) -> ParseError:
-    return ParseError(f"{e.__class__.__name__}: {e}", 1)
+    return ParseError(f"{e.__class__.__name__}: {e}", 0)
 
 def safe_to_stan(parsed_doc: ParsedDocstring, 
                  ctx: model.Documentable, 
                  compact: bool,
                  fallback: Callable[[List[ParseError], ParsedDocstring, model.Documentable], Tag],
                  report: bool = True,
+                 report_ctx: Optional[model.Documentable]=None, 
                  section:str='docstring') -> Tag:
     """
     Wraps L{ParsedDocstring.to_stan()} to catch exception and handle them in C{fallback}
@@ -655,7 +662,7 @@ def safe_to_stan(parsed_doc: ParsedDocstring,
         errs = [get_to_stan_error(e)]
         stan = fallback(errs, parsed_doc, ctx)
         if report:
-            reportErrors(ctx, errs, section=section)
+            reportErrors(report_ctx or ctx, errs, section=section)
     return stan
 
 def format_docstring_fallback(errs: List[ParseError], _:ParsedDocstring, ctx:model.Documentable) -> Tag:
@@ -859,8 +866,6 @@ def _colorized_pyval_fallback(_: List[ParseError], doc:ParsedDocstring, __:model
 def _colorized_annotation_pyval_fallback(_: List[ParseError], doc:ParsedDocstring, __:model.Documentable) -> Tag:
     return Tag('code')(node2stan.gettext(doc.to_node()))
 def _colorized_parsed_type_fallback(_: List[ParseError], doc:ParsedDocstring, __:model.Documentable) -> Tag:
-    return Tag('code')(node2stan.gettext(doc.to_node()))
-def _class_signature_fallback(_: List[ParseError], doc:ParsedDocstring, __:model.Documentable) -> Tag:
     return Tag('code')(node2stan.gettext(doc.to_node()))
 def _format_toc_fallback(_: List[ParseError], doc:ParsedDocstring, __:model.Documentable) -> Tag:
     return BROKEN

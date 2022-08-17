@@ -22,7 +22,7 @@ from pydoctor.epydoc.markup._pyval_repr import colorize_inline_pyval
 if TYPE_CHECKING:
     from typing_extensions import Final
     from twisted.web.template import Flattenable
-    from pydoctor.epydoc.markup import ParsedDocstring
+    from pydoctor.epydoc.markup import ParsedDocstring, ParseError
     from pydoctor.templatewriter.pages.attributechild import AttributeChild
     from pydoctor.templatewriter.pages.functionchild import FunctionChild
 
@@ -420,6 +420,10 @@ class ClassPage(CommonPage):
         return r
 
     def classSignature(self) -> "Flattenable":
+
+        def _class_signature_fallback(errs: List['ParseError'], doc:'ParsedDocstring', ctx:model.Documentable) -> Tag:
+            return Tag('code')(node2stan.gettext(doc.to_node()))
+
         r: List["Flattenable"] = []
         # Here, we should use the parent's linker because a base name
         # can't be define in the class itself.
@@ -436,7 +440,7 @@ class ClassPage(CommonPage):
                     # link to external class or internal class, using the colorizer here
                     # to link to classes with generics (subscripts and other AST expr).
                     stan = epydoc2stan.safe_to_stan(colorize_inline_pyval(base_node), ctx, compact=False, 
-                        fallback = epydoc2stan._class_signature_fallback, section='rendering of class signature')
+                        fallback = _class_signature_fallback, section='rendering of class signature', report_ctx=self.ob)
                     r.extend(stan.children)
                     
             r.append(')')
