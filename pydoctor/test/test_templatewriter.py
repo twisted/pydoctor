@@ -672,6 +672,9 @@ class C(Literal['These are non-breaking spaces.']):
 def test_crash_xmlstring_entities(capsys:CapSys, processtypes:bool) -> None:
     """
     Crash test for https://github.com/twisted/pydoctor/issues/641
+    
+    This test might fail in the future, when twisted's XMLString supports XHTML entities (see https://github.com/twisted/twisted/issues/11581). 
+    But it will always fail for python 3.6 since twisted dropped support for these versions of python.
     """
     system = model.System()
     system.options.verbosity = -1
@@ -704,7 +707,8 @@ test:36: bad rendering of class signature: SAXParseException: <unknown>:1:104: u
 
 @pytest.mark.parametrize('processtypes', [True, False])
 def test_crash_xmlstring_entities_rst(capsys:CapSys, processtypes:bool) -> None:
-    # test RST as well.
+    ```suggestion
+    """Idem for RST"""
     system = model.System()
     system.options.verbosity = -1
     system.options.processtypes=processtypes

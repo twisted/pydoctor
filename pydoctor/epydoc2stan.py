@@ -204,6 +204,8 @@ class Field:
     def format(self) -> Tag:
         """Present this field's body as HTML."""
         return safe_to_stan(self.body, self.source.docstring_linker, self.source, compact=True, 
+                    # the parsed docstring maybe doesn't support to_node(), i.e. ParsedTypeDocstring,
+                    # so we can only show the broken text.
                     fallback=lambda _, __, ___:BROKEN)
 
     def report(self, message: str) -> None:
@@ -891,7 +893,7 @@ def _format_constant_value(obj: model.Attribute) -> Iterator["Flattenable"]:
         fallback=colorized_pyval_fallback, section='rendering of constant')
 
     # Report eventual warnings. It warns when a regex failed to parse.
-    reportWarnings(obj, doc.warnings, section='colorize-ast')
+    reportWarnings(obj, doc.warnings, section='colorize constant')
 
     # yield the value repr.
     row = tags.tr()

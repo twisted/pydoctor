@@ -164,7 +164,10 @@ def test_strings() -> None:
 """
 
 def test_non_breaking_spaces() -> None:
-
+    """
+    This test might fail in the future, when twisted's XMLString supports XHTML entities (see https://github.com/twisted/twisted/issues/11581). 
+    But it will always fail for python 3.6 since twisted dropped support for these versions of python.
+    """
     with pytest.raises(xml.sax.SAXParseException):
         colorhtml(ast.parse('"These are non-breaking spaces."').body[0].value) == """""" # type:ignore
     with pytest.raises(xml.sax.SAXParseException):
