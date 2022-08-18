@@ -130,7 +130,7 @@ class ImportAlias:
         self.name = name
         self.parent = parent
         self.linenumber = linenumber
-        self.alias = alias
+        self.alias: Optional[str] = alias
 
     def fullName(self) -> str:
         return f'{self.parent.fullName()}.{self.name}'

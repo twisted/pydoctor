@@ -57,9 +57,12 @@ def _localImportToFullName(ctx: model.CanContainImportsDocumentable, name:str, i
     indirections = indirections if isinstance(indirections, list) else []
     import_ = ctx._localNameToFullName_map[name]
     indirections += [import_]
+    
     fullName = import_.alias
+    assert fullName is not None
     allobjects = ctx.system.allobjects
 
+    # the object is part of the system
     if fullName in allobjects:
         # the imported name is an alias, so follow it
         resolved = _localDocumentableToFullName(ctx, allobjects[fullName], indirections)
@@ -70,6 +73,8 @@ def _localImportToFullName(ctx: model.CanContainImportsDocumentable, name:str, i
     parentName = '.'.join(dottedName[0:-1])
     targetName = dottedName[-1]
 
+    # the object is not part of the system, but it's parent is,
+    # so try to resolve the name from the parent's context.
     if parentName in allobjects:
         parent = allobjects[parentName]
         return _localNameToFullName(parent, targetName, indirections)
