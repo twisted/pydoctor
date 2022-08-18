@@ -57,9 +57,14 @@ def _localImportToFullName(ctx: model.CanContainImportsDocumentable, name:str, i
     indirections = indirections if isinstance(indirections, list) else []
     import_ = ctx._localNameToFullName_map[name]
     indirections += [import_]
+
+    failed = fail_to_many_aliases(ctx, import_, indirections)
+    if failed:
+        return failed
     
     fullName = import_.alias
-    assert fullName is not None
+    assert fullName is not None, f"Bad import: {ctx.module.description}:{import_.linenumber}"
+
     allobjects = ctx.system.allobjects
 
     # the object is part of the system
@@ -81,6 +86,17 @@ def _localImportToFullName(ctx: model.CanContainImportsDocumentable, name:str, i
     else:
         return fullName
 
+def fail_to_many_aliases(self: model.CanContainImportsDocumentable, alias: _IndirectionT, indirections:Optional[List[_IndirectionT]]=None) -> Optional[str]:
+    """
+    Returns None if the alias can be resolved normally, 
+    returns a string and log a warning if the alias 
+    can't be resolved because it's too complex.
+    """
+    if indirections and len(indirections) > self._RESOLVE_ALIAS_MAX_RECURSE:
+        self.module.report("Too many aliases", lineno_offset=alias.linenumber, section='aliases')
+        return indirections[0].fullName()
+    return None
+
 # TODO: This same function should be applicable for imports sa well.
 def _resolveAlias(self: model.CanContainImportsDocumentable, alias: _IndirectionT, indirections:Optional[List[_IndirectionT]]=None) -> str:
     """
@@ -95,9 +111,9 @@ def _resolveAlias(self: model.CanContainImportsDocumentable, alias: _Indirection
     
     indirections = indirections if isinstance(indirections, list) else []
 
-    if indirections and len(indirections) > self._RESOLVE_ALIAS_MAX_RECURSE:
-        self.module.report("Too many aliases", lineno_offset=alias.linenumber, section='aliases')
-        return indirections[0].fullName() 
+    failed = fail_to_many_aliases(self, alias, indirections)
+    if failed:
+        return failed
 
     # the alias attribute should never be None for indirections objects
     name = alias.alias

@@ -2684,3 +2684,27 @@ def test_import_aliases_across_modules(systemcls: Type[model.System]) -> None:
     assert system.allobjects['client'].resolveName('_i') == system.allobjects['_impl2'].contents['i']
     assert system.allobjects['client'].resolveName('j') == system.allobjects['_impl2'].contents['j']
 
+@systemcls_param
+def test_import_aliases_across_modules_cycle(systemcls: Type[model.System]) -> None:
+
+    system = systemcls()
+    builder = system.systemBuilder(system)
+    
+    builder.addModuleString('''
+    from _impl3 import _impl1
+    ''', modname='_impl')
+    
+    builder.addModuleString('''
+    from _impl import _impl1
+    ''', modname='_impl2')
+
+    builder.addModuleString('''
+    from _impl import _impl1
+    ''', modname='_impl3')
+
+    builder.buildModules()
+
+    assert system.allobjects['_impl3'].expandName('_impl1') == '_impl3._impl1'
+    assert system.allobjects['_impl2'].expandName('_impl1') == '_impl2._impl1'
+    assert system.allobjects['_impl'].expandName('_impl1') == '_impl._impl1'
+    # TODO: test the warnings
