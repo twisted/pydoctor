@@ -1976,7 +1976,7 @@ def test_reexport_wildcard(systemcls: Type[model.System]) -> None:
 @systemcls_param
 def test_prepend_package(systemcls: Type[model.System]) -> None:
     system = systemcls()
-    builder = model.prepend_package(system.systemBuilder(system), package='lib.pack')
+    builder = model.prepend_package(system.systemBuilder, package='lib.pack')(system)
 
     builder.addModuleString('"mod doc"\nclass C:\n    "C doc"', modname='core')
     builder.buildModules()
