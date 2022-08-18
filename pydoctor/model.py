@@ -157,7 +157,7 @@ class Documentable:
     documentation_location = DocLocation.OWN_PAGE
     """Page location where we are documented."""
 
-    _RESOLVE_ALIAS_MAX_RECURSE = 4
+    _RESOLVE_ALIAS_MAX_RECURSE = 100
 
     def __init__(
             self, system: 'System', name: str,
