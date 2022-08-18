@@ -11,7 +11,6 @@ from pydoctor.stanutils import flatten, html2stan, flatten_text
 from pydoctor.epydoc.markup.epytext import Element, ParsedEpytextDocstring
 from pydoctor.epydoc2stan import format_summary, get_parsed_type
 from pydoctor.test.test_packages import processPackage
-from pydoctor.utils import partialclass
 
 from . import CapSys, NotFoundLinker, posonlyargs, typecomment
 import pytest
@@ -1977,7 +1976,7 @@ def test_reexport_wildcard(systemcls: Type[model.System]) -> None:
 @systemcls_param
 def test_prepend_package(systemcls: Type[model.System]) -> None:
     system = systemcls()
-    builder = model.prepend_package(system.systemBuilder, package='lib.pack')(system)
+    builder = model.prepend_package(system.systemBuilder(system), package='lib.pack')
 
     builder.addModuleString('"mod doc"\nclass C:\n    "C doc"', modname='core')
     builder.buildModules()
