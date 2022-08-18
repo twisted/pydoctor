@@ -470,6 +470,7 @@ def test_more_aliasing(systemcls: Type[model.System]) -> None:
         '''
         src_c = '''
         from b import B as C
+        # We don't support implicit re-exports for now
         '''
         src_d = '''
         from c import C
@@ -487,7 +488,12 @@ def test_more_aliasing(systemcls: Type[model.System]) -> None:
     assert isinstance(D, model.Class)
     # An older version of this test expected a.A as the result.
     # Read the comment in test_aliasing() to learn why this was changed.
-    assert D.bases == ['c.C']
+    # ---
+    # Changed again in 2022, we require the object to be re-exported with __all__
+    # At some point, we might support implicit re-exports as well, in which case
+    # this test wil fail again with value ['c.C'] !
+
+    assert D.bases == ['a.A']
 
 @systemcls_param
 def test_aliasing_recursion(systemcls: Type[model.System]) -> None:
@@ -2639,8 +2645,8 @@ def test_import_aliases_across_modules(systemcls: Type[model.System]) -> None:
     builder = system.systemBuilder(system)
     
     builder.addModuleString('''
-    from ._impl import i as _i, j
-    from _impl2 import f as _f
+    from _impl2 import i as _i, j
+    from ._impl import f as _f
     # __all__ not defined, so nothing get re-exported here
     # but we should be able to follow the aliases anyhow.
     ''', modname='top', is_package=True)
@@ -2661,11 +2667,20 @@ def test_import_aliases_across_modules(systemcls: Type[model.System]) -> None:
 
     builder.buildModules()
 
+    client = system.allobjects['client']
+    top = system.allobjects['top']
+    _impl = system.allobjects['top._impl']
+    assert isinstance(client, model.Module)
+    assert isinstance(top, model.Module)
+    assert client._localNameToFullName_map['_f'].alias == 'top._f'
+    assert top._localNameToFullName_map['_f'].alias == 'top._impl.f'
+    assert _impl.contents['f']
+
     assert system.allobjects['client'].expandName('_f') == 'top._impl.f'
-    assert system.allobjects['client'].expandName('_i') == 'top._impl2.i'
-    assert system.allobjects['client'].expandName('j') == 'top._impl2.j'
+    assert system.allobjects['client'].expandName('_i') == '_impl2.i'
+    assert system.allobjects['client'].expandName('j') == '_impl2.j'
 
     assert system.allobjects['client'].resolveName('_f') == system.allobjects['top._impl'].contents['f']
-    assert system.allobjects['client'].resolveName('_i') == system.allobjects['top._impl2'].contents['i']
-    assert system.allobjects['client'].resolveName('j') == system.allobjects['top._impl2'].contents['j']
+    assert system.allobjects['client'].resolveName('_i') == system.allobjects['_impl2'].contents['i']
+    assert system.allobjects['client'].resolveName('j') == system.allobjects['_impl2'].contents['j']
 

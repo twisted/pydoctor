@@ -54,7 +54,10 @@ def _localNameToFullName(ctx: model.Documentable, name: str, indirections:Option
         return _localNameToFullName(ctx.parent, name, indirections)
 
 def _localImportToFullName(ctx: model.CanContainImportsDocumentable, name:str, indirections:Optional[List['_IndirectionT']]) -> str:
-    fullName = ctx._localNameToFullName_map[name]
+    indirections = indirections if isinstance(indirections, list) else []
+    import_ = ctx._localNameToFullName_map[name]
+    indirections += [import_]
+    fullName = import_.alias
     allobjects = ctx.system.allobjects
 
     if fullName in allobjects:
@@ -62,20 +65,16 @@ def _localImportToFullName(ctx: model.CanContainImportsDocumentable, name:str, i
         resolved = _localDocumentableToFullName(ctx, allobjects[fullName], indirections)
         if resolved:
             return resolved
-        
-    # # TODO: We could follow imported modules by doing something like:
-    # dottedName = fullName.split('.')
-    # parentName = '.'.join(dottedName[0:-1])
-    # targetName = dottedName[-1]
-    
-    # if parentName in allobjects:
-    #     parent = allobjects[parentName]
-    #     if isinstance(parent, model.CanContainImportsDocumentable):
-    #         if targetName in parent._localNameToFullName_map:
-    #             ...
-    #             # the imported name is an imported name, so follow it
 
-    return fullName
+    dottedName = fullName.split('.')
+    parentName = '.'.join(dottedName[0:-1])
+    targetName = dottedName[-1]
+
+    if parentName in allobjects:
+        parent = allobjects[parentName]
+        return _localNameToFullName(parent, targetName, indirections)
+    else:
+        return fullName
 
 # TODO: This same function should be applicable for imports sa well.
 def _resolveAlias(self: model.CanContainImportsDocumentable, alias: _IndirectionT, indirections:Optional[List[_IndirectionT]]=None) -> str:

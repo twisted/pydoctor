@@ -232,11 +232,11 @@ class ModuleVistor(NodeVisitor):
             assert modname is not None
 
         if node.names[0].name == '*':
-            self._importAll(modname)
+            self._importAll(modname, lineno=node.lineno)
         else:
-            self._importNames(modname, node.names)
+            self._importNames(modname, node.names, lineno=node.lineno)
 
-    def _importAll(self, modname: str) -> None:
+    def _importAll(self, modname: str, lineno:int) -> None:
         """Handle a C{from <modname> import *} statement."""
 
         mod = self.system.getProcessedModule(modname)
@@ -263,15 +263,15 @@ class ModuleVistor(NodeVisitor):
         exports = self._getCurrentModuleExports()
 
         # Add imported names to our module namespace.
-        assert isinstance(self.builder.current, model.CanContainImportsDocumentable)
-        _localNameToFullName = self.builder.current._localNameToFullName_map
+        current = self.builder.current
+        assert isinstance(current, model.CanContainImportsDocumentable)
+        _localNameToFullName = current._localNameToFullName_map
         expandName = mod.expandName
         for name in names:
-
             if self._handleReExport(exports, name, name, mod) is True:
                 continue
-
-            _localNameToFullName[name] = expandName(name)
+            _localNameToFullName[name] = model.ImportAlias(self.system, name, 
+                alias=expandName(name), parent=current, linenumber=lineno)
 
     def _getCurrentModuleExports(self) -> Collection[str]:
         # Fetch names to export.
@@ -331,7 +331,7 @@ class ModuleVistor(NodeVisitor):
  
         return False
 
-    def _importNames(self, modname: str, names: Iterable[ast.alias]) -> None:
+    def _importNames(self, modname: str, names: Iterable[ast.alias], lineno:int) -> None:
         """Handle a C{from <modname> import <names>} statement."""
 
         # Process the module we're importing from.
@@ -356,7 +356,8 @@ class ModuleVistor(NodeVisitor):
             if isinstance(mod, model.Package):
                 self.system.getProcessedModule(f'{modname}.{orgname}')
 
-            _localNameToFullName[asname] = f'{modname}.{orgname}'
+            _localNameToFullName[asname] = model.ImportAlias(self.system, asname, 
+                alias=f'{modname}.{orgname}', parent=current, linenumber=lineno)
 
     def visit_Import(self, node: ast.Import) -> None:
         """Process an import statement.
@@ -371,16 +372,17 @@ class ModuleVistor(NodeVisitor):
         (dotted_name, as_name) where as_name is None if there was no 'as foo'
         part of the statement.
         """
-        if not isinstance(self.builder.current, model.CanContainImportsDocumentable):
+        current = self.builder.current
+        if not isinstance(current, model.CanContainImportsDocumentable):
             self.builder.warning("processing import statement in odd context",
-                                 str(self.builder.current))
+                                 str(current))
             return
-        _localNameToFullName = self.builder.current._localNameToFullName_map
+        _localNameToFullName = current._localNameToFullName_map
         for al in node.names:
             fullname, asname = al.name, al.asname
             if asname is not None:
-                _localNameToFullName[asname] = fullname
-
+                _localNameToFullName[asname] = model.ImportAlias(self.system, asname, 
+                    alias=fullname, parent=current, linenumber=node.lineno)
 
     def _handleOldSchoolMethodDecoration(self, target: str, expr: Optional[ast.expr]) -> bool:
         if not isinstance(expr, ast.Call):

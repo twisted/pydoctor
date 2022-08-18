@@ -111,14 +111,16 @@ class DocumentableKind(Enum):
     VARIABLE            = 100
 
 
-class Alias:
+class ImportAlias:
     """
-    Aliases are not documentable, but share bits of the interface.
+    Imports are not documentable, but share bits of the interface.
+    """
 
-    @note: This object is used to represent both import aliases and 
-        undocumented aliases (which are not documented at all - 
-        not even hidden, there are only there to keep track of indirections).
-    """
+    # invalid note:
+    # @note: This object is used to represent both import aliases and 
+    #     undocumented aliases (which are not documented at all - 
+    #     not even hidden, there are only there to keep track of indirections).
+
     def __init__(self, system: 'System', 
                  name: str, alias:str, 
                  parent: 'CanContainImportsDocumentable', 
@@ -304,7 +306,8 @@ class Documentable:
         del old_parent.contents[old_name]
         # We could add a special alias insead of using _localNameToFullName_map, 
         # this would allow to track the original location of the documentable.
-        old_parent._localNameToFullName_map[old_name] = self.fullName()
+        old_parent._localNameToFullName_map[old_name] = ImportAlias(self.system, old_name, 
+                    alias=self.fullName(), parent=old_parent, linenumber=self.linenumber)
         new_parent.contents[new_name] = self
         self._handle_reparenting_post()
 
@@ -318,7 +321,7 @@ class Documentable:
         for o in self.contents.values():
             o._handle_reparenting_post()
 
-    def expandName(self, name: str, indirections:Any=None) -> str:
+    def expandName(self, name: str, indirections:Optional[List['_IndirectionT']]=None) -> str:
         """
         See L{names.expandName}
         """
@@ -404,7 +407,7 @@ class Documentable:
 class CanContainImportsDocumentable(Documentable):
     def setup(self) -> None:
         super().setup()
-        self._localNameToFullName_map: Dict[str, str] = {}
+        self._localNameToFullName_map: Dict[str, ImportAlias] = {}
 
 class Module(CanContainImportsDocumentable):
     kind = DocumentableKind.MODULE
