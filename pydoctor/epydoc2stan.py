@@ -52,6 +52,15 @@ def get_parser(obj: model.Documentable) -> Callable[[str, List[ParseError], bool
 def get_docstring(
         obj: model.Documentable
         ) -> Tuple[Optional[str], Optional[model.Documentable]]:
+    """
+    Fetch the docstring for a documentable. 
+    Treat empty docstring as undocumented.
+
+    :returns: 
+        - C{(docstring, source)} if the object is documented.
+        - C{(None, None)} if the object has no docstring (even inherited).
+        - C{(None, source)} if the object has an empty docstring.
+    """
     for source in obj.docsources():
         doc = source.docstring
         if doc:
@@ -454,8 +463,13 @@ class FieldHandler:
             try:
                 param = params.pop(name)
             except KeyError:
-                if index == 0 and name in ('self', 'cls'):
-                    continue
+                if index == 0:
+                    # Strip 'self' or 'cls' from parameter table when it semantically makes sens.
+                    if name=='self' and self.obj.kind is model.DocumentableKind.METHOD:
+                        continue
+                    if name=='cls' and self.obj.kind is model.DocumentableKind.CLASS_METHOD:
+                        continue
+                    
                 param = FieldDesc(name=name, type=type_doc)
                 any_info |= type_doc is not None
             else:
@@ -558,17 +572,16 @@ def ensure_parsed_docstring(obj: model.Documentable) -> Optional[model.Documenta
     # Use cached or split version if possible.
     parsed_doc = obj.parsed_docstring
 
-    if source is None:
-        if parsed_doc is None:
-            # We don't use 'source' if parsed_doc is None, but mypy is not that
-            # sophisticated, so we fool it by assigning a dummy object.
-            source = obj
-        else:
-            # A split field is documented by its parent.
-            source = obj.parent
-            assert source is not None
+    if source is None and parsed_doc is not None:
+        # No docstring found
+        # A split field is documented by its parent: meaning the parsed_docstring
+        # attribute has been set directly by extract_fields() with @ivar:, @cvar:, etc
+        # Get the source of the docs
+        source = obj.parent
 
     if parsed_doc is None and doc is not None:
+        # The parsed_docstring has not been initialized yet
+        assert source is not None
         parsed_doc = parse_docstring(obj, doc, source)
         obj.parsed_docstring = parsed_doc
     
@@ -617,7 +630,6 @@ def _get_parsed_summary(obj: model.Documentable) -> Tuple[Optional[model.Documen
         assert obj.parsed_docstring is not None
         summary_parsed_doc = obj.parsed_docstring.get_summary()
     
-    assert summary_parsed_doc is not None
     obj.parsed_summary = summary_parsed_doc
 
     return (source, summary_parsed_doc)
@@ -661,8 +673,6 @@ def format_docstring(obj: model.Documentable) -> Tag:
     ret(fh.format())
     return ret
 
-# TODO: FIX https://github.com/twisted/pydoctor/issues/86 
-# Use to_node() and compute shortened HTML from node tree with a visitor intead of using the raw source. 
 def format_summary(obj: model.Documentable) -> Tag:
     """Generate an shortened HTML representation of a docstring."""
 
@@ -672,10 +682,8 @@ def format_summary(obj: model.Documentable) -> Tag:
     try:
         # Disallow same_page_optimization in order to make sure we're not
         # breaking links when including the summaries on other pages.
-        assert isinstance(source.docstring_linker, linker._CachedEpydocLinker)
-        source.docstring_linker.same_page_optimization = False
-        stan = parsed_doc.to_stan(source.docstring_linker)
-        source.docstring_linker.same_page_optimization = True
+        with source.docstring_linker.disable_same_page_optimazation():
+            stan = parsed_doc.to_stan(source.docstring_linker)
     
     except Exception:
         # This problem will likely be reported by the full docstring as well,

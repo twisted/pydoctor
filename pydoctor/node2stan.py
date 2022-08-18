@@ -5,8 +5,7 @@ import re
 import optparse
 from typing import Any, Callable, ClassVar, Iterable, List, Optional, Union, TYPE_CHECKING
 from docutils.writers import html4css1
-from docutils import nodes
-from docutils.frontend import OptionParser
+from docutils import nodes, frontend, __version_info__ as docutils_version_info
 
 from twisted.web.template import Tag
 if TYPE_CHECKING:
@@ -78,8 +77,17 @@ class HTMLTranslator(html4css1.HTMLTranslator):
 
         # Set the document's settings.
         if self.settings is None:
-            settings = OptionParser([html4css1.Writer()]).get_default_values()
+            if docutils_version_info >= (0,19):
+                # Direct access to OptionParser is deprecated from Docutils 0.19
+                # FIXME: https://github.com/twisted/pydoctor/issues/504
+                # Stubs are not up to date because we use pinned version of types-docutils
+                settings = frontend.get_default_settings(html4css1.Writer()) # type:ignore[attr-defined]
+            else:
+                settings = frontend.OptionParser([html4css1.Writer()]).get_default_values()
+            
+            # Save default settings as class attribute not to re-compute it all the times
             self.__class__.settings = settings
+        
         document.settings = self.settings
 
         super().__init__(document)

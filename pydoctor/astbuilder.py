@@ -2,9 +2,9 @@
 
 import ast
 import sys
-from attr import attrs, attrib
+
 from functools import partial
-from inspect import BoundArguments, Parameter, Signature, signature
+from inspect import Parameter, Signature
 from itertools import chain
 from pathlib import Path
 from typing import (
@@ -15,7 +15,7 @@ from typing import (
 import astor
 from pydoctor import epydoc2stan, model, node2stan
 from pydoctor.epydoc.markup._pyval_repr import colorize_inline_pyval
-from pydoctor.astutils import bind_args, node2dottedname, node2fullname, is__name__equals__main__, NodeVisitor
+from pydoctor.astutils import NodeVisitor, node2dottedname, node2fullname, is__name__equals__main__, is_using_typing_final
 
 def parseFile(path: Path) -> ast.Module:
     """Parse the contents of a Python source file."""
@@ -40,100 +40,6 @@ def _maybeAttribute(cls: model.Class, name: str) -> bool:
     obj = cls.find(name)
     return obj is None or isinstance(obj, model.Attribute)
 
-_attrs_decorator_signature = signature(attrs)
-"""Signature of the L{attr.s} class decorator."""
-
-def _uses_auto_attribs(call: ast.Call, module: model.Module) -> bool:
-    """Does the given L{attr.s()} decoration contain C{auto_attribs=True}?
-    @param call: AST of the call to L{attr.s()}.
-        This function will assume that L{attr.s()} is called without
-        verifying that.
-    @param module: Module that contains the call, used for error reporting.
-    @return: L{True} if L{True} is passed for C{auto_attribs},
-        L{False} in all other cases: if C{auto_attribs} is not passed,
-        if an explicit L{False} is passed or if an error was reported.
-    """
-    try:
-        args = bind_args(_attrs_decorator_signature, call)
-    except TypeError as ex:
-        message = str(ex).replace("'", '"')
-        module.report(
-            f"Invalid arguments for attr.s(): {message}",
-            lineno_offset=call.lineno
-            )
-        return False
-
-    auto_attribs_expr = args.arguments.get('auto_attribs')
-    if auto_attribs_expr is None:
-        return False
-
-    try:
-        value = ast.literal_eval(auto_attribs_expr)
-    except ValueError:
-        module.report(
-            'Unable to figure out value for "auto_attribs" argument '
-            'to attr.s(), maybe too complex',
-            lineno_offset=call.lineno
-            )
-        return False
-
-    if not isinstance(value, bool):
-        module.report(
-            f'Value for "auto_attribs" argument to attr.s() '
-            f'has type "{type(value).__name__}", expected "bool"',
-            lineno_offset=call.lineno
-            )
-        return False
-
-    return value
-
-
-def is_attrib(expr: Optional[ast.expr], ctx: model.Documentable) -> bool:
-    """Does this expression return an C{attr.ib}?"""
-    return isinstance(expr, ast.Call) and node2fullname(expr.func, ctx) in (
-        'attr.ib', 'attr.attrib', 'attr.attr'
-        )
-
-
-_attrib_signature = signature(attrib)
-"""Signature of the L{attr.ib} function for defining class attributes."""
-
-def attrib_args(expr: ast.expr, ctx: model.Documentable) -> Optional[BoundArguments]:
-    """Get the arguments passed to an C{attr.ib} definition.
-    @return: The arguments, or L{None} if C{expr} does not look like
-        an C{attr.ib} definition or the arguments passed to it are invalid.
-    """
-    if isinstance(expr, ast.Call) and node2fullname(expr.func, ctx) in (
-            'attr.ib', 'attr.attrib', 'attr.attr'
-            ):
-        try:
-            return bind_args(_attrib_signature, expr)
-        except TypeError as ex:
-            message = str(ex).replace("'", '"')
-            ctx.module.report(
-                f"Invalid arguments for attr.ib(): {message}",
-                lineno_offset=expr.lineno
-                )
-    return None
-
-def is_using_typing_final(obj: model.Attribute) -> bool:
-    """
-    Detect if C{obj}'s L{Attribute.annotation} is using L{typing.Final}.
-    """
-    final_qualifiers = ("typing.Final", "typing_extensions.Final")
-    fullName = node2fullname(obj.annotation, obj)
-    if fullName in final_qualifiers:
-        return True
-    if isinstance(obj.annotation, ast.Subscript):
-        # Final[...] or typing.Final[...] expressions
-        if isinstance(obj.annotation.value, (ast.Name, ast.Attribute)):
-            value = obj.annotation.value
-            fullName = node2fullname(value, obj)
-            if fullName in final_qualifiers:
-                return True
-
-    return False
-
 def is_constant(obj: model.Attribute) -> bool:
     """
     Detect if the given assignment is a constant. 
@@ -145,7 +51,7 @@ def is_constant(obj: model.Attribute) -> bool:
     @note: Must be called after setting obj.annotation to detect variables using Final.
     """
 
-    return obj.name.isupper() or is_using_typing_final(obj)
+    return obj.name.isupper() or is_using_typing_final(obj.annotation, obj)
 
 def is_attribute_overridden(obj: model.Attribute, new_value: Optional[ast.expr]) -> bool:
     """
@@ -219,14 +125,33 @@ class ModuleVistor(NodeVisitor):
         initialbases = []
         initialbaseobjects = []
 
-        for n in node.bases:
-            # TODO: Handle generics in MRO
-            str_base = '.'.join(node2dottedname(n) or [astor.to_source(n).strip()])
-            rawbases.append(str_base)
+        for base_node in node.bases:
+            # This handles generics in MRO, by extracting the first
+            # subscript value::
+            #   class Visitor(MyGeneric[T]):...
+            # 'MyGeneric' will be added to rawbases instead 
+            # of 'MyGeneric[T]' which cannot resolve to anything.
+            name_node = base_node
+            if isinstance(base_node, ast.Subscript):
+                name_node = base_node.value
+            
+            str_base = '.'.join(node2dottedname(name_node) or \
+                # Fallback on astor if the expression is unknown by node2dottedname().
+                [astor.to_source(base_node).strip()]) 
+                
+            # Store the base as string and as ast.expr in rawbases list.
+            rawbases += [(str_base, base_node)]
+            
+            # Try to resolve the base, put None if could not resolve it,
+            # if we can't resolve it now, it most likely mean that there are
+            # import cycles (maybe in TYPE_CHECKING blocks). 
+            # None bases will be re-resolved in post-processing.
             expandbase = parent.expandName(str_base)
             baseobj = self.system.objForFullName(expandbase)
+            
             if not isinstance(baseobj, model.Class):
                 baseobj = None
+                
             initialbases.append(expandbase)
             initialbaseobjects.append(baseobj)
 
@@ -245,13 +170,14 @@ class ModuleVistor(NodeVisitor):
             epydoc2stan.extract_fields(cls)
 
         if node.decorator_list:
+            
+            cls.raw_decorators = node.decorator_list
+        
             for decnode in node.decorator_list:
                 args: Optional[Sequence[ast.expr]]
                 if isinstance(decnode, ast.Call):
                     base = node2fullname(decnode.func, parent)
                     args = decnode.args
-                    if base in ('attr.s', 'attr.attrs', 'attr.attributes'):
-                        cls.auto_attribs |= _uses_auto_attribs(decnode, parent.module)
                 else:
                     base = node2fullname(decnode, parent)
                     args = None
@@ -262,11 +188,12 @@ class ModuleVistor(NodeVisitor):
                     cls.report("cannot make sense of class decorator")
                 else:
                     cls.decorators.append((base, args))
-        cls.raw_decorators = node.decorator_list if node.decorator_list else []
-        
+
+            
         # We're not resolving the subclasses at this point yet because all 
         # modules might not have been processed, and since subclasses are only used in the presentation,
         # it's better to resolve them in the post-processing instead.
+
 
     def depart_ClassDef(self, node: ast.ClassDef) -> None:
         self.builder.popClass()
@@ -510,7 +437,7 @@ class ModuleVistor(NodeVisitor):
         obj.kind = model.DocumentableKind.CONSTANT
 
         # A hack to to display variables annotated with Final with the real type instead.
-        if is_using_typing_final(obj):
+        if is_using_typing_final(obj.annotation, obj):
             if isinstance(obj.annotation, ast.Subscript):
                 try:
                     annotation = extract_final_subscript(obj.annotation)
@@ -627,17 +554,9 @@ class ModuleVistor(NodeVisitor):
             obj = self.builder.addAttribute(name=name, kind=None, parent=cls)
 
         if obj.kind is None:
-            instance = is_attrib(expr, cls) or (
-                cls.auto_attribs and annotation is not None and not (
-                    isinstance(annotation, ast.Subscript) and
-                    node2fullname(annotation.value, cls) == 'typing.ClassVar'
-                    )
-                )
-            obj.kind = model.DocumentableKind.INSTANCE_VARIABLE if instance else model.DocumentableKind.CLASS_VARIABLE
+            obj.kind = model.DocumentableKind.CLASS_VARIABLE
 
         if expr is not None:
-            if annotation is None:
-                annotation = self._annotation_from_attrib(expr, cls)
             if annotation is None:
                 annotation = _infer_type(expr)
         
@@ -960,26 +879,6 @@ class ModuleVistor(NodeVisitor):
         attr.decorators = node.decorator_list
 
         return attr
-
-    def _annotation_from_attrib(self,
-            expr: ast.expr,
-            ctx: model.Documentable
-            ) -> Optional[ast.expr]:
-        """Get the type of an C{attr.ib} definition.
-        @param expr: The expression's AST.
-        @param ctx: The context in which this expression is evaluated.
-        @return: A type annotation, or None if the expression is not
-                 an C{attr.ib} definition or contains no type information.
-        """
-        args = attrib_args(expr, ctx)
-        if args is not None:
-            typ = args.arguments.get('type')
-            if typ is not None:
-                return self._unstring_annotation(typ)
-            default = args.arguments.get('default')
-            if default is not None:
-                return _infer_type(default)
-        return None
 
     def _annotations_from_function(
             self, func: Union[ast.AsyncFunctionDef, ast.FunctionDef]

@@ -1,6 +1,5 @@
 from typing import List
 from textwrap import dedent
-from pydoctor.epydoc.docutils import _get_docutils_version
 from pydoctor.epydoc.markup import ParseError, get_parser_by_name
 from pydoctor.test.epydoc.test_restructuredtext import prettify
 from pydoctor.test import NotFoundLinker, CapSys
@@ -275,7 +274,7 @@ def test_processtypes_corner_cases(capsys: CapSys) -> None:
     assert process('[,]')                                   == "[, ]"
     assert process('[[]]')                                  == "[[]]"
     assert process(', [str]')                               == ", [<code>str]</code>"
-    assert process(' of [str]')                             == "<code>of [str]</code>" # this is a bit weird
+    assert process(' of [str]')                             == "of[<code>str]</code>"
     assert process(' or [str]')                             == "or[<code>str]</code>"
     assert process(': [str]')                               == ": [<code>str]</code>"
     assert process("'hello'[str]")                          == "<span class=\"literal\">'hello'</span>[<code>str]</code>"
@@ -285,9 +284,11 @@ def test_processtypes_corner_cases(capsys: CapSys) -> None:
     assert process('**hello**[str]')                        == "<strong>hello</strong>[<code>str]</code>"
     assert process('["hello" or str, default: 2]')          == """[<span class="literal">"hello"</span> or <code>str</code>, <em>default</em>: <span class="literal">2</span>]"""
 
-    # HTML ids for problematic elements changed in docutils 0.18.0
-    if _get_docutils_version() >= (0,18,0):
-        assert process('Union[`hello <>`_[str]]')               == """<code>Union[</code><a href="#system-message-1"><span class="rst-problematic" id="rst-problematic-1">`hello &lt;&gt;`_</span></a>[<code>str]]</code>"""
+    # HTML ids for problematic elements changed in docutils 0.18.0, and again in 0.19.0, so we're not testing for the exact content anymore.
+    
+    problematic = process('Union[`hello <>`_[str]]')
+    assert "`hello &lt;&gt;`_" in problematic
+    assert "<code>str" in problematic
  
 def test_processtypes_warning_unexpected_element(capsys: CapSys) -> None:
     
@@ -327,3 +328,62 @@ def test_processtypes_warning_unexpected_element(capsys: CapSys) -> None:
     assert "Unexpected element in type specification field: element 'doctest_block'" in rst_errors.pop().descr()
 
     assert flatten(rst_parsed.fields[-1].body().to_stan(NotFoundLinker())).replace('\n', ' ') == expected
+
+def test_napoleon_types_warnings(capsys: CapSys) -> None:
+    """
+    This is not the same as test_token_type_invalid() since 
+    this checks our integration with pydoctor and validates we **actually** trigger 
+    the warnings.
+    """
+    # from napoleon upstream:
+    # unbalanced parenthesis in type expression
+    # unbalanced square braces in type expression
+    # invalid value set (missing closing brace)
+    # invalid value set (missing opening brace)
+    # malformed string literal (missing closing quote)
+    # malformed string literal (missing opening quote)
+    # from our custom napoleon:
+    # invalid type: '{before_colon}'. Probably missing colon.
+    # from our integration with docutils:
+    # Unexpected element in type specification field
+
+    src = '''
+    __docformat__ = 'google'
+    def foo(**args):
+        """
+        Keyword Args:
+            a (list(str): thing
+            b (liststr]): stuff
+            c ({1,2,3): num
+            d ('1',2,3}): num or str
+            e (str, '1', '2): str
+            f (str, "1", 2"): str
+            docformat
+                Can be one of:
+                - "numpy"
+                - "google"
+            h: things
+        
+        :type h: stuff
+
+            >>> python
+        """
+    '''
+
+    mod = fromText(src, modname='warns')    
+    docstring2html(mod.contents['foo'])
+
+    # Filter docstring linker warnings
+    lines = [line for line in capsys.readouterr().out.splitlines() if 'Cannot find link target' not in line]
+    
+    # Line numbers are off because they are based on the reStructuredText version of the docstring
+    # which includes much more lines because of the :type arg: fields. 
+    assert '\n'.join(lines) == '''\
+warns:13: bad docstring: invalid type: 'docformatCan be one of'. Probably missing colon.
+warns:7: bad docstring: unbalanced parenthesis in type expression
+warns:9: bad docstring: unbalanced square braces in type expression
+warns:11: bad docstring: invalid value set (missing closing brace): {1
+warns:13: bad docstring: invalid value set (missing opening brace): 3}
+warns:15: bad docstring: malformed string literal (missing closing quote): '2
+warns:17: bad docstring: malformed string literal (missing opening quote): 2"
+warns:23: bad docstring: Unexpected element in type specification field: element 'doctest_block'. This value should only contain regular paragraphs with text or inline markup.'''

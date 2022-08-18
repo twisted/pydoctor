@@ -8,7 +8,6 @@ U{the epytext documentation<http://epydoc.sourceforge.net/epytext.html>}.
 from typing import List
 
 import pytest
-from pydoctor.epydoc.docutils import _get_docutils_version
 
 from pydoctor.epydoc.markup import ParseError, ParsedDocstring
 from pydoctor.stanutils import flatten
@@ -17,7 +16,7 @@ from pydoctor.node2stan import node2stan
 from pydoctor.test import NotFoundLinker
 from pydoctor.test.epydoc.test_restructuredtext import prettify
 
-from docutils import nodes
+from docutils import nodes, __version_info__ as docutils_version_info
 
 def parse_epytext(s: str) -> ParsedDocstring:
     errors: List[ParseError] = []
@@ -293,7 +292,7 @@ def test_nested_markup() -> None:
     assert epytext2html(doc) == squash(expected)
 
 # From docutils 0.18 the toc entries uses different ids.
-@pytest.mark.skipif(_get_docutils_version() < (0,18,0), reason="HTML ids in toc tree changed in docutils 0.18.0.")
+@pytest.mark.skipif(docutils_version_info < (0,18), reason="HTML ids in toc tree changed in docutils 0.18.0.")
 def test_get_toc() -> None:
 
     docstring = """

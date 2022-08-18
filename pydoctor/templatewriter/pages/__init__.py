@@ -392,7 +392,7 @@ class ClassPage(CommonPage):
             docgetter: Optional[util.DocGetter] = None
             ):
         super().__init__(ob, template_lookup, docgetter)
-        self.baselists = util.inherited_members(self.ob)
+        self.baselists = util.class_members(self.ob)
 
 
     def extras(self) -> List[Tag]:
@@ -431,18 +431,21 @@ class ClassPage(CommonPage):
 
     def classSignature(self) -> "Flattenable":
         r: List["Flattenable"] = []
-        _linker = self.ob.docstring_linker
-        zipped = list(zip(self.ob.rawbases, self.ob.bases))
-        if zipped:
+        # Here, we should use the parent's linker because a base name
+        # can't be define in the class itself.
+        _linker = self.ob.parent.docstring_linker
+        if self.ob.rawbases:
             r.append('(')
-            for idx, (name, full_name) in enumerate(zipped):
-                if idx != 0:
-                    r.append(', ')
+            with _linker.disable_same_page_optimazation():
+            
+                for idx, (_, base_node) in enumerate(self.ob.rawbases):
+                    if idx != 0:
+                        r.append(', ')
 
-                # link to external class or internal class
-                tag = _linker.link_to(full_name, name)
+                    # link to external class or internal class, using the colorizer here
+                    # to link to classes with generics (subscripts and other AST expr).
+                    r.extend(colorize_inline_pyval(base_node).to_stan(_linker).children)
                     
-                r.append(tag(title=full_name))
             r.append(')')
         return r
 
