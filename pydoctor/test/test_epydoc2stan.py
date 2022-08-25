@@ -1542,3 +1542,97 @@ def test_stem_identifier() -> None:
     assert list(stem_identifier('_name')) == ['name']
     assert list(stem_identifier('name')) == ['name']
     assert list(stem_identifier('processModuleAST')) == ['process', 'Module', 'AST']
+
+def test_self_cls_in_function_params(capsys: CapSys) -> None:
+    """
+    'self' and 'cls' in parameter table of regular function should appear because 
+    we don't know if it's a badly named argument OR it's actually assigned to a legit
+    class/instance method outside of the class scope: https://github.com/twisted/pydoctor/issues/13
+
+    Until issue #13 is fixed (which is not so easy), the safe side is to show them.
+    """
+    src = '''
+    __docformat__ = "google"
+
+    def foo(cls, var, bar):
+        """
+        'cls' SHOULD shown in parameter table. 
+
+        Args:
+            var: the thing
+            bar: the other thing
+        """
+
+    def bar(self, cls, var):
+        """
+        'self' SHOULD shown in parameter table. 
+
+        Args:
+            var: the thing
+        """
+
+    class Spectator:
+        
+        @staticmethod
+        def watch(self, what):
+            """
+            'self' SHOULD shown in parameter table. 
+
+            Args:
+                what: the thing
+            """
+        
+        def leave(cls, t):
+            """
+            'cls' SHOULD shown in parameter table. 
+
+            Args:
+                t: thing
+            """
+        
+        @classmethod
+        def which(cls, t):
+            """
+            'cls' SHOULD NOT shown in parameter table, because it's a legit class method.
+
+            Args:
+                t: the object
+            """
+        
+        def __init__(self, team):
+            """
+            'self' SHOULD NOT shown in parameter table, because it's a legit instance method.
+
+            Args:
+                team: the team
+            """
+        
+        def __bool__(self, other):
+            """
+            'self' SHOULD shown in parameter table, because it's explicitely documented.
+
+            Args:
+                self: the self
+                other: the other
+            """
+    '''
+    mod = fromText(src, modname='mod')
+
+    html_foo = docstring2html(mod.contents['foo'])
+    html_bar = docstring2html(mod.contents['bar'])
+    html_watch = docstring2html(mod.contents['Spectator'].contents['watch'])
+    html_leave = docstring2html(mod.contents['Spectator'].contents['leave'])
+    html_which = docstring2html(mod.contents['Spectator'].contents['which'])
+    html_init = docstring2html(mod.contents['Spectator'].contents['__init__'])
+    html_bool = docstring2html(mod.contents['Spectator'].contents['__bool__'])
+
+    assert not capsys.readouterr().out
+
+    assert '<span class="fieldArg">cls</span>' in html_foo
+    assert '<span class="fieldArg">self</span>' in html_bar
+    assert '<span class="fieldArg">self</span>' in html_watch
+    assert '<span class="fieldArg">cls</span>' in html_leave
+
+    assert '<span class="fieldArg">cls</span>' not in html_which
+    assert '<span class="fieldArg">self</span>' not in html_init
+    assert '<span class="fieldArg">self</span>' in html_bool
