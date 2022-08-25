@@ -10,10 +10,8 @@ else:
 
 from pydoctor import model
 
-# _IndirectionT = Union[model.Attribute, model.Import]
-# _IndirectionT = model.Attribute
-
 class _IndirectionT(Protocol):
+    # This protocol is implemented by model.Attribute and model.ImportAlias
     system: model.System
     name: str
     parent: model.CanContainImportsDocumentable
@@ -41,7 +39,7 @@ def _localNameToFullName(ctx: model.Documentable, name: str, indirections:Option
         
         # Imports
         if name in ctx._localNameToFullName_map:
-            return _localImportToFullName(ctx, name, indirections)
+            return _resolveImport(ctx, ctx._localNameToFullName_map[name], indirections)
         
         # Not found
         if isinstance(ctx, model.Class):
@@ -53,10 +51,10 @@ def _localNameToFullName(ctx: model.Documentable, name: str, indirections:Option
         assert ctx.parent is not None
         return _localNameToFullName(ctx.parent, name, indirections)
 
-def _localImportToFullName(ctx: model.CanContainImportsDocumentable, name:str, indirections:Optional[List['_IndirectionT']]) -> str:
-    indirections = indirections if isinstance(indirections, list) else []
-    import_ = ctx._localNameToFullName_map[name]
-    indirections += [import_]
+_ensure_indirection_list = lambda indirections: indirections if isinstance(indirections, list) else []
+
+def _resolveImport(ctx: model.CanContainImportsDocumentable, import_:_IndirectionT, indirections:Optional[List['_IndirectionT']]) -> str:
+    indirections = _ensure_indirection_list(indirections) + [import_]
 
     failed = fail_to_many_aliases(ctx, import_, indirections)
     if failed:
@@ -67,19 +65,21 @@ def _localImportToFullName(ctx: model.CanContainImportsDocumentable, name:str, i
 
     allobjects = ctx.system.allobjects
 
-    # the object is part of the system
+    # the imported name is part of the system
     if fullName in allobjects:
-        # the imported name is an alias, so follow it
+        # the imported name might be an alias, so use _localDocumentableToFullName
         resolved = _localDocumentableToFullName(ctx, allobjects[fullName], indirections)
         if resolved:
             return resolved
 
     dottedName = fullName.split('.')
-    parentName = '.'.join(dottedName[0:-1])
-    targetName = dottedName[-1]
+    parentName, targetName = '.'.join(dottedName[0:-1]), dottedName[-1]
 
-    # the object is not part of the system, but it's parent is,
+    # the imported name is not part of the system, but it's parent is,
     # so try to resolve the name from the parent's context.
+    # this logic has a blind spot: i the parent of the imported name is not found but
+    # the grand-parent exists in the system, it will not be used to resolve the imports "chain".
+    # We clould use a while loop to walk grand parents until there are no more.
     if parentName in allobjects:
         parent = allobjects[parentName]
         return _localNameToFullName(parent, targetName, indirections)
@@ -97,7 +97,11 @@ def fail_to_many_aliases(self: model.CanContainImportsDocumentable, alias: _Indi
         return indirections[0].fullName()
     return None
 
-# TODO: This same function should be applicable for imports sa well.
+# TODO: This function should be applicable for imports sa well.
+# or maybe part of this function should also be applicable. Some special
+# care needs to be taken while resolving an ALIAS vs an IMPORT because an alias
+# can have the same name and target and redirect to the upper scope name, 
+# so this needs to be handled specially. 
 def _resolveAlias(self: model.CanContainImportsDocumentable, alias: _IndirectionT, indirections:Optional[List[_IndirectionT]]=None) -> str:
     """
     Resolve the indirection value to it's target full name.
@@ -108,8 +112,7 @@ def _resolveAlias(self: model.CanContainImportsDocumentable, alias: _Indirection
         This variable is used to prevent infinite loops when doing the lookup.
     @returns: The potential full name of the 
     """
-    
-    indirections = indirections if isinstance(indirections, list) else []
+    indirections = _ensure_indirection_list(indirections)
 
     failed = fail_to_many_aliases(self, alias, indirections)
     if failed:
@@ -124,7 +127,7 @@ def _resolveAlias(self: model.CanContainImportsDocumentable, alias: _Indirection
 
     if alias not in indirections:
         # We redirect to the original object
-        return ctx.expandName(name, indirections=indirections+[alias])
+        return ctx.expandName(name, indirections=indirections + [alias])
     
     # We try the upper scope only if we detect a direct cycle.
     # Otherwise just fail.
@@ -139,7 +142,7 @@ def _resolveAlias(self: model.CanContainImportsDocumentable, alias: _Indirection
         # This is used in situations like right here in the System class and it's aliases (before version > 22.5.1), 
         # because they have the same name as the name they are aliasing, the alias resolves to the same object.
         # We could use astuce here to be more precise (better static analysis) and make this code more simple and less error-prone.
-        return parent.expandName(name, indirections=indirections+[alias])
+        return parent.expandName(name, indirections=indirections + [alias])
 
     self.module.report("Failed to resolve alias (found same alias again)", lineno_offset=alias.linenumber, section='aliases')
     return indirections[0].fullName()
