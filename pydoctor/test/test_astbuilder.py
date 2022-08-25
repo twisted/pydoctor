@@ -1999,3 +1999,24 @@ def test_exception_kind(systemcls: Type[model.System], capsys: CapSys) -> None:
     assert cls.kind is model.DocumentableKind.CLASS
 
     assert not capsys.readouterr().out
+
+@systemcls_param
+def test_exception_kind_corner_cases(systemcls: Type[model.System], capsys: CapSys) -> None:
+
+    src1 = '''\
+    class Exception:...
+    class LooksLikeException(Exception):... # Not an exception
+    '''
+
+    src2 = '''\
+    class Exception(BaseException):...
+    class LooksLikeException(Exception):... # An exception
+    '''
+
+    mod1 = fromText(src1, modname='src1', systemcls=systemcls)
+    assert mod1.contents['LooksLikeException'].kind == model.DocumentableKind.CLASS
+
+    mod2 = fromText(src2, modname='src2', systemcls=systemcls)
+    assert mod2.contents['LooksLikeException'].kind == model.DocumentableKind.EXCEPTION
+
+    assert not capsys.readouterr().out
