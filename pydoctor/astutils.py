@@ -58,7 +58,7 @@ class NodeVisitorExt(visitor.VisitorExt[ast.AST]):
     ...
 
 _AssingT = Union[ast.Assign, ast.AnnAssign]
-def iterassign(node:_AssingT) -> Iterator[Tuple[Optional[List[str]], _AssingT]]:
+def iterassign(node:_AssingT) -> Iterator[Optional[List[str]]]:
     """
     Utility function to iterate assignments targets. 
 
@@ -76,13 +76,13 @@ def iterassign(node:_AssingT) -> Iterator[Tuple[Optional[List[str]], _AssingT]]:
 
     >>> from pydoctor.astutils import iterassign
     >>> from ast import parse
-    >>> node = parse('self.var = target = node.astext()').body[0]
+    >>> node = parse('self.var = target = thing[0] = node.astext()').body[0]
     >>> list(iterassign(node))
-    [(['self', 'var'], <_ast.Assign object at 0x10c6eb5e0>), (['target'], <_ast.Assign object at 0x10c6eb5e0>)]
+    
     """
     for target in node.targets if isinstance(node, ast.Assign) else [node.target]:
         dottedname = node2dottedname(target) 
-        yield dottedname, node
+        yield dottedname
 
 def node2dottedname(node: Optional[ast.AST]) -> Optional[List[str]]:
     """

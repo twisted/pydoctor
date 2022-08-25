@@ -146,7 +146,7 @@ class ModuleVisitor(extensions.ModuleVisitorExt):
                 attr.annotation = annotation_from_attrib(self.visitor, node.value, cls)
 
     def _handleAttrsAssignment(self, node: Union[ast.Assign, ast.AnnAssign]) -> None:
-        for dottedname,_ in astutils.iterassign(node):
+        for dottedname in astutils.iterassign(node):
             if dottedname and len(dottedname)==1:
                 # Here, we consider single name assignment only
                 current = self.visitor.builder.current
