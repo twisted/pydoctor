@@ -1992,7 +1992,7 @@ def test_type_alias(systemcls: Type[model.System]) -> None:
             from ext import what
             L = _j = what.some = list[str]
             def __init__(self):
-                self.P: TypeAlias = 'Callable[[str], Tuple[int, bytes, bytes]]'
+                self.Pouet: TypeAlias = 'Callable[[str], Tuple[int, bytes, bytes]]'
                 self.Q = q = list[str]
         
         ''', systemcls=systemcls)
@@ -2005,5 +2005,7 @@ def test_type_alias(systemcls: Type[model.System]) -> None:
     assert mod.contents['notanalias'].kind == model.DocumentableKind.VARIABLE
     assert mod.contents['F'].contents['L'].kind == model.DocumentableKind.TYPE_ALIAS
     assert mod.contents['F'].contents['_j'].kind == model.DocumentableKind.TYPE_ALIAS
-    assert mod.contents['F'].contents['Q'].kind == model.DocumentableKind.TYPE_ALIAS
-    assert mod.contents['F'].contents['P'].kind == model.DocumentableKind.TYPE_ALIAS
+
+    # Type variables in instance variables are not recognized
+    assert mod.contents['F'].contents['Pouet'].kind == model.DocumentableKind.INSTANCE_VARIABLE
+    assert mod.contents['F'].contents['Q'].kind == model.DocumentableKind.INSTANCE_VARIABLE
