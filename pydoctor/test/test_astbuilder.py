@@ -1988,4 +1988,4 @@ def test_syntax_error_pack(systemcls: Type[model.System], capsys: CapSys) -> Non
     systemcls = partialclass(systemcls, Options.from_args(['-q']))
     processPackage('syntax_error', systemcls)
     out = capsys.readouterr().out.strip('\n')
-    assert "pydoctor/test/testpackages/syntax_error/__init__.py:???: cannot parse file" in out, out
+    assert "__init__.py:???: cannot parse file, " in out, out
