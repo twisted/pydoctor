@@ -463,8 +463,13 @@ class FieldHandler:
             try:
                 param = params.pop(name)
             except KeyError:
-                if index == 0 and name in ('self', 'cls'):
-                    continue
+                if index == 0:
+                    # Strip 'self' or 'cls' from parameter table when it semantically makes sens.
+                    if name=='self' and self.obj.kind is model.DocumentableKind.METHOD:
+                        continue
+                    if name=='cls' and self.obj.kind is model.DocumentableKind.CLASS_METHOD:
+                        continue
+                    
                 param = FieldDesc(name=name, type=type_doc)
                 any_info |= type_doc is not None
             else:
