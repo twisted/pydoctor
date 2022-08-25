@@ -74,99 +74,6 @@ def is_constant(obj: model.Attribute) -> bool:
 
     return obj.name.isupper() or is_using_typing_final(obj.annotation, obj)
 
-@attr.s(auto_attribs=True)
-class AssignName:
-    """
-    A class that encapsulate information regarding 
-    a assignment name and it's context documentable.
-    """
-    name: str
-    ctx: model.Documentable
-
-    def get(self) -> Optional[model.Documentable]:
-        """
-        Get the documentable this assigment is targeting.
-        """
-        return self.ctx.contents.get(self.name)
-
-def reduce_assign_target(ctx:model.Documentable, dottedname:List[str]) -> Optional[AssignName]:
-    """
-    Optionally reduce the dottedname in the context of the documentable. 
-    If the documentable is a method and the dottedname starts with "self", 
-    then the returned L{AssignName.ctx} will be the class scope 
-    and the L{AssignName.name} will be the attribute name.
-    Otherwise it will be the same context and L{dottedname[0]}.
-
-    Returns L{None} if we can't make sens of the dottedname, this can happen in the following cases::
-
-        def func(self, thing):
-            # Reducing 'self.name' will return None because the 
-            # function is not enclosed in a class scope, so we don't know what 'self' is.
-            self.name = thing.name 
-
-        class Thing:
-            name = None
-
-        class C:
-            kind = None
-            
-            def __init__(self, name):
-                # Reducing 'self.thing' will successfully return (C, 'thing') 
-                self.thing = Thing()
-                
-                # Reduing 'self.thing.name' will return None 
-                # because pydoctor is not as smart yet.
-                self.thing.name = name
-            
-            @classmethod
-            def isClass(cls):
-                # Reducing 'cls.kind' will return None because there's no support
-                # for class methods yet, we don't need it right now.
-                if issubclass(cls.kind, Class):
-                    return True
-    """
-    _short_name = None
-    
-    if len(dottedname)==1:
-        _short_name = dottedname[0]
-    elif len(dottedname)==2 and dottedname[0]=='self' and ctx.kind is model.DocumentableKind.METHOD:
-        _short_name = dottedname[1]
-        # parent is never None for methods
-        ctx = ctx.parent 
-    
-    if _short_name is None:
-        return None
-
-    return AssignName(_short_name, ctx)
-
-def get_obj_by_assign_target(ctx:model.Documentable, dottedname:Optional[List[str]]) -> Optional[model.Documentable]:
-    """
-    Get a documentable by name, from a specific scope context, 
-    with support for instance attributes. 
-    This function do not do any resolving, it is intented to be used 
-    when visiting L{ast.Assign} and L{ast.AnnAssign} from visitor extensions, 
-    alongside L{iterassign} with the C{ctx} beeing C{self.visitor.builder.current}.
-    
-    This function is can be used to treat instance attributes and other kind
-    of variable the same manner, it provides an abstraction on whether the current 
-    context is a method and the dottedname is using C{self.x} OR it's a regular variable.
-
-    @param ctx: The scope object.
-    @param dottedname: The dottedname, as in L{node2dottedname}.
-
-        Examples: C{['self', 'instance_var']} or C{['var']}.
-        If name is C{None}, returns C{None} as well.
-    """
-    if dottedname is None:
-        return None
-    
-    spec = reduce_assign_target(ctx, dottedname)
-    
-    if spec:
-        return spec.get()
-    else:
-        return None
-
 class TypeAliasVisitorExt(extensions.ModuleVisitorExt):
     """
     This visitor implements the handling of type aliases and type variables.
@@ -198,16 +105,17 @@ class TypeAliasVisitorExt(extensions.ModuleVisitorExt):
 
     def visit_Assign(self, node: Union[ast.Assign, ast.AnnAssign]) -> None:
         current = self.visitor.builder.current
-        for dottedname, _ in iterassign(node): 
-            attr = get_obj_by_assign_target(current, dottedname)
-            if attr is None:
-                return
-            if not isinstance(attr, model.Attribute):
-                return
-            if self._isTypeAlias(attr) is True:
-                attr.kind = model.DocumentableKind.TYPE_ALIAS
-            elif self._isTypeVariable(attr) is True:
-                attr.kind = model.DocumentableKind.TYPE_VARIABLE
+        for dottedname in iterassign(node): 
+            if dottedname and len(dottedname)==1:
+                attr = current.contents.get(dottedname[0])
+                if attr is None:
+                    return
+                if not isinstance(attr, model.Attribute):
+                    return
+                if self._isTypeAlias(attr) is True:
+                    attr.kind = model.DocumentableKind.TYPE_ALIAS
+                elif self._isTypeVariable(attr) is True:
+                    attr.kind = model.DocumentableKind.TYPE_VARIABLE
     
     visit_AnnAssign = visit_Assign
 
