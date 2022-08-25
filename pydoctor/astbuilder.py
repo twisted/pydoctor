@@ -259,7 +259,7 @@ class ModuleVistor(NodeVisitor):
             self.builder.current.report(f"import * from unknown {modname}", thresh=1)
             return
 
-        self.builder.current.report("import *", thresh=1)
+        self.builder.current.report(f"import * from {modname}", thresh=1)
 
         # Get names to import: use __all__ if available, otherwise take all
         # names that are not private.
