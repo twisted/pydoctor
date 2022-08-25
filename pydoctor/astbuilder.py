@@ -12,7 +12,6 @@ from typing import (
     Type, TypeVar, Union, cast
 )
 
-import attr
 import astor
 from pydoctor import epydoc2stan, model, node2stan, extensions
 from pydoctor.epydoc.markup._pyval_repr import colorize_inline_pyval

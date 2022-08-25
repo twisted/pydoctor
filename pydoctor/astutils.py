@@ -4,7 +4,7 @@ Various bits of reusable code related to L{ast.AST} node processing.
 
 import sys
 from numbers import Number
-from typing import Iterator, Optional, List, Iterable, Sequence, TYPE_CHECKING, Tuple, Union
+from typing import Iterator, Optional, List, Iterable, Sequence, TYPE_CHECKING, Union
 from inspect import BoundArguments, Signature
 import ast
 
