@@ -75,7 +75,9 @@ What's New?
 
 in development
 ^^^^^^^^^^^^^^
+
 * Python syntax errors are now logged as violations.
+* Fix broken option ``--prepend-package`` in pydoctor 22.7.0.
 * `self` parameter is now removed only when the target is a method. In the previous version, it was always removed in any context.
 * `cls` parameter is now removed only when the target is a class method. In the previous version, it was always removed in any context.
 * Add anchors aside attributes and functions to ease 
