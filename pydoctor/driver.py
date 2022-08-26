@@ -51,18 +51,17 @@ def get_system(options: model.Options) -> model.System:
         except ValueError as e:
             error(str(e))
     
-    # step 2: add any packages and modules
+    # step 1.5: create the builder
 
-    prependedpackage = None
+    builderT = system.systemBuilder
+
     if options.prependedpackage:
-        for m in options.prependedpackage.split('.'):
-            prependedpackage = system.Package(
-                system, m, prependedpackage)
-            system.addObject(prependedpackage)
-            initmodule = system.Module(system, '__init__', prependedpackage)
-            system.addObject(initmodule)
-    
-    builder = system.systemBuilder(system)
+        builderT = model.prepend_package(builderT, package=options.prependedpackage)
+
+    builder = builderT(system)
+
+    # step 2: add any packages and modules to the builder
+
     try:
         for path in options.sourcepath:
             builder.addModule(path)
