@@ -1975,6 +1975,11 @@ def test_reexport_wildcard(systemcls: Type[model.System]) -> None:
 
 @systemcls_param
 def test_prepend_package(systemcls: Type[model.System]) -> None:
+    """
+   Option --prepend-package option relies simply on the L{ISystemBuilder} interface, 
+   so we can test it by using C{addModuleString}, but it's not exactly what happens when we actually 
+   run pydoctor. See the other test L{test_prepend_package_real_path}. 
+    """
     system = systemcls()
     builder = model.prepend_package(system.systemBuilder, package='lib.pack')(system)
 
@@ -1988,6 +1993,9 @@ def test_prepend_package(systemcls: Type[model.System]) -> None:
 
 @systemcls_param
 def test_prepend_package_real_path(systemcls: Type[model.System]) -> None:
+    """ 
+    In this test, we closer mimics what happens in the driver when --prepend-package option is passed. 
+    """
     _builderT_init = systemcls.systemBuilder
     try:
         systemcls.systemBuilder = model.prepend_package(systemcls.systemBuilder, package='lib.pack')

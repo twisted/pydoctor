@@ -1387,6 +1387,10 @@ class SystemBuilder(ISystemBuilder):
 System.systemBuilder = SystemBuilder
 
 def prepend_package(builderT:Type[ISystemBuilder], package:str) -> Type[ISystemBuilder]:
+    """
+    Get a new system builder class, that extends the original C{builder} such that it will always use a "fake" 
+    C{package} to be the only root object of the system and add new modules under it.
+    """
     
     class PrependPackageBuidler(builderT): # type:ignore
         """
