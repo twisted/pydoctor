@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 
 Parser = Callable[[str], Tuple[int, bytes, bytes]]
 """
-Type aliases are documented with the 'Type' kind and their value is shown just like constants.
+Type aliases are documented as such and their value is shown just like constants.
 """
 
 LANG = 'Fr'
