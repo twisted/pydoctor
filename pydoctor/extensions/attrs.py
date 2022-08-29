@@ -105,7 +105,7 @@ def annotation_from_attrib(
     if args is not None:
         typ = args.arguments.get('type')
         if typ is not None:
-            return self._unstring_annotation(typ)
+            return astutils.unstring_annotation(typ, ctx)
         default = args.arguments.get('default')
         if default is not None:
             return astbuilder._infer_type(default)
@@ -146,8 +146,7 @@ class ModuleVisitor(extensions.ModuleVisitorExt):
                 attr.annotation = annotation_from_attrib(self.visitor, node.value, cls)
 
     def _handleAttrsAssignment(self, node: Union[ast.Assign, ast.AnnAssign]) -> None:
-        for target in node.targets if isinstance(node, ast.Assign) else [node.target]:
-            dottedname = astutils.node2dottedname(target) 
+        for dottedname in astutils.iterassign(node):
             if dottedname and len(dottedname)==1:
                 # Here, we consider single name assignment only
                 current = self.visitor.builder.current
