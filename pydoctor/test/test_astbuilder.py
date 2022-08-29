@@ -1990,6 +1990,7 @@ def test_syntax_error_pack(systemcls: Type[model.System], capsys: CapSys) -> Non
     out = capsys.readouterr().out.strip('\n')
     assert "__init__.py:???: cannot parse file, " in out, out
 
+@systemcls_param
 def test_prepend_package(systemcls: Type[model.System]) -> None:
     """
    Option --prepend-package option relies simply on the L{ISystemBuilder} interface, 
