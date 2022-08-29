@@ -1976,6 +1976,7 @@ def test_reexport_wildcard(systemcls: Type[model.System]) -> None:
 @systemcls_param
 def test_type_alias(systemcls: Type[model.System]) -> None:
     """
+    Type aliases and type variables are recognized as such.
     """
 
     mod = fromText(
