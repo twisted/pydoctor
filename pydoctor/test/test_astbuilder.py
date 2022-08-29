@@ -10,6 +10,7 @@ from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring
 from pydoctor.stanutils import flatten, html2stan, flatten_text
 from pydoctor.epydoc.markup.epytext import Element, ParsedEpytextDocstring
 from pydoctor.epydoc2stan import format_summary, get_parsed_type
+from pydoctor.test.test_packages import processPackage
 
 from . import CapSys, NotFoundLinker, posonlyargs, typecomment
 import pytest
@@ -2009,3 +2010,40 @@ def test_type_alias(systemcls: Type[model.System]) -> None:
     # Type variables in instance variables are not recognized
     assert mod.contents['F'].contents['Pouet'].kind == model.DocumentableKind.INSTANCE_VARIABLE
     assert mod.contents['F'].contents['Q'].kind == model.DocumentableKind.INSTANCE_VARIABLE
+
+@systemcls_param
+def test_prepend_package(systemcls: Type[model.System]) -> None:
+    """
+   Option --prepend-package option relies simply on the L{ISystemBuilder} interface, 
+   so we can test it by using C{addModuleString}, but it's not exactly what happens when we actually 
+   run pydoctor. See the other test L{test_prepend_package_real_path}. 
+    """
+    system = systemcls()
+    builder = model.prepend_package(system.systemBuilder, package='lib.pack')(system)
+
+    builder.addModuleString('"mod doc"\nclass C:\n    "C doc"', modname='core')
+    builder.buildModules()
+    assert isinstance(system.allobjects['lib'], model.Package)
+    assert isinstance(system.allobjects['lib.pack'], model.Package)
+    assert isinstance(system.allobjects['lib.pack.core.C'], model.Class)
+    assert 'core' not in system.allobjects
+
+
+@systemcls_param
+def test_prepend_package_real_path(systemcls: Type[model.System]) -> None:
+    """ 
+    In this test, we closer mimics what happens in the driver when --prepend-package option is passed. 
+    """
+    _builderT_init = systemcls.systemBuilder
+    try:
+        systemcls.systemBuilder = model.prepend_package(systemcls.systemBuilder, package='lib.pack')
+
+        system = processPackage('basic', systemcls=systemcls)
+
+        assert isinstance(system.allobjects['lib'], model.Package)
+        assert isinstance(system.allobjects['lib.pack'], model.Package)
+        assert isinstance(system.allobjects['lib.pack.basic.mod.C'], model.Class)
+        assert 'basic' not in system.allobjects
+    
+    finally:
+        systemcls.systemBuilder = _builderT_init
