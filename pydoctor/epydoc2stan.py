@@ -810,10 +810,13 @@ def format_kind(kind: model.DocumentableKind, plural: bool = False) -> str:
         model.DocumentableKind.SCHEMA_FIELD    : 'Attribute',
         model.DocumentableKind.CONSTANT        : 'Constant',
         model.DocumentableKind.EXCEPTION       : 'Exception',
+        model.DocumentableKind.TYPE_ALIAS      : 'Type Alias',
+        model.DocumentableKind.TYPE_VARIABLE   : 'Type Variable',
     }
     plurals = {
         model.DocumentableKind.CLASS           : 'Classes', 
         model.DocumentableKind.PROPERTY        : 'Properties',
+        model.DocumentableKind.TYPE_ALIAS      : 'Type Aliases',
     }
     if plural:
         return plurals.get(kind, names[kind] + 's')

@@ -5,11 +5,12 @@ import ast
 import astor
 
 
-from pydoctor import astbuilder, model
+from pydoctor import astbuilder, astutils, model
 from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring
 from pydoctor.stanutils import flatten, html2stan, flatten_text
 from pydoctor.epydoc.markup.epytext import Element, ParsedEpytextDocstring
 from pydoctor.epydoc2stan import format_summary, get_parsed_type
+from pydoctor.test.test_packages import processPackage
 
 from . import CapSys, NotFoundLinker, posonlyargs, typecomment
 import pytest
@@ -1413,7 +1414,7 @@ def test_literal_string_annotation(annotation: str, expected: str) -> None:
     """Strings inside Literal annotations must not be recursively parsed."""
     stmt, = ast.parse(annotation).body
     assert isinstance(stmt, ast.Expr)
-    unstringed = astbuilder._AnnotationStringParser().visit(stmt.value)
+    unstringed = astutils._AnnotationStringParser().visit(stmt.value)
     assert astor.to_source(unstringed).strip() == expected
 
 @systemcls_param
@@ -2020,3 +2021,79 @@ def test_exception_kind_corner_cases(systemcls: Type[model.System], capsys: CapS
     assert mod2.contents['LooksLikeException'].kind == model.DocumentableKind.EXCEPTION
 
     assert not capsys.readouterr().out
+    
+@systemcls_param
+def test_type_alias(systemcls: Type[model.System]) -> None:
+    """
+    Type aliases and type variables are recognized as such.
+    """
+
+    mod = fromText(
+        '''
+        from typing import Callable, Tuple, TypeAlias, TypeVar
+        
+        T = TypeVar('T')
+        Parser = Callable[[str], Tuple[int, bytes, bytes]]
+        mylst = yourlst = list[str]
+        alist: TypeAlias = 'list[str]'
+        
+        notanalias = 'Callable[[str], Tuple[int, bytes, bytes]]'
+
+        class F:
+            from ext import what
+            L = _j = what.some = list[str]
+            def __init__(self):
+                self.Pouet: TypeAlias = 'Callable[[str], Tuple[int, bytes, bytes]]'
+                self.Q = q = list[str]
+        
+        ''', systemcls=systemcls)
+
+    assert mod.contents['T'].kind == model.DocumentableKind.TYPE_VARIABLE
+    assert mod.contents['Parser'].kind == model.DocumentableKind.TYPE_ALIAS
+    assert mod.contents['mylst'].kind == model.DocumentableKind.TYPE_ALIAS
+    assert mod.contents['yourlst'].kind == model.DocumentableKind.TYPE_ALIAS
+    assert mod.contents['alist'].kind == model.DocumentableKind.TYPE_ALIAS
+    assert mod.contents['notanalias'].kind == model.DocumentableKind.VARIABLE
+    assert mod.contents['F'].contents['L'].kind == model.DocumentableKind.TYPE_ALIAS
+    assert mod.contents['F'].contents['_j'].kind == model.DocumentableKind.TYPE_ALIAS
+
+    # Type variables in instance variables are not recognized
+    assert mod.contents['F'].contents['Pouet'].kind == model.DocumentableKind.INSTANCE_VARIABLE
+    assert mod.contents['F'].contents['Q'].kind == model.DocumentableKind.INSTANCE_VARIABLE
+
+@systemcls_param
+def test_prepend_package(systemcls: Type[model.System]) -> None:
+    """
+   Option --prepend-package option relies simply on the L{ISystemBuilder} interface, 
+   so we can test it by using C{addModuleString}, but it's not exactly what happens when we actually 
+   run pydoctor. See the other test L{test_prepend_package_real_path}. 
+    """
+    system = systemcls()
+    builder = model.prepend_package(system.systemBuilder, package='lib.pack')(system)
+
+    builder.addModuleString('"mod doc"\nclass C:\n    "C doc"', modname='core')
+    builder.buildModules()
+    assert isinstance(system.allobjects['lib'], model.Package)
+    assert isinstance(system.allobjects['lib.pack'], model.Package)
+    assert isinstance(system.allobjects['lib.pack.core.C'], model.Class)
+    assert 'core' not in system.allobjects
+
+
+@systemcls_param
+def test_prepend_package_real_path(systemcls: Type[model.System]) -> None:
+    """ 
+    In this test, we closer mimics what happens in the driver when --prepend-package option is passed. 
+    """
+    _builderT_init = systemcls.systemBuilder
+    try:
+        systemcls.systemBuilder = model.prepend_package(systemcls.systemBuilder, package='lib.pack')
+
+        system = processPackage('basic', systemcls=systemcls)
+
+        assert isinstance(system.allobjects['lib'], model.Package)
+        assert isinstance(system.allobjects['lib.pack'], model.Package)
+        assert isinstance(system.allobjects['lib.pack.basic.mod.C'], model.Class)
+        assert 'basic' not in system.allobjects
+    
+    finally:
+        systemcls.systemBuilder = _builderT_init
