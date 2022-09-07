@@ -75,7 +75,10 @@ What's New?
 
 in development
 ^^^^^^^^^^^^^^
-* Fix broken option ``--prepend-package`` in pydoctor 22.7.0.
+
+* Show the value of type aliases and type variables.
+* The ``--prepend-package`` now work as documented. 
+  A regression was introduced in pydoctor 22.7.0 and it was not nesting new packages under the "fake" package.
 * `self` parameter is now removed only when the target is a method. In the previous version, it was always removed in any context.
 * `cls` parameter is now removed only when the target is a class method. In the previous version, it was always removed in any context.
 * Add anchors aside attributes and functions to ease 

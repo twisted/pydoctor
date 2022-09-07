@@ -240,8 +240,7 @@ class ZopeInterfaceModuleVisitor(extensions.ModuleVisitorExt):
                     section='zopeinterface')
     
     def _handleZopeInterfaceAssignment(self, node: Union[ast.Assign, ast.AnnAssign]) -> None:
-        for target in node.targets if isinstance(node, ast.Assign) else [node.target]:
-            dottedname = astutils.node2dottedname(target) 
+        for dottedname in astutils.iterassign(node):
             if dottedname and len(dottedname)==1:
                 # Here, we consider single name assignment only
                 current = self.visitor.builder.current

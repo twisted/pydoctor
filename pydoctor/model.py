@@ -101,6 +101,8 @@ class DocumentableKind(Enum):
     METHOD              = 500
     FUNCTION            = 400
     CONSTANT            = 310
+    TYPE_VARIABLE       = 306
+    TYPE_ALIAS          = 305
     CLASS_VARIABLE      = 300
     SCHEMA_FIELD        = 220
     ATTRIBUTE           = 210
@@ -759,6 +761,13 @@ class System:
     Additional list of extensions to load alongside default extensions.
     """
 
+    show_attr_value = (DocumentableKind.CONSTANT, 
+                       DocumentableKind.TYPE_VARIABLE, 
+                       DocumentableKind.TYPE_ALIAS)
+    """
+    What kind of attributes we should display the value for?
+    """
+
     def __init__(self, options: Optional['Options'] = None):
         self.allobjects: Dict[str, Documentable] = {}
         self.rootobjects: List[_ModuleT] = []
@@ -814,6 +823,8 @@ class System:
             self.extensions = list(extensions.get_extensions())
         assert isinstance(self.extensions, list)
         assert isinstance(self.custom_extensions, list)
+        # pydoctor.astbuilder includes some required extensions, so always add it.
+        self.extensions = ['pydoctor.astbuilder'] + self.extensions
         for ext in self.extensions + self.custom_extensions:
             # Load extensions
             extensions.load_extension_module(self, ext)
