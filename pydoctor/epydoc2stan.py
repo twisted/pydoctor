@@ -875,6 +875,9 @@ def format_kind(kind: model.DocumentableKind, plural: bool = False) -> str:
         return names[kind]
 
 def colorized_pyval_fallback(_: List[ParseError], doc:ParsedDocstring, __:model.Documentable) -> Tag:
+    """
+    This fallback function uses L{ParsedDocstring.to_node()}, so it must be used only with L{ParsedDocstring} subclasses that implements C{to_node()}.
+    """
     return Tag('code')(node2stan.gettext(doc.to_node()))
 
 def _format_constant_value(obj: model.Attribute) -> Iterator["Flattenable"]:
