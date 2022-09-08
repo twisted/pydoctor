@@ -75,6 +75,7 @@ def format_signature(function: model.Function) -> "Flattenable":
     try:
         return html2stan(str(function.signature)) if function.signature else broken
     except Exception as e:
+        # We can't use safe_to_stan() here because we're using Signature.__str__ to generate the signature HTML.
         epydoc2stan.reportErrors(function, 
             [epydoc2stan.get_to_stan_error(e)], section='signature')
         return broken
