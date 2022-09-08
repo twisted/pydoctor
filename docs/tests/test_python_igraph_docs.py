@@ -20,7 +20,7 @@ def test_python_igraph_docs() -> None:
 
     with open(BASE_DIR / 'igraph.Graph.html') as stream:
         page = stream.read()
-        assert all(impl in page for impl in ['href="igraph._igraph.GraphBase.html"']), page
+        assert all(impl in page for impl in ['href="igraph.GraphBase.html"']), page
 
     with open(BASE_DIR / 'igraph._igraph.GraphBase.html') as stream:
         page = stream.read()
