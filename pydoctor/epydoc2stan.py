@@ -668,7 +668,7 @@ def safe_to_stan(parsed_doc: ParsedDocstring,
         Signature::
             (errs:List[ParseError], doc:ParsedDocstring, ctx:model.Documentable) -> Tag
     @param report: Whether to report errors.
-    @param section: The thing we're doing, used for error messages.
+    @param section: Used for error messages.
     """
     try:
         stan = parsed_doc.to_stan(linker, compact=compact)
