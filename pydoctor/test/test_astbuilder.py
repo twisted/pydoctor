@@ -4,7 +4,7 @@ import ast
 import astor
 
 
-from pydoctor import astbuilder, model
+from pydoctor import astbuilder, astutils, model
 from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring
 from pydoctor.options import Options
 from pydoctor.stanutils import flatten, html2stan, flatten_text
@@ -1415,7 +1415,7 @@ def test_literal_string_annotation(annotation: str, expected: str) -> None:
     """Strings inside Literal annotations must not be recursively parsed."""
     stmt, = ast.parse(annotation).body
     assert isinstance(stmt, ast.Expr)
-    unstringed = astbuilder._AnnotationStringParser().visit(stmt.value)
+    unstringed = astutils._AnnotationStringParser().visit(stmt.value)
     assert astor.to_source(unstringed).strip() == expected
 
 @systemcls_param
@@ -1989,6 +1989,45 @@ def test_syntax_error_pack(systemcls: Type[model.System], capsys: CapSys) -> Non
     processPackage('syntax_error', systemcls)
     out = capsys.readouterr().out.strip('\n')
     assert "__init__.py:???: cannot parse file, " in out, out
+
+@systemcls_param
+def test_type_alias(systemcls: Type[model.System]) -> None:
+    """
+    Type aliases and type variables are recognized as such.
+    """
+
+    mod = fromText(
+        '''
+        from typing import Callable, Tuple, TypeAlias, TypeVar
+        
+        T = TypeVar('T')
+        Parser = Callable[[str], Tuple[int, bytes, bytes]]
+        mylst = yourlst = list[str]
+        alist: TypeAlias = 'list[str]'
+        
+        notanalias = 'Callable[[str], Tuple[int, bytes, bytes]]'
+
+        class F:
+            from ext import what
+            L = _j = what.some = list[str]
+            def __init__(self):
+                self.Pouet: TypeAlias = 'Callable[[str], Tuple[int, bytes, bytes]]'
+                self.Q = q = list[str]
+        
+        ''', systemcls=systemcls)
+
+    assert mod.contents['T'].kind == model.DocumentableKind.TYPE_VARIABLE
+    assert mod.contents['Parser'].kind == model.DocumentableKind.TYPE_ALIAS
+    assert mod.contents['mylst'].kind == model.DocumentableKind.TYPE_ALIAS
+    assert mod.contents['yourlst'].kind == model.DocumentableKind.TYPE_ALIAS
+    assert mod.contents['alist'].kind == model.DocumentableKind.TYPE_ALIAS
+    assert mod.contents['notanalias'].kind == model.DocumentableKind.VARIABLE
+    assert mod.contents['F'].contents['L'].kind == model.DocumentableKind.TYPE_ALIAS
+    assert mod.contents['F'].contents['_j'].kind == model.DocumentableKind.TYPE_ALIAS
+
+    # Type variables in instance variables are not recognized
+    assert mod.contents['F'].contents['Pouet'].kind == model.DocumentableKind.INSTANCE_VARIABLE
+    assert mod.contents['F'].contents['Q'].kind == model.DocumentableKind.INSTANCE_VARIABLE
 
 @systemcls_param
 def test_prepend_package(systemcls: Type[model.System]) -> None:

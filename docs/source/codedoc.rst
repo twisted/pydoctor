@@ -211,6 +211,12 @@ Unlike for example mypy, pydoctor cannot infer the type for computed values::
     SQUARES = [n ** 2 for n in range(10)]
     # pydoctor needs an annotation to document this type
 
+Type variables and type aliases will be recognized as such and their value will be colorized in HTML::
+
+    from typing import Callable, Tuple, TypeAlias, TypeVar
+    T = TypeVar('T') # a type variable
+    Parser = Callable[[str], Tuple[int, bytes, bytes]] # a type alias
+
 Further reading:
 
 - `Python Standard Library: typing -- Support for type hints <https://docs.python.org/3/library/typing.html>`_
