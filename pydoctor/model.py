@@ -8,6 +8,7 @@ being documented -- a System is a bad of Documentables, in some sense.
 
 import abc
 import ast
+from collections import defaultdict
 import datetime
 import importlib
 import inspect
@@ -371,7 +372,11 @@ class Documentable:
         return parentMod
 
     def report(self, descr: str, section: str = 'parsing', lineno_offset: int = 0) -> None:
-        """Log an error or warning about this documentable object."""
+        """
+        Log an error or warning about this documentable object.
+        
+        This will count as a violation and will fail the build if option C{-W} is passed.
+        """
 
         linenumber: object
         if section in ('docstring', 'resolve_identifier_xref'):
@@ -782,8 +787,11 @@ class System:
 
         self.projectname = 'my project'
 
-        self.docstring_syntax_errors: Set[str] = set()
-        """FullNames of objects for which the docstring failed to parse."""
+        self.parse_errors: Dict[str, Set[str]] = defaultdict(set)
+        """
+        Dict from the name of the thing we're rendering (C{section}) to the FullNames of objects for which the rendereable elements failed to parse.
+        Typically the renderable element is the C{docstring}, but it can be the decorators, parameter default values or any other colorized AST.
+        """
 
         self.verboselevel = 0
         self.needsnl = False
@@ -877,6 +885,7 @@ class System:
         @param thresh: The minimum verbosity level of the system for this message to actually be printed.
             Meaning passing thresh=-1 will make message still display if C{-q} is passed but not if C{-qq}. 
             Similarly, passing thresh=1 will make the message only apprear if the verbosity level is at least increased once with C{-v}.
+            Using negative thresh will count this message as a violation and will fail the build if option C{-W} is passed.
         @param topthresh: The maximum verbosity level of the system for this message to actually be printed.
         """
         if once:

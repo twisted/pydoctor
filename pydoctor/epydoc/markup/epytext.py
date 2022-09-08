@@ -139,7 +139,7 @@ import unicodedata
 from docutils import utils, nodes
 from twisted.web.template import Tag
 
-from pydoctor.epydoc.markup import Field, ParseError, ParsedDocstring
+from pydoctor.epydoc.markup import Field, ParseError, ParsedDocstring, append_warnings
 from pydoctor.epydoc.markup._types import ParsedTypeDocstring
 from pydoctor.epydoc.docutils import set_node_attributes
 from pydoctor.model import Documentable
@@ -1311,8 +1311,7 @@ def parse_docstring(docstring: str, errors: List[ParseError], processtypes: bool
             # This allows epytext markup to use TypeDocstring as well with a CLI option: --process-types
             if processtypes and tag in ParsedTypeDocstring.FIELDS:
                 field_parsed_doc = ParsedTypeDocstring(field_parsed_doc.to_node(), lineno=lineno)
-                for warning_msg in field_parsed_doc.warnings:
-                    errors.append(ParseError(warning_msg, lineno, is_fatal=False))
+                append_warnings(field_parsed_doc.warnings, errors, lineno=lineno)
             
             fields.append(Field(tag, arg, field_parsed_doc, lineno))
 
