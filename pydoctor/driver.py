@@ -168,15 +168,21 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
         make(system)
 
         # Print summary of docstring syntax errors
-        if system.docstring_syntax_errors:
+        docstring_syntax_errors = system.parse_errors['docstring']
+        if docstring_syntax_errors:
             exitcode = 2
 
             def p(msg: str) -> None:
                 system.msg('docstring-summary', msg, thresh=-1, topthresh=1)
             p("these %s objects' docstrings contain syntax errors:"
-                %(len(system.docstring_syntax_errors),))
-            for fn in sorted(system.docstring_syntax_errors):
+                %(len(docstring_syntax_errors),))
+            for fn in sorted(docstring_syntax_errors):
                 p('    '+fn)
+
+        # If there is any other kind of parse errors, exit with code 2 as well.
+        # This applies to errors generated from colorizing AST.
+        elif any(system.parse_errors.values()):
+            exitcode = 2
 
         if system.violations and options.warnings_as_errors:
             # Update exit code if the run has produced warnings.

@@ -23,6 +23,8 @@ def html2stan(html: Union[bytes, str]) -> Tag:
 
     @param html: An HTML fragment; multiple roots are allowed.
     @return: The fragment as a tree with a transparent root node.
+    @raises xml.sax.SAXParseException: If L{XMLString} fails to parse the html data.
+        See U{https://github.com/twisted/twisted/issues/11581}.
     """
     if isinstance(html, str):
         html = html.encode('utf8')
