@@ -77,6 +77,9 @@ in development
 ^^^^^^^^^^^^^^
 
 * Add explicit support for exceptions (before, they were treated just like any other class).
+* Python syntax errors are now logged as violations.
+* Fixed rare crash in the rendering of parsed elements (i.e. docstrings and ASTs). 
+  This is because XHTML entities like non-breaking spaces are not supported by Twisted's ``XMLString`` at the moment.
 * Show the value of type aliases and type variables.
 * The ``--prepend-package`` now work as documented. 
   A regression was introduced in pydoctor 22.7.0 and it was not nesting new packages under the "fake" package.

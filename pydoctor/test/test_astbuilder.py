@@ -1,4 +1,3 @@
-
 from typing import Optional, Tuple, Type, List, overload, cast
 import ast
 
@@ -7,10 +6,12 @@ import astor
 
 from pydoctor import astbuilder, astutils, model
 from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring
+from pydoctor.options import Options
 from pydoctor.stanutils import flatten, html2stan, flatten_text
 from pydoctor.epydoc.markup.epytext import Element, ParsedEpytextDocstring
 from pydoctor.epydoc2stan import format_summary, get_parsed_type
 from pydoctor.test.test_packages import processPackage
+from pydoctor.utils import partialclass
 
 from . import CapSys, NotFoundLinker, posonlyargs, typecomment
 import pytest
@@ -2023,6 +2024,22 @@ def test_exception_kind_corner_cases(systemcls: Type[model.System], capsys: CapS
     assert not capsys.readouterr().out
     
 @systemcls_param
+def test_syntax_error(systemcls: Type[model.System], capsys: CapSys) -> None:
+    systemcls = partialclass(systemcls, Options.from_args(['-q']))
+    fromText('''\
+    def f()
+        return True
+    ''', systemcls=systemcls)
+    assert capsys.readouterr().out == '<test>:???: cannot parse string\n'
+
+@systemcls_param
+def test_syntax_error_pack(systemcls: Type[model.System], capsys: CapSys) -> None:
+    systemcls = partialclass(systemcls, Options.from_args(['-q']))
+    processPackage('syntax_error', systemcls)
+    out = capsys.readouterr().out.strip('\n')
+    assert "__init__.py:???: cannot parse file, " in out, out
+
+@systemcls_param
 def test_type_alias(systemcls: Type[model.System]) -> None:
     """
     Type aliases and type variables are recognized as such.
@@ -2097,3 +2114,4 @@ def test_prepend_package_real_path(systemcls: Type[model.System]) -> None:
     
     finally:
         systemcls.systemBuilder = _builderT_init
+
