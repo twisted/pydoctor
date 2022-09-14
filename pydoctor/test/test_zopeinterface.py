@@ -2,6 +2,7 @@
 from typing import Type, cast
 from pydoctor.test.test_astbuilder import fromText, type2html, ZopeInterfaceSystem
 from pydoctor.test.test_packages import processPackage
+from pydoctor.test.test_templatewriter import getHTMLOf
 from pydoctor.extensions.zopeinterface import ZopeInterfaceClass
 from pydoctor.epydoc.markup import ParsedDocstring
 from pydoctor import model
@@ -533,3 +534,32 @@ def test_classimplements_badarg(capsys: CapSys, systemcls: Type[model.System]) -
         'mod:9: argument "mod.f" to classImplements() is not a class\n'
         'mod:10: argument "g" to classImplements() not found\n'
         )
+
+@zope_interface_systemcls_param
+def test_implements_renders_ok(systemcls: Type[model.System]) -> None:
+    """
+    The Class renderer effectively includes the implemented interfaces.
+    """
+    src = '''
+    import zope.interface
+    class IFoo(zope.interface.Interface):
+        pass
+    @zope.interface.implementer(IFoo)
+    class Foo:
+        pass
+    '''
+    mod = fromText(src, modname='zi', systemcls=systemcls)
+    ifoo_html = getHTMLOf(mod.contents['IFoo'])
+    foo_html = getHTMLOf(mod.contents['Foo'])
+    
+    assert 'Known implementations:' in ifoo_html
+    assert 'zi.Foo' in ifoo_html
+
+    assert 'Implements interfaces:' in foo_html
+    assert 'zi.IFoo' in foo_html
+
+    
+
+    
+
+    

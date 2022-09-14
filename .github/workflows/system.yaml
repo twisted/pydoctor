@@ -12,7 +12,7 @@ jobs:
 
     strategy:
       matrix:
-        tox_target: [
+        tox_target: [twisted-apidoc,
                      cpython-summary, 
                      python-igraph-apidocs, 
                      cpython-apidocs,
