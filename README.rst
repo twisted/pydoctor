@@ -76,6 +76,7 @@ What's New?
 in development
 ^^^^^^^^^^^^^^
 
+* The ZopeInterface features now renders again. A regression was introduced in pydoctor 22.7.0.
 * Python syntax errors are now logged as violations.
 * Fixed rare crash in the rendering of parsed elements (i.e. docstrings and ASTs). 
   This is because XHTML entities like non-breaking spaces are not supported by Twisted's ``XMLString`` at the moment.
