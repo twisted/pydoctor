@@ -864,6 +864,7 @@ def format_kind(kind: model.DocumentableKind, plural: bool = False) -> str:
         model.DocumentableKind.VARIABLE        : 'Variable',
         model.DocumentableKind.SCHEMA_FIELD    : 'Attribute',
         model.DocumentableKind.CONSTANT        : 'Constant',
+        model.DocumentableKind.EXCEPTION       : 'Exception',
         model.DocumentableKind.TYPE_ALIAS      : 'Type Alias',
         model.DocumentableKind.TYPE_VARIABLE   : 'Type Variable',
     }

@@ -76,6 +76,7 @@ What's New?
 in development
 ^^^^^^^^^^^^^^
 
+* Add a special kind for exceptions (before, they were treated just like any other class).
 * The ZopeInterface features now renders again. A regression was introduced in pydoctor 22.7.0.
 * Python syntax errors are now logged as violations.
 * Fixed rare crash in the rendering of parsed elements (i.e. docstrings and ASTs). 

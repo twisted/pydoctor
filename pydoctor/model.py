@@ -96,6 +96,7 @@ class DocumentableKind(Enum):
     MODULE              = 900
     CLASS               = 800
     INTERFACE           = 850
+    EXCEPTION           = 750
     CLASS_METHOD        = 700
     STATIC_METHOD       = 600
     METHOD              = 500
@@ -492,6 +493,39 @@ class Module(CanContainImportsDocumentable):
 
 class Package(Module):
     kind = DocumentableKind.PACKAGE
+
+# List of exceptions class names in the standard library, Python 3.8.10
+_STD_LIB_EXCEPTIONS = ('ArithmeticError', 'AssertionError', 'AttributeError', 
+    'BaseException', 'BlockingIOError', 'BrokenPipeError', 
+    'BufferError', 'BytesWarning', 'ChildProcessError', 
+    'ConnectionAbortedError', 'ConnectionError', 
+    'ConnectionRefusedError', 'ConnectionResetError', 
+    'DeprecationWarning', 'EOFError', 
+    'EnvironmentError', 'Exception', 'FileExistsError', 
+    'FileNotFoundError', 'FloatingPointError', 'FutureWarning', 
+    'GeneratorExit', 'IOError', 'ImportError', 'ImportWarning', 
+    'IndentationError', 'IndexError', 'InterruptedError', 
+    'IsADirectoryError', 'KeyError', 'KeyboardInterrupt', 'LookupError', 
+    'MemoryError', 'ModuleNotFoundError', 'NameError', 
+    'NotADirectoryError', 'NotImplementedError', 
+    'OSError', 'OverflowError', 'PendingDeprecationWarning', 'PermissionError', 
+    'ProcessLookupError', 'RecursionError', 'ReferenceError', 
+    'ResourceWarning', 'RuntimeError', 'RuntimeWarning', 'StopAsyncIteration', 
+    'StopIteration', 'SyntaxError', 'SyntaxWarning', 'SystemError', 
+    'SystemExit', 'TabError', 'TimeoutError', 'TypeError', 
+    'UnboundLocalError', 'UnicodeDecodeError', 'UnicodeEncodeError', 
+    'UnicodeError', 'UnicodeTranslateError', 'UnicodeWarning', 'UserWarning', 
+    'ValueError', 'Warning', 'ZeroDivisionError')
+def is_exception(cls: 'Class') -> bool:
+    """
+    Whether is class should be considered as 
+    an exception and be marked with the special 
+    kind L{DocumentableKind.EXCEPTION}.
+    """
+    for base in cls.mro(True, False):
+        if base in _STD_LIB_EXCEPTIONS:
+            return True
+    return False
 
 def compute_mro(cls:'Class') -> List[Union['Class', str]]:
     """
@@ -1286,13 +1320,20 @@ class System:
         were not fully processed yet.
         """
 
-        # default post-processing includes processing of subclasses and MRO computing.
+        # default post-processing includes:
+        # - Processing of subclasses
+        # - MRO computing.
+        # - Checking whether the class is an exception
         for cls in self.objectsOfType(Class):
+            
             cls._init_mro()
+            
             for b in cls.baseobjects:
                 if b is not None:
                     b.subclasses.append(cls)
-
+            
+            if is_exception(cls):
+                cls.kind = DocumentableKind.EXCEPTION
 
         for post_processor in self._post_processors:
             post_processor(self)

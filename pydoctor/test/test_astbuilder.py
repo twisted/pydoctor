@@ -1975,6 +1975,55 @@ def test_reexport_wildcard(systemcls: Type[model.System]) -> None:
     assert all(n in system.allobjects['top'].contents for n in  ['f', 'g', 'h', 'i', 'j'])
 
 @systemcls_param
+def test_exception_kind(systemcls: Type[model.System], capsys: CapSys) -> None:
+    """
+    Exceptions are marked with the special kind "EXCEPTION".
+    """
+    mod = fromText('''
+    class Clazz:
+        """Class."""
+    class MyWarning(DeprecationWarning):
+        """Warnings are technically exceptions"""
+    class Error(SyntaxError):
+        """An exeption"""
+    class SubError(Error):
+        """A exeption subclass"""  
+    ''', systemcls=systemcls, modname="mod")
+    
+    warn = mod.contents['MyWarning']
+    ex1 = mod.contents['Error']
+    ex2 = mod.contents['SubError']
+    cls = mod.contents['Clazz']
+
+    assert warn.kind is model.DocumentableKind.EXCEPTION
+    assert ex1.kind is model.DocumentableKind.EXCEPTION
+    assert ex2.kind is model.DocumentableKind.EXCEPTION
+    assert cls.kind is model.DocumentableKind.CLASS
+
+    assert not capsys.readouterr().out
+
+@systemcls_param
+def test_exception_kind_corner_cases(systemcls: Type[model.System], capsys: CapSys) -> None:
+
+    src1 = '''\
+    class Exception:...
+    class LooksLikeException(Exception):... # Not an exception
+    '''
+
+    src2 = '''\
+    class Exception(BaseException):...
+    class LooksLikeException(Exception):... # An exception
+    '''
+
+    mod1 = fromText(src1, modname='src1', systemcls=systemcls)
+    assert mod1.contents['LooksLikeException'].kind == model.DocumentableKind.CLASS
+
+    mod2 = fromText(src2, modname='src2', systemcls=systemcls)
+    assert mod2.contents['LooksLikeException'].kind == model.DocumentableKind.EXCEPTION
+
+    assert not capsys.readouterr().out
+    
+@systemcls_param
 def test_syntax_error(systemcls: Type[model.System], capsys: CapSys) -> None:
     systemcls = partialclass(systemcls, Options.from_args(['-q']))
     fromText('''\
