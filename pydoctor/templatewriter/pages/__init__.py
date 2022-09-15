@@ -343,9 +343,9 @@ class PackagePage(ModulePage):
             return ()
 
     def methods(self) -> Sequence[model.Documentable]:
-        return [o for o in self.ob.contents.values()
+        return sorted([o for o in self.ob.contents.values()
                 if o.documentation_location is model.DocLocation.PARENT_PAGE
-                and o.isVisible]
+                and o.isVisible], key=objects_order)
 
 def assembleList(
         system: model.System,
