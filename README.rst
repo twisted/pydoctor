@@ -73,8 +73,8 @@ You can select a different format using the ``--docformat`` option or the ``__do
 What's New?
 ~~~~~~~~~~~
 
-in development
-^^^^^^^^^^^^^^
+pydoctor 22.9.0
+^^^^^^^^^^^^^^^
 
 * Add a special kind for exceptions (before, they were treated just like any other class).
 * The ZopeInterface features now renders again. A regression was introduced in pydoctor 22.7.0.
