@@ -471,7 +471,7 @@ window.addEventListener("click", (event) => {
         current_page = page_parts[page_parts.length-1]
         href = link.getAttribute("href");
         
-        if (!href.includes(current_page)){
+        if (!href.startsWith(current_page)){
           // The link points to something not in the same page, so don't hide the dropdown.
           // The page will be reloaded anyway, but this ensure that if we go back, the dropdown will
           // still be expanded.
