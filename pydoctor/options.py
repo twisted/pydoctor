@@ -20,6 +20,7 @@ from pydoctor.utils import parse_path, findClassFromDottedName, parse_privacy_tu
 from pydoctor._configparser import CompositeConfigParser, IniConfigParser, TomlConfigParser, ValidatorParser
 
 if TYPE_CHECKING:
+    from typing import Literal
     from pydoctor import model
     from pydoctor.templatewriter import IWriter
 
@@ -235,6 +236,13 @@ def get_parser() -> ArgumentParser:
     parser.add_argument(
         '--system-class', dest='systemclass', default=DEFAULT_SYSTEM,
         help=("A dotted name of the class to use to make a system."))
+
+    parser.add_argument(
+        '--cls-member-order', dest='cls_member_order', default="alphabetical", choices=["alphabetical", "source"],
+        help=("Presentation order of class members."))
+    parser.add_argument(
+        '--mod-member-order', dest='mod_member_order', default="alphabetical", choices=["alphabetical", "source"],
+        help=("Presentation order of module/package members."))
     
     parser.add_argument('-V', '--version', action='version', version=f'%(prog)s {__version__}')
     
@@ -364,6 +372,8 @@ class Options:
     sidebarexpanddepth:     int                                     = attr.ib()
     sidebartocdepth:        int                                     = attr.ib()
     nosidebar:              int                                     = attr.ib()
+    cls_member_order:       'Literal["alphabetical", "source"]'     = attr.ib()
+    mod_member_order:       'Literal["alphabetical", "source"]'     = attr.ib()
 
     def __attrs_post_init__(self) -> None:
         # do some validations...

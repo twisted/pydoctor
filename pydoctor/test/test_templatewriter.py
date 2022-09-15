@@ -622,10 +622,12 @@ def test_objects_order_mixed_modules_and_packages() -> None:
     fromText('', parent_name='top', modname='bbb', system=system)
     fromText('', parent_name='top', modname='aba', system=system, is_package=True)
     
-    _sorted = sorted(top.contents.values(), key=pages.objects_order)
+    _sorted = sorted(top.contents.values(), key=util.objects_order("alphabetical"))
     names = [s.name for s in _sorted]
 
     assert names == ['aaa', 'aba', 'bbb']
+
+def test_objects_order_custom() -> None:...
 
 src_crash_xml_entities = '''\
 """
