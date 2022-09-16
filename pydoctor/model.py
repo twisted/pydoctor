@@ -1026,6 +1026,20 @@ class System:
         self._privacyClassCache[ob_fullName] = privacy
         return privacy
 
+    def membersOrder(self, ob: Documentable) -> Callable[[Documentable], Tuple[Any, ...]]:
+        """
+        Returns a callable suitable to be used with L{sorted} function. 
+        Used to sort the given object's members for presentation.
+
+        Users can customize class and module members order independently, or can override this method
+        with a custom system class for further tweaks.
+        """
+        from pydoctor.templatewriter.util import objects_order
+        if isinstance(ob, Class):
+            return objects_order(self.options.cls_member_order)
+        else:
+            return objects_order(self.options.mod_member_order)
+           
     def addObject(self, obj: Documentable) -> None:
         """Add C{object} to the system."""
 

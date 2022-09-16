@@ -156,7 +156,7 @@ class CommonPage(Page):
         if docgetter is None:
             docgetter = util.DocGetter()
         self.docgetter = docgetter
-        self._order = util.get_objects_order(ob)
+        self._order = ob.system.membersOrder(ob)
 
     @property
     def page_url(self) -> str:

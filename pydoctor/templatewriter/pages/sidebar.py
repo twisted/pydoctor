@@ -124,7 +124,7 @@ class ObjContent(Element):
         self.documented_ob = documented_ob
         self.template_lookup = template_lookup
 
-        self._order = util.get_objects_order(ob)
+        self._order = ob.system.membersOrder(ob)
         self._depth = depth
         self._level = level + 1
 

@@ -98,7 +98,12 @@ def source_order_func(o: model.Documentable) -> Tuple[Any, ...]:
     Sort by privacy, kind and linenumber.
     Callable to use as the value of standard library's L{sorted} function C{key} argument.
     """
-    return (-o.privacyClass.value, -_map_kind(o.kind).value if o.kind else 0, o.linenumber)
+    if isinstance(o, model.Module) and isinstance(o.parent, model.Module):
+        # Still sort submodules by name since they all have the same linenumber.
+        return (-o.privacyClass.value, -_map_kind(o.kind).value if o.kind else 0, o.fullName().lower()) 
+    else:
+        return (-o.privacyClass.value, -_map_kind(o.kind).value if o.kind else 0, o.linenumber) 
+        # last implicit orderring is the order of insertion.
 
 def _map_kind(kind: model.DocumentableKind) -> model.DocumentableKind:
     if kind == model.DocumentableKind.PACKAGE:
@@ -124,16 +129,6 @@ def objects_order(order: 'Literal["alphabetical", "source"]') -> Callable[[model
         return source_order_func
     else:
         assert False
-
-def get_objects_order(ob: model.Documentable) -> Callable[[model.Documentable], Tuple[Any, ...]]:
-    """
-    Help function to get the right orderring function from the type of object passed.
-    Users can customize class and module members order independently.
-    """
-    order_func = objects_order(ob.system.options.cls_member_order) \
-            if isinstance(ob, model.Class) else \
-            objects_order(ob.system.options.mod_member_order)
-    return order_func
 
 def class_members(cls: model.Class) -> List[Tuple[Tuple[model.Class, ...], Sequence[model.Documentable]]]:
     """
