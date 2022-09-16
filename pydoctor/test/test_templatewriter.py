@@ -682,8 +682,15 @@ def test_change_member_order() -> None:
                      'process_table', 
                      'end']
 
+# FIXME!
 def test_ivar_field_order_precedence(capsys: CapSys) -> None:
-    
+    """
+    When an attribute is documented in a docstring field like ivar, 
+    se use that field's  linenumber for the object linenumber. As a side effect, 
+    it's not possible to sort by the AST linenumber at the moment. We should probably 
+    special case the linenumber coming from docstring fields such that they can get overriden
+    by AST linenumber.
+    """
     system = model.System(model.Options.from_args(['--cls-member-order=source']))
     mod = fromText('''
     import attr
@@ -702,15 +709,17 @@ def test_ivar_field_order_precedence(capsys: CapSys) -> None:
     Foo = mod.contents['Foo']
     getHTMLOf(Foo)
     assert Foo.docstring_lineno == 7
+    
     assert Foo.parsed_docstring.fields[0].lineno == 0 # type:ignore
     assert Foo.parsed_docstring.fields[1].lineno == 1 # type:ignore
+
+    # we get the linenumber from the docstring fields, currently
     assert Foo.contents['a'].linenumber == 7
     assert Foo.contents['b'].linenumber == 8
-    
-    # assert capsys.readouterr().out == ''
 
     _sorted = sorted(Foo.contents.values(), key=system.membersOrder(Foo))
     names = [s.name for s in _sorted]
+    
     assert names == ['a', 'b'] # should probably be 'b', 'a'!
 
 
