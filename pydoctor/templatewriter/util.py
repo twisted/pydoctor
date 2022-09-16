@@ -98,8 +98,8 @@ def source_order_func(o: model.Documentable) -> Tuple[Any, ...]:
     Sort by privacy, kind and linenumber.
     Callable to use as the value of standard library's L{sorted} function C{key} argument.
     """
-    if isinstance(o, model.Module) and isinstance(o.parent, model.Module):
-        # Still sort submodules by name since they all have the same linenumber.
+    if isinstance(o, model.Module):
+        # Still sort modules by name since they all have the same linenumber.
         return (-o.privacyClass.value, -_map_kind(o.kind).value if o.kind else 0, o.fullName().lower()) 
     else:
         return (-o.privacyClass.value, -_map_kind(o.kind).value if o.kind else 0, o.linenumber) 
