@@ -2,7 +2,7 @@
 
 from typing import (
     TYPE_CHECKING, Dict, Iterator, List, Optional, Mapping, Sequence,
-    Tuple, Type, Union
+    Type, Union
 )
 import ast
 import abc
