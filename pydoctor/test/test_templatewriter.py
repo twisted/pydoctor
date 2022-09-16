@@ -623,7 +623,7 @@ def test_objects_order_mixed_modules_and_packages(_order:str) -> None:
     fromText('', parent_name='top', modname='bbb', system=system)
     fromText('', parent_name='top', modname='aba', system=system, is_package=True)
     
-    _sorted = sorted(top.contents.values(), key=util.objects_order(_order))
+    _sorted = sorted(top.contents.values(), key=util.objects_order(_order)) # type:ignore
     names = [s.name for s in _sorted]
 
     assert names == ['aaa', 'aba', 'bbb']
@@ -702,8 +702,8 @@ def test_ivar_field_order_precedence(capsys: CapSys) -> None:
     Foo = mod.contents['Foo']
     getHTMLOf(Foo)
     assert Foo.docstring_lineno == 7
-    assert Foo.parsed_docstring.fields[0].lineno == 0
-    assert Foo.parsed_docstring.fields[1].lineno == 1
+    assert Foo.parsed_docstring.fields[0].lineno == 0 # type:ignore
+    assert Foo.parsed_docstring.fields[1].lineno == 1 # type:ignore
     assert Foo.contents['a'].linenumber == 7
     assert Foo.contents['b'].linenumber == 8
     
