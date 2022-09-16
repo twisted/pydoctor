@@ -239,10 +239,10 @@ def get_parser() -> ArgumentParser:
 
     parser.add_argument(
         '--cls-member-order', dest='cls_member_order', default="alphabetical", choices=["alphabetical", "source"],
-        help=("Presentation order of class members."))
+        help=("Presentation order of class members. (default: alphabetical)"))
     parser.add_argument(
         '--mod-member-order', dest='mod_member_order', default="alphabetical", choices=["alphabetical", "source"],
-        help=("Presentation order of module/package members."))
+        help=("Presentation order of module/package members. (default: alphabetical)"))
     
     parser.add_argument('-V', '--version', action='version', version=f'%(prog)s {__version__}')
     
