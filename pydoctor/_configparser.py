@@ -401,6 +401,9 @@ class ValidatorParser(ConfigFileParser):
         self.config_parser = config_parser
         self.argument_parser = argument_parser
     
+    def get_syntax_description(self) -> str:
+        return self.config_parser.get_syntax_description()
+
     def parse(self, stream:TextIO) -> Dict[str, Any]:
         data: Dict[str, Any] = self.config_parser.parse(stream)
 
