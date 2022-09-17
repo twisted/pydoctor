@@ -2115,3 +2115,17 @@ def test_prepend_package_real_path(systemcls: Type[model.System]) -> None:
     finally:
         systemcls.systemBuilder = _builderT_init
 
+@systemcls_param
+def test_constructor_signature_init_and_new(systemcls: Type[model.System]) -> None:
+    """
+    Pydoctor can infer the constructor signature when both __new__ and __init__ are
+    """
+
+    src1 = '''\
+    class Animal(object):
+        def __new__(cls, name):
+        print('__new__() called.')
+        obj = super().__new__(cls)
+        obj.name = name
+        return obj
+    '''
