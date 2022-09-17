@@ -686,7 +686,7 @@ def test_change_member_order() -> None:
 def test_ivar_field_order_precedence(capsys: CapSys) -> None:
     """
     When an attribute is documented in a docstring field like ivar, 
-    se use that field's  linenumber for the object linenumber. As a side effect, 
+    we use that field's  linenumber for the object linenumber. As a side effect, 
     it's not possible to sort by the AST linenumber at the moment. We should probably 
     special case the linenumber coming from docstring fields such that they can get overriden
     by AST linenumber.
