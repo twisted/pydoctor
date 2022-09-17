@@ -2124,8 +2124,20 @@ def test_constructor_signature_init_and_new(systemcls: Type[model.System]) -> No
     src1 = '''\
     class Animal(object):
         def __new__(cls, name):
-        print('__new__() called.')
-        obj = super().__new__(cls)
-        obj.name = name
-        return obj
+            print('__new__() called.')
+            obj = super().__new__(cls)
+            obj.name = name # not recognized by pydoctor
+            return obj
     '''
+
+    src2 = '''\
+    class Animal(object):
+        # Can be omitted, Python will give a default implementation
+        def __new__(cls, *args, **kw):
+            print('__new__() called.')
+            print('args: ', args, ', kw: ', kw)
+            return super().__new__(cls)
+
+        def __init__(self, name):
+            print('__init__() called.')
+            self.name = name'''
