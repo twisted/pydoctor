@@ -76,6 +76,10 @@ What's New?
 in development
 ^^^^^^^^^^^^^^
 
+pydoctor 22.9.1
+^^^^^^^^^^^^^^^
+* ``pydoctor --help`` works again.
+
 pydoctor 22.9.0
 ^^^^^^^^^^^^^^^
 
