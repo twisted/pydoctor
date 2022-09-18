@@ -2116,23 +2116,53 @@ def test_prepend_package_real_path(systemcls: Type[model.System]) -> None:
         systemcls.systemBuilder = _builderT_init
 
 @systemcls_param
-def test_constructor_signature_init_and_new(systemcls: Type[model.System]) -> None:
-    """
-    Pydoctor can infer the constructor signature when both __new__ and __init__ are
-    """
+def test_constructor_signature_init(systemcls: Type[model.System]) -> None:
+    
+    src = '''\
+    class Person(object):
+        # pydoctor can infer the constructor to be: "Person(name, age)"
+        def __init__(self, name, age):
+            self.name = name
+            self.age = age
 
-    src1 = '''\
+    class Citizen(Person):
+        # pydoctor can infer the constructor to be: "Citizen(nationality, *args, **kwargs)"
+        def __init__(self, nationality, *args, **kwargs):
+            self.nationality = nationality
+            super(Citizen, self).__init__(*args, **kwargs)
+        '''
+    
+    # assert that Person.extra_info contains the available constructors names
+    # Like "Available constructor: ``Person(name, age)``" that links to Person.__init__ documentation.
+    
+    # assert that Citizen.extra_info contains the available constructors names
+    # Like "Available constructor: ``Citizen(nationality, *args, **kwargs)``" that links to Citizen.__init__ documentation.
+
+@systemcls_param
+def test_constructor_signature_new(systemcls: Type[model.System]) -> None:
+    src = '''\
     class Animal(object):
+        # pydoctor can infer the constructor to be: "Animal(name)"
         def __new__(cls, name):
-            print('__new__() called.')
             obj = super().__new__(cls)
-            obj.name = name # not recognized by pydoctor
+            # assignation not recognized by pydoctor, attribute 'name' will not be documented
+            obj.name = name 
             return obj
     '''
 
-    src2 = '''\
+@systemcls_param
+def test_constructor_signature_init_and_new(systemcls: Type[model.System]) -> None:
+    """
+    Pydoctor can't infer the constructor signature when both __new__ and __init__ are defined. 
+    __new__ takes the precedence over __init__ because it's called first. Trying to infer what are the complete 
+    constructor signature when __new__ is defined might be very hard because the method can return an instance of 
+    another class, calling another __init__ method. We're not there yet in term of static analysis.
+    """
+
+    src = '''\
     class Animal(object):
-        # Can be omitted, Python will give a default implementation
+        # both __init__ and __new__ are defined, pydoctor only looks at the __new__ method
+        # pydoctor infers the constructor to be: "Animal(*args, **kw)"
         def __new__(cls, *args, **kw):
             print('__new__() called.')
             print('args: ', args, ', kw: ', kw)
@@ -2140,4 +2170,52 @@ def test_constructor_signature_init_and_new(systemcls: Type[model.System]) -> No
 
         def __init__(self, name):
             print('__init__() called.')
-            self.name = name'''
+            self.name = name
+            
+    class Cat(Animal):
+        # Idem, but __new__ is inherited.
+        # pydoctor infers the constructor to be: "Cat(*args, **kw)"
+        # This is why it's important to still document __init__ as a regular method.
+        def __init__(self, name, owner):
+            super().__init__(name)
+            self.owner = owner
+    '''
+
+@systemcls_param
+def test_constructor_signature_classmethod(systemcls: Type[model.System]) -> None:
+
+    src = '''\
+    
+    def get_default_options() -> 'Options':
+        """
+        This is another constructor for class 'Options'. 
+        But it's not recognized by pydoctor at this moment.
+        """
+        return Options()
+
+    class Options:
+        a,b,c = None, None, None
+
+        @classmethod
+        def create_no_hints(cls):
+            """
+            Pydoctor can't deduce that this method is a constructor as well,
+            because there is no type annotation.
+            """
+            return cls()
+        
+        # thanks to type hints, 
+        # pydoctor can infer the constructor to be: "Options.create()"
+        @staticmethod
+        def create() -> 'Options':
+            # the fictional constructor is not detected by pydoctor, because it doesn't exists actually.
+            return Options(1,2,3)
+        
+        # thanks to type hints, 
+        # pydoctor can infer the constructor to be: "Options.create_from_num(num)"
+        @classmethod
+        def create_from_num(cls, num) -> 'Options':
+            c = cls.create()
+            c.a = num
+            return c
+        '''
