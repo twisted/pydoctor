@@ -4,20 +4,26 @@ import ast
 import sys
 
 from functools import partial
-from inspect import Parameter, Signature
+from inspect import Parameter, Signature, _ParameterKind
 from itertools import chain
 from pathlib import Path
 from typing import (
     Any, Callable, Collection, Dict, Iterable, Iterator, List, Mapping, Optional, Sequence, Tuple,
-    Type, TypeVar, Union, cast
+    Type, TypeVar, Union, cast, TYPE_CHECKING
 )
-
+import attr
 import astor
 from pydoctor import epydoc2stan, model, node2stan, extensions
 from pydoctor.epydoc.markup._pyval_repr import colorize_inline_pyval
 from pydoctor.astutils import (is_typing_annotation, is_using_annotations, is_using_typing_final, node2dottedname, node2fullname, 
                                is__name__equals__main__, unstring_annotation, iterassign, 
                                NodeVisitor)
+
+
+if TYPE_CHECKING:
+    from typing import Protocol
+else:
+    Protocol = object
 
 def parseFile(path: Path) -> ast.Module:
     """Parse the contents of a Python source file."""
@@ -810,46 +816,12 @@ class ModuleVistor(NodeVisitor):
         elif is_classmethod:
             func.kind = model.DocumentableKind.CLASS_METHOD
 
-        # Position-only arguments were introduced in Python 3.8.
-        posonlyargs: Sequence[ast.arg] = getattr(node.args, 'posonlyargs', ())
-
-        num_pos_args = len(posonlyargs) + len(node.args.args)
-        defaults = node.args.defaults
-        default_offset = num_pos_args - len(defaults)
-        def get_default(index: int) -> Optional[ast.expr]:
-            assert 0 <= index < num_pos_args, index
-            index -= default_offset
-            return None if index < 0 else defaults[index]
-
-        parameters: List[Parameter] = []
-        def add_arg(name: str, kind: Any, default: Optional[ast.expr]) -> None:
-            default_val = Parameter.empty if default is None else _ValueFormatter(default, ctx=func)
-            parameters.append(Parameter(name, kind, default=default_val))
-
-        for index, arg in enumerate(posonlyargs):
-            add_arg(arg.arg, Parameter.POSITIONAL_ONLY, get_default(index))
-
-        for index, arg in enumerate(node.args.args, start=len(posonlyargs)):
-            add_arg(arg.arg, Parameter.POSITIONAL_OR_KEYWORD, get_default(index))
-
-        vararg = node.args.vararg
-        if vararg is not None:
-            add_arg(vararg.arg, Parameter.VAR_POSITIONAL, None)
-
-        assert len(node.args.kwonlyargs) == len(node.args.kw_defaults)
-        for arg, default in zip(node.args.kwonlyargs, node.args.kw_defaults):
-            add_arg(arg.arg, Parameter.KEYWORD_ONLY, default)
-
-        kwarg = node.args.kwarg
-        if kwarg is not None:
-            add_arg(kwarg.arg, Parameter.VAR_KEYWORD, None)
-
         try:
-            signature = Signature(parameters)
+            signature = signature_from_functiondef(node, func)
         except ValueError as ex:
             func.report(f'{func.fullName()} has invalid parameters: {ex}')
             signature = Signature()
-
+        
         func.signature = signature
         func.annotations = self._annotations_from_function(node)
     
@@ -933,7 +905,11 @@ class ModuleVistor(NodeVisitor):
             name: None if value is None else unstring_annotation(value, self.builder.current)
             for name, value in _get_all_ast_annotations()
             }
-    
+
+class _ValueFormatterT(Protocol):
+    def __init__(self, value: Any, ctx: model.Documentable):...
+    def __repr__(self) -> str: ...
+
 class _ValueFormatter:
     """
     Class to encapsulate a python value and translate it to HTML when calling L{repr()} on the L{_ValueFormatter}.
@@ -960,6 +936,75 @@ class _ValueFormatter:
         # This avoids calling flatten() twice, 
         # but potential XML parser errors caused by XMLString needs to be handled later.
         return ''.join(node2stan.node2html(self._colorized.to_node(), self._linker))
+
+def signature_from_functiondef(node: Union[ast.AsyncFunctionDef, ast.FunctionDef], ctx: model.Documentable) -> Signature:
+    # Currently ignores type hints.
+    
+    # Position-only arguments were introduced in Python 3.8.
+    posonlyargs: Sequence[ast.arg] = getattr(node.args, 'posonlyargs', ())
+
+    num_pos_args = len(posonlyargs) + len(node.args.args)
+    defaults = node.args.defaults
+    default_offset = num_pos_args - len(defaults)
+    
+    def get_default(index: int) -> Optional[ast.expr]:
+        """
+        Get the default value of the parameter, by index.
+        """
+        assert 0 <= index < num_pos_args, index
+        index -= default_offset
+        return None if index < 0 else defaults[index]
+
+    sigbuilder = SignatureBuilder(ctx=ctx)
+
+    for index, arg in enumerate(posonlyargs):
+        sigbuilder.add_param(arg.arg, Parameter.POSITIONAL_ONLY, get_default(index))
+
+    for index, arg in enumerate(node.args.args, start=len(posonlyargs)):
+        sigbuilder.add_param(arg.arg, Parameter.POSITIONAL_OR_KEYWORD, get_default(index))
+
+    vararg = node.args.vararg
+    if vararg is not None:
+        sigbuilder.add_param(vararg.arg, Parameter.VAR_POSITIONAL)
+
+    assert len(node.args.kwonlyargs) == len(node.args.kw_defaults)
+    for arg, default in zip(node.args.kwonlyargs, node.args.kw_defaults):
+        sigbuilder.add_param(arg.arg, Parameter.KEYWORD_ONLY, default)
+
+    kwarg = node.args.kwarg
+    if kwarg is not None:
+        sigbuilder.add_param(kwarg.arg, Parameter.VAR_KEYWORD)
+
+    return sigbuilder.get_signature()
+
+@attr.s(auto_attribs=True)
+class SignatureBuilder:
+    """
+    Builds a signature, parameter by parameter, with customizable value formatter and signature classes.
+    """
+    ctx: model.Documentable
+    signature_class: Type['Signature'] = attr.ib(default=Signature)
+    value_formatter_class: Type['_ValueFormatterT'] = attr.ib(default=_ValueFormatter)
+    _parameters: List[Parameter] = attr.ib(factory=list, init=False)
+    _return_annotation: Any = attr.ib(default=Signature.empty, init=False)
+
+    def add_param(self, name: str, 
+                  kind: _ParameterKind, 
+                  default: Optional[Any]=None,
+                  annotation: Optional[Any]=None) -> None:
+                    
+        default_val = Parameter.empty if default is None else self.value_formatter_class(default, self.ctx)
+        annotation_val = Parameter.empty if annotation is None else self.value_formatter_class(annotation, self.ctx)
+        self._parameters.append(Parameter(name, kind, default=default_val, annotation=annotation_val))
+
+    def set_return_annotation(self, annotation: Optional[Any]) -> None:
+        self._return_annotation = Signature.empty if annotation is None else self.value_formatter_class(annotation, self.ctx)
+
+    def get_signature(self) -> Signature:
+        """
+        @raises ValueError: If Signature() call fails.
+        """
+        return self.signature_class(self._parameters, return_annotation=self._return_annotation)
 
 def _infer_type(expr: ast.expr) -> Optional[ast.expr]:
     """Infer an expression's type.
