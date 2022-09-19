@@ -737,3 +737,16 @@ test:36: bad rendering of class signature: SAXParseException: <unknown>:1:104: u
     
     assert out == '\n'.join(warnings)+'\n'
 
+def test_constructor_renders(capsys:CapSys) -> None:
+    ...
+    src = '''\
+    class Animal(object):
+        # pydoctor can infer the constructor to be: "Animal(name)"
+        def __new__(cls, name):
+            ...
+    '''
+
+    mod = fromText(src)
+    html = getHTMLOf(mod.contents['Animal'])
+    assert 'Constructor: ' in html
+    assert 'Animal(name)' in html

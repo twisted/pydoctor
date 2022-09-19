@@ -980,3 +980,60 @@ def insert_break_points(text: str) -> 'Flattenable':
             r += [tags.wbr(), '.']
     return tags.transparent(*r)
 
+def format_constructor_short_text(constructor: model.Constructor, forclass: model.Class) -> str:
+    """
+    Returns a simplified signature of the constructor.
+    """
+    args = ''
+    for index, (name, ann) in enumerate(constructor.annotations.items()):
+        if name=='return':
+            continue
+        
+        # Special casing __new__ because it's actually a static method
+        if index==0 and (constructor.name in ('__new__', '__init__') or 
+                         constructor.kind is model.DocumentableKind.CLASS_METHOD):
+            # Omit first argument (self/cls) from mini signature.
+            continue
+        star = ''
+        if isinstance(name, VariableArgument):
+            star='*'
+        elif isinstance(name, KeywordArgument):
+            star='**'
+        
+        if args:
+            args += ', '
+        
+        args+= f"{star}{name}"
+    
+    # display innner classes with their name starting at the top level class.
+    _current = forclass
+    class_name = [] 
+    while isinstance(_current, model.Class):
+        class_name.append(_current.name)
+        _current = _current.parent
+    
+    callable_name = '.'.join(reversed(class_name))
+
+    if constructor.name not in ('__new__', '__init__'):
+        # We assume that the constructor is a method accessible in the Class.
+
+        callable_name += f'.{constructor.name}'
+
+    return f"{callable_name}({args})"
+
+def populate_constructors_extra_info(cls:model.Class) -> None:
+    """
+    Adds an extra information to be rendered based on Class constructors.
+    """
+    from pydoctor.templatewriter import util
+    visibleConstructors = [c for c in cls.constructors if c.isVisible]
+    if visibleConstructors:
+        plural = 's' if len(visibleConstructors)>1 else ''
+        extra_epytext = f'Constructor{plural}: '
+        for i, c in enumerate(sorted(visibleConstructors, key=util.objects_order)):
+            if i != 0:
+                extra_epytext += ', '
+            short_text = format_constructor_short_text(c, cls)
+            extra_epytext += '`%s <%s>`' % (short_text, c.fullName())
+        
+        cls.extra_info.append(parse_docstring(cls, extra_epytext, cls, 'restructuredtext', section='constructor extra'))
