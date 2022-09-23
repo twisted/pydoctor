@@ -75,9 +75,12 @@ What's New?
 
 in development
 ^^^^^^^^^^^^^^
-
 * Add options ``--cls-member-order`` and ``--mod-member-order`` to customize the presentation
   order of class members and modules/packge members independently. The default behavior is to sort all members alphabetically.
+
+pydoctor 22.9.1
+^^^^^^^^^^^^^^^
+* ``pydoctor --help`` works again.
 
 pydoctor 22.9.0
 ^^^^^^^^^^^^^^^
