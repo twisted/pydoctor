@@ -1,7 +1,9 @@
 from typing import Type
 
-from pydoctor import model
+from pydoctor import epydoc2stan, model
 from pydoctor.extensions import attrs
+from pydoctor.stanutils import flatten_text
+from pydoctor.templatewriter import pages
 from pydoctor.test import CapSys
 
 from pydoctor.test.test_astbuilder import fromText, AttrsSystem, type2str
@@ -90,7 +92,7 @@ def test_attrs_auto_instance(systemcls: Type[model.System]) -> None:
     ''', modname='test', systemcls=systemcls)
     C = mod.contents['C']
     assert isinstance(C, attrs.AttrsClass)
-    assert C.auto_attribs == True
+    assert C.attrs_auto_attribs == True
     assert C.contents['a'].kind is model.DocumentableKind.INSTANCE_VARIABLE
     assert C.contents['b'].kind is model.DocumentableKind.INSTANCE_VARIABLE
     assert C.contents['c'].kind is model.DocumentableKind.CLASS_VARIABLE
@@ -122,6 +124,28 @@ def test_attrs_args(systemcls: Type[model.System], capsys: CapSys) -> None:
     captured = capsys.readouterr().out
     assert captured == (
         'test:10: Invalid arguments for attr.s(): got an unexpected keyword argument "auto_attribzzz"\n'
-        'test:13: Unable to figure out value for "auto_attribs" argument to attr.s(), maybe too complex\n'
-        'test:16: Value for "auto_attribs" argument to attr.s() has type "int", expected "bool"\n'
+        'test:13: Unable to figure out value for \'auto_attribs\' argument to attr.s(), maybe too complex\n'
+        'test:16: Value for "auto_attribs" argument has type "int", expected "bool"\n'
         )
+
+@attrs_systemcls_param
+def test_attrs_init_method(systemcls: Type[model.System], capsys: CapSys) -> None:
+    src = '''\
+    @attr.s
+    class C(object):
+        c = attr.ib(default=100)
+        x = attr.ib(default=1)
+        b = attr.ib(default=23)
+
+    @attr.s
+    class D(C):
+        a = attr.ib(default=42)
+        x = attr.ib(default=2)
+        d = attr.ib(default=3.14)
+    '''
+    mod = fromText(src, systemcls=systemcls)
+    C = mod.contents['C']
+    constructor = C.contents['__init__']
+    assert isinstance(constructor, model.Function)
+    assert epydoc2stan.format_constructor_short_text(constructor, forclass=C) == 'C(c, x, b)'
+    assert flatten_text(pages.format_signature(constructor)) == '(self, c=100, x=1, b=23)'

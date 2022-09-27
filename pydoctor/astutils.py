@@ -4,14 +4,17 @@ Various bits of reusable code related to L{ast.AST} node processing.
 
 import sys
 from numbers import Number
-from typing import Iterator, Optional, List, Iterable, Sequence, TYPE_CHECKING, Union
-from inspect import BoundArguments, Signature
+from typing import Iterator, Optional, List, Iterable, Sequence, TYPE_CHECKING, Tuple, Type, TypeVar, Union
+from inspect import BoundArguments, Signature, Parameter
 import ast
 
 from pydoctor import visitor
 
 if TYPE_CHECKING:
     from pydoctor import model
+    from typing import Protocol
+else:
+    Protocol = object
 
 # AST visitors
 
@@ -84,6 +87,21 @@ def iterassign(node:_AssingT) -> Iterator[Optional[List[str]]]:
         dottedname = node2dottedname(target) 
         yield dottedname
 
+class _HasDecoratorList(Protocol):
+    decorator_list:List[ast.expr]
+
+def iter_decorators(node:_HasDecoratorList, ctx: 'model.Documentable') -> Iterator[Tuple[Optional[str], ast.AST]]:
+    """
+    Utility function to iterate decorators.
+    """
+
+    for decnode in node.decorator_list:
+        namenode = decnode
+        if isinstance(namenode, ast.Call):
+            namenode = namenode.func
+        dottedname = node2fullname(namenode, ctx)
+        yield dottedname, decnode
+
 def node2dottedname(node: Optional[ast.AST]) -> Optional[List[str]]:
     """
     Resove expression composed by L{ast.Attribute} and L{ast.Name} nodes to a list of names. 
@@ -119,6 +137,35 @@ def bind_args(sig: Signature, call: ast.Call) -> BoundArguments:
         }
     return sig.bind(*call.args, **kwargs)
 
+_T =  TypeVar('_T')
+def get_bound_literal(args:BoundArguments, name:str, typecheck:Type[_T]=object) -> Union[object, _T]:
+    """
+    Retreive the literal value of an argument from the L{BoundArguments}. 
+    Only works with purely literal values (no C{Name} or C{Attribute}).
+
+    If the value is not present in the arguments, returns L{Parameter.empty}.
+
+    @raises ValueError: If the passed value is not a literal or if it's not the right type.
+    """
+    auto_attribs_expr = args.arguments.get(name)
+    if auto_attribs_expr is None:
+        return Parameter.empty
+
+    try:
+        value = ast.literal_eval(auto_attribs_expr)
+    except ValueError:
+        message = (
+            f'Unable to figure out value for {name!r} argument, maybe too complex',
+            ).replace("'", '"')
+        raise ValueError(message)
+
+    if not isinstance(value, typecheck):
+        message = (f'Value for {name!r} argument '
+            f'has type "{type(value).__name__}", expected {typecheck.__name__!r}',
+            ).replace("'", '"')
+        raise ValueError(message)
+
+    return value
 
 
 if sys.version_info[:2] >= (3, 8):
