@@ -46,12 +46,13 @@ def is_factory_call(expr: ast.expr, ctx: model.Documentable) -> bool:
     return isinstance(expr, ast.Call) and \
         astutils.node2fullname(expr.func, ctx) in ('attrs.Factory', 'attr.Factory')
 
-def get_attrib_args(expr: ast.expr, ctx: model.Documentable) -> Optional[inspect.BoundArguments]:
+def get_attrib_args(expr: Optional[ast.expr], ctx: model.Documentable) -> Optional[inspect.BoundArguments]:
     """Get the arguments passed to an C{attr.ib} definition.
     @return: The arguments, or L{None} if C{expr} does not look like
         an C{attr.ib} definition or the arguments passed to it are invalid.
     """
     if is_attrib(expr, ctx):
+        assert expr is not None
         try:
             return astutils.bind_args(attrib_signature, expr)
         except TypeError as ex:
@@ -99,7 +100,7 @@ def default_from_attrib(args:inspect.BoundArguments, ctx: model.Documentable) ->
     if d is not None:
         if is_factory_call(d, ctx):
             return ast.Constant(value=...)
-        return d
+        return d # type:ignore
     elif f: # If a factory is defined, the default value is not obvious.
         return ast.Constant(value=...)
     else:
@@ -164,12 +165,12 @@ class ModuleVisitor(extensions.ModuleVisitorExt):
                     if cls.attrs_kw_only or (attrib_args and uses_kw_only(args=attrib_args, module=cls.module, lineno=node.lineno)):
                         kind = inspect.Parameter.KEYWORD_ONLY
 
-                    attrs_default = ast.Constant(value=...)
+                    attrs_default:Optional[ast.AST] = ast.Constant(value=...)
                     
                     if is_attrs_auto_attrib:
                         attrs_default = node.value
                         
-                        if is_factory_call(attrs_default, cls):
+                        if attrs_default and is_factory_call(attrs_default, cls):
                             # Factory is not a default value stricly speaking, 
                             # so we give up on trying to figure it out.
                             attrs_default = ast.Constant(value=...)
@@ -235,7 +236,7 @@ class AttrsClass(extensions.ClassMixin, model.Class):
 
 def postProcess(system:model.System) -> None:
 
-    for cls in list(system.objectsOfType(model.Class)):
+    for cls in list(system.objectsOfType(AttrsClass)):
         # by default attr.s() overrides any defined __init__ mehtod, whereas dataclasses.
         # TODO: but if auto_detect=True, we need to check if __init__ already exists, otherwise it does not replace it.
         # NOTE: But attr.define() use auto_detect=True by default! this is getting complicated...

@@ -2116,7 +2116,8 @@ def test_prepend_package_real_path(systemcls: Type[model.System]) -> None:
     finally:
         systemcls.systemBuilder = _builderT_init
 
-def getConstructorsText(cls: model.Class) -> str:
+def getConstructorsText(cls:model.Documentable) -> str:
+    assert isinstance(cls, model.Class)
     return '\n'.join(
         epydoc2stan.format_constructor_short_text(c, cls) for c in cls.constructors)
 

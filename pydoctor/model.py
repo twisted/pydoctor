@@ -777,6 +777,7 @@ class Function(Inheritable):
     annotations: Mapping[str, Optional[ast.expr]]
     decorators: Optional[Sequence[ast.expr]]
     signature: Optional[Signature]
+    parent: CanContainImportsDocumentable
 
     def setup(self) -> None:
         super().setup()

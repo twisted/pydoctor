@@ -137,7 +137,7 @@ def bind_args(sig: Signature, call: ast.Call) -> BoundArguments:
         }
     return sig.bind(*call.args, **kwargs)
 
-_T =  TypeVar('_T')
+_T =  TypeVar('_T', bound=object)
 def _get_literal_arg(args:BoundArguments, name:str, typecheck:Type[_T]=object) -> Union[object, _T]:
     """
     Retreive the literal value of an argument from the L{BoundArguments}. 
