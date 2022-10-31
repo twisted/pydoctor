@@ -138,7 +138,7 @@ def bind_args(sig: Signature, call: ast.Call) -> BoundArguments:
     return sig.bind(*call.args, **kwargs)
 
 _T =  TypeVar('_T')
-def get_bound_literal(args:BoundArguments, name:str, typecheck:Type[_T]=object) -> Union[object, _T]:
+def _get_literal_arg(args:BoundArguments, name:str, typecheck:Type[_T]=object) -> Union[object, _T]:
     """
     Retreive the literal value of an argument from the L{BoundArguments}. 
     Only works with purely literal values (no C{Name} or C{Attribute}).
@@ -155,18 +155,42 @@ def get_bound_literal(args:BoundArguments, name:str, typecheck:Type[_T]=object) 
         value = ast.literal_eval(auto_attribs_expr)
     except ValueError:
         message = (
-            f'Unable to figure out value for {name!r} argument, maybe too complex',
+            f'Unable to figure out value for {name!r} argument, maybe too complex'
             ).replace("'", '"')
         raise ValueError(message)
 
     if not isinstance(value, typecheck):
         message = (f'Value for {name!r} argument '
-            f'has type "{type(value).__name__}", expected {typecheck.__name__!r}',
+            f'has type "{type(value).__name__}", expected {typecheck.__name__!r}'
             ).replace("'", '"')
         raise ValueError(message)
 
     return value
 
+def get_literal_arg(args:BoundArguments, name:str, default:_T, 
+                          typecheck:Type[_T], lineno:int, module: 'model.Module') -> _T:
+    """
+    Get the value of the C{auto_attribs} argument passed to this L{attr.s()} call.
+    
+    @param args: The L{BoundArguments} instance.
+    @param name: The name of the argument
+    @param default: The default value of the argument, this value is returned 
+        if the argument could not be found.
+    @param typecheck: The type of the literal value this argument is expected to have.
+    @param lineno: The lineumber of the callsite, usd for error reporting.
+    @param module: Module that contains the call, used for error reporting.
+    @return: The value of the argument if we can infer it, otherwise returns
+        the default value.
+    """
+    try:
+        value = _get_literal_arg(args, name, typecheck)
+    except ValueError as e:
+        module.report(str(e), lineno_offset=lineno)
+        return default
+    if value is Parameter.empty:
+        # default value
+        return default
+    return value
 
 if sys.version_info[:2] >= (3, 8):
     # Since Python 3.8 "foo" is parsed as ast.Constant.

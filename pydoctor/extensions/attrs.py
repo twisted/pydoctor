@@ -4,6 +4,7 @@ Support for L{attrs <attr>}.
 """
 
 import ast
+import functools
 import inspect
 
 from typing import Dict, Optional, Union
@@ -61,59 +62,9 @@ def get_attrib_args(expr: ast.expr, ctx: model.Documentable) -> Optional[inspect
                 )
     return None
 
-def uses_init(
-    args:inspect.BoundArguments, 
-    lineno: int,
-    ctx: model.Module,
-) -> bool:
-    """
-    Get the value of the C{init} argument passed to this L{attr.ib()}/L{attr.s()} call.
-    """
-    try:
-        init = astutils.get_bound_literal(args, 'init', bool)
-    except ValueError as e:
-        ctx.report(str(e), lineno_offset=lineno)
-        return False
-    if init is inspect.Parameter.empty:
-        # default value for attr.ib(init) is True
-        return True
-    return init
-
-def uses_kw_only(args:inspect.BoundArguments, lineno:int, ctx: model.Module) -> bool:
-    """
-    Get the value of the C{kw_only} argument passed to this L{attr.ib()}/L{attr.s()} call.
-    """
-    try:
-        init = astutils.get_bound_literal(args, 'kw_only', bool)
-    except ValueError as e:
-        ctx.report(str(e), lineno_offset=lineno)
-        return False
-    if init is inspect.Parameter.empty:
-        # default value for attr.ib(kw_only) is True
-        return False
-    return init
-
-def uses_auto_attribs(args:inspect.BoundArguments, lineno:int, module: model.Module) -> bool:
-    """
-    Get the value of the C{auto_attribs} argument passed to this L{attr.s()} call.
-    
-    @param call: AST of the call to L{attr.s()}.
-        This function will assume that L{attr.s()} is called without
-        verifying that.
-    @param module: Module that contains the call, used for error reporting.
-    @return: L{True} if L{True} is passed for C{auto_attribs},
-        L{False} in all other cases: if C{auto_attribs} is not passed,
-        if an explicit L{False} is passed or if an error was reported.
-    """
-    try:
-        value = astutils.get_bound_literal(args, 'auto_attribs', bool)
-    except ValueError as e:
-        module.report(str(e), lineno_offset=lineno)
-        return False
-    if value is inspect.Parameter.empty:
-        # default value is False for attr.s(auto_attribs)
-        return False
-    return value
+uses_init = functools.partial(astutils.get_literal_arg, name='init', default=True, typecheck=bool)
+uses_kw_only = functools.partial(astutils.get_literal_arg, name='kw_only', default=False, typecheck=bool)
+uses_auto_attribs = functools.partial(astutils.get_literal_arg, name='auto_attribs', default=False, typecheck=bool)
 
 def annotation_from_attrib(
         args:inspect.BoundArguments,
@@ -155,8 +106,6 @@ def default_from_attrib(args:inspect.BoundArguments, ctx: model.Documentable) ->
         return None
 
 class ModuleVisitor(extensions.ModuleVisitorExt):
-   
-    when = visitor.When.INNER
     
     def visit_ClassDef(self, node:ast.ClassDef) -> None:
         """
@@ -171,40 +120,16 @@ class ModuleVisitor(extensions.ModuleVisitorExt):
             if not name in ('attr.s', 'attr.attrs', 'attr.attributes'):
                 continue
             
+            # True by default
+            cls.attrs_init = True
+
             attrs_args = get_attrs_args(decnode, cls.module)
             if attrs_args:
-                cls.attrs_auto_attribs = uses_auto_attribs(attrs_args, decnode.lineno, cls.module)
-                cls.attrs_init = uses_init(attrs_args, decnode.lineno, cls.module)
-                cls.attrs_kw_only = uses_kw_only(attrs_args, decnode.lineno, cls.module)
+                cls.attrs_auto_attribs = uses_auto_attribs(args=attrs_args, lineno=decnode.lineno, module=cls.module)
+                cls.attrs_init = uses_init(args=attrs_args, lineno=decnode.lineno, module=cls.module)
+                cls.attrs_kw_only = uses_kw_only(args=attrs_args, lineno=decnode.lineno, module=cls.module)
             break
     
-    # since self.when = visitor.When.INNER, we can depart the classdef while still beeing
-    # inside it's context. 
-    def depart_ClassDef(self, node:ast.ClassDef) -> None:
-        cls = self.visitor.builder.current
-        if not isinstance(cls, model.Class) or cls.name!=node.name:
-            return
-        assert isinstance(cls, AttrsClass)
-        
-        # by default attr.s() overrides any defined __init__ mehtod, whereas dataclasses.
-        # TODO: but if auto_detect=True, we need to check if __init__ already exists, otherwise it does not replace it.
-        # NOTE: But attr.define() use auto_detect=True by default! this is getting complicated...
-        if cls.attrs_init:
-            func = self.visitor.builder.pushFunction('__init__', node.lineno)
-            # init Function attributes that otherwise would be undefined :/
-            func.decorators = None
-            func.is_async = False
-
-            try:
-                func.signature = cls.attrs_constructor_signature_builder.get_signature()
-                func.annotations = cls.attrs_constructor_annotations
-            except ValueError as e:
-                func.report(f'could not deduce attrs class __init__ signature: {e}')
-                func.signature = inspect.Signature()
-                func.annotations = {}
-            finally:
-                self.visitor.builder.popFunction()
-
     def _handleAttrsAssignmentInClass(self, target:str, node: Union[ast.Assign, ast.AnnAssign]) -> None:
         cls = self.visitor.builder.current
         assert isinstance(cls, AttrsClass)
@@ -233,10 +158,10 @@ class ModuleVisitor(extensions.ModuleVisitorExt):
             # Handle the auto-creation of the __init__ method.
             if cls.attrs_init:
 
-                if is_attrs_auto_attrib or (attrib_args and uses_init(attrib_args, cls.module, node.lineno)):
+                if is_attrs_auto_attrib or (attrib_args and uses_init(args=attrib_args, module=cls.module, lineno=node.lineno)):
                     kind = inspect.Parameter.POSITIONAL_OR_KEYWORD
                     
-                    if cls.attrs_kw_only or (attrib_args and uses_kw_only(attrib_args, cls.module, node.lineno)):
+                    if cls.attrs_kw_only or (attrib_args and uses_kw_only(args=attrib_args, module=cls.module, lineno=node.lineno)):
                         kind = inspect.Parameter.KEYWORD_ONLY
 
                     attrs_default = ast.Constant(value=...)
@@ -256,6 +181,9 @@ class ModuleVisitor(extensions.ModuleVisitorExt):
                     # since there is not such thing as a private parameter.
                     _init_param_name = attr.name.lstrip('_')
 
+                    # TODO: Check if attrs defines a converter, if it does not, it's OK
+                    # to deduce that the type of the argument is the same as type of the parameter.
+                    # But actually, this might be a wrong assumption.
                     cls.attrs_constructor_signature_builder.add_param(
                         _init_param_name, kind=kind, default=attrs_default, annotation=None
                     )
@@ -305,6 +233,29 @@ class AttrsClass(extensions.ClassMixin, model.Class):
         self.attrs_constructor_signature_builder.add_param('self', inspect.Parameter.POSITIONAL_OR_KEYWORD,)
         self.attrs_constructor_annotations: Dict[str, Optional[ast.expr]] = {'self':None}
 
+def postProcess(system:model.System) -> None:
+
+    for cls in list(system.objectsOfType(model.Class)):
+        # by default attr.s() overrides any defined __init__ mehtod, whereas dataclasses.
+        # TODO: but if auto_detect=True, we need to check if __init__ already exists, otherwise it does not replace it.
+        # NOTE: But attr.define() use auto_detect=True by default! this is getting complicated...
+        if cls.attrs_init:
+            func = system.Function(system, '__init__', cls)
+            system.addObject(func)
+            # init Function attributes that otherwise would be undefined :/
+            func.decorators = None
+            func.is_async = False
+
+            try:
+                # TODO: collect arguments from super classes attributes definitions.
+                func.signature = cls.attrs_constructor_signature_builder.get_signature()
+                func.annotations = cls.attrs_constructor_annotations
+            except ValueError as e:
+                func.report(f'could not deduce attrs class __init__ signature: {e}')
+                func.signature = inspect.Signature()
+                func.annotations = {}
+
 def setup_pydoctor_extension(r:extensions.ExtRegistrar) -> None:
     r.register_astbuilder_visitor(ModuleVisitor)
     r.register_mixin(AttrsClass)
+    r.register_post_processor(postProcess)

@@ -124,7 +124,7 @@ def test_attrs_args(systemcls: Type[model.System], capsys: CapSys) -> None:
     captured = capsys.readouterr().out
     assert captured == (
         'test:10: Invalid arguments for attr.s(): got an unexpected keyword argument "auto_attribzzz"\n'
-        'test:13: Unable to figure out value for \'auto_attribs\' argument to attr.s(), maybe too complex\n'
+        'test:13: Unable to figure out value for "auto_attribs" argument, maybe too complex\n'
         'test:16: Value for "auto_attribs" argument has type "int", expected "bool"\n'
         )
 
@@ -137,14 +137,20 @@ def test_attrs_init_method(systemcls: Type[model.System], capsys: CapSys) -> Non
         x = attr.ib(default=1)
         b = attr.ib(default=23)
 
-    @attr.s
+    @attr.s(init=False)
     class D(C):
         a = attr.ib(default=42)
         x = attr.ib(default=2)
         d = attr.ib(default=3.14)
     '''
     mod = fromText(src, systemcls=systemcls)
+    assert capsys.readouterr().out == ''
     C = mod.contents['C']
+    assert C.attrs_init == True
+    D = mod.contents['D']
+    assert D.attrs_init == False
+
+    assert isinstance(C, model.Class)
     constructor = C.contents['__init__']
     assert isinstance(constructor, model.Function)
     assert epydoc2stan.format_constructor_short_text(constructor, forclass=C) == 'C(c, x, b)'
