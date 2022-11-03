@@ -2115,3 +2115,31 @@ def test_prepend_package_real_path(systemcls: Type[model.System]) -> None:
     finally:
         systemcls.systemBuilder = _builderT_init
 
+@systemcls_param
+def test_early_ast_and_astroid_parsing(systemcls: Type[model.System]) -> None:
+    """
+    The modules are parsed into ast as soon as they are added to the system.
+    """
+    system = systemcls()
+    builder = system.systemBuilder(system)
+    builder.addModuleString('''
+    class i: pass
+    ''', modname='mod')
+    mod = system.allobjects['mod']
+    assert isinstance(mod, model.Module)
+    astnode = mod.nodes.stdlib
+    assert isinstance(astnode, ast.Module)
+    class_statement = astnode.body[0]
+    assert isinstance(class_statement, ast.ClassDef)
+    assert class_statement.name=='i'
+    
+    try:
+        import astroid
+    except ImportError:
+        raise AssertionError('astroid should be installed')
+    else:
+        astroidnode = mod.nodes.astroid
+        assert isinstance(astroidnode, astroid.Module)
+        class_statement = astroidnode.body[0]
+        assert isinstance(class_statement, astroid.ClassDef)
+        assert class_statement.name=='i'

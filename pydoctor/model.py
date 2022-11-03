@@ -25,6 +25,8 @@ from typing import (
 )
 from urllib.parse import quote
 
+import attr
+
 from pydoctor.options import Options
 from pydoctor import factory, qnmatch, utils, linker, astutils, mro
 from pydoctor.epydoc.markup import ParsedDocstring
@@ -33,10 +35,10 @@ from pydoctor.sphinx import CacheT, SphinxInventory
 if TYPE_CHECKING:
     from typing_extensions import Literal
     from pydoctor.astbuilder import ASTBuilder, DocumentableT
+    import astroid
 else:
     Literal = {True: bool, False: bool}
     ASTBuilder = object
-
 
 # originally when I started to write pydoctor I had this idea of a big
 # tree of Documentables arranged in an almost arbitrary tree.
@@ -418,6 +420,24 @@ class CanContainImportsDocumentable(Documentable):
         super().setup()
         self._localNameToFullName_map: Dict[str, str] = {}
 
+@attr.s(auto_attribs=True)
+class _AstModules:
+    """
+    Encapsulate AST modules for a given L{Module}.
+
+    Pydoctor uses the standard L{stdlib} module as well as L{astroid}, 
+    so these are the two supported attributes of this object at the moment.
+    """
+    
+    stdlib: Optional[ast.Module] = None
+    """
+    None if the module failed to parse or if it was built from introspection.
+    """
+    
+    astroid: Optional['astroid.Module'] = None
+    """
+    The astroid support is currently an experimental feature.
+    """
 
 class Module(CanContainImportsDocumentable):
     kind = DocumentableKind.MODULE
@@ -439,6 +459,17 @@ class Module(CanContainImportsDocumentable):
         """The live module if the module was built from introspection."""
         self._py_string: Optional[str] = None
         """The module string if the module was built from text."""
+        
+        self.nodes: _AstModules = _AstModules()
+        """
+        This attribute holds references to the ast nodes 
+        parsed with differents parsers for this module. 
+
+        The L{ast.Module} counterpart of this L{Module} can be retreived with:
+        >>> mod._nodes.ast_node
+        
+        It's None when the module was built from introspection.
+        """
 
         self.all: Optional[Collection[str]] = None
         """Names listed in the C{__all__} variable of this module.
@@ -1090,17 +1121,41 @@ class System:
             parentPackage: Optional[_PackageT] = None,
             is_package: bool = False
             ) -> _ModuleT:
+        """
+        Create a new module to be analyze.
+        """
         factory = self.Package if is_package else self.Module
         mod = factory(self, modname, parentPackage, modpath)
         self._addUnprocessedModule(mod)
         self.setSourceHref(mod, modpath)
         return mod
 
+    def _parseModuleAST(self, mod: _ModuleT) -> None:
+        """
+        Set the L{_AstModules.ast_node} and L{_AstModules.astroid_node} attributes on the L{Module._nodes} instance.
+        """
+        # Parse the ast of the module early. 
+        buildercls = self.defaultBuilder
+
+        # We parse AST only if the module has NOT been imported.
+        # the introspection happens at the time the module get processed.
+        if mod._py_mod is None:
+            if mod._py_string is not None:
+                ast = buildercls.ASTParser().parseString(mod._py_string, mod)
+                astr = buildercls.AstroidParser().parseString(mod._py_string, mod)
+            else:
+                assert mod.source_path is not None
+                ast = buildercls.ASTParser().parseFile(mod.source_path, mod)
+                astr = buildercls.AstroidParser().parseFile(mod.source_path, mod)
+
+            mod.nodes.stdlib = ast
+            mod.nodes.astroid = astr
+
     def _addUnprocessedModule(self, mod: _ModuleT) -> None:
         """
         First add the new module into the unprocessed_modules list. 
         Handle eventual duplication of module names, and finally add the 
-        module to the system.
+        module to the system and create the AST representation for the module.
         """
         assert mod.state is ProcessingState.UNPROCESSED
         first = self.allobjects.get(mod.fullName())
@@ -1109,10 +1164,14 @@ class System:
             assert isinstance(first, Module)
             self._handleDuplicateModule(first, mod)
         else:
+            # parse ast early
+            self._parseModuleAST(mod)
+
+            # add the unprocessed mod
             self.unprocessed_modules.append(mod)
             self.addObject(mod)
             self.progress(
-                "analyzeModule", len(self.allobjects),
+                "_addUnprocessedModule", len(self.allobjects),
                 None, "modules and packages discovered")        
             self.module_count += 1
 
@@ -1189,7 +1248,7 @@ class System:
         module = factory(self, module_name, package, path)
         
         module.docstring = py_mod.__doc__
-        module._is_c_module = True
+        module._is_c_module = True # we assume an introspected module is a C module.
         module._py_mod = py_mod
         
         self._addUnprocessedModule(module)
@@ -1270,13 +1329,17 @@ class System:
         return mod
 
     def processModule(self, mod: _ModuleT) -> None:
+        """
+        Triggers the *analysis* of the AST (or the introspection in the case of a C-extension)
+        """
         assert mod.state is ProcessingState.UNPROCESSED
         assert mod in self.unprocessed_modules
         mod.state = ProcessingState.PROCESSING
         self.unprocessed_modules.remove(mod)
         if mod.source_path is None:
             assert mod._py_string is not None
-        if mod._is_c_module:
+
+        if mod._py_mod is not None:
             self.processing_modules.append(mod.fullName())
             self.msg("processModule", "processing %s"%(self.processing_modules), 1)
             self._introspectThing(mod._py_mod, mod, mod)
@@ -1285,16 +1348,14 @@ class System:
             assert head == mod.fullName()
         else:
             builder = self.defaultBuilder(self)
-            if mod._py_string is not None:
-                ast = builder.parseString(mod._py_string, mod)
-            else:
-                assert mod.source_path is not None
-                ast = builder.parseFile(mod.source_path, mod)
-            if ast:
+            ast_mod = mod.nodes.stdlib
+            if ast_mod:
                 self.processing_modules.append(mod.fullName())
                 if mod._py_string is None:
+                    # _py_string is only used in tests, so we use special loggin messages
+                    # just when _py_string is used.
                     self.msg("processModule", "processing %s"%(self.processing_modules), 1)
-                builder.processModuleAST(ast, mod)
+                builder.processModuleAST(ast_mod, mod)
                 mod.state = ProcessingState.PROCESSED
                 head = self.processing_modules.pop()
                 assert head == mod.fullName()

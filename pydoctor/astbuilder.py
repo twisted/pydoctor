@@ -9,7 +9,7 @@ from itertools import chain
 from pathlib import Path
 from typing import (
     Any, Callable, Collection, Dict, Iterable, Iterator, List, Mapping, Optional, Sequence, Tuple,
-    Type, TypeVar, Union, cast
+    Type, TypeVar, Union, cast, TYPE_CHECKING
 )
 
 import astor
@@ -19,16 +19,9 @@ from pydoctor.astutils import (is_typing_annotation, is_using_annotations, is_us
                                is__name__equals__main__, unstring_annotation, iterassign, 
                                NodeVisitor)
 
-def parseFile(path: Path) -> ast.Module:
-    """Parse the contents of a Python source file."""
-    with open(path, 'rb') as f:
-        src = f.read() + b'\n'
-    return _parse(src, filename=str(path))
+if TYPE_CHECKING:
+    import astroid
 
-if sys.version_info >= (3,8):
-    _parse = partial(ast.parse, type_comments=True)
-else:
-    _parse = ast.parse
 
 
 def _maybeAttribute(cls: model.Class, name: str) -> bool:
@@ -146,6 +139,66 @@ def extract_final_subscript(annotation: ast.Subscript) -> ast.expr:
     else:
         assert isinstance(ann_slice, ast.expr)
         return ann_slice
+
+class ASTParser:
+    
+    def _parseFile(self, path: Path) -> ast.Module:
+        """Parse the contents of a Python source file."""
+        with open(path, 'rb') as f:
+            src = f.read() + b'\n'
+        return self._parse(src, filename=str(path))
+
+    if sys.version_info >= (3,8):
+        _parse = partial(ast.parse, type_comments=True)
+    else:
+        _parse = ast.parse
+
+    def __init__(self) -> None:
+        self.ast_cache: Dict[Path, Optional[ast.Module]] = {}
+
+    def parseFile(self, path: Path, ctx: model.Module) -> Optional[ast.Module]:
+        try:
+            return self.ast_cache[path]
+        except KeyError:
+            mod: Optional[ast.Module] = None
+            try:
+                mod = self._parseFile(path)
+            except (SyntaxError, ValueError) as e:
+                ctx.report(f"cannot parse file, {e}")
+
+            self.ast_cache[path] = mod
+            return mod
+    
+    def parseString(self, py_string:str, ctx: model.Module) -> Optional[ast.Module]:
+        mod = None
+        try:
+            mod = self._parse(py_string)
+        except (SyntaxError, ValueError):
+            ctx.report("cannot parse string")
+        return mod
+
+class AstroidParser:
+
+    def parseFile(self, path: Path, ctx: model.Module) -> Optional['astroid.Module']:
+        with path.open('r') as f:
+            return self.parseString(f.read() + '\n', ctx)
+    
+    def parseString(self, py_string:str, ctx: model.Module) -> Optional['astroid.Module']:
+        try:
+            import astroid
+        except ImportError:
+            return None
+        
+        modname=ctx.fullName()
+        if isinstance(ctx, model.Package):
+            modname+='.__init__'
+        try:
+            return astroid.parse(py_string, 
+                module_name=modname, path=str(ctx.source_path))
+        except Exception:
+            # don't spam the log
+            return None
+
 
 class ModuleVistor(NodeVisitor):
 
@@ -1020,6 +1073,8 @@ class ASTBuilder:
     Keeps tracks of the state of the AST build, creates documentable and adds objects to the system.
     """
     ModuleVistor = ModuleVistor
+    ASTParser = ASTParser
+    AstroidParser = AstroidParser
 
     def __init__(self, system: model.System):
         self.system = system
@@ -1130,26 +1185,6 @@ class ASTBuilder:
         vis.extensions.attach_visitor(vis)
         vis.walkabout(mod_ast)
 
-    def parseFile(self, path: Path, ctx: model.Module) -> Optional[ast.Module]:
-        try:
-            return self.ast_cache[path]
-        except KeyError:
-            mod: Optional[ast.Module] = None
-            try:
-                mod = parseFile(path)
-            except (SyntaxError, ValueError) as e:
-                ctx.report(f"cannot parse file, {e}")
-
-            self.ast_cache[path] = mod
-            return mod
-    
-    def parseString(self, py_string:str, ctx: model.Module) -> Optional[ast.Module]:
-        mod = None
-        try:
-            mod = _parse(py_string)
-        except (SyntaxError, ValueError):
-            ctx.report("cannot parse string")
-        return mod
 
 model.System.defaultBuilder = ASTBuilder
 
