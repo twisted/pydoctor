@@ -86,13 +86,16 @@ def versionToUsefulObject(version:ast.Call) -> 'incremental.Version':
     """
     bound_args = astutils.bind_args(_incremental_Version_signature, version)
     package = astutils.get_str_value(bound_args.arguments['package'])
-    major: Union[Number, str, None] = astutils.get_num_value(bound_args.arguments['major']) or \
+    major: Union[int, str, None] = astutils.get_int_value(bound_args.arguments['major']) or \
         astutils.get_str_value(bound_args.arguments['major'])
-    if isinstance(major, str) and major != "NEXT": 
+    if major is None or (isinstance(major, str) and major != "NEXT"): 
         raise ValueError("Invalid call to incremental.Version(), 'major' should be an int or 'NEXT'.")
-    return Version(package, major, 
-        minor=astutils.get_num_value(bound_args.arguments['minor']),
-        micro=astutils.get_num_value(bound_args.arguments['micro']),)
+    assert isinstance(major, (int, str))
+    minor = astutils.get_int_value(bound_args.arguments['minor'])
+    micro = astutils.get_int_value(bound_args.arguments['micro'])
+    if minor is None or micro is None:
+        raise ValueError("Invalid call to incremental.Version(), 'minor' and 'micro' should be an ints.")
+    return Version(package, major, minor=minor, micro=micro) # type:ignore[arg-type]
 
 _deprecation_text_with_replacement_template = "``{name}`` was deprecated in {package} {version}; please use `{replacement}` instead."
 _deprecation_text_without_replacement_template = "``{name}`` was deprecated in {package} {version}."
