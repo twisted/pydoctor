@@ -334,7 +334,7 @@ def test_getLink_found(inv_reader_nolog: sphinx.SphinxInventory) -> None:
     Return the link from internal state.
     """
 
-    inv_reader_nolog._links['some.name'] = ('http://base.tld', 'some/url.php')
+    inv_reader_nolog._links['some.name'] = sphinx.InventoryObject(name='some.name', base_url='http://base.tld', location='some/url.php', typ='mod')
 
     assert 'http://base.tld/some/url.php' == inv_reader_nolog.getLink('some.name')
 
@@ -344,7 +344,7 @@ def test_getLink_self_anchor(inv_reader_nolog: sphinx.SphinxInventory) -> None:
     Return the link with anchor as target name when link end with $.
     """
 
-    inv_reader_nolog._links['some.name'] = ('http://base.tld', 'some/url.php#$')
+    inv_reader_nolog._links['some.name'] = sphinx.InventoryObject(name='some.name', base_url='http://base.tld', location='some/url.php#$', typ='mod')
 
     assert 'http://base.tld/some/url.php#some.name' == inv_reader_nolog.getLink('some.name')
 
@@ -421,7 +421,7 @@ def test_parseInventory_single_line(inv_reader_nolog: sphinx.SphinxInventory) ->
     result = inv_reader_nolog._parseInventory(
         'http://base.tld', 'some.attr py:attr -1 some.html De scription')
 
-    assert {'some.attr': ('http://base.tld', 'some.html')} == result
+    assert {'some.attr': sphinx.InventoryObject(name='some.attr', base_url='http://base.tld', location='some.html', typ='py:attr')} == result
 
 
 def test_parseInventory_spaces() -> None:
@@ -471,8 +471,8 @@ def test_parseInventory_invalid_lines(inv_reader: InvReader) -> None:
     result = inv_reader._parseInventory(base_url, content)
 
     assert {
-        'good.attr': (base_url, 'some.html'),
-        'good.again': (base_url, 'again.html'),
+        'good.attr': sphinx.InventoryObject(name='good.attr', base_url='http://tm.tld', location='some.html', typ='py:attribute'),
+        'good.again': sphinx.InventoryObject(name='good.again', base_url='http://tm.tld', location='again.html', typ='py:module'),
         } == result
     assert [
         (
@@ -505,7 +505,7 @@ def test_parseInventory_type_filter(inv_reader: InvReader) -> None:
     result = inv_reader._parseInventory(base_url, content)
 
     assert {
-        'dict': (base_url, 'library/stdtypes.html#$'),
+        'dict': sphinx.InventoryObject(name='dict', base_url='https://docs.python.org/3', location='library/stdtypes.html#$', typ='py:class'),
         } == result
     assert [] == inv_reader._logger.messages
 
@@ -756,3 +756,13 @@ def test_prepareCache(
 
     if clearCache:
         assert not cacheDirectory.exists()
+
+def test_inv_object_typ() -> None:
+    obj = sphinx.InventoryObject(name='dict', base_url='https://docs.python.org/3', location='library/stdtypes.html#$', typ='py:class')
+    assert obj.typ is sphinx.InvObjectType.CLASS
+    obj = sphinx.InventoryObject(name='dict', base_url='https://docs.python.org/3', location='library/stdtypes.html#$', typ='py:class:')
+    assert obj.typ is sphinx.InvObjectType.CLASS
+    obj = sphinx.InventoryObject(name='dict', base_url='https://docs.python.org/3', location='library/stdtypes.html#$', typ='cls')
+    assert obj.typ is sphinx.InvObjectType.CLASS
+    obj = sphinx.InventoryObject(name='dict', base_url='https://docs.python.org/3', location='library/stdtypes.html#$', typ='class')
+    assert obj.typ is sphinx.InvObjectType.CLASS

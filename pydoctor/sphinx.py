@@ -11,6 +11,7 @@ from typing import (
     TYPE_CHECKING, Callable, ContextManager, Dict, IO, Iterable, Mapping,
     Optional, Tuple
 )
+import enum
 
 import appdirs
 import attr
@@ -33,6 +34,40 @@ else:
 
 logger = logging.getLogger(__name__)
 
+class InvObjectType(enum.Enum):
+
+    FUNCTION = ('function', 'func')
+    METHOD = ('method', 'meth')
+    MODULE = ('module', 'mod', 'package', 'pack')
+    CLASS = ('class', 'cls')
+    ATTRIBUTE = ('attribute', 'attr', 'attrib', 'data')
+    OBJECT = ('obj', 'object')
+
+    def common_name(self) -> str:
+        v = self.value
+        assert isinstance(v, tuple)
+        return v[0] # type:ignore
+
+    @classmethod
+    def from_text(cls, txt:str) -> 'InvObjectType':
+        for e in InvObjectType._member_map_.values():
+            if txt in e.value:
+                assert isinstance(e, InvObjectType)
+                return e
+        return InvObjectType.OBJECT
+
+def _convert_typ(typ:str) -> 'InvObjectType':
+    if typ.startswith('py:'):
+        return InvObjectType.from_text(typ[3:].strip(':'))
+    else:
+        return InvObjectType.from_text(typ.strip(':'))
+
+@attr.s(auto_attribs=True)
+class InventoryObject:
+    name:str
+    base_url:str
+    location:str
+    typ:InvObjectType = attr.ib(converter=_convert_typ)
 
 class SphinxInventory:
     """
@@ -48,7 +83,7 @@ class SphinxInventory:
         @param project_name: Dummy argument to stay compatible with
                              L{twisted.python._pydoctor}.
         """
-        self._links: Dict[str, Tuple[str, str]] = {}
+        self._links: Dict[str, InventoryObject] = {}
         self._logger = logger
 
     def error(self, where: str, message: str) -> None:
@@ -109,7 +144,7 @@ class SphinxInventory:
             self,
             base_url: str,
             payload: str
-            ) -> Dict[str, Tuple[str, str]]:
+            ) -> Dict[str, InventoryObject]:
         """
         Parse clear text payload and return a dict with module to link mapping.
         """
@@ -128,16 +163,24 @@ class SphinxInventory:
                 # Non-Python references are ignored.
                 continue
 
-            result[name] = (base_url, location)
+            result[name] = InventoryObject(name=name, typ=typ,
+                base_url=base_url, location=location)
+        
         return result
+
+    def getInv(self, name) -> Optional[InventoryObject]:
+        return self._links.get(name)
 
     def getLink(self, name: str) -> Optional[str]:
         """
         Return link for `name` or None if no link is found.
         """
-        base_url, relative_link = self._links.get(name, (None, None))
-        if not relative_link:
+        invobj = self.getInv(name)
+        if not invobj:
             return None
+        
+        base_url = invobj.base_url
+        relative_link = invobj.location
 
         # For links ending with $, replace it with full name.
         if relative_link.endswith('$'):
@@ -252,23 +295,24 @@ class SphinxInventoryWriter:
         url = obj.url
 
         display = '-'
+        objtype: InvObjectType
         if isinstance(obj, model.Module):
-            domainname = 'module'
+            objtype = InvObjectType.MODULE
         elif isinstance(obj, model.Class):
-            domainname = 'class'
+            objtype = InvObjectType.CLASS
         elif isinstance(obj, model.Function):
             if obj.kind is model.DocumentableKind.FUNCTION:
-                domainname = 'function'
+                objtype = InvObjectType.FUNCTION
             else:
-                domainname = 'method'
+                objtype = InvObjectType.METHOD
         elif isinstance(obj, model.Attribute):
-            domainname = 'attribute'
+            objtype = InvObjectType.ATTRIBUTE
         else:
-            domainname = 'obj'
+            objtype = InvObjectType.OBJECT
             self.error(
                 'sphinx', "Unknown type %r for %s." % (type(obj), full_name,))
 
-        return f'{full_name} py:{domainname} -1 {url} {display}\n'
+        return f'{full_name} py:{objtype.common_name()} -1 {url} {display}\n'
 
 
 USER_INTERSPHINX_CACHE = appdirs.user_cache_dir("pydoctor")
