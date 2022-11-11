@@ -2,13 +2,14 @@
 
 import ast
 import sys
+import abc
 
 from functools import partial
 from inspect import Parameter, Signature
 from itertools import chain
 from pathlib import Path
 from typing import (
-    Any, Callable, Collection, Dict, Iterable, Iterator, List, Mapping, Optional, Sequence, Tuple,
+    Any, Callable, Collection, Dict, Iterable, Iterator, List, Mapping, Optional, Sequence, Tuple, Generic, 
     Type, TypeVar, Union, cast, TYPE_CHECKING
 )
 
@@ -140,9 +141,32 @@ def extract_final_subscript(annotation: ast.Subscript) -> ast.expr:
         assert isinstance(ann_slice, ast.expr)
         return ann_slice
 
-class ASTParser:
+_ModT = TypeVar('_ModT')
+class _Parser(abc.ABC, Generic[_ModT]):
+
+    def __init__(self) -> None:
+        self.ast_cache: Dict[Path, Optional[_ModT]] = {}
+
+    def parseFile(self, path: Path, ctx: model.Module) -> Optional[_ModT]:
+        try:
+            return self.ast_cache[path]
+        except KeyError:
+            mod: Optional[_ModT] = None
+            try:
+                mod = self._parseFile(path, ctx)
+            except (SyntaxError, ValueError) as e:
+                ctx.report(f"cannot parse file, {e}")
+
+            self.ast_cache[path] = mod
+            return mod
     
-    def _parseFile(self, path: Path) -> ast.Module:
+    @abc.abstractmethod
+    def _parseFile(self, path: Path, ctx: model.Module) -> _ModT:
+        ...
+
+class ASTParser(_Parser[ast.Module]):
+    
+    def _parseFile(self, path: Path, _: model.Module) -> ast.Module:
         """Parse the contents of a Python source file."""
         with open(path, 'rb') as f:
             src = f.read() + b'\n'
@@ -155,19 +179,6 @@ class ASTParser:
 
     def __init__(self) -> None:
         self.ast_cache: Dict[Path, Optional[ast.Module]] = {}
-
-    def parseFile(self, path: Path, ctx: model.Module) -> Optional[ast.Module]:
-        try:
-            return self.ast_cache[path]
-        except KeyError:
-            mod: Optional[ast.Module] = None
-            try:
-                mod = self._parseFile(path)
-            except (SyntaxError, ValueError) as e:
-                ctx.report(f"cannot parse file, {e}")
-
-            self.ast_cache[path] = mod
-            return mod
     
     def parseString(self, py_string:str, ctx: model.Module) -> Optional[ast.Module]:
         mod = None
@@ -177,11 +188,10 @@ class ASTParser:
             ctx.report("cannot parse string")
         return mod
 
-class AstroidParser:
+class AstroidParser(_Parser['astroid.Module']):
 
-    def parseFile(self, path: Path, ctx: model.Module) -> Optional['astroid.Module']:
-        with path.open('r') as f:
-            return self.parseString(f.read() + '\n', ctx)
+    def _parseFile(self, path: Path, ctx: model.Module) -> Optional['astroid.Module']:
+        return self.parseString(path.read_text() + '\n', ctx)
     
     def parseString(self, py_string:str, ctx: model.Module) -> Optional['astroid.Module']:
         try:
@@ -189,12 +199,17 @@ class AstroidParser:
         except ImportError:
             return None
         
-        modname=ctx.fullName()
+        modname = ctx.fullName()
+        path = str(ctx.source_path) if ctx.source_path else None
+
+        # astroid looks at the module name to determine if the module is a package,
+        # it then strips the .__init__ from the module name but remembers it's a package 
+        # to resolve imports.
         if isinstance(ctx, model.Package):
             modname+='.__init__'
+        
         try:
-            return astroid.parse(py_string, 
-                module_name=modname, path=str(ctx.source_path))
+            return astroid.parse(py_string, module_name=modname, path=path)
         except Exception:
             # don't spam the log
             return None
@@ -1201,7 +1216,16 @@ def findModuleLevelAssign(mod_ast: ast.Module) -> Iterator[Tuple[str, ast.Assign
 
 def parseAll(node: ast.Assign, mod: model.Module) -> None:
     """Find and attempt to parse into a list of names the 
-    C{__all__} variable of a module's AST and set L{Module.all} accordingly."""
+    C{__all__} variable of a module's AST and set L{Module.all} accordingly.
+    
+    @note: This function is only used if the astroid inference system is turned off.
+    """
+
+    # If the astroid module is available and useinference is True, then this function does nothing, because we're
+    # setting mod.all in the inference visitor, we don't want to spam the log for a result that will
+    # overriden by the inference extension. 
+    if mod.system.options.useinference == True and mod.nodes.astroid is not None:
+        return
 
     if not isinstance(node.value, (ast.List, ast.Tuple)):
         mod.report(

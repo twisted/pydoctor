@@ -30,6 +30,7 @@ class FakeOptions:
     htmlsourcebase: Optional[str] = None
     projectbasedirectory: Path
     docformat = 'epytext'
+    useinference = False
 
 
 class FakeDocumentable:

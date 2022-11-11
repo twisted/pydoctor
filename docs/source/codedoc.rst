@@ -324,3 +324,20 @@ The content of ``my_project/__init__.py`` includes::
     from .core._impl import MyClass
 
     __all__ = ("MyClass",)
+
+
+The following idioms are supported for defining the values contained within ``__all__``. 
+These restrictions allow pydoctor to statically determine the value of ``__all__``.
+
+.. code:: python
+
+    __all__ = ('a', 'b')
+    __all__ = ['a', 'b']
+    __all__ += ['a', 'b']
+    __all__ += submodule.__all__
+    __all__.extend(['a', 'b'])
+    __all__.extend(submodule.__all__)
+    __all__.append('a')
+    from submodule import __all__ as submod_all
+    __all__.extend(submod_all)
+    

@@ -9,6 +9,7 @@ being documented -- a System is a bad of Documentables, in some sense.
 import abc
 import ast
 from collections import defaultdict
+from contextlib import suppress
 import datetime
 import importlib
 import inspect
@@ -893,11 +894,30 @@ class System:
             self.extensions = list(extensions.get_extensions())
         assert isinstance(self.extensions, list)
         assert isinstance(self.custom_extensions, list)
+        
+        # This extension is special cased, it's not included in the default 
+        # extensions because it starts with an underscore.
+        if self.options.useinference is True:
+            try:
+                import astroid.manager
+                import astroid.transforms
+            except ImportError:
+                # we warn because the user has asked for inference and we can't do it without astroid.
+                self.msg('System.__init__', "Please install astroid.", thresh=-1)
+            else:
+                # Add the inference extension and clear the cache.
+                astroid.manager.AstroidManager().clear_cache()
+                self.extensions += ['pydoctor.extensions._inference']
+        
         # pydoctor.astbuilder includes some required extensions, so always add it.
         self.extensions = ['pydoctor.astbuilder'] + self.extensions
         for ext in self.extensions + self.custom_extensions:
             # Load extensions
             extensions.load_extension_module(self, ext)
+        
+        # Initiate AST parsers.
+        self._ast_parser = self.defaultBuilder.ASTParser()
+        self._astroid_parser = self.defaultBuilder.AstroidParser()
 
     @property
     def Class(self) -> Type['Class']:
@@ -1033,7 +1053,8 @@ class System:
         # but keep it just in case.
         if ob.kind is None:
             return PrivacyClass.HIDDEN
-        
+
+        # Regular privacy rules with underscores
         privacy = PrivacyClass.PUBLIC
         if ob.name.startswith('_') and \
                not (ob.name.startswith('__') and ob.name.endswith('__')):
@@ -1132,21 +1153,26 @@ class System:
 
     def _parseModuleAST(self, mod: _ModuleT) -> None:
         """
-        Set the L{_AstModules.ast_node} and L{_AstModules.astroid_node} attributes on the L{Module._nodes} instance.
+        Set the L{_AstModules.stdlib} and L{_AstModules.astroid} attributes on L{Module.nodes}.
+
+        The code is parsed into an AST at the very begining of the process; 
+        Both L{astroid} and L{ast} modules are built. 
+        This permits to use the inference system of astroid at it's full 
+        capacity because all imports whithin the system could be resolved at 
+        the time we calling L{astbuilder.ModuleVistor.visit} the first module, 
+        which is a very convient feature to have.
         """
         # Parse the ast of the module early. 
-        buildercls = self.defaultBuilder
-
         # We parse AST only if the module has NOT been imported.
         # the introspection happens at the time the module get processed.
         if mod._py_mod is None:
             if mod._py_string is not None:
-                ast = buildercls.ASTParser().parseString(mod._py_string, mod)
-                astr = buildercls.AstroidParser().parseString(mod._py_string, mod)
+                ast = self._ast_parser.parseString(mod._py_string, mod)
+                astr = self._astroid_parser.parseString(mod._py_string, mod)
             else:
                 assert mod.source_path is not None
-                ast = buildercls.ASTParser().parseFile(mod.source_path, mod)
-                astr = buildercls.AstroidParser().parseFile(mod.source_path, mod)
+                ast = self._ast_parser.parseFile(mod.source_path, mod)
+                astr = self._astroid_parser.parseFile(mod.source_path, mod)
 
             mod.nodes.stdlib = ast
             mod.nodes.astroid = astr
@@ -1164,12 +1190,13 @@ class System:
             assert isinstance(first, Module)
             self._handleDuplicateModule(first, mod)
         else:
-            # parse ast early
-            self._parseModuleAST(mod)
-
             # add the unprocessed mod
             self.unprocessed_modules.append(mod)
             self.addObject(mod)
+
+            # parse ast early, needs to be after addObject(mod)
+            self._parseModuleAST(mod)
+
             self.progress(
                 "_addUnprocessedModule", len(self.allobjects),
                 None, "modules and packages discovered")        

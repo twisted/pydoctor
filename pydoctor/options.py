@@ -235,6 +235,16 @@ def get_parser() -> ArgumentParser:
     parser.add_argument(
         '--system-class', dest='systemclass', default=DEFAULT_SYSTEM,
         help=("A dotted name of the class to use to make a system."))
+
+    # TODO: infer return type of functions without annotation. 
+    # TODO: find a nice manner to show that types are inferred when rederring them.
+    parser.add_argument(
+        '--use-inference', action='store_true', dest='useinference', default=False,
+        help=("Experimental. Whether to use inference to determine the type of attributes "
+              "and return values without explicit type hints. "
+              "Pydoctor will use astroid and typeshed to infer the return type of called functions. "
+              "There is no support for MYPY_PATH or equivalent at this point. So if your "
+              "program is calling unknown functions, the type annotation will still be blank."))
     
     parser.add_argument('-V', '--version', action='version', version=f'%(prog)s {__version__}')
     
@@ -364,6 +374,7 @@ class Options:
     sidebarexpanddepth:     int                                     = attr.ib()
     sidebartocdepth:        int                                     = attr.ib()
     nosidebar:              int                                     = attr.ib()
+    useinference:           bool                                    = attr.ib()
 
     def __attrs_post_init__(self) -> None:
         # do some validations...
