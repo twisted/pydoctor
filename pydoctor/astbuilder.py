@@ -13,9 +13,11 @@ from typing import (
 )
 
 import astor
-from pydoctor import epydoc2stan, model, node2stan
+from pydoctor import epydoc2stan, model, node2stan, extensions
 from pydoctor.epydoc.markup._pyval_repr import colorize_inline_pyval
-from pydoctor.astutils import NodeVisitor, node2dottedname, node2fullname, is__name__equals__main__, is_using_typing_final
+from pydoctor.astutils import (is_typing_annotation, is_using_annotations, is_using_typing_final, node2dottedname, node2fullname, 
+                               is__name__equals__main__, unstring_annotation, iterassign, 
+                               NodeVisitor)
 
 def parseFile(path: Path) -> ast.Module:
     """Parse the contents of a Python source file."""
@@ -52,6 +54,51 @@ def is_constant(obj: model.Attribute) -> bool:
     """
 
     return obj.name.isupper() or is_using_typing_final(obj.annotation, obj)
+
+class TypeAliasVisitorExt(extensions.ModuleVisitorExt):
+    """
+    This visitor implements the handling of type aliases and type variables.
+    """
+    def _isTypeVariable(self, ob: model.Attribute) -> bool:
+        if ob.value is not None:
+            if isinstance(ob.value, ast.Call) and node2fullname(ob.value.func, ob) in ('typing.TypeVar', 'typing_extensions.TypeVar'):
+                return True
+        return False
+    
+    def _isTypeAlias(self, ob: model.Attribute) -> bool:
+        """
+        Return C{True} if the Attribute is a type alias.
+        """
+        if ob.value is not None:
+
+            if is_using_annotations(ob.annotation, ('typing.TypeAlias', 'typing_extensions.TypeAlias'), ob):
+                try:
+                    ob.value = unstring_annotation(ob.value, ob)
+                except SyntaxError as e:
+                    ob.report(f"invalid type alias: {e}")
+                    return False
+                return True
+            
+            if is_typing_annotation(ob.value, ob.parent):
+                return True
+        
+        return False
+
+    def visit_Assign(self, node: Union[ast.Assign, ast.AnnAssign]) -> None:
+        current = self.visitor.builder.current
+        for dottedname in iterassign(node): 
+            if dottedname and len(dottedname)==1:
+                attr = current.contents.get(dottedname[0])
+                if attr is None:
+                    return
+                if not isinstance(attr, model.Attribute):
+                    return
+                if self._isTypeAlias(attr) is True:
+                    attr.kind = model.DocumentableKind.TYPE_ALIAS
+                elif self._isTypeVariable(attr) is True:
+                    attr.kind = model.DocumentableKind.TYPE_VARIABLE
+    
+    visit_AnnAssign = visit_Assign
 
 def is_attribute_overridden(obj: model.Attribute, new_value: Optional[ast.expr]) -> bool:
     """
@@ -202,7 +249,7 @@ class ModuleVistor(NodeVisitor):
     def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
         ctx = self.builder.current
         if not isinstance(ctx, model.CanContainImportsDocumentable):
-            self.builder.warning("processing import statement in odd context", str(ctx))
+            # processing import statement in odd context
             return
 
         modname = node.module
@@ -243,10 +290,10 @@ class ModuleVistor(NodeVisitor):
         if mod is None:
             # We don't have any information about the module, so we don't know
             # what names to import.
-            self.builder.warning("import * from unknown", modname)
+            self.builder.current.report(f"import * from unknown {modname}", thresh=1)
             return
 
-        self.builder.warning("import *", modname)
+        self.builder.current.report(f"import * from {modname}", thresh=1)
 
         # Get names to import: use __all__ if available, otherwise take all
         # names that are not private.
@@ -310,7 +357,7 @@ class ModuleVistor(NodeVisitor):
                 ob = origin_module.contents.get(origin_name) or origin_module.resolveName(origin_name)
                 if ob is None:
                     self.builder.warning("cannot resolve re-exported name",
-                                            f'{modname}.{origin_name}')
+                                            f'{modname}.{origin_name}', thresh=1)
                 else:
                     if origin_module.all is None or origin_name not in origin_module.all:
                         self.system.msg(
@@ -374,8 +421,7 @@ class ModuleVistor(NodeVisitor):
         """
         current = self.builder.current
         if not isinstance(current, model.CanContainImportsDocumentable):
-            self.builder.warning("processing import statement in odd context",
-                                 str(current))
+            # processing import statement in odd context
             return
         _localNameToFullName = current._localNameToFullName_map
         for al in node.names:
@@ -699,7 +745,7 @@ class ModuleVistor(NodeVisitor):
         if type_comment is None:
             annotation = None
         else:
-            annotation = self._unstring_annotation(ast.Str(type_comment, lineno=lineno))
+            annotation = unstring_annotation(ast.Str(type_comment, lineno=lineno), self.builder.current)
 
         for target in node.targets:
             if isinstance(target, ast.Tuple):
@@ -711,7 +757,7 @@ class ModuleVistor(NodeVisitor):
                 self._handleAssignment(target, annotation, expr, lineno)
 
     def visit_AnnAssign(self, node: ast.AnnAssign) -> None:
-        annotation = self._unstring_annotation(node.annotation)
+        annotation = unstring_annotation(node.annotation, self.builder.current)
         self._handleAssignment(node.target, annotation, node.value, node.lineno)
 
     def visit_Expr(self, node: ast.Expr) -> None:
@@ -877,7 +923,7 @@ class ModuleVistor(NodeVisitor):
             attr.parsed_docstring = pdoc
 
         if node.returns is not None:
-            attr.annotation = self._unstring_annotation(node.returns)
+            attr.annotation = unstring_annotation(node.returns, attr)
         attr.decorators = node.decorator_list
 
         return attr
@@ -918,26 +964,10 @@ class ModuleVistor(NodeVisitor):
             # Include parameter names even if they're not annotated, so that
             # we can use the key set to know which parameters exist and warn
             # when non-existing parameters are documented.
-            name: None if value is None else self._unstring_annotation(value)
+            name: None if value is None else unstring_annotation(value, self.builder.current)
             for name, value in _get_all_ast_annotations()
             }
-
-    def _unstring_annotation(self, node: ast.expr) -> ast.expr:
-        """Replace all strings in the given expression by parsed versions.
-        @return: The unstringed node. If parsing fails, an error is logged
-            and the original node is returned.
-        """
-        try:
-            expr = _AnnotationStringParser().visit(node)
-        except SyntaxError as ex:
-            module = self.builder.currentMod
-            assert module is not None
-            module.report(f'syntax error in annotation: {ex}', lineno_offset=node.lineno)
-            return node
-        else:
-            assert isinstance(expr, ast.expr), expr
-            return expr
-
+    
 class _ValueFormatter:
     """
     Class to encapsulate a python value and translate it to HTML when calling L{repr()} on the L{_ValueFormatter}.
@@ -961,59 +991,9 @@ class _ValueFormatter:
         Without the englobing <code> tags.
         """
         # Using node2stan.node2html instead of flatten(to_stan()). 
-        # This avoids calling flatten() twice.
+        # This avoids calling flatten() twice, 
+        # but potential XML parser errors caused by XMLString needs to be handled later.
         return ''.join(node2stan.node2html(self._colorized.to_node(), self._linker))
-
-class _AnnotationStringParser(ast.NodeTransformer):
-    """Implementation of L{ModuleVistor._unstring_annotation()}.
-
-    When given an expression, the node returned by L{ast.NodeVisitor.visit()}
-    will also be an expression.
-    If any string literal contained in the original expression is either
-    invalid Python or not a singular expression, L{SyntaxError} is raised.
-    """
-
-    def _parse_string(self, value: str) -> ast.expr:
-        statements = ast.parse(value).body
-        if len(statements) != 1:
-            raise SyntaxError("expected expression, found multiple statements")
-        stmt, = statements
-        if isinstance(stmt, ast.Expr):
-            # Expression wrapped in an Expr statement.
-            expr = self.visit(stmt.value)
-            assert isinstance(expr, ast.expr), expr
-            return expr
-        else:
-            raise SyntaxError("expected expression, found statement")
-
-    def visit_Subscript(self, node: ast.Subscript) -> ast.Subscript:
-        value = self.visit(node.value)
-        if isinstance(value, ast.Name) and value.id == 'Literal':
-            # Literal[...] expression; don't unstring the arguments.
-            slice = node.slice
-        elif isinstance(value, ast.Attribute) and value.attr == 'Literal':
-            # typing.Literal[...] expression; don't unstring the arguments.
-            slice = node.slice
-        else:
-            # Other subscript; unstring the slice.
-            slice = self.visit(node.slice)
-        return ast.copy_location(ast.Subscript(value, slice, node.ctx), node)
-
-    # For Python >= 3.8:
-
-    def visit_Constant(self, node: ast.Constant) -> ast.expr:
-        value = node.value
-        if isinstance(value, str):
-            return ast.copy_location(self._parse_string(value), node)
-        else:
-            const = self.generic_visit(node)
-            assert isinstance(const, ast.Constant), const
-            return const
-
-    # For Python < 3.8:
-
-    def visit_Str(self, node: ast.Str) -> ast.expr:
-        return ast.copy_location(self._parse_string(node.s), node)
 
 def _infer_type(expr: ast.expr) -> Optional[ast.expr]:
     """Infer an expression's type.
@@ -1091,8 +1071,8 @@ class ASTBuilder:
         Create and enter a new object of the given type and add it to the system.
         """
         obj = cls(self.system, name, self.current)
-        self.system.addObject(obj)
         self.push(obj, lineno)
+        self.system.addObject(obj)
         self.currentAttr = None
         return obj
 
@@ -1168,8 +1148,6 @@ class ASTBuilder:
         self.currentAttr = attr
         return attr
 
-    def warning(self, message: str, detail: str) -> None:
-        self.system._warning(self.current, message, detail)
 
     def processModuleAST(self, mod_ast: ast.Module, mod: model.Module) -> None:
 
@@ -1186,24 +1164,25 @@ class ASTBuilder:
         vis.extensions.attach_visitor(vis)
         vis.walkabout(mod_ast)
 
-    def parseFile(self, path: Path) -> Optional[ast.Module]:
+    def parseFile(self, path: Path, ctx: model.Module) -> Optional[ast.Module]:
         try:
             return self.ast_cache[path]
         except KeyError:
             mod: Optional[ast.Module] = None
             try:
                 mod = parseFile(path)
-            except (SyntaxError, ValueError):
-                self.warning("cannot parse", str(path))
+            except (SyntaxError, ValueError) as e:
+                ctx.report(f"cannot parse file, {e}")
+
             self.ast_cache[path] = mod
             return mod
     
-    def parseString(self, py_string:str) -> Optional[ast.Module]:
+    def parseString(self, py_string:str, ctx: model.Module) -> Optional[ast.Module]:
         mod = None
         try:
             mod = _parse(py_string)
         except (SyntaxError, ValueError):
-            self.warning("cannot parse string: ", py_string)
+            ctx.report("cannot parse string")
         return mod
 
 model.System.defaultBuilder = ASTBuilder
@@ -1299,3 +1278,7 @@ MODULE_VARIABLES_META_PARSERS: Mapping[str, Callable[[ast.Assign, model.Module],
     '__all__': parseAll,
     '__docformat__': parseDocformat
 }
+
+
+def setup_pydoctor_extension(r:extensions.ExtRegistrar) -> None:
+    r.register_astbuilder_visitor(TypeAliasVisitorExt)

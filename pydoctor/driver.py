@@ -51,18 +51,17 @@ def get_system(options: model.Options) -> model.System:
         except ValueError as e:
             error(str(e))
     
-    # step 2: add any packages and modules
+    # step 1.5: create the builder
 
-    prependedpackage = None
+    builderT = system.systemBuilder
+
     if options.prependedpackage:
-        for m in options.prependedpackage.split('.'):
-            prependedpackage = system.Package(
-                system, m, prependedpackage)
-            system.addObject(prependedpackage)
-            initmodule = system.Module(system, '__init__', prependedpackage)
-            system.addObject(initmodule)
-    
-    builder = system.systemBuilder(system)
+        builderT = model.prepend_package(builderT, package=options.prependedpackage)
+
+    builder = builderT(system)
+
+    # step 2: add any packages and modules to the builder
+
     try:
         for path in options.sourcepath:
             builder.addModule(path)
@@ -169,15 +168,21 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
         make(system)
 
         # Print summary of docstring syntax errors
-        if system.docstring_syntax_errors:
+        docstring_syntax_errors = system.parse_errors['docstring']
+        if docstring_syntax_errors:
             exitcode = 2
 
             def p(msg: str) -> None:
                 system.msg('docstring-summary', msg, thresh=-1, topthresh=1)
             p("these %s objects' docstrings contain syntax errors:"
-                %(len(system.docstring_syntax_errors),))
-            for fn in sorted(system.docstring_syntax_errors):
+                %(len(docstring_syntax_errors),))
+            for fn in sorted(docstring_syntax_errors):
                 p('    '+fn)
+
+        # If there is any other kind of parse errors, exit with code 2 as well.
+        # This applies to errors generated from colorizing AST.
+        elif any(system.parse_errors.values()):
+            exitcode = 2
 
         if system.violations and options.warnings_as_errors:
             # Update exit code if the run has produced warnings.

@@ -334,7 +334,7 @@ table .module {
     background-color: #fff8e1;
 }
 
-table .class, table .classvariable, table .baseclassvariable {
+table .class, table .classvariable, table .baseclassvariable, table .exception {
     background-color: #fffde7;
 }
 
@@ -1133,12 +1133,15 @@ pre.constant-value              { padding: .5em; }
     padding-left:5px;
     padding-right:5px;
 }
-.headerLink:hover{
-    text-decoration:none;
-    background-color: #ccc;
-}
-#childList > div:hover .headerLink{
-    display:inline-block;
+@media (hover) {
+    /* See https://css-tricks.com/annoying-mobile-double-tap-link-issue/ */
+    .headerLink:hover{
+        text-decoration:none;
+        background-color: #ccc;
+    }
+    #childList > div:hover .headerLink{
+        display:inline-block;
+    }
 }
 #childList a:target ~ .functionHeader .headerLink{
     display: inline-block

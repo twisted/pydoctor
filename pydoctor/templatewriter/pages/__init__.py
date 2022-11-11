@@ -64,11 +64,13 @@ def format_decorators(obj: Union[model.Function, model.Attribute]) -> Iterator["
 
         # Colorize decorators!
         doc = colorize_inline_pyval(dec)
-        stan = doc.to_stan(obj.docstring_linker)
-        # Report eventual warnings. It warns when a regex failed to parse or the html2stan() function fails.
-        for message in doc.warnings:
-            obj.report(message)
 
+        stan = epydoc2stan.safe_to_stan(doc, obj.docstring_linker, obj, compact=True, 
+            fallback=epydoc2stan.colorized_pyval_fallback, 
+            section='rendering of decorators')
+        
+        # Report eventual warnings. It warns when a regex failed to parse or the html2stan() function fails.
+        epydoc2stan.reportWarnings(obj, doc.warnings, section='colorize decorator')
         yield '@', stan.children, tags.br()
 
 def format_signature(function: model.Function) -> "Flattenable":
@@ -76,7 +78,14 @@ def format_signature(function: model.Function) -> "Flattenable":
     Return a stan representation of a nicely-formatted source-like function signature for the given L{Function}.
     Arguments default values are linked to the appropriate objects when possible.
     """
-    return html2stan(str(function.signature)) if function.signature else "(...)"
+    broken = "(...)"
+    try:
+        return html2stan(str(function.signature)) if function.signature else broken
+    except Exception as e:
+        # We can't use safe_to_stan() here because we're using Signature.__str__ to generate the signature HTML.
+        epydoc2stan.reportErrors(function, 
+            [epydoc2stan.get_to_stan_error(e)], section='signature')
+        return broken
 
 class Nav(TemplateElement):
     """
@@ -274,7 +283,8 @@ class CommonPage(Page):
         """
         r: List[Tag] = []
         for extra in ob.extra_info:
-            r.append(extra.to_stan(ob.docstring_linker, compact=False))
+            r.append(epydoc2stan.safe_to_stan(extra, ob.docstring_linker, ob, compact=False, 
+                fallback = lambda _,__,___:epydoc2stan.BROKEN, section='extra'))
         return r
          # Not adding Known aliases here because it would really be too much information.  
          # TODO: Would it actully be TMI?
@@ -430,6 +440,7 @@ class ClassPage(CommonPage):
         return r
 
     def classSignature(self) -> "Flattenable":
+
         r: List["Flattenable"] = []
         # Here, we should use the parent's linker because a base name
         # can't be define in the class itself.
@@ -444,7 +455,11 @@ class ClassPage(CommonPage):
 
                     # link to external class or internal class, using the colorizer here
                     # to link to classes with generics (subscripts and other AST expr).
-                    r.extend(colorize_inline_pyval(base_node).to_stan(_linker).children)
+                    stan = epydoc2stan.safe_to_stan(colorize_inline_pyval(base_node), _linker, self.ob, 
+                        compact=True, 
+                        fallback=epydoc2stan.colorized_pyval_fallback, 
+                        section='rendering of class signature')
+                    r.extend(stan.children)
                     
             r.append(')')
         return r

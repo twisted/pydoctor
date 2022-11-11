@@ -75,6 +75,22 @@ What's New?
 
 in development
 ^^^^^^^^^^^^^^
+
+pydoctor 22.9.1
+^^^^^^^^^^^^^^^
+* ``pydoctor --help`` works again.
+
+pydoctor 22.9.0
+^^^^^^^^^^^^^^^
+
+* Add a special kind for exceptions (before, they were treated just like any other class).
+* The ZopeInterface features now renders again. A regression was introduced in pydoctor 22.7.0.
+* Python syntax errors are now logged as violations.
+* Fixed rare crash in the rendering of parsed elements (i.e. docstrings and ASTs). 
+  This is because XHTML entities like non-breaking spaces are not supported by Twisted's ``XMLString`` at the moment.
+* Show the value of type aliases and type variables.
+* The ``--prepend-package`` now work as documented. 
+  A regression was introduced in pydoctor 22.7.0 and it was not nesting new packages under the "fake" package.
 * `self` parameter is now removed only when the target is a method. In the previous version, it was always removed in any context.
 * `cls` parameter is now removed only when the target is a class method. In the previous version, it was always removed in any context.
 * Add anchors aside attributes and functions to ease 
