@@ -57,11 +57,13 @@ def format_decorators(obj: Union[model.Function, model.Attribute]) -> Iterator["
 
         # Colorize decorators!
         doc = colorize_inline_pyval(dec)
-        stan = doc.to_stan(obj.docstring_linker)
-        # Report eventual warnings. It warns when a regex failed to parse or the html2stan() function fails.
-        for message in doc.warnings:
-            obj.report(message)
 
+        stan = epydoc2stan.safe_to_stan(doc, obj.docstring_linker, obj, compact=True, 
+            fallback=epydoc2stan.colorized_pyval_fallback, 
+            section='rendering of decorators')
+        
+        # Report eventual warnings. It warns when a regex failed to parse or the html2stan() function fails.
+        epydoc2stan.reportWarnings(obj, doc.warnings, section='colorize decorator')
         yield '@', stan.children, tags.br()
 
 def format_signature(function: model.Function) -> "Flattenable":
@@ -69,7 +71,14 @@ def format_signature(function: model.Function) -> "Flattenable":
     Return a stan representation of a nicely-formatted source-like function signature for the given L{Function}.
     Arguments default values are linked to the appropriate objects when possible.
     """
-    return html2stan(str(function.signature)) if function.signature else "(...)"
+    broken = "(...)"
+    try:
+        return html2stan(str(function.signature)) if function.signature else broken
+    except Exception as e:
+        # We can't use safe_to_stan() here because we're using Signature.__str__ to generate the signature HTML.
+        epydoc2stan.reportErrors(function, 
+            [epydoc2stan.get_to_stan_error(e)], section='signature')
+        return broken
 
 class Nav(TemplateElement):
     """
@@ -267,7 +276,8 @@ class CommonPage(Page):
         """
         r: List[Tag] = []
         for extra in ob.extra_info:
-            r.append(extra.to_stan(ob.docstring_linker, compact=False))
+            r.append(epydoc2stan.safe_to_stan(extra, ob.docstring_linker, ob, compact=False, 
+                fallback = lambda _,__,___:epydoc2stan.BROKEN, section='extra'))
         return r
 
 
@@ -381,7 +391,7 @@ class ClassPage(CommonPage):
             docgetter: Optional[util.DocGetter] = None
             ):
         super().__init__(ob, template_lookup, docgetter)
-        self.baselists = util.inherited_members(self.ob)
+        self.baselists = util.class_members(self.ob)
 
     def extras(self) -> List[Tag]:
         r: List[Tag] = []
@@ -409,19 +419,27 @@ class ClassPage(CommonPage):
         return r
 
     def classSignature(self) -> "Flattenable":
-        r: List["Flattenable"] = []
-        _linker = self.ob.docstring_linker
-        zipped = list(zip(self.ob.rawbases, self.ob.bases))
-        if zipped:
-            r.append('(')
-            for idx, (name, full_name) in enumerate(zipped):
-                if idx != 0:
-                    r.append(', ')
 
-                # link to external class or internal class
-                tag = _linker.link_to(full_name, name)
+        r: List["Flattenable"] = []
+        # Here, we should use the parent's linker because a base name
+        # can't be define in the class itself.
+        _linker = self.ob.parent.docstring_linker
+        if self.ob.rawbases:
+            r.append('(')
+            with _linker.disable_same_page_optimazation():
+            
+                for idx, (_, base_node) in enumerate(self.ob.rawbases):
+                    if idx != 0:
+                        r.append(', ')
+
+                    # link to external class or internal class, using the colorizer here
+                    # to link to classes with generics (subscripts and other AST expr).
+                    stan = epydoc2stan.safe_to_stan(colorize_inline_pyval(base_node), _linker, self.ob, 
+                        compact=True, 
+                        fallback=epydoc2stan.colorized_pyval_fallback, 
+                        section='rendering of class signature')
+                    r.extend(stan.children)
                     
-                r.append(tag(title=full_name))
             r.append(')')
         return r
 

@@ -75,11 +75,41 @@ What's New?
 
 in development
 ^^^^^^^^^^^^^^
+
+pydoctor 22.9.1
+^^^^^^^^^^^^^^^
+* ``pydoctor --help`` works again.
+
+pydoctor 22.9.0
+^^^^^^^^^^^^^^^
+
+* Add a special kind for exceptions (before, they were treated just like any other class).
+* The ZopeInterface features now renders again. A regression was introduced in pydoctor 22.7.0.
+* Python syntax errors are now logged as violations.
+* Fixed rare crash in the rendering of parsed elements (i.e. docstrings and ASTs). 
+  This is because XHTML entities like non-breaking spaces are not supported by Twisted's ``XMLString`` at the moment.
+* Show the value of type aliases and type variables.
+* The ``--prepend-package`` now work as documented. 
+  A regression was introduced in pydoctor 22.7.0 and it was not nesting new packages under the "fake" package.
+* `self` parameter is now removed only when the target is a method. In the previous version, it was always removed in any context.
+* `cls` parameter is now removed only when the target is a class method. In the previous version, it was always removed in any context.
+* Add anchors aside attributes and functions to ease 
+  the process of sharing links to these API docs.
+* Fix a bug in the return clause of google-style docstrings 
+  where the return type would be treated as the description 
+  when there is no explicit description.
+* Trigger warnings for unknown config options.
+* Fix minor UX issues in the search bar.
+* Fix deprecation in Docutils 0.19 frontend
+
+pydoctor 22.7.0
+^^^^^^^^^^^^^^^
+* Add support for generics in class hierarchies.
 * Fix long standing bugs in ``Class`` method resolution order.
 * Improve the extensibility of pydoctor (`more infos on extensions <https://pydoctor.readthedocs.io/en/latest/customize.html#use-a-custom-system-class>`_)
 * Fix line numbers in reStructuredText xref warnings.
 * Add support for `twisted.python.deprecated` (this was originally part of Twisted's customizations).
-* Add support for re-exporting names imported from a wildcard import.
+* Add support for re-exporting it names imported from a wildcard import.
 
 pydoctor 22.5.1
 ^^^^^^^^^^^^^^^

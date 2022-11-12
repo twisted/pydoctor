@@ -8,7 +8,6 @@ Support for L{twisted.python.deprecate}.
 
 import ast
 import inspect
-from numbers import Number
 from typing import Optional, Sequence, Tuple, Union, TYPE_CHECKING
 
 from pydoctor import astbuilder, model, epydoc2stan, astutils, extensions
@@ -88,13 +87,16 @@ def versionToUsefulObject(version:ast.Call) -> 'incremental.Version':
     """
     bound_args = astutils.bind_args(_incremental_Version_signature, version)
     package = astutils.get_str_value(bound_args.arguments['package'])
-    major: Union[Number, str, None] = astutils.get_num_value(bound_args.arguments['major']) or \
+    major: Union[int, str, None] = astutils.get_int_value(bound_args.arguments['major']) or \
         astutils.get_str_value(bound_args.arguments['major'])
-    if isinstance(major, str) and major != "NEXT": 
+    if major is None or (isinstance(major, str) and major != "NEXT"): 
         raise ValueError("Invalid call to incremental.Version(), 'major' should be an int or 'NEXT'.")
-    return Version(package, major, 
-        minor=astutils.get_num_value(bound_args.arguments['minor']),
-        micro=astutils.get_num_value(bound_args.arguments['micro']),)
+    assert isinstance(major, (int, str))
+    minor = astutils.get_int_value(bound_args.arguments['minor'])
+    micro = astutils.get_int_value(bound_args.arguments['micro'])
+    if minor is None or micro is None:
+        raise ValueError("Invalid call to incremental.Version(), 'minor' and 'micro' should be an ints.")
+    return Version(package, major, minor=minor, micro=micro) # type:ignore[arg-type]
 
 _deprecation_text_with_replacement_template = "``{name}`` was deprecated in {package} {version}; please use `{replacement}` instead."
 _deprecation_text_without_replacement_template = "``{name}`` was deprecated in {package} {version}."
@@ -113,8 +115,10 @@ def deprecatedToUsefulText(ctx:model.Documentable, name:str, deprecated:ast.Call
 
     bound_args = astutils.bind_args(_deprecated_signature, deprecated)
     _version_call = bound_args.arguments['version']
+    
+    # Also support using incremental from twisted.python.versions: https://github.com/twisted/twisted/blob/twisted-22.4.0/src/twisted/python/versions.py
     if not isinstance(_version_call, ast.Call) or \
-       astbuilder.node2fullname(_version_call.func, ctx) != "incremental.Version":
+       astbuilder.node2fullname(_version_call.func, ctx) not in ("incremental.Version", "twisted.python.versions.Version"):
         raise ValueError("Invalid call to twisted.python.deprecate.deprecated(), first argument should be a call to incremental.Version()")
     
     version = versionToUsefulObject(_version_call)
@@ -137,8 +141,12 @@ def deprecatedToUsefulText(ctx:model.Documentable, name:str, deprecated:ast.Call
 
     if not validate_identifier(_package):
         raise ValueError(f"Invalid package name: {_package!r}")
+    
     if replacement is not None and not validate_identifier(replacement):
-        raise ValueError(f"Invalid replacement name: {replacement!r}")
+        # The replacement is not an identifier, so don't even try to resolve it.
+        # By adding extras backtics, we make the replacement a literal text.
+        replacement = replacement.replace('\n', ' ')
+        replacement = f"`{replacement}`"
     
     if replacement is not None:
         text = _deprecation_text_with_replacement_template.format(

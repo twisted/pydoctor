@@ -95,9 +95,9 @@ def objects_order(o: model.Documentable) -> Tuple[int, int, str]:
     """
     return (-o.privacyClass.value, -o.kind.value if o.kind else 0, o.fullName().lower())
 
-def inherited_members(cls: model.Class) -> List[Tuple[Tuple[model.Class, ...], Sequence[model.Documentable]]]:
+def class_members(cls: model.Class) -> List[Tuple[Tuple[model.Class, ...], Sequence[model.Documentable]]]:
     """
-    Compute the inherited members of a class.
+    Returns the members as well as the inherited members of a class.
 
     @returns: Tuples of tuple: C{inherited_via:Tuple[model.Class, ...], attributes:Sequence[model.Documentable]}.
     """
@@ -108,14 +108,15 @@ def inherited_members(cls: model.Class) -> List[Tuple[Tuple[model.Class, ...], S
             baselists.append((baselist, attrs))
     return baselists
 
-def list_inherited_members(cls: model.Class) -> List[model.Documentable]:
+def inherited_members(cls: model.Class) -> List[model.Documentable]:
     """
-    Like L{inherited_members}, but returns a plain list.
+    Returns only the inherited members of a class, as a plain list.
     """
     
     children : List[model.Documentable] = []
-    for _,attrs in inherited_members(cls):
-        children.extend(attrs)
+    for inherited_via,attrs in class_members(cls):
+        if len(inherited_via)>1:
+            children.extend(attrs)
     return children
 
 def templatefile(filename: str) -> None:

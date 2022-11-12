@@ -168,6 +168,9 @@ def test_fetchIntersphinxInventories_content() -> None:
         """Avoid touching the network."""
         def get(self, url: str) -> bytes:
             return url_content[url]
+        def close(self) -> None:
+            return None
+        
 
     sut.fetchIntersphinxInventories(Cache())
 

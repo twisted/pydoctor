@@ -46,6 +46,11 @@ def test_mro(systemcls: Type[model.System],) -> None:
     class Duplicates(C, C): pass
     class Extension(External): pass
     class MycustomString(str): pass
+    from typing import Generic
+    class MyGeneric(Generic[T]):...
+    class Visitor(MyGeneric[T]):...
+    import ast
+    class GenericPedalo(MyGeneric[ast.AST], Pedalo):...
     """, 
     modname='mro', systemcls=systemcls
     )
@@ -86,6 +91,25 @@ def test_mro(systemcls: Type[model.System],) -> None:
         'mro.OuterB.Inner', 
         'mro.OuterA.Inner']
     )
+
+    assert_mro_equals(
+        mod.contents["Visitor"],
+        ['mro.Visitor', 'mro.MyGeneric', 'typing.Generic']
+    )
+
+    assert_mro_equals(
+        mod.contents["GenericPedalo"],
+        ['mro.GenericPedalo',
+        'mro.MyGeneric',
+        'typing.Generic',
+        'mro.Pedalo',
+        'mro.PedalWheelBoat',
+        'mro.EngineLess',
+        'mro.SmallCatamaran',
+        'mro.SmallMultihull',
+        'mro.DayBoat',
+        'mro.WheelBoat',
+        'mro.Boat'])
 
     with pytest.raises(ValueError, match="Cannot compute linearization"):
         model.compute_mro(mod.contents["F1"]) # type:ignore
@@ -197,3 +221,25 @@ def test_overriden_in()-> None:
     assert isinstance(klass, model.Class)
     assert klass.subclasses == [dimond.contents['A'], dimond.contents['B']]
     assert list(util.overriding_subclasses(klass, 'z')) == [dimond.contents['A'], dimond.contents['C']]
+
+def test_inherited_members() -> None:
+    """
+    The inherited_members() function computes only the inherited members
+    of a given class. It does not include members defined in the class itself.
+    """
+    dimond = fromText("""\
+    class _MyBase:
+        def z():...
+    class A(_MyBase):
+        def a():...
+        def z():...
+    class B(_MyBase):
+        def b():...
+    class C(A,B): 
+        ...
+    """, modname='diamond')
+
+    assert len(util.inherited_members(dimond.contents['B']))==1 # type:ignore
+    assert len(util.inherited_members(dimond.contents['C']))==3 # type:ignore
+    assert len(util.inherited_members(dimond.contents['A']))==0 # type:ignore
+    assert len(util.inherited_members(dimond.contents['_MyBase']))==0 # type:ignore

@@ -8,6 +8,7 @@ being documented -- a System is a bad of Documentables, in some sense.
 
 import abc
 import ast
+from collections import defaultdict
 import datetime
 import importlib
 import inspect
@@ -95,11 +96,14 @@ class DocumentableKind(Enum):
     MODULE              = 900
     CLASS               = 800
     INTERFACE           = 850
+    EXCEPTION           = 750
     CLASS_METHOD        = 700
     STATIC_METHOD       = 600
     METHOD              = 500
     FUNCTION            = 400
     CONSTANT            = 310
+    TYPE_VARIABLE       = 306
+    TYPE_ALIAS          = 305
     CLASS_VARIABLE      = 300
     SCHEMA_FIELD        = 220
     ATTRIBUTE           = 210
@@ -368,8 +372,17 @@ class Documentable:
         assert parentMod is not None
         return parentMod
 
-    def report(self, descr: str, section: str = 'parsing', lineno_offset: int = 0) -> None:
-        """Log an error or warning about this documentable object."""
+    def report(self, descr: str, section: str = 'parsing', lineno_offset: int = 0, thresh:int=-1) -> None:
+        """
+        Log an error or warning about this documentable object.
+
+        @param descr: The error/warning string
+        @param section: What the warning is about.
+        @param lineno_offset: Offset
+        @param thresh: Thresh to pass to L{System.msg}, it will use C{-1} by default, 
+          meaning it will count as a violation and will fail the build if option C{-W} is passed.
+          But this behaviour is not applicable if C{thresh} is greater or equal to zero.
+        """
 
         linenumber: object
         if section in ('docstring', 'resolve_identifier_xref'):
@@ -386,7 +399,7 @@ class Documentable:
         self.system.msg(
             section,
             f'{self.description}:{linenumber}: {descr}',
-            thresh=-1)
+            thresh=thresh)
 
     @property
     def docstring_linker(self) -> 'linker.DocstringLinker':
@@ -481,6 +494,39 @@ class Module(CanContainImportsDocumentable):
 class Package(Module):
     kind = DocumentableKind.PACKAGE
 
+# List of exceptions class names in the standard library, Python 3.8.10
+_STD_LIB_EXCEPTIONS = ('ArithmeticError', 'AssertionError', 'AttributeError', 
+    'BaseException', 'BlockingIOError', 'BrokenPipeError', 
+    'BufferError', 'BytesWarning', 'ChildProcessError', 
+    'ConnectionAbortedError', 'ConnectionError', 
+    'ConnectionRefusedError', 'ConnectionResetError', 
+    'DeprecationWarning', 'EOFError', 
+    'EnvironmentError', 'Exception', 'FileExistsError', 
+    'FileNotFoundError', 'FloatingPointError', 'FutureWarning', 
+    'GeneratorExit', 'IOError', 'ImportError', 'ImportWarning', 
+    'IndentationError', 'IndexError', 'InterruptedError', 
+    'IsADirectoryError', 'KeyError', 'KeyboardInterrupt', 'LookupError', 
+    'MemoryError', 'ModuleNotFoundError', 'NameError', 
+    'NotADirectoryError', 'NotImplementedError', 
+    'OSError', 'OverflowError', 'PendingDeprecationWarning', 'PermissionError', 
+    'ProcessLookupError', 'RecursionError', 'ReferenceError', 
+    'ResourceWarning', 'RuntimeError', 'RuntimeWarning', 'StopAsyncIteration', 
+    'StopIteration', 'SyntaxError', 'SyntaxWarning', 'SystemError', 
+    'SystemExit', 'TabError', 'TimeoutError', 'TypeError', 
+    'UnboundLocalError', 'UnicodeDecodeError', 'UnicodeEncodeError', 
+    'UnicodeError', 'UnicodeTranslateError', 'UnicodeWarning', 'UserWarning', 
+    'ValueError', 'Warning', 'ZeroDivisionError')
+def is_exception(cls: 'Class') -> bool:
+    """
+    Whether is class should be considered as 
+    an exception and be marked with the special 
+    kind L{DocumentableKind.EXCEPTION}.
+    """
+    for base in cls.mro(True, False):
+        if base in _STD_LIB_EXCEPTIONS:
+            return True
+    return False
+
 def compute_mro(cls:'Class') -> List[Union['Class', str]]:
     """
     Compute the method resolution order for this class.
@@ -500,11 +546,12 @@ def compute_mro(cls:'Class') -> List[Union['Class', str]]:
         if o.rawbases:
             finalbaseobjects: List[Optional[Class]] = []
             finalbases: List[str] = []
-            for i,(str_base, base) in enumerate(zip(o.rawbases, o._initialbaseobjects)):
+            for i,((str_base, _), base) in enumerate(zip(o.rawbases, o._initialbaseobjects)):
                 if base:
                     finalbaseobjects.append(base)
                     finalbases.append(base.fullName())
                 else:
+                    # Only re-resolve the base object if the base was None.
                     resolved_base = o.parent.resolveName(str_base)
                     if isinstance(resolved_base, Class):
                         base = resolved_base
@@ -515,6 +562,7 @@ def compute_mro(cls:'Class') -> List[Union['Class', str]]:
                         finalbaseobjects.append(None)
                         finalbases.append(o._initialbases[i])
                 if base:
+                    # Recurse on super classes
                     init_finalbaseobjects(base, path.copy())
             o._finalbaseobjects = finalbaseobjects
             o._finalbases = finalbases
@@ -540,27 +588,20 @@ def compute_mro(cls:'Class') -> List[Union['Class', str]]:
 class Class(CanContainImportsDocumentable):
     kind = DocumentableKind.CLASS
     parent: CanContainImportsDocumentable
-    _initialbaseobjects: List[Optional['Class']]
-    _finalbaseobjects: Optional[List[Optional['Class']]] = None # set in post-processing
-    _initialbases: List[str]
-    _finalbases: Optional[List[str]] = None # set in post-processing
     decorators: Sequence[Tuple[str, Optional[Sequence[ast.expr]]]]
-    # Note: While unused in pydoctor itself, raw_decorators is still in use
-    #       by Twisted's custom System class, to find deprecations.
-    raw_decorators: Sequence[ast.expr]
-
-    auto_attribs: bool = False
-    """L{True} iff this class uses the C{auto_attribs} feature of the C{attrs}
-    library to automatically convert annotated fields into attributes.
-    """
+    
+    # set in post-processing:
+    _finalbaseobjects: Optional[List[Optional['Class']]] = None 
+    _finalbases: Optional[List[str]] = None
+    _mro: Optional[List[Union['Class', str]]] = None
 
     def setup(self) -> None:
         super().setup()
-        self.rawbases: List[str] = []
+        self.rawbases: Sequence[Tuple[str, ast.expr]] = []
+        self.raw_decorators: Sequence[ast.expr] = []
         self.subclasses: List[Class] = []
-        self._initialbases = []
-        self._initialbaseobjects = []
-        self._mro: Optional[List[Union['Class', str]]] = None
+        self._initialbases: List[str] = []
+        self._initialbaseobjects: List[Optional['Class']] = []
     
     def _init_mro(self) -> None:
         """
@@ -602,6 +643,7 @@ class Class(CanContainImportsDocumentable):
         """
         return self._finalbases if \
             self._finalbases is not None else self._initialbases
+
     
     @property
     def baseobjects(self) -> List[Optional['Class']]:
@@ -758,6 +800,13 @@ class System:
     Additional list of extensions to load alongside default extensions.
     """
 
+    show_attr_value = (DocumentableKind.CONSTANT, 
+                       DocumentableKind.TYPE_VARIABLE, 
+                       DocumentableKind.TYPE_ALIAS)
+    """
+    What kind of attributes we should display the value for?
+    """
+
     def __init__(self, options: Optional['Options'] = None):
         self.allobjects: Dict[str, Documentable] = {}
         self.rootobjects: List[_ModuleT] = []
@@ -777,8 +826,11 @@ class System:
 
         self.projectname = 'my project'
 
-        self.docstring_syntax_errors: Set[str] = set()
-        """FullNames of objects for which the docstring failed to parse."""
+        self.parse_errors: Dict[str, Set[str]] = defaultdict(set)
+        """
+        Dict from the name of the thing we're rendering (C{section}) to the FullNames of objects for which the rendereable elements failed to parse.
+        Typically the renderable element is the C{docstring}, but it can be the decorators, parameter default values or any other colorized AST.
+        """
 
         self.verboselevel = 0
         self.needsnl = False
@@ -810,6 +862,8 @@ class System:
             self.extensions = list(extensions.get_extensions())
         assert isinstance(self.extensions, list)
         assert isinstance(self.custom_extensions, list)
+        # pydoctor.astbuilder includes some required extensions, so always add it.
+        self.extensions = ['pydoctor.astbuilder'] + self.extensions
         for ext in self.extensions + self.custom_extensions:
             # Load extensions
             extensions.load_extension_module(self, ext)
@@ -870,6 +924,7 @@ class System:
         @param thresh: The minimum verbosity level of the system for this message to actually be printed.
             Meaning passing thresh=-1 will make message still display if C{-q} is passed but not if C{-qq}. 
             Similarly, passing thresh=1 will make the message only apprear if the verbosity level is at least increased once with C{-v}.
+            Using negative thresh will count this message as a violation and will fail the build if option C{-W} is passed.
         @param topthresh: The maximum verbosity level of the system for this message to actually be printed.
         """
         if once:
@@ -926,19 +981,6 @@ class System:
                 raise LookupError(full_name)
 
         return None
-
-
-    def _warning(self,
-            current: Optional[Documentable],
-            message: str,
-            detail: str
-            ) -> None:
-        if current is not None:
-            fn = current.fullName()
-        else:
-            fn = '<None>'
-        if self.options.verbosity > 0:
-            print(fn, message, detail)
 
     def objectsOfType(self, cls: Union[Type['DocumentableT'], str]) -> Iterator['DocumentableT']:
         """Iterate over all instances of C{cls} present in the system. """
@@ -1083,7 +1125,7 @@ class System:
             - Packages wins over modules
             - Else, the last added module wins
         """
-        self._warning(dup.parent, "duplicate", str(first))
+        dup.report(f"duplicate {str(first)}", thresh=1)
 
         if first._is_c_module and not isinstance(dup, Package):
             # C-modules wins
@@ -1203,7 +1245,7 @@ class System:
         while (fullName + ' ' + str(i)) in self.allobjects:
             i += 1
         prev = self.allobjects[fullName]
-        self._warning(obj.parent, "duplicate", str(prev))
+        obj.report(f"duplicate {str(prev)}", thresh=1)
         self._remove(prev)
         prev.name = obj.name + ' ' + str(i)
         def readd(o: Documentable) -> None:
@@ -1244,10 +1286,10 @@ class System:
         else:
             builder = self.defaultBuilder(self)
             if mod._py_string is not None:
-                ast = builder.parseString(mod._py_string)
+                ast = builder.parseString(mod._py_string, mod)
             else:
                 assert mod.source_path is not None
-                ast = builder.parseFile(mod.source_path)
+                ast = builder.parseFile(mod.source_path, mod)
             if ast:
                 self.processing_modules.append(mod.fullName())
                 if mod._py_string is None:
@@ -1278,13 +1320,20 @@ class System:
         were not fully processed yet.
         """
 
-        # default post-processing includes processing of subclasses and MRO computing.
+        # default post-processing includes:
+        # - Processing of subclasses
+        # - MRO computing.
+        # - Checking whether the class is an exception
         for cls in self.objectsOfType(Class):
+            
             cls._init_mro()
+            
             for b in cls.baseobjects:
                 if b is not None:
                     b.subclasses.append(cls)
-
+            
+            if is_exception(cls):
+                cls.kind = DocumentableKind.EXCEPTION
 
         for post_processor in self._post_processors:
             post_processor(self)
@@ -1389,3 +1438,39 @@ class SystemBuilder(ISystemBuilder):
         self.system.process()
 
 System.systemBuilder = SystemBuilder
+
+def prepend_package(builderT:Type[ISystemBuilder], package:str) -> Type[ISystemBuilder]:
+    """
+    Get a new system builder class, that extends the original C{builder} such that it will always use a "fake" 
+    C{package} to be the only root object of the system and add new modules under it.
+    """
+    
+    class PrependPackageBuidler(builderT): # type:ignore
+        """
+        Support for option C{--prepend-package}.
+        """
+
+        def __init__(self, system: 'System', *, package:str) -> None:
+            super().__init__(system)
+            
+            self.package = package
+            
+            prependedpackage = None
+            for m in package.split('.'):
+                prependedpackage = system.Package(
+                    system, m, prependedpackage)
+                system.addObject(prependedpackage)
+        
+        def addModule(self, path: Path, parent_name: Optional[str] = None, ) -> None:
+            if parent_name is None:
+                parent_name = self.package
+            super().addModule(path, parent_name)
+        
+        def addModuleString(self, text: str, modname: str,
+                            parent_name: Optional[str] = None,
+                            is_package: bool = False, ) -> None:
+            if parent_name is None:
+                parent_name = self.package
+            super().addModuleString(text, modname, parent_name, is_package=is_package)
+    
+    return utils.partialclass(PrependPackageBuidler, package=package)
