@@ -356,7 +356,7 @@ class ModuleVistor(NodeVisitor):
                 assert isinstance(origin_module, model.Module)
                 ob = origin_module.contents.get(origin_name) or origin_module.resolveName(origin_name)
                 if ob is None:
-                    self.builder.warning("cannot resolve re-exported name",
+                    current.report("cannot resolve re-exported name",
                                             f'{modname}.{origin_name}', thresh=1)
                 else:
                     if origin_module.all is None or origin_name not in origin_module.all:
