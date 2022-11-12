@@ -146,6 +146,12 @@ else:
     def _is_str_constant(expr: ast.expr, s: str) -> bool:
         return isinstance(expr, ast.Str) and expr.s == s
 
+def get_int_value(expr: ast.expr) -> Optional[int]:
+    num = get_num_value(expr)
+    if isinstance(num, int):
+        return num # type:ignore[unreachable]
+    return None
+
 def is__name__equals__main__(cmp: ast.Compare) -> bool:
     """
     Returns whether or not the given L{ast.Compare} is equal to C{__name__ == '__main__'}.
