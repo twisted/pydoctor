@@ -8,7 +8,7 @@ from ast import Tuple
 import math
 import zope.interface
 import zope.schema
-from typing import Callable, Sequence, Optional, AnyStr, Generator, Union, List, Dict, TYPE_CHECKING
+from typing import Protocol, Callable, Sequence, Optional, AnyStr, Generator, Union, List, Dict, TYPE_CHECKING
 from incremental import Version
 from twisted.python.deprecate import deprecated, deprecatedProperty
 
@@ -29,6 +29,9 @@ lang: 'Final[Sequence[str]]' = ['Fr', 'En']
 """
 This is also a constant, but annotated with typing.Final.
 """
+
+Interface = Protocol
+"""Aliases are also documented."""
 
 @deprecated(Version("demo", "NEXT", 0, 0), replacement=math.prod)
 def demo_product_deprecated(x, y) -> float: # type: ignore
@@ -126,6 +129,7 @@ class DemoClass(ABC, _PrivateClass):
     .. versionchanged:: 1.2
         Add `read_and_write_delete` property.
     """
+    #FIXME: For some reason, the alias Demo do ont appear in the class page :/
 
     def __init__(self, one: str, two: bytes) -> None:
         """
@@ -180,6 +184,12 @@ class DemoClass(ABC, _PrivateClass):
         """
         This is a docstring for deleter.
         """
+        pass
+    
+    ro = read_only
+    rw = read_and_write
+    rwd = read_and_write_delete
+
 
 class IContact(zope.interface.Interface):
     """
@@ -196,3 +206,6 @@ class IContact(zope.interface.Interface):
 
     def send_email(text: str) -> None:
         pass
+
+_Demo = _PrivateClass
+Demo = DemoClass

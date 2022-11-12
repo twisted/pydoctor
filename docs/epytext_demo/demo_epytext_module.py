@@ -6,7 +6,7 @@ Most part of this documentation is using Python type hinting.
 
 from abc import ABC
 import math
-from typing import AnyStr, Dict, Generator, List, Union, Callable, Tuple, TYPE_CHECKING
+from typing import AnyStr, Dict, Generator, List, Union, Callable, Tuple, Sequence, Optional, Protocol, TYPE_CHECKING
 from somelib import SomeInterface
 import zope.interface
 import zope.schema
@@ -31,6 +31,9 @@ lang: 'Final[Sequence[str]]' = ['Fr', 'En']
 """
 This is also a constant, but annotated with typing.Final.
 """
+
+Interface = Protocol
+"""Aliases are also documented."""
 
 @deprecated(Version("demo", "NEXT", 0, 0), replacement=math.prod)
 def demo_product_deprecated(x, y) -> float: # type: ignore

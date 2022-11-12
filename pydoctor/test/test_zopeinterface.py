@@ -219,6 +219,7 @@ def test_aliasing_in_class(systemcls: Type[model.System]) -> None:
     '''
     mod = fromText(src, systemcls=systemcls)
     attr = mod.contents['IMyInterface'].contents['attribute']
+    assert mod.contents['IMyInterface'].contents['Attrib'].kind is model.DocumentableKind.ALIAS
     assert attr.docstring == 'fun in a bun'
     assert attr.kind is model.DocumentableKind.ATTRIBUTE
 

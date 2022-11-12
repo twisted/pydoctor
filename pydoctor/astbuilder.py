@@ -42,24 +42,6 @@ def _maybeAttribute(cls: model.Class, name: str) -> bool:
     obj = cls.find(name)
     return obj is None or isinstance(obj, model.Attribute)
 
-
-def _handleAliasing(
-        ctx: model.CanContainImportsDocumentable,
-        target: str,
-        expr: Optional[ast.expr]
-        ) -> bool:
-    """If the given expression is a name assigned to a target that is not yet
-    in use, create an alias.
-    @return: L{True} iff an alias was created.
-    """
-    if target in ctx.contents:
-        return False
-    full_name = node2fullname(expr, ctx)
-    if full_name is None:
-        return False
-    ctx._localNameToFullName_map[target] = full_name
-    return True
-
 def is_constant(obj: model.Attribute) -> bool:
     """
     Detect if the given assignment is a constant. 
@@ -147,6 +129,10 @@ def extract_final_subscript(annotation: ast.Subscript) -> ast.expr:
         assert isinstance(ann_slice, ast.expr)
         return ann_slice
 
+def is_alias(value: Optional[ast.expr]) -> bool:
+    return node2dottedname(value) is not None
+
+
 class ModuleVistor(NodeVisitor):
 
     def __init__(self, builder: 'ASTBuilder', module: model.Module):
@@ -154,6 +140,7 @@ class ModuleVistor(NodeVisitor):
         self.builder = builder
         self.system = builder.system
         self.module = module
+        self._moduleLevelAssigns: List[str] = []
 
 
     def visit_If(self, node: ast.If) -> None:
@@ -292,11 +279,11 @@ class ModuleVistor(NodeVisitor):
             assert modname is not None
 
         if node.names[0].name == '*':
-            self._importAll(modname)
+            self._importAll(modname, lineno=node.lineno)
         else:
-            self._importNames(modname, node.names)
+            self._importNames(modname, node.names, lineno=node.lineno)
 
-    def _importAll(self, modname: str) -> None:
+    def _importAll(self, modname: str, lineno:int) -> None:
         """Handle a C{from <modname> import *} statement."""
 
         mod = self.system.getProcessedModule(modname)
@@ -323,15 +310,15 @@ class ModuleVistor(NodeVisitor):
         exports = self._getCurrentModuleExports()
 
         # Add imported names to our module namespace.
-        assert isinstance(self.builder.current, model.CanContainImportsDocumentable)
-        _localNameToFullName = self.builder.current._localNameToFullName_map
+        current = self.builder.current
+        assert isinstance(current, model.CanContainImportsDocumentable)
+        _localNameToFullName = current._localNameToFullName_map
         expandName = mod.expandName
         for name in names:
-
             if self._handleReExport(exports, name, name, mod) is True:
                 continue
-
-            _localNameToFullName[name] = expandName(name)
+            _localNameToFullName[name] = model.ImportAlias(self.system, name, 
+                alias=expandName(name), parent=current, linenumber=lineno)
 
     def _getCurrentModuleExports(self) -> Collection[str]:
         # Fetch names to export.
@@ -347,35 +334,51 @@ class ModuleVistor(NodeVisitor):
 
     def _handleReExport(self, curr_mod_exports:Collection[str], 
                         origin_name:str, as_name:str,
-                        origin_module:model.Module) -> bool:
+                        origin_module:Union[model.Module, str]) -> bool:
         """
         Move re-exported objects into current module.
 
+        @param origin_module: None if the module is unknown to this system.
         @returns: True if the imported name has been sucessfully re-exported.
         """
         # Move re-exported objects into current module.
         current = self.builder.current
-        modname = origin_module.fullName()
+        if isinstance(origin_module, model.Module):
+            modname = origin_module.fullName()
+            known_module = True
+        else:
+            modname = origin_module
+            known_module = False
         if as_name in curr_mod_exports:
             # In case of duplicates names, we can't rely on resolveName,
             # So we use content.get first to resolve non-alias names. 
-            ob = origin_module.contents.get(origin_name) or origin_module.resolveName(origin_name)
-            if ob is None:
-                current.report("cannot resolve re-exported name :"
-                                        f'{modname}.{origin_name}', thresh=1)
+            if known_module:
+                assert isinstance(origin_module, model.Module)
+                ob = origin_module.contents.get(origin_name) or origin_module.resolveName(origin_name)
+                if ob is None:
+                    current.report("cannot resolve re-exported name",
+                                            f'{modname}.{origin_name}', thresh=1)
+                else:
+                    if origin_module.all is None or origin_name not in origin_module.all:
+                        self.system.msg(
+                            "astbuilder",
+                            "moving %r into %r" % (ob.fullName(), current.fullName())
+                            )
+                        # Must be a Module since the exports is set to an empty list if it's not.
+                        assert isinstance(current, model.Module)
+                        ob.reparent(current, as_name)
+                        return True
             else:
-                if origin_module.all is None or origin_name not in origin_module.all:
-                    self.system.msg(
-                        "astbuilder",
-                        "moving %r into %r" % (ob.fullName(), current.fullName())
-                        )
-                    # Must be a Module since the exports is set to an empty list if it's not.
-                    assert isinstance(current, model.Module)
-                    ob.reparent(current, as_name)
-                    return True
+                # re-export names that are not part of the current system with an alias
+                attr = self.builder.addAttribute(name=as_name, kind=model.DocumentableKind.ALIAS, parent=current)
+                attr.alias = f'{modname}.{origin_name}'
+                # This is only for the HTML repr
+                attr.value=ast.Name(attr.alias, ast.Load()) # passing ctx is required for python 3.6
+                return True
+ 
         return False
 
-    def _importNames(self, modname: str, names: Iterable[ast.alias]) -> None:
+    def _importNames(self, modname: str, names: Iterable[ast.alias], lineno:int) -> None:
         """Handle a C{from <modname> import <names>} statement."""
 
         # Process the module we're importing from.
@@ -392,7 +395,7 @@ class ModuleVistor(NodeVisitor):
             if asname is None:
                 asname = orgname
 
-            if mod is not None and self._handleReExport(exports, orgname, asname, mod) is True:
+            if self._handleReExport(exports, orgname, asname, mod or modname) is True:
                 continue
 
             # If we're importing from a package, make sure imported modules
@@ -400,7 +403,8 @@ class ModuleVistor(NodeVisitor):
             if isinstance(mod, model.Package):
                 self.system.getProcessedModule(f'{modname}.{orgname}')
 
-            _localNameToFullName[asname] = f'{modname}.{orgname}'
+            _localNameToFullName[asname] = model.ImportAlias(self.system, asname, 
+                alias=f'{modname}.{orgname}', parent=current, linenumber=lineno)
 
     def visit_Import(self, node: ast.Import) -> None:
         """Process an import statement.
@@ -415,15 +419,16 @@ class ModuleVistor(NodeVisitor):
         (dotted_name, as_name) where as_name is None if there was no 'as foo'
         part of the statement.
         """
-        if not isinstance(self.builder.current, model.CanContainImportsDocumentable):
+        current = self.builder.current
+        if not isinstance(current, model.CanContainImportsDocumentable):
             # processing import statement in odd context
             return
-        _localNameToFullName = self.builder.current._localNameToFullName_map
+        _localNameToFullName = current._localNameToFullName_map
         for al in node.names:
             fullname, asname = al.name, al.asname
             if asname is not None:
-                _localNameToFullName[asname] = fullname
-
+                _localNameToFullName[asname] = model.ImportAlias(self.system, asname, 
+                    alias=fullname, parent=current, linenumber=node.lineno)
 
     def _handleOldSchoolMethodDecoration(self, target: str, expr: Optional[ast.expr]) -> bool:
         if not isinstance(expr, ast.Call):
@@ -494,6 +499,32 @@ class ModuleVistor(NodeVisitor):
                 # Just plain "Final" annotation.
                 # Simply ignore it because it's duplication of information.
                 obj.annotation = _infer_type(value) if value else None
+    
+    def _handleAlias(self, obj: model.Attribute, value: Optional[ast.expr], lineno: int) -> None:
+        """
+        Must be called after obj.setLineNumber() to have the right line number in the warning.
+
+        Create or update an alias.
+        """
+        
+        if is_attribute_overridden(obj, value) and is_alias(obj.value):
+            obj.report(f'Assignment to alias "{obj.name}" overrides previous alias '
+                    f'at line {obj.linenumber}.', 
+                            section='ast', lineno_offset=lineno-obj.linenumber)
+        # obj.system.msg(msg=f'Processing alias {obj.name!r} at {obj.module.name}:{obj.linenumber}.', 
+        #             section='ast', 
+        #             thresh=2)
+
+        obj.kind = model.DocumentableKind.ALIAS
+        # This will be used for HTML repr of the alias.
+        obj.value = value
+        dottedname = node2dottedname(value)
+        # It cannot be None, because we call _handleAlias() only if is_alias() is True.
+        assert dottedname is not None
+        name = '.'.join(dottedname)
+        # Store the alias value as string now, this avoids doing it in _resolveAlias().
+        obj.alias = name
+
 
     def _handleModuleVar(self,
             target: str,
@@ -531,7 +562,9 @@ class ModuleVistor(NodeVisitor):
         obj.annotation = annotation
         obj.setLineNumber(lineno)
         
-        if is_constant(obj):
+        if is_alias(expr):
+            self._handleAlias(obj=obj, value=expr, lineno=lineno)
+        elif is_constant(obj):
             self._handleConstant(obj=obj, value=expr, lineno=lineno)
         else:
             obj.kind = model.DocumentableKind.VARIABLE
@@ -549,8 +582,7 @@ class ModuleVistor(NodeVisitor):
             ) -> None:
         module = self.builder.current
         assert isinstance(module, model.Module)
-        if not _handleAliasing(module, target, expr):
-            self._handleModuleVar(target, annotation, expr, lineno)
+        self._handleModuleVar(target, annotation, expr, lineno)
 
     def _handleClassVar(self,
             name: str,
@@ -579,7 +611,9 @@ class ModuleVistor(NodeVisitor):
         obj.annotation = annotation
         obj.setLineNumber(lineno)
 
-        if is_constant(obj):
+        if is_alias(expr):
+            self._handleAlias(obj=obj, value=expr, lineno=lineno)
+        elif is_constant(obj):
             self._handleConstant(obj=obj, value=expr, lineno=lineno)
         else:
             obj.value = expr
@@ -631,8 +665,7 @@ class ModuleVistor(NodeVisitor):
             ) -> None:
         cls = self.builder.current
         assert isinstance(cls, model.Class)
-        if not _handleAliasing(cls, target, expr):
-            self._handleClassVar(target, annotation, expr, lineno)
+        self._handleClassVar(target, annotation, expr, lineno)
 
     def _handleDocstringUpdate(self,
             targetNode: ast.expr,
@@ -702,6 +735,7 @@ class ModuleVistor(NodeVisitor):
                 self._handleDocstringUpdate(value, expr, lineno)
             elif isinstance(value, ast.Name) and value.id == 'self':
                 self._handleInstanceVar(targetNode.attr, annotation, expr, lineno)
+            # TODO: Fix https://github.com/twisted/pydoctor/issues/13
 
     def visit_Assign(self, node: ast.Assign) -> None:
         lineno = node.lineno
@@ -1152,6 +1186,7 @@ class ASTBuilder:
         return mod
 
 model.System.defaultBuilder = ASTBuilder
+
 
 def findModuleLevelAssign(mod_ast: ast.Module) -> Iterator[Tuple[str, ast.Assign]]:
     """

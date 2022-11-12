@@ -4,6 +4,13 @@ from typing import (
     TYPE_CHECKING, Dict, Iterator, List, Optional, Mapping, Sequence,
     Tuple, Type, Union
 )
+if TYPE_CHECKING:
+    from typing_extensions import Final
+else:
+    # Dirty hack to work without the typing_extensions dep at runtime.
+    from collections import defaultdict
+    from functools import partial
+    Final = defaultdict(partial(defaultdict, defaultdict))
 import ast
 import abc
 
@@ -279,7 +286,8 @@ class CommonPage(Page):
             r.append(epydoc2stan.safe_to_stan(extra, ob.docstring_linker, ob, compact=False, 
                 fallback = lambda _,__,___:epydoc2stan.BROKEN, section='extra'))
         return r
-
+         # Not adding Known aliases here because it would really be too much information.  
+         # TODO: Would it actully be TMI?
 
     def functionBody(self, ob: model.Documentable) -> "Flattenable":
         return self.docgetter.get(ob)
@@ -315,6 +323,13 @@ class ModulePage(CommonPage):
 
     def extras(self) -> List[Tag]:
         r: List[Tag] = []
+
+        # Add Known aliases, for modules.
+        aliases = sorted(self.ob.aliases, key=objects_order)
+        p = assembleList(self.ob.system, "Known aliases: ",
+                         [o.fullName() for o in aliases], self.page_url)
+        if p is not None:
+            r.append(tags.p(p))       
 
         sourceHref = util.srclink(self.ob)
         if sourceHref:
@@ -364,20 +379,16 @@ def assembleList(
     lst = lst2
     if not lst:
         return None
-    def one(item: str) -> "Flattenable":
-        if item in system.allobjects:
-            return tags.code(epydoc2stan.taglink(system.allobjects[item], page_url))
-        else:
-            return item
-    def commasep(items: Sequence[str]) -> List["Flattenable"]:
-        r = []
-        for item in items:
-            r.append(one(item))
+    r: List['Flattenable'] = []
+    for i, item in enumerate(lst):
+        if i>0:
             r.append(', ')
-        del r[-1]
-        return r
+        if item in system.allobjects:
+            r.append(tags.code(epydoc2stan.taglink(system.allobjects[item], page_url)))
+        else:
+            r.append(tags.code(item))
     p: List["Flattenable"] = [label]
-    p.extend(commasep(lst))
+    p.extend(r)
     return p
 
 
@@ -392,6 +403,7 @@ class ClassPage(CommonPage):
             ):
         super().__init__(ob, template_lookup, docgetter)
         self.baselists = util.class_members(self.ob)
+
 
     def extras(self) -> List[Tag]:
         r: List[Tag] = []
@@ -408,12 +420,21 @@ class ClassPage(CommonPage):
             self.classSignature(), ":", source
             )))
 
+        # Add Known subclasses
         subclasses = sorted(self.ob.subclasses, key=util.objects_order)
         if subclasses:
             p = assembleList(self.ob.system, "Known subclasses: ",
                             [o.fullName() for o in subclasses], self.page_url)
             if p is not None:
                 r.append(tags.p(p))
+    
+        # Add Known aliases, for classes. TODO: move this to extra_info
+        aliases = sorted(self.ob.aliases, key=objects_order)
+        if aliases:
+            p = assembleList(self.ob.system, "Known aliases: ",
+                            [o.fullName() for o in aliases], self.page_url)
+            if p is not None:
+                r.append(tags.p(p))         
 
         r.extend(super().extras())
         return r

@@ -635,6 +635,10 @@ def _get_parsed_summary(obj: model.Documentable) -> Tuple[Optional[model.Documen
         return (source, obj.parsed_summary)
 
     if source is None:
+        #  if obj.kind is model.DocumentableKind.ALIAS: 
+        #     assert isinstance(obj, model.Attribute)
+        #     # Aliases are generally not documented, so we never mark them as "undocumented", we simply link the object.
+        #     return Tag('', children=format_alias_value(obj).children)
         summary_parsed_doc: ParsedDocstring = ParsedStanOnly(format_undocumented(obj))
     else:
         # Tell mypy that if we found a docstring, we also have its source.
@@ -694,7 +698,9 @@ def format_docstring(obj: model.Documentable) -> Tag:
 
     ret: Tag = tags.div
     if source is None:
-        ret(tags.p(class_='undocumented')("Undocumented"))
+        # Aliases are generally not documented, so we never mark them as "undocumented".
+        if obj.kind is not model.DocumentableKind.ALIAS:
+            ret(tags.p(class_='undocumented')("Undocumented"))
     else:
         assert obj.parsed_docstring is not None, "ensure_parsed_docstring() did not do it's job"
         stan = safe_to_stan(obj.parsed_docstring, source.docstring_linker, source, 
@@ -864,6 +870,7 @@ def format_kind(kind: model.DocumentableKind, plural: bool = False) -> str:
         model.DocumentableKind.VARIABLE        : 'Variable',
         model.DocumentableKind.SCHEMA_FIELD    : 'Attribute',
         model.DocumentableKind.CONSTANT        : 'Constant',
+        model.DocumentableKind.ALIAS           : 'Alias',
         model.DocumentableKind.EXCEPTION       : 'Exception',
         model.DocumentableKind.TYPE_ALIAS      : 'Type Alias',
         model.DocumentableKind.TYPE_VARIABLE   : 'Type Variable',
@@ -871,6 +878,7 @@ def format_kind(kind: model.DocumentableKind, plural: bool = False) -> str:
     plurals = {
         model.DocumentableKind.CLASS           : 'Classes', 
         model.DocumentableKind.PROPERTY        : 'Properties',
+        model.DocumentableKind.ALIAS           : 'Aliases',
         model.DocumentableKind.TYPE_ALIAS      : 'Type Aliases',
     }
     if plural:
@@ -913,6 +921,14 @@ def format_constant_value(obj: model.Attribute) -> "Flattenable":
     """
     rows = list(_format_constant_value(obj))
     return tags.table(class_='valueTable')(*rows)
+
+def format_alias_value(obj: model.Attribute) -> Tag:
+    if isinstance(obj.resolved_alias, model.Documentable):
+        # TODO: contextualize the name in the context of the module/class, currently this always shows the fullName of the object.
+        alias = tags.code(taglink(obj.resolved_alias, obj.page_object.url))
+    else:
+        alias = colorize_inline_pyval(obj.value).to_stan(obj.parent.docstring_linker)
+    return tags.p(tags.em("Alias to ", alias))
 
 def _split_indentifier_parts_on_case(indentifier:str) -> List[str]:
 

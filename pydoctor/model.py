@@ -20,22 +20,24 @@ from enum import Enum
 from inspect import signature, Signature
 from pathlib import Path
 from typing import (
-    TYPE_CHECKING, Any, Callable, Collection, Dict, Iterator, List, Mapping,
+    TYPE_CHECKING, Any, Callable, Collection, Dict, Iterable, Iterator, List, Mapping,
     Optional, Sequence, Set, Tuple, Type, TypeVar, Union, cast, overload
 )
 from urllib.parse import quote
 
 from pydoctor.options import Options
-from pydoctor import factory, qnmatch, utils, linker, astutils, mro
+from pydoctor import factory, qnmatch, utils, linker, astutils, mro, visitor
 from pydoctor.epydoc.markup import ParsedDocstring
 from pydoctor.sphinx import CacheT, SphinxInventory
 
 if TYPE_CHECKING:
     from typing_extensions import Literal
     from pydoctor.astbuilder import ASTBuilder, DocumentableT
+    from pydoctor.names import _IndirectionT
 else:
     Literal = {True: bool, False: bool}
     ASTBuilder = object
+    _IndirectionT = object
 
 
 # originally when I started to write pydoctor I had this idea of a big
@@ -101,6 +103,7 @@ class DocumentableKind(Enum):
     STATIC_METHOD       = 600
     METHOD              = 500
     FUNCTION            = 400
+    ALIAS               = 320
     CONSTANT            = 310
     TYPE_VARIABLE       = 306
     TYPE_ALIAS          = 305
@@ -110,6 +113,32 @@ class DocumentableKind(Enum):
     INSTANCE_VARIABLE   = 200
     PROPERTY            = 150
     VARIABLE            = 100
+
+
+class ImportAlias:
+    """
+    Imports are not documentable, but share bits of the interface.
+    """
+
+    # invalid note:
+    # @note: This object is used to represent both import aliases and 
+    #     undocumented aliases (which are not documented at all - 
+    #     not even hidden, there are only there to keep track of indirections).
+
+    def __init__(self, system: 'System', 
+                 name: str, alias:str, 
+                 parent: 'CanContainImportsDocumentable', 
+                 linenumber:int):
+        
+        self.system = system
+        self.name = name
+        self.parent = parent
+        self.linenumber = linenumber
+        self.alias: Optional[str] = alias
+
+    def fullName(self) -> str:
+        return f'{self.parent.fullName()}.{self.name}'
+
 
 class Documentable:
     """An object that can be documented.
@@ -132,6 +161,8 @@ class Documentable:
     documentation_location = DocLocation.OWN_PAGE
     """Page location where we are documented."""
 
+    _RESOLVE_ALIAS_MAX_RECURSE = 100
+
     def __init__(
             self, system: 'System', name: str,
             parent: Optional['Documentable'] = None,
@@ -144,10 +175,12 @@ class Documentable:
         self.parent = parent
         self.parentMod: Optional[Module] = None
         self.source_path: Optional[Path] = source_path
+        
         self.extra_info: List[ParsedDocstring] = []
         """
         A list to store extra informations about this documentable, as L{ParsedDocstring}.
         """
+        
         self.setup()
 
     @property
@@ -156,6 +189,11 @@ class Documentable:
 
     def setup(self) -> None:
         self.contents: Dict[str, Documentable] = {}
+        self.aliases: List[Documentable] = []
+        """
+        Aliases to this object. 
+        Computed at the time of post-procesing.
+        """
         self._linker: Optional['linker.DocstringLinker'] = None
 
     def setDocstring(self, node: ast.Str) -> None:
@@ -270,7 +308,10 @@ class Documentable:
         self.name = new_name
         self._handle_reparenting_post()
         del old_parent.contents[old_name]
-        old_parent._localNameToFullName_map[old_name] = self.fullName()
+        # We could add a special alias insead of using _localNameToFullName_map, 
+        # this would allow to track the original location of the documentable.
+        old_parent._localNameToFullName_map[old_name] = ImportAlias(self.system, old_name, 
+                    alias=self.fullName(), parent=old_parent, linenumber=self.linenumber)
         new_parent.contents[new_name] = self
         self._handle_reparenting_post()
 
@@ -284,57 +325,20 @@ class Documentable:
         for o in self.contents.values():
             o._handle_reparenting_post()
 
-    def _localNameToFullName(self, name: str) -> str:
-        raise NotImplementedError(self._localNameToFullName)
-
-    def expandName(self, name: str) -> str:
-        """Return a fully qualified name for the possibly-dotted `name`.
-
-        To explain what this means, consider the following modules:
-
-        mod1.py::
-
-            from external_location import External
-            class Local:
-                pass
-
-        mod2.py::
-
-            from mod1 import External as RenamedExternal
-            import mod1 as renamed_mod
-            class E:
-                pass
-
-        In the context of mod2.E, expandName("RenamedExternal") should be
-        "external_location.External" and expandName("renamed_mod.Local")
-        should be "mod1.Local". """
-        parts = name.split('.')
-        obj: Documentable = self
-        for i, p in enumerate(parts):
-            full_name = obj._localNameToFullName(p)
-            if full_name == p and i != 0:
-                # The local name was not found.
-                # If we're looking at a class, we try our luck with the inherited members
-                if isinstance(obj, Class):
-                    inherited = obj.find(p)
-                    if inherited: 
-                        full_name = inherited.fullName()
-                if full_name == p:
-                    # We don't have a full name
-                    # TODO: Instead of returning the input, _localNameToFullName()
-                    #       should probably either return None or raise LookupError.
-                    full_name = f'{obj.fullName()}.{p}'
-                    break
-            nxt = self.system.objForFullName(full_name)
-            if nxt is None:
-                break
-            obj = nxt
-        return '.'.join([full_name] + parts[i + 1:])
+    def expandName(self, name: str, indirections:Optional[List['_IndirectionT']]=None) -> str:
+        """
+        See L{names.expandName}
+        """
+        from pydoctor import names
+        return names.expandName(self, name, indirections)
 
     def resolveName(self, name: str) -> Optional['Documentable']:
-        """Return the object named by "name" (using Python's lookup rules) in
-        this context, if any is known to pydoctor."""
-        return self.system.objForFullName(self.expandName(name))
+        """
+        Return the object named by "name" (using Python's lookup rules) in
+        this context, if any is known to pydoctor. 
+        """
+        obj = self.system.objForFullName(self.expandName(name))
+        return obj
 
     @property
     def privacyClass(self) -> PrivacyClass:
@@ -416,8 +420,7 @@ class Documentable:
 class CanContainImportsDocumentable(Documentable):
     def setup(self) -> None:
         super().setup()
-        self._localNameToFullName_map: Dict[str, str] = {}
-
+        self._localNameToFullName_map: Dict[str, ImportAlias] = {}
 
 class Module(CanContainImportsDocumentable):
     kind = DocumentableKind.MODULE
@@ -452,15 +455,6 @@ class Module(CanContainImportsDocumentable):
         """
 
         self._docformat: Optional[str] = None
-
-    def _localNameToFullName(self, name: str) -> str:
-        if name in self.contents:
-            o: Documentable = self.contents[name]
-            return o.fullName()
-        elif name in self._localNameToFullName_map:
-            return self._localNameToFullName_map[name]
-        else:
-            return name
 
     @property
     def module(self) -> 'Module':
@@ -679,15 +673,6 @@ class Class(CanContainImportsDocumentable):
                 return obj
         return None
 
-    def _localNameToFullName(self, name: str) -> str:
-        if name in self.contents:
-            o: Documentable = self.contents[name]
-            return o.fullName()
-        elif name in self._localNameToFullName_map:
-            return self._localNameToFullName_map[name]
-        else:
-            return self.parent._localNameToFullName(name)
-
     @property
     def constructor_params(self) -> Mapping[str, Optional[ast.expr]]:
         """A mapping of constructor parameter names to their type annotation.
@@ -717,9 +702,6 @@ class Inheritable(Documentable):
             if self.name in b.contents:
                 yield b.contents[self.name]
 
-    def _localNameToFullName(self, name: str) -> str:
-        return self.parent._localNameToFullName(name)
-
 class Function(Inheritable):
     kind = DocumentableKind.FUNCTION
     is_async: bool
@@ -732,6 +714,16 @@ class Function(Inheritable):
         if isinstance(self.parent, Class):
             self.kind = DocumentableKind.METHOD
 
+@object.__new__
+class _NotYetResolved:
+    def __bool__(self) -> bool:
+        return False
+
+if TYPE_CHECKING:
+    _NotYetResolvedT = Type[_NotYetResolved]
+else:
+    _NotYetResolvedT = Type[object]
+
 class Attribute(Inheritable):
     kind: Optional[DocumentableKind] = DocumentableKind.ATTRIBUTE
     annotation: Optional[ast.expr]
@@ -741,6 +733,24 @@ class Attribute(Inheritable):
     The value of the assignment expression. 
 
     None value means the value is not initialized at the current point of the the process. 
+    """
+
+    alias: Optional[str] = None
+    """"
+    We store the alias value here so we don't have to process it all the time. 
+
+    For aliases, this is the same as::
+
+        '.'.join(node2dottedname(self.value))
+
+    For other attributes, it's C{None}.
+    """
+    
+    resolved_alias: Union[_NotYetResolvedT, 'Documentable', None] = _NotYetResolved
+    """
+    Once we have resolved the alias to a Documentable object in post-processing, it's value is stored in this attribute. 
+
+    If it's None, it means that the alias could not be resolved to an object in the system.
     """
 
 # Work around the attributes of the same name within the System class.
@@ -1320,20 +1330,48 @@ class System:
         were not fully processed yet.
         """
 
-        # default post-processing includes:
-        # - Processing of subclasses
-        # - MRO computing.
-        # - Checking whether the class is an exception
-        for cls in self.objectsOfType(Class):
-            
-            cls._init_mro()
-            
-            for b in cls.baseobjects:
-                if b is not None:
-                    b.subclasses.append(cls)
-            
-            if is_exception(cls):
-                cls.kind = DocumentableKind.EXCEPTION
+        from pydoctor import names
+
+        class PostProcessVisitor(visitor.PartialVisitor[Documentable]):
+            # this post-processing includes :
+            # - processing of subclasses and MRO computing.
+            # - Checking whether the class is an exception
+            # - processing of aliases.
+
+            @classmethod
+            def get_children(cls, ob: Documentable) -> Iterable[Documentable]:
+                return ob.contents.values()
+
+            def visit_Class(self, cls: 'Class') -> None:
+                cls._init_mro()
+                for b in cls.baseobjects:
+                    if b is not None:
+                        b.subclasses.append(cls)
+                
+                if is_exception(cls):
+                    cls.kind = DocumentableKind.EXCEPTION
+
+            def visit_Attribute(self, attr: 'Attribute') -> None:
+                if attr.kind is DocumentableKind.ALIAS:
+                    # Since we try to resolve all aliases once in post-processing,
+                    # we use some caching
+                    resolved = names._resolveAlias(attr.parent, attr)
+                    if resolved:
+                        resolved_ob = attr.system.objForFullName(resolved)
+                        if resolved_ob: 
+                            attr.resolved_alias = resolved_ob
+                            if attr not in resolved_ob.aliases:
+                                resolved_ob.aliases.append(attr)
+                        else:
+                            # Not in the system
+                            attr.resolved_alias = None
+                else:
+                    # Can't resolve
+                    attr.resolved_alias = None
+        
+        for ob in self.rootobjects:
+            PostProcessVisitor().walk(ob)
+
 
         for post_processor in self._post_processors:
             post_processor(self)

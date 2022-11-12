@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING, List
 from twisted.web.iweb import ITemplateLoader
 from twisted.web.template import Tag, renderer, tags
 
-from pydoctor.model import Attribute
+from pydoctor.model import Attribute, DocumentableKind
 from pydoctor import epydoc2stan
 from pydoctor.templatewriter import TemplateElement, util
 from pydoctor.templatewriter.pages import format_decorators
@@ -76,7 +76,14 @@ class AttributeChild(TemplateElement):
 
     @renderer
     def constantValue(self, request: object, tag: Tag) -> "Flattenable":
-        if self.ob.kind not in self.ob.system.show_attr_value or self.ob.value is None:
-            return tag.clear()
-        # Attribute is a constant/type alias (with a value), then display it's value
-        return epydoc2stan.format_constant_value(self.ob)
+        if self.ob.value is not None:
+            if self.ob.kind in self.ob.system.show_attr_value:
+                # Attribute is a constant/type alias (with a value), then display it's value
+                return epydoc2stan.format_constant_value(self.ob)
+            if self.ob.kind is DocumentableKind.ALIAS:
+                # Attribute is an alias, use special formatting.
+                return epydoc2stan.format_alias_value(self.ob)
+            else:
+                return ''
+        else:
+            return ''
