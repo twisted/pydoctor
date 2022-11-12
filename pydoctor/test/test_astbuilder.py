@@ -1,15 +1,17 @@
-
 from typing import Optional, Tuple, Type, List, overload, cast
 import ast
 
 import astor
 
 
-from pydoctor import astbuilder, model
+from pydoctor import astbuilder, astutils, model
 from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring
+from pydoctor.options import Options
 from pydoctor.stanutils import flatten, html2stan, flatten_text
 from pydoctor.epydoc.markup.epytext import Element, ParsedEpytextDocstring
 from pydoctor.epydoc2stan import format_summary, get_parsed_type
+from pydoctor.test.test_packages import processPackage
+from pydoctor.utils import partialclass
 
 from . import CapSys, NotFoundLinker, posonlyargs, typecomment
 import pytest
@@ -1413,7 +1415,7 @@ def test_literal_string_annotation(annotation: str, expected: str) -> None:
     """Strings inside Literal annotations must not be recursively parsed."""
     stmt, = ast.parse(annotation).body
     assert isinstance(stmt, ast.Expr)
-    unstringed = astbuilder._AnnotationStringParser().visit(stmt.value)
+    unstringed = astutils._AnnotationStringParser().visit(stmt.value)
     assert astor.to_source(unstringed).strip() == expected
 
 @systemcls_param
@@ -2037,4 +2039,145 @@ def test_module_level_attributes_and_aliases(systemcls: Type[model.System]) -> N
     assert s.value is not None
     assert ast.literal_eval(s.value)==1
     assert s.kind == model.DocumentableKind.VARIABLE
+
+@systemcls_param
+def test_exception_kind(systemcls: Type[model.System], capsys: CapSys) -> None:
+    """
+    Exceptions are marked with the special kind "EXCEPTION".
+    """
+    mod = fromText('''
+    class Clazz:
+        """Class."""
+    class MyWarning(DeprecationWarning):
+        """Warnings are technically exceptions"""
+    class Error(SyntaxError):
+        """An exeption"""
+    class SubError(Error):
+        """A exeption subclass"""  
+    ''', systemcls=systemcls, modname="mod")
+    
+    warn = mod.contents['MyWarning']
+    ex1 = mod.contents['Error']
+    ex2 = mod.contents['SubError']
+    cls = mod.contents['Clazz']
+
+    assert warn.kind is model.DocumentableKind.EXCEPTION
+    assert ex1.kind is model.DocumentableKind.EXCEPTION
+    assert ex2.kind is model.DocumentableKind.EXCEPTION
+    assert cls.kind is model.DocumentableKind.CLASS
+
+    assert not capsys.readouterr().out
+
+@systemcls_param
+def test_exception_kind_corner_cases(systemcls: Type[model.System], capsys: CapSys) -> None:
+
+    src1 = '''\
+    class Exception:...
+    class LooksLikeException(Exception):... # Not an exception
+    '''
+
+    src2 = '''\
+    class Exception(BaseException):...
+    class LooksLikeException(Exception):... # An exception
+    '''
+
+    mod1 = fromText(src1, modname='src1', systemcls=systemcls)
+    assert mod1.contents['LooksLikeException'].kind == model.DocumentableKind.CLASS
+
+    mod2 = fromText(src2, modname='src2', systemcls=systemcls)
+    assert mod2.contents['LooksLikeException'].kind == model.DocumentableKind.EXCEPTION
+
+    assert not capsys.readouterr().out
+    
+@systemcls_param
+def test_syntax_error(systemcls: Type[model.System], capsys: CapSys) -> None:
+    systemcls = partialclass(systemcls, Options.from_args(['-q']))
+    fromText('''\
+    def f()
+        return True
+    ''', systemcls=systemcls)
+    assert capsys.readouterr().out == '<test>:???: cannot parse string\n'
+
+@systemcls_param
+def test_syntax_error_pack(systemcls: Type[model.System], capsys: CapSys) -> None:
+    systemcls = partialclass(systemcls, Options.from_args(['-q']))
+    processPackage('syntax_error', systemcls)
+    out = capsys.readouterr().out.strip('\n')
+    assert "__init__.py:???: cannot parse file, " in out, out
+
+@systemcls_param
+def test_type_alias(systemcls: Type[model.System]) -> None:
+    """
+    Type aliases and type variables are recognized as such.
+    """
+
+    mod = fromText(
+        '''
+        from typing import Callable, Tuple, TypeAlias, TypeVar
+        
+        T = TypeVar('T')
+        Parser = Callable[[str], Tuple[int, bytes, bytes]]
+        mylst = yourlst = list[str]
+        alist: TypeAlias = 'list[str]'
+        
+        notanalias = 'Callable[[str], Tuple[int, bytes, bytes]]'
+
+        class F:
+            from ext import what
+            L = _j = what.some = list[str]
+            def __init__(self):
+                self.Pouet: TypeAlias = 'Callable[[str], Tuple[int, bytes, bytes]]'
+                self.Q = q = list[str]
+        
+        ''', systemcls=systemcls)
+
+    assert mod.contents['T'].kind == model.DocumentableKind.TYPE_VARIABLE
+    assert mod.contents['Parser'].kind == model.DocumentableKind.TYPE_ALIAS
+    assert mod.contents['mylst'].kind == model.DocumentableKind.TYPE_ALIAS
+    assert mod.contents['yourlst'].kind == model.DocumentableKind.TYPE_ALIAS
+    assert mod.contents['alist'].kind == model.DocumentableKind.TYPE_ALIAS
+    assert mod.contents['notanalias'].kind == model.DocumentableKind.VARIABLE
+    assert mod.contents['F'].contents['L'].kind == model.DocumentableKind.TYPE_ALIAS
+    assert mod.contents['F'].contents['_j'].kind == model.DocumentableKind.TYPE_ALIAS
+
+    # Type variables in instance variables are not recognized
+    assert mod.contents['F'].contents['Pouet'].kind == model.DocumentableKind.INSTANCE_VARIABLE
+    assert mod.contents['F'].contents['Q'].kind == model.DocumentableKind.INSTANCE_VARIABLE
+
+@systemcls_param
+def test_prepend_package(systemcls: Type[model.System]) -> None:
+    """
+   Option --prepend-package option relies simply on the L{ISystemBuilder} interface, 
+   so we can test it by using C{addModuleString}, but it's not exactly what happens when we actually 
+   run pydoctor. See the other test L{test_prepend_package_real_path}. 
+    """
+    system = systemcls()
+    builder = model.prepend_package(system.systemBuilder, package='lib.pack')(system)
+
+    builder.addModuleString('"mod doc"\nclass C:\n    "C doc"', modname='core')
+    builder.buildModules()
+    assert isinstance(system.allobjects['lib'], model.Package)
+    assert isinstance(system.allobjects['lib.pack'], model.Package)
+    assert isinstance(system.allobjects['lib.pack.core.C'], model.Class)
+    assert 'core' not in system.allobjects
+
+
+@systemcls_param
+def test_prepend_package_real_path(systemcls: Type[model.System]) -> None:
+    """ 
+    In this test, we closer mimics what happens in the driver when --prepend-package option is passed. 
+    """
+    _builderT_init = systemcls.systemBuilder
+    try:
+        systemcls.systemBuilder = model.prepend_package(systemcls.systemBuilder, package='lib.pack')
+
+        system = processPackage('basic', systemcls=systemcls)
+
+        assert isinstance(system.allobjects['lib'], model.Package)
+        assert isinstance(system.allobjects['lib.pack'], model.Package)
+        assert isinstance(system.allobjects['lib.pack.basic.mod.C'], model.Class)
+        assert 'basic' not in system.allobjects
+    
+    finally:
+        systemcls.systemBuilder = _builderT_init
 

@@ -4,7 +4,7 @@ Various bits of reusable code related to L{ast.AST} node processing.
 
 import sys
 from numbers import Number
-from typing import Iterator, Optional, List, Iterable, Sequence, TYPE_CHECKING
+from typing import Iterator, Optional, List, Iterable, Sequence, TYPE_CHECKING, Union
 from inspect import BoundArguments, Signature
 import ast
 
@@ -56,6 +56,33 @@ class NodeVisitor(visitor.PartialVisitor[ast.AST]):
 
 class NodeVisitorExt(visitor.VisitorExt[ast.AST]):
     ...
+
+_AssingT = Union[ast.Assign, ast.AnnAssign]
+def iterassign(node:_AssingT) -> Iterator[Optional[List[str]]]:
+    """
+    Utility function to iterate assignments targets. 
+
+    Useful for all the following AST assignments:
+
+    >>> var:int=2
+    >>> self.var = target = node.astext()
+    >>> lol = ['extensions']
+
+    NOT Useful for the following AST assignments:
+
+    >>> x, y = [1,2]
+
+    Example:
+
+    >>> from pydoctor.astutils import iterassign
+    >>> from ast import parse
+    >>> node = parse('self.var = target = thing[0] = node.astext()').body[0]
+    >>> list(iterassign(node))
+    
+    """
+    for target in node.targets if isinstance(node, ast.Assign) else [node.target]:
+        dottedname = node2dottedname(target) 
+        yield dottedname
 
 def node2dottedname(node: Optional[ast.AST]) -> Optional[List[str]]:
     """
@@ -119,6 +146,12 @@ else:
     def _is_str_constant(expr: ast.expr, s: str) -> bool:
         return isinstance(expr, ast.Str) and expr.s == s
 
+def get_int_value(expr: ast.expr) -> Optional[int]:
+    num = get_num_value(expr)
+    if isinstance(num, int):
+        return num # type:ignore[unreachable]
+    return None
+
 def is__name__equals__main__(cmp: ast.Compare) -> bool:
     """
     Returns whether or not the given L{ast.Compare} is equal to C{__name__ == '__main__'}.
@@ -155,3 +188,166 @@ def is_using_annotations(expr: Optional[ast.AST],
             if full_name in annotations:
                 return True
     return False
+
+def unstring_annotation(node: ast.expr, ctx:'model.Documentable') -> ast.expr:
+    """Replace all strings in the given expression by parsed versions.
+    @return: The unstringed node. If parsing fails, an error is logged
+        and the original node is returned.
+    """
+    try:
+        expr = _AnnotationStringParser().visit(node)
+    except SyntaxError as ex:
+        module = ctx.module
+        assert module is not None
+        module.report(f'syntax error in annotation: {ex}', lineno_offset=node.lineno)
+        return node
+    else:
+        assert isinstance(expr, ast.expr), expr
+        return expr
+
+class _AnnotationStringParser(ast.NodeTransformer):
+    """Implementation of L{unstring_annotation()}.
+
+    When given an expression, the node returned by L{ast.NodeVisitor.visit()}
+    will also be an expression.
+    If any string literal contained in the original expression is either
+    invalid Python or not a singular expression, L{SyntaxError} is raised.
+    """
+
+    def _parse_string(self, value: str) -> ast.expr:
+        statements = ast.parse(value).body
+        if len(statements) != 1:
+            raise SyntaxError("expected expression, found multiple statements")
+        stmt, = statements
+        if isinstance(stmt, ast.Expr):
+            # Expression wrapped in an Expr statement.
+            expr = self.visit(stmt.value)
+            assert isinstance(expr, ast.expr), expr
+            return expr
+        else:
+            raise SyntaxError("expected expression, found statement")
+
+    def visit_Subscript(self, node: ast.Subscript) -> ast.Subscript:
+        value = self.visit(node.value)
+        if isinstance(value, ast.Name) and value.id == 'Literal':
+            # Literal[...] expression; don't unstring the arguments.
+            slice = node.slice
+        elif isinstance(value, ast.Attribute) and value.attr == 'Literal':
+            # typing.Literal[...] expression; don't unstring the arguments.
+            slice = node.slice
+        else:
+            # Other subscript; unstring the slice.
+            slice = self.visit(node.slice)
+        return ast.copy_location(ast.Subscript(value, slice, node.ctx), node)
+
+    # For Python >= 3.8:
+
+    def visit_Constant(self, node: ast.Constant) -> ast.expr:
+        value = node.value
+        if isinstance(value, str):
+            return ast.copy_location(self._parse_string(value), node)
+        else:
+            const = self.generic_visit(node)
+            assert isinstance(const, ast.Constant), const
+            return const
+
+    # For Python < 3.8:
+
+    def visit_Str(self, node: ast.Str) -> ast.expr:
+        return ast.copy_location(self._parse_string(node.s), node)
+
+TYPING_ALIAS = (
+        "typing.Hashable",
+        "typing.Awaitable",
+        "typing.Coroutine",
+        "typing.AsyncIterable",
+        "typing.AsyncIterator",
+        "typing.Iterable",
+        "typing.Iterator",
+        "typing.Reversible",
+        "typing.Sized",
+        "typing.Container",
+        "typing.Collection",
+        "typing.Callable",
+        "typing.AbstractSet",
+        "typing.MutableSet",
+        "typing.Mapping",
+        "typing.MutableMapping",
+        "typing.Sequence",
+        "typing.MutableSequence",
+        "typing.ByteString",
+        "typing.Tuple",
+        "typing.List",
+        "typing.Deque",
+        "typing.Set",
+        "typing.FrozenSet",
+        "typing.MappingView",
+        "typing.KeysView",
+        "typing.ItemsView",
+        "typing.ValuesView",
+        "typing.ContextManager",
+        "typing.AsyncContextManager",
+        "typing.Dict",
+        "typing.DefaultDict",
+        "typing.OrderedDict",
+        "typing.Counter",
+        "typing.ChainMap",
+        "typing.Generator",
+        "typing.AsyncGenerator",
+        "typing.Type",
+        "typing.Pattern",
+        "typing.Match",
+        # Special forms
+        "typing.Union",
+        "typing.Literal",
+        "typing.Optional",
+    )
+
+SUBSCRIPTABLE_CLASSES_PEP585 = (
+        "tuple",
+        "list",
+        "dict",
+        "set",
+        "frozenset",
+        "type",
+        "collections.deque",
+        "collections.defaultdict",
+        "collections.OrderedDict",
+        "collections.Counter",
+        "collections.ChainMap",
+        "collections.abc.Awaitable",
+        "collections.abc.Coroutine",
+        "collections.abc.AsyncIterable",
+        "collections.abc.AsyncIterator",
+        "collections.abc.AsyncGenerator",
+        "collections.abc.Iterable",
+        "collections.abc.Iterator",
+        "collections.abc.Generator",
+        "collections.abc.Reversible",
+        "collections.abc.Container",
+        "collections.abc.Collection",
+        "collections.abc.Callable",
+        "collections.abc.Set",
+        "collections.abc.MutableSet",
+        "collections.abc.Mapping",
+        "collections.abc.MutableMapping",
+        "collections.abc.Sequence",
+        "collections.abc.MutableSequence",
+        "collections.abc.ByteString",
+        "collections.abc.MappingView",
+        "collections.abc.KeysView",
+        "collections.abc.ItemsView",
+        "collections.abc.ValuesView",
+        "contextlib.AbstractContextManager",
+        "contextlib.AbstractAsyncContextManager",
+        "re.Pattern",
+        "re.Match",
+    )
+
+def is_typing_annotation(node: ast.AST, ctx: 'model.Documentable') -> bool:
+    """
+    Whether this annotation node refers to a typing alias.
+    """
+    return is_using_annotations(node, TYPING_ALIAS, ctx) or \
+            is_using_annotations(node, SUBSCRIPTABLE_CLASSES_PEP585, ctx)
+

@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import IO, Iterable, Type, TYPE_CHECKING
 
 from pydoctor import model
+from pydoctor.extensions import zopeinterface
 from pydoctor.templatewriter import (
     DOCTYPE, pages, summary, search, TemplateLookup, IWriter, StaticTemplate
 )
@@ -125,16 +126,24 @@ class TemplateWriter(IWriter):
         if not ob.isVisible:
             return
         pclass: Type[pages.CommonPage] = pages.CommonPage
-        for parent in ob.__class__.__mro__:
+        class_name = ob.__class__.__name__
+        
+        # Special case the zope interface custom renderer. 
+        # TODO: Find a better way of handling renderer customizations and get rid of ZopeInterfaceClassPage completely.
+        if class_name == 'Class' and isinstance(ob, zopeinterface.ZopeInterfaceClass):
+            class_name = 'ZopeInterfaceClass'
+        
+        try:
             # This implementation relies on 'pages.commonpages' dict that ties
             # documentable class name (i.e. 'Class') with the
             # page class used for rendering: pages.ClassPage
-            try:
-                pclass = pages.commonpages[parent.__name__]
-            except KeyError:
-                continue
-            else:
-                break
+            pclass = pages.commonpages[class_name]
+        except KeyError:
+            ob.system.msg(section="html", 
+                # This is typically only reached in tests, when rendering Functions or Attributes with this method.
+                msg=f"Could not find page class suitable to render object type: {class_name!r}, using CommonPage.", 
+                once=True, thresh=-2)
+        
         ob.system.msg('html', str(ob), thresh=1)
         page = pclass(ob=ob, template_lookup=self.template_lookup)
         self.written_pages += 1
