@@ -573,7 +573,7 @@ def _get_modules_test_zope_interface_imports_cycle_proof() -> List[Iterable[Dict
     from top.interface import IAddress
     
     @implementer(IAddress)
-    class Address(Interface):
+    class Address(object):
         ...  
     '''
 
