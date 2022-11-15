@@ -46,7 +46,8 @@ def objects_order(o: model.Documentable) -> Tuple[int, int, str]:
     return (-o.privacyClass.value, -map_kind(o.kind).value if o.kind else 0, o.fullName().lower())
 
 def format_decorators(obj: Union[model.Function, model.Attribute, model.FunctionOverload]) -> Iterator["Flattenable"]:
-    # Use the overload's primary function for some parts here
+    # Since we use this function to colorize the FunctionOverload decorators and it's not an actual Documentable subclass, we use the overload's 
+    # primary function for parts that requires an interface to Documentable methods or attributes
     documentable_obj = obj if not isinstance(obj, model.FunctionOverload) else obj.primary
 
     for dec in obj.decorators or ():
@@ -94,10 +95,12 @@ def format_overloads(func: model.Function) -> Iterator["Flattenable"]:
 def format_function_def(func_name: str, is_async: bool, 
                         func: Union[model.Function, model.FunctionOverload]) -> List["Flattenable"]:
     """
-    Format a function definition.
+    Format a function definition as nice HTML signature. 
+    
+    If the function is overloaded, it will return an empty list. We use L{format_overloads} for these.
     """
     r:List["Flattenable"] = []
-    # If this is a function with overloads, we do not render a definition
+    # If this is a function with overloads, we do not render the principal signature because the overloaded signatures will be shown instead.
     if isinstance(func, model.Function) and func.overloads:
         return r
     def_stmt = 'async def' if is_async else 'def'
