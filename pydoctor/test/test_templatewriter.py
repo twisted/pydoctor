@@ -1,4 +1,5 @@
 from io import BytesIO
+import re
 from typing import Callable, Union, Any, cast, Type, TYPE_CHECKING
 import pytest
 import warnings
@@ -538,12 +539,12 @@ def test_format_function_def_overloads(systemcls: Type[model.System]) -> None:
     assert isinstance(func, model.Function)
     
     # We intentionally remove spaces before comparing
-    overloads_html = stanutils.flatten(list(pages.format_overloads(func))).replace(' ','')
+    overloads_html = stanutils.flatten_text(list(pages.format_overloads(func))).replace(' ','')
     assert '''(s:str)-&gt;str:''' in overloads_html
     assert '''(s:bytes)-&gt;bytes:''' in overloads_html
 
     # Confirm the actual function definition is not rendered
-    function_def_html = stanutils.flatten(list(pages.format_function_def(func.name, func.is_async, func)))
+    function_def_html = stanutils.flatten_text(list(pages.format_function_def(func.name, func.is_async, func)))
     assert function_def_html == ''
 
 def test_format_signature() -> None:
@@ -710,23 +711,23 @@ def test_crash_xmlstring_entities(capsys:CapSys, processtypes:bool) -> None:
     getHTMLOf(mod.contents['C'])
     out = capsys.readouterr().out
     warnings = '''\
-test:2: bad docstring: SAXParseException: <unknown>:2:25: undefined entity
-test:25: bad signature: SAXParseException: <unknown>:1:108: undefined entity
-test:17: bad rendering of decorators: SAXParseException: <unknown>:1:102: undefined entity
-test:21: bad signature: SAXParseException: <unknown>:1:110: undefined entity
-test:30: bad docstring: SAXParseException: <unknown>:1:6: undefined entity
-test:8: bad annotation: SAXParseException: <unknown>:1:104: undefined entity
-test:10: bad rendering of constant: SAXParseException: <unknown>:1:112: undefined entity
-test:14: bad docstring: SAXParseException: <unknown>:1:13: undefined entity
-test:36: bad rendering of class signature: SAXParseException: <unknown>:1:104: undefined entity
+test:2: bad docstring: SAXParseException: <unknown>.+ undefined entity
+test:25: bad signature: SAXParseException: <unknown>.+ undefined entity
+test:17: bad rendering of decorators: SAXParseException: <unknown>.+ undefined entity
+test:21: bad signature: SAXParseException: <unknown>.+ undefined entity
+test:30: bad docstring: SAXParseException: <unknown>.+ undefined entity
+test:8: bad annotation: SAXParseException: <unknown>:.+ undefined entity
+test:10: bad rendering of constant: SAXParseException: <unknown>.+ undefined entity
+test:14: bad docstring: SAXParseException: <unknown>.+ undefined entity
+test:36: bad rendering of class signature: SAXParseException: <unknown>.+ undefined entity
 '''.splitlines()
     
     # Some how the type processing get rid of the non breaking spaces, but it's more an implementation
     # detail rather than a fix for the bug.
     if processtypes is True:
-        warnings.remove('test:30: bad docstring: SAXParseException: <unknown>:1:6: undefined entity')
+        warnings.remove('test:30: bad docstring: SAXParseException: <unknown>.+ undefined entity')
     
-    assert out == '\n'.join(warnings)+'\n'
+    assert re.match('\n'.join(warnings), out)
 
 @pytest.mark.parametrize('processtypes', [True, False])
 def test_crash_xmlstring_entities_rst(capsys:CapSys, processtypes:bool) -> None:
@@ -742,20 +743,20 @@ def test_crash_xmlstring_entities_rst(capsys:CapSys, processtypes:bool) -> None:
     getHTMLOf(mod.contents['C'])
     out = capsys.readouterr().out
     warn_str = '''\
-test:2: bad docstring: SAXParseException: <unknown>:1:13: undefined entity
-test:25: bad signature: SAXParseException: <unknown>:1:108: undefined entity
-test:17: bad rendering of decorators: SAXParseException: <unknown>:1:102: undefined entity
-test:21: bad signature: SAXParseException: <unknown>:1:110: undefined entity
-test:30: bad docstring: SAXParseException: <unknown>:1:6: undefined entity
-test:8: bad annotation: SAXParseException: <unknown>:1:104: undefined entity
-test:10: bad rendering of constant: SAXParseException: <unknown>:1:112: undefined entity
-test:14: bad docstring: SAXParseException: <unknown>:1:13: undefined entity
-test:36: bad rendering of class signature: SAXParseException: <unknown>:1:104: undefined entity
+test:2: bad docstring: SAXParseException: <unknown>.+ undefined entity
+test:25: bad signature: SAXParseException: <unknown>.+ undefined entity
+test:17: bad rendering of decorators: SAXParseException: <unknown>.+ undefined entity
+test:21: bad signature: SAXParseException: <unknown>.+ undefined entity
+test:30: bad docstring: SAXParseException: <unknown>.+ undefined entity
+test:8: bad annotation: SAXParseException: <unknown>.+ undefined entity
+test:10: bad rendering of constant: SAXParseException: <unknown>.+ undefined entity
+test:14: bad docstring: SAXParseException: <unknown>.+ undefined entity
+test:36: bad rendering of class signature: SAXParseException: <unknown>.+ undefined entity
 '''
     warnings = warn_str.splitlines()
 
     if processtypes is True:
-        warnings.remove('test:30: bad docstring: SAXParseException: <unknown>:1:6: undefined entity')
+        warnings.remove('test:30: bad docstring: SAXParseException: <unknown>.+ undefined entity')
     
-    assert out == '\n'.join(warnings)+'\n'
+    assert re.match('\n'.join(warnings), out)
 
