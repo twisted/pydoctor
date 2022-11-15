@@ -78,7 +78,7 @@ def format_signature(func: Union[model.Function, model.FunctionOverload]) -> "Fl
         return html2stan(str(func.signature)) if func.signature else broken
     except Exception as e:
         # We can't use safe_to_stan() here because we're using Signature.__str__ to generate the signature HTML.
-        epydoc2stan.reportErrors(func, 
+        epydoc2stan.reportErrors(func.primary if isinstance(func, model.FunctionOverload) else func, 
             [epydoc2stan.get_to_stan_error(e)], section='signature')
         return broken
 
