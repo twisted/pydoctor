@@ -109,7 +109,7 @@ def format_function_def(func_name: str, is_async: bool,
     r.extend([
         tags.span(def_stmt, class_='py-keyword'), ' ',
         tags.span(func_name, class_='py-defname'), 
-        format_signature(func), ':',
+        tags.span(format_signature(func), class_='function-signature'), ':',
     ])
     return r
     
