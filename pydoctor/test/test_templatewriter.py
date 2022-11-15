@@ -540,8 +540,8 @@ def test_format_function_def_overloads(systemcls: Type[model.System]) -> None:
     
     # We intentionally remove spaces before comparing
     overloads_html = stanutils.flatten_text(list(pages.format_overloads(func))).replace(' ','')
-    assert '''(s:str)-&gt;str:''' in overloads_html
-    assert '''(s:bytes)-&gt;bytes:''' in overloads_html
+    assert '''(s:str)->str:''' in overloads_html
+    assert '''(s:bytes)->bytes:''' in overloads_html
 
     # Confirm the actual function definition is not rendered
     function_def_html = stanutils.flatten_text(list(pages.format_function_def(func.name, func.is_async, func)))
