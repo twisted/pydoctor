@@ -75,6 +75,7 @@ What's New?
 
 in development
 ^^^^^^^^^^^^^^
+* Add support for the ``@overload`` decorator.
 
 pydoctor 22.9.1
 ^^^^^^^^^^^^^^^
