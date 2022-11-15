@@ -988,12 +988,13 @@ class _ValueFormatter:
     def __repr__(self) -> str:
         """
         Present the python value as HTML. 
-        Without the englobing <code> tags.
+        Present it with <code> tags.
         """
         # Using node2stan.node2html instead of flatten(to_stan()). 
         # This avoids calling flatten() twice, 
         # but potential XML parser errors caused by XMLString needs to be handled later.
-        return ''.join(node2stan.node2html(self._colorized.to_node(), self._linker))
+        html = ''.join(node2stan.node2html(self._colorized.to_node(), self._linker))
+        return '<code>%s</code>' % html
 
 def _infer_type(expr: ast.expr) -> Optional[ast.expr]:
     """Infer an expression's type.
