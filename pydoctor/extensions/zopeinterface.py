@@ -62,7 +62,7 @@ def _inheritedDocsources(obj: model.Documentable) -> Iterator[model.Documentable
         io = obj.system.objForFullName(interface)
         if io is not None:
             assert isinstance(io, ZopeInterfaceClass)
-            for io2 in io.allbases(include_self=True):
+            for io2 in io.mro():
                 if name in io2.contents:
                     yield io2.contents[name]
 
@@ -182,15 +182,13 @@ class ZopeInterfaceModuleVisitor(extensions.ModuleVisitorExt):
             return
         ob = self.visitor.system.objForFullName(funcName)
         if isinstance(ob, ZopeInterfaceClass) and ob.isinterfaceclass:
-            # TODO: Process 'bases' and '__doc__' arguments.
+            # TODO: Process 'rawbases' and '__doc__' arguments.
             # TODO: Currently, this implementation will create a duplicate class 
             # with the same name as the attribute, overriding it.
             interface = self.visitor.builder.pushClass(target, lineno)
             assert isinstance(interface, ZopeInterfaceClass)
             interface.isinterface = True
             interface.implementedby_directly = []
-            interface.bases = []
-            interface.baseobjects = []
             self.visitor.builder.popClass()
             self.visitor.builder.currentAttr = interface
 
@@ -242,8 +240,7 @@ class ZopeInterfaceModuleVisitor(extensions.ModuleVisitorExt):
                     section='zopeinterface')
     
     def _handleZopeInterfaceAssignment(self, node: Union[ast.Assign, ast.AnnAssign]) -> None:
-        for target in node.targets if isinstance(node, ast.Assign) else [node.target]:
-            dottedname = astutils.node2dottedname(target) 
+        for dottedname in astutils.iterassign(node):
             if dottedname and len(dottedname)==1:
                 # Here, we consider single name assignment only
                 current = self.visitor.builder.current

@@ -60,11 +60,12 @@ def format_decorators(obj: Union[model.Function, model.Attribute, model.Function
 
         # Colorize decorators!
         doc = colorize_inline_pyval(dec)
-        stan = doc.to_stan(documentable_obj.docstring_linker)
-        # Report eventual warnings. It warns when a regex failed to parse or the html2stan() function fails.
-        for message in doc.warnings:
-            documentable_obj.report(message)
-
+        stan = epydoc2stan.safe_to_stan(doc, documentable_obj.docstring_linker, documentable_obj, compact=True, 
+            fallback=epydoc2stan.colorized_pyval_fallback, 
+            section='rendering of decorators')
+        
+        # Report eventual warnings. It warns when we can't colorize the expression for some reason.
+        epydoc2stan.reportWarnings(documentable_obj, doc.warnings, section='colorize decorator')
         yield '@', stan.children, tags.br()
 
 def format_signature(func: Union[model.Function, model.FunctionOverload]) -> "Flattenable":
@@ -72,7 +73,15 @@ def format_signature(func: Union[model.Function, model.FunctionOverload]) -> "Fl
     Return a stan representation of a nicely-formatted source-like function signature for the given L{Function}.
     Arguments default values are linked to the appropriate objects when possible.
     """
-    return html2stan(str(func.signature)) if func.signature else "(...)"
+    broken = "(...)"
+    try:
+        return html2stan(str(func.signature)) if func.signature else broken
+    except Exception as e:
+        # We can't use safe_to_stan() here because we're using Signature.__str__ to generate the signature HTML.
+        epydoc2stan.reportErrors(func, 
+            [epydoc2stan.get_to_stan_error(e)], section='signature')
+        return broken
+
 
 def format_overloads(func: model.Function) -> Iterator["Flattenable"]:
     """
@@ -100,6 +109,7 @@ def format_function_def(func_name: str, is_async: bool,
         format_signature(func), ':',
     ])
     return r
+    
 
 class Nav(TemplateElement):
     """
@@ -297,7 +307,8 @@ class CommonPage(Page):
         """
         r: List[Tag] = []
         for extra in ob.extra_info:
-            r.append(extra.to_stan(ob.docstring_linker, compact=False))
+            r.append(epydoc2stan.safe_to_stan(extra, ob.docstring_linker, ob, compact=False, 
+                fallback = lambda _,__,___:epydoc2stan.BROKEN, section='extra'))
         return r
 
 
@@ -371,7 +382,6 @@ def assembleList(
         system: model.System,
         label: str,
         lst: Sequence[str],
-        idbase: str,
         page_url: str
         ) -> Optional["Flattenable"]:
     """
@@ -412,12 +422,7 @@ class ClassPage(CommonPage):
             docgetter: Optional[util.DocGetter] = None
             ):
         super().__init__(ob, template_lookup, docgetter)
-        self.baselists = []
-        for baselist in util.nested_bases(self.ob):
-            attrs = util.unmasked_attrs(baselist)
-            if attrs:
-                self.baselists.append((baselist, attrs))
-        self.overridenInCount = 0
+        self.baselists = util.class_members(self.ob)
 
     def extras(self) -> List[Tag]:
         r: List[Tag] = []
@@ -437,7 +442,7 @@ class ClassPage(CommonPage):
         subclasses = sorted(self.ob.subclasses, key=util.objects_order)
         if subclasses:
             p = assembleList(self.ob.system, "Known subclasses: ",
-                            [o.fullName() for o in subclasses], "moreSubclasses", self.page_url)
+                            [o.fullName() for o in subclasses], self.page_url)
             if p is not None:
                 r.append(tags.p(p))
 
@@ -445,19 +450,27 @@ class ClassPage(CommonPage):
         return r
 
     def classSignature(self) -> "Flattenable":
-        r: List["Flattenable"] = []
-        _linker = self.ob.docstring_linker
-        zipped = list(zip(self.ob.rawbases, self.ob.bases))
-        if zipped:
-            r.append('(')
-            for idx, (name, full_name) in enumerate(zipped):
-                if idx != 0:
-                    r.append(', ')
 
-                # link to external class or internal class
-                tag = _linker.link_to(full_name, name)
+        r: List["Flattenable"] = []
+        # Here, we should use the parent's linker because a base name
+        # can't be define in the class itself.
+        _linker = self.ob.parent.docstring_linker
+        if self.ob.rawbases:
+            r.append('(')
+            with _linker.disable_same_page_optimazation():
+            
+                for idx, (_, base_node) in enumerate(self.ob.rawbases):
+                    if idx != 0:
+                        r.append(', ')
+
+                    # link to external class or internal class, using the colorizer here
+                    # to link to classes with generics (subscripts and other AST expr).
+                    stan = epydoc2stan.safe_to_stan(colorize_inline_pyval(base_node), _linker, self.ob, 
+                        compact=True, 
+                        fallback=epydoc2stan.colorized_pyval_fallback, 
+                        section='rendering of class signature')
+                    r.extend(stan.children)
                     
-                r.append(tag(title=full_name))
             r.append(')')
         return r
 
@@ -496,27 +509,27 @@ class ClassPage(CommonPage):
         return r
 
     def objectExtras(self, ob: model.Documentable) -> List[Tag]:
-        page_url = self.page_url
-        name = ob.name
-        r: List[Tag] = []
-        for b in self.ob.allbases(include_self=False):
-            if name not in b.contents:
-                continue
-            overridden = b.contents[name]
-            r.append(tags.div(class_="interfaceinfo")(
-                'overrides ', tags.code(epydoc2stan.taglink(overridden, page_url))))
-            break
-        ocs = sorted(util.overriding_subclasses(self.ob, name), key=util.objects_order)
-        if ocs:
-            self.overridenInCount += 1
-            idbase = 'overridenIn' + str(self.overridenInCount)
-            l = assembleList(self.ob.system, 'overridden in ',
-                             [o.fullName() for o in ocs], idbase, self.page_url)
-            if l is not None:
-                r.append(tags.div(class_="interfaceinfo")(l))
+        r = list(get_override_info(self.ob, ob.name, self.page_url))
         r.extend(super().objectExtras(ob))
         return r
 
+def get_override_info(cls:model.Class, member_name:str, page_url:Optional[str]=None) -> Iterator[Tag]:
+    page_url = page_url or cls.page_object.url
+    for b in cls.mro(include_self=False):
+        if member_name not in b.contents:
+            continue
+        overridden = b.contents[member_name]
+        yield tags.div(class_="interfaceinfo")(
+            'overrides ', tags.code(epydoc2stan.taglink(overridden, page_url)))
+        break
+    
+    ocs = sorted(util.overriding_subclasses(cls, member_name), key=util.objects_order)
+    if ocs:
+        l = assembleList(cls.system, 'overridden in ',
+                            [o.fullName() for o in ocs], page_url)
+        if l is not None:
+            yield tags.div(class_="interfaceinfo")(l)
+    
 
 class ZopeInterfaceClassPage(ClassPage):
     ob: zopeinterface.ZopeInterfaceClass
@@ -531,8 +544,7 @@ class ZopeInterfaceClassPage(ClassPage):
             namelist = sorted(self.ob.implements_directly, key=lambda x:x.lower())
             label = 'Implements interfaces: '
         if namelist:
-            l = assembleList(self.ob.system, label, namelist, "moreInterface",
-                             self.page_url)
+            l = assembleList(self.ob.system, label, namelist, self.page_url)
             if l is not None:
                 r.append(tags.p(l))
         return r
@@ -543,7 +555,7 @@ class ZopeInterfaceClassPage(ClassPage):
             if interface in system.allobjects:
                 io = system.allobjects[interface]
                 assert isinstance(io, zopeinterface.ZopeInterfaceClass)
-                for io2 in io.allbases(include_self=True):
+                for io2 in io.mro():
                     method: Optional[model.Documentable] = io2.contents.get(methname)
                     if method is not None:
                         return method

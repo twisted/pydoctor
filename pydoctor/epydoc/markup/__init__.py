@@ -33,7 +33,7 @@ each error.
 """
 __docformat__ = 'epytext en'
 
-from typing import Callable, List, Optional, Sequence, Iterator, TYPE_CHECKING
+from typing import Callable, ContextManager, List, Optional, Sequence, Iterator, TYPE_CHECKING
 import abc
 import sys
 import re
@@ -155,6 +155,8 @@ class ParsedDocstring(abc.ABC):
         @param docstring_linker: An HTML translator for crossreference
             links into and out of the docstring.
         @return: The docstring presented as a stan tree.
+        @raises Exception: If something went wrong. Callers should generally catch C{Exception}
+            when calling L{to_stan()}.
         """
         # The following three lines is a hack in order to still show p tags 
         # around docstrings content when there is only a single line text
@@ -303,11 +305,30 @@ class DocstringLinker:
         @return: The URL of the target, or L{None} if not found.
         """
         raise NotImplementedError()
+    
+    def disable_same_page_optimazation(self) -> ContextManager[None]:
+        """
+        By default, when linkng to an object on the same page, the linker will generate 
+        an URL that links to the anchor only, this will avoid reloading the page needlessly. But sometimes 
+        we're using a linker to present the content on another page. This context manager will 
+        make the linker always generate full URLs.
+        """
+        raise NotImplementedError()
 
 
 ##################################################
 ## ParseError exceptions
 ##################################################
+
+def append_warnings(warns:List[str], errs:List['ParseError'], lineno:int) -> None:
+    """
+    Utility method to create non fatal L{ParseError}s and append them to the provided list.
+
+    @param warns: The warnings strings.
+    @param errs: The list of errors.
+    """
+    for warn in warns:
+        errs.append(ParseError(warn, linenum=lineno, is_fatal=False))
 
 class ParseError(Exception):
     """
