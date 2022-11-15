@@ -6,7 +6,7 @@ from collections import defaultdict
 import enum
 from typing import (
     TYPE_CHECKING, Any, Callable, ClassVar, DefaultDict, Dict, Generator, 
-    Iterator, List, Mapping, Optional, Sequence, Tuple, Union, 
+    Iterator, List, Mapping, Optional, Sequence, Tuple, 
 )
 import ast
 import re
