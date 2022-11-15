@@ -556,7 +556,7 @@ def test_format_signature() -> None:
         ...
     ''')
     assert ("""(a:Union[bytes,str]=_get_func_default(str),b:Any=re.compile(r'foo|bar'),*args:str,**kwargs:Any)->Iterator[Union[str,bytes]]""") in \
-        stanutils.flatten_text(pages.format_signature(cast(model.Function, mod.contents['func']))).replace(' ','') # type:ignore[arg-type]
+        stanutils.flatten_text(pages.format_signature(cast(model.Function, mod.contents['func']))).replace(' ','')
 
 def test_format_decorators() -> None:
     """Test C{pages.format_decorators}"""
@@ -711,10 +711,9 @@ def test_crash_xmlstring_entities(capsys:CapSys, processtypes:bool) -> None:
     out = capsys.readouterr().out
     warnings = '''\
 test:2: bad docstring: SAXParseException: <unknown>:2:25: undefined entity
-test:25: bad signature: SAXParseException: <unknown>:1:88: undefined entity
-test:25: bad annotation: SAXParseException: <unknown>:1:104: undefined entity
+test:25: bad signature: SAXParseException: <unknown>:1:108: undefined entity
 test:17: bad rendering of decorators: SAXParseException: <unknown>:1:102: undefined entity
-test:21: bad annotation: SAXParseException: <unknown>:1:104: undefined entity
+test:21: bad signature: SAXParseException: <unknown>:1:110: undefined entity
 test:30: bad docstring: SAXParseException: <unknown>:1:6: undefined entity
 test:8: bad annotation: SAXParseException: <unknown>:1:104: undefined entity
 test:10: bad rendering of constant: SAXParseException: <unknown>:1:112: undefined entity
@@ -744,10 +743,9 @@ def test_crash_xmlstring_entities_rst(capsys:CapSys, processtypes:bool) -> None:
     out = capsys.readouterr().out
     warn_str = '''\
 test:2: bad docstring: SAXParseException: <unknown>:1:13: undefined entity
-test:25: bad signature: SAXParseException: <unknown>:1:88: undefined entity
-test:25: bad annotation: SAXParseException: <unknown>:1:104: undefined entity
+test:25: bad signature: SAXParseException: <unknown>:1:108: undefined entity
 test:17: bad rendering of decorators: SAXParseException: <unknown>:1:102: undefined entity
-test:21: bad annotation: SAXParseException: <unknown>:1:104: undefined entity
+test:21: bad signature: SAXParseException: <unknown>:1:110: undefined entity
 test:30: bad docstring: SAXParseException: <unknown>:1:6: undefined entity
 test:8: bad annotation: SAXParseException: <unknown>:1:104: undefined entity
 test:10: bad rendering of constant: SAXParseException: <unknown>:1:112: undefined entity
