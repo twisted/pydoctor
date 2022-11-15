@@ -282,26 +282,60 @@ def test_func_arg_and_ret_annotation_with_override() -> None:
     classic_fmt = docstring2html(classic_mod.contents['f'])
     assert annotation_fmt == classic_fmt
 
-def test_func_arg_when_doc_missing() -> None:
-    # Output with annotated args left undocumented are the same as undocumented
+def test_func_arg_when_doc_missing_ast_types() -> None:
+    """
+    Type hints are now included in the signature, so no need to 
+    docucument them twice in the param table, only if non of them has documentation.
+    """
     annotation_mod = fromText('''
     def f(a: List[str], b: int) -> bool:
         """
         Today I will not document details
         """
     ''')
-    classic_mod = fromText('''
-    def f(a):
-        """
-        Today I will not document details
+    annotation_fmt = docstring2html(annotation_mod.contents['f'])
+    
+    assert 'fieldTable' not in annotation_fmt
+    assert 'b:' not in annotation_fmt
+
+def _get_test_func_arg_when_doc_missing_docstring_fields_types_cases() -> List[str]:
+    case1="""
         @type a: C{List[str]}
         @type b: C{int}
-        @rtype: C{bool}
+        @rtype: C{bool}"""
+    
+    case2="""
+        Args
+        ----
+        a: List[str]
+        b: int
+        
+        Returns
+        -------
+        bool:"""
+    return [case1,case2]
+
+@pytest.mark.parametrize('sig', ['(a)', '(a:List[str])', '(a) -> bool', '(a:List[str], b:int) -> bool'])
+@pytest.mark.parametrize('doc', _get_test_func_arg_when_doc_missing_docstring_fields_types_cases())
+def test_func_arg_when_doc_missing_docstring_fields_types(sig:str, doc:str) -> None:
+    """
+    When type fields are present (whether they are coming from napoleon extension or epytext), always show the param table.
+    """
+    
+    classic_mod = fromText(f'''
+    __docformat__ = "{'epytext' if '@type' in doc else 'numpy'}"
+    def f{sig}:
+        """
+        Today I will not document details
+        {doc}
         """
     ''')
-    annotation_fmt = docstring2html(annotation_mod.contents['f'])
+
     classic_fmt = docstring2html(classic_mod.contents['f'])
-    assert annotation_fmt == classic_fmt
+    assert 'fieldTable' in classic_fmt
+    assert '<span class="fieldArg' in classic_fmt
+    assert 'Parameters' in classic_fmt
+    assert 'Returns' in classic_fmt
 
 def test_func_param_duplicate(capsys: CapSys) -> None:
     """Warn when the same parameter is documented more than once."""
