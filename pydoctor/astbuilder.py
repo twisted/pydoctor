@@ -790,7 +790,7 @@ class ModuleVistor(NodeVisitor):
                         # the property object.
                         func_name = '.'.join(deco_name[-2:])
                 # Determine if the function is decorated with overload
-                if parent.expandName('.'.join(deco_name)) == 'typing.overload':
+                if parent.expandName('.'.join(deco_name)) in ('typing.overload', 'typing_extensions.overload'):
                     is_overload_func = True
 
         if is_property:
