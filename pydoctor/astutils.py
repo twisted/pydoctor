@@ -365,7 +365,7 @@ line in the string, rather than the first line.
 """
 
 def extract_docstring_linenum(node: ast.Str) -> int:
-    """
+    r"""
     In older CPython versions, the AST only tells us the end line
     number and we must approximate the start line number.
     This approximation is correct if the docstring does not contain
