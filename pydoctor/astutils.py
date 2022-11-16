@@ -2,9 +2,11 @@
 Various bits of reusable code related to L{ast.AST} node processing.
 """
 
+import inspect
+import platform
 import sys
 from numbers import Number
-from typing import Iterator, Optional, List, Iterable, Sequence, TYPE_CHECKING, Union
+from typing import Iterator, Optional, List, Iterable, Sequence, TYPE_CHECKING, Tuple, Union
 from inspect import BoundArguments, Signature
 import ast
 
@@ -355,3 +357,49 @@ def is_typing_annotation(node: ast.AST, ctx: 'model.Documentable') -> bool:
     return is_using_annotations(node, TYPING_ALIAS, ctx) or \
             is_using_annotations(node, SUBSCRIPTABLE_CLASSES_PEP585, ctx)
 
+
+_string_lineno_is_end = sys.version_info < (3,8) \
+                    and platform.python_implementation() != 'PyPy'
+"""True iff the 'lineno' attribute of an AST string node points to the last
+line in the string, rather than the first line.
+"""
+
+def extract_docstring_linenum(node: ast.Str) -> int:
+    """
+    In older CPython versions, the AST only tells us the end line
+    number and we must approximate the start line number.
+    This approximation is correct if the docstring does not contain
+    explicit newlines ('\n') or joined lines ('\' at end of line).
+
+    Leading blank lines are stripped by cleandoc(), so we must
+    return the line number of the first non-blank line.
+    """
+    doc = node.s
+    lineno = node.lineno
+    if _string_lineno_is_end:
+        # In older CPython versions, the AST only tells us the end line
+        # number and we must approximate the start line number.
+        # This approximation is correct if the docstring does not contain
+        # explicit newlines ('\n') or joined lines ('\' at end of line).
+        lineno -= doc.count('\n')
+
+    # Leading blank lines are stripped by cleandoc(), so we must
+    # return the line number of the first non-blank line.
+    for ch in doc:
+        if ch == '\n':
+            lineno += 1
+        elif not ch.isspace():
+            break
+    
+    return lineno
+
+def extract_docstring(node: ast.Str) -> Tuple[int, str]:
+    """
+    Extract docstring information from an ast node that represents the docstring.
+
+    @returns: 
+        - The line number of the first non-blank line of the docsring. See L{extract_docstring_linenum}.
+        - The docstring to be parsed, cleaned by L{inspect.cleandoc}.
+    """
+    lineno = extract_docstring_linenum(node)
+    return lineno, inspect.cleandoc(node.s)

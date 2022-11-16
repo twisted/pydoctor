@@ -1628,10 +1628,10 @@ def test_overload(systemcls: Type[model.System], capsys: CapSys) -> None:
         @dec
         @overload
         def parse(s:str)->str:
-            '''Ignored docstring'''
             ...
         @overload
         def parse(s:bytes)->bytes:
+            '''Ignored docstring'''
             ...
         def parse(s:Union[str, bytes])->Union[str, bytes]:
             pass
@@ -1650,8 +1650,8 @@ def test_overload(systemcls: Type[model.System], capsys: CapSys) -> None:
     assert flatten_text(html2stan(str(func.overloads[0].signature).replace(' ', ''))) == '(s:str)->str'
     assert flatten_text(html2stan(str(func.overloads[1].signature).replace(' ', ''))) == '(s:bytes)->bytes'
     assert capsys.readouterr().out.splitlines() == [
-        '<test>:5: <test>.parse overload has docstring',
-        '<test>:5: <test>.parse overload appeared after primary function',
+        '<test>:11: <test>.parse overload has docstring, unsupported',
+        '<test>:15: <test>.parse overload appeared after primary function',
     ]
 
 @systemcls_param

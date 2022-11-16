@@ -16,7 +16,7 @@ import astor
 from pydoctor import epydoc2stan, model, node2stan, extensions
 from pydoctor.epydoc.markup._pyval_repr import colorize_inline_pyval
 from pydoctor.astutils import (is_none_literal, is_typing_annotation, is_using_annotations, is_using_typing_final, node2dottedname, node2fullname, 
-                               is__name__equals__main__, unstring_annotation, iterassign, 
+                               is__name__equals__main__, unstring_annotation, iterassign, extract_docstring_linenum,  
                                NodeVisitor)
 
 def parseFile(path: Path) -> ast.Module:
@@ -810,7 +810,7 @@ class ModuleVistor(NodeVisitor):
             # which we do not allow. This also ensures that func will have
             # properties set for the primary function and not overloads.
             if existing_func.signature and is_overload_func:
-                existing_func.report(f'{existing_func.fullName()} overload appeared after primary function')
+                existing_func.report(f'{existing_func.fullName()} overload appeared after primary function', lineno_offset=lineno-existing_func.linenumber)
                 raise self.SkipNode()
             # Do not recreate function object, just re-push it
             self.builder.push(existing_func, lineno)
@@ -822,7 +822,8 @@ class ModuleVistor(NodeVisitor):
         if docstring is not None:
             # Docstring not allowed on overload
             if is_overload_func:
-                func.report(f'{func.fullName()} overload has docstring')
+                docline = extract_docstring_linenum(docstring)
+                func.report(f'{func.fullName()} overload has docstring, unsupported', lineno_offset=docline-func.linenumber)
             else:
                 func.setDocstring(docstring)
         func.decorators = node.decorator_list
