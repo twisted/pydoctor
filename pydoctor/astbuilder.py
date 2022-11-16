@@ -851,7 +851,7 @@ class ModuleVistor(NodeVisitor):
         parameters: List[Parameter] = []
         def add_arg(name: str, kind: Any, default: Optional[ast.expr]) -> None:
             default_val = Parameter.empty if default is None else _ValueFormatter(default, ctx=func)
-            annotation = Parameter.empty if annotations.get(name) is None else _ValueFormatter(annotations[name], ctx=func)
+            annotation = Parameter.empty if annotations.get(name) is None else _AnnotationValueFormatter(annotations[name], ctx=func)
             parameters.append(Parameter(name, kind, default=default_val, annotation=annotation))
 
         for index, arg in enumerate(posonlyargs):
@@ -873,7 +873,7 @@ class ModuleVistor(NodeVisitor):
             add_arg(kwarg.arg, Parameter.VAR_KEYWORD, None)
 
         return_type = annotations.get('return')
-        return_annotation = Parameter.empty if return_type is None or is_none_literal(return_type) else _ValueFormatter(return_type, ctx=func)
+        return_annotation = Parameter.empty if return_type is None or is_none_literal(return_type) else _AnnotationValueFormatter(return_type, ctx=func)
         try:
             signature = Signature(parameters, return_annotation=return_annotation)
         except ValueError as ex:
@@ -989,13 +989,23 @@ class _ValueFormatter:
     def __repr__(self) -> str:
         """
         Present the python value as HTML. 
-        Present it with <code> tags.
+        Without the englobing <code> tags.
         """
         # Using node2stan.node2html instead of flatten(to_stan()). 
         # This avoids calling flatten() twice, 
         # but potential XML parser errors caused by XMLString needs to be handled later.
-        html = ''.join(node2stan.node2html(self._colorized.to_node(), self._linker))
-        return '<code>%s</code>' % html
+        return ''.join(node2stan.node2html(self._colorized.to_node(), self._linker))
+
+class _AnnotationValueFormatter(_ValueFormatter):
+    """
+    Special L{_ValueFormatter} for annotations.
+    """
+    def __repr__(self) -> str:
+        """
+        Present the annotation wrapped inside <code> tags.
+        """
+        return '<code>%s</code>' % super().__repr__()
+
 
 def _infer_type(expr: ast.expr) -> Optional[ast.expr]:
     """Infer an expression's type.
