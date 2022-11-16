@@ -440,7 +440,7 @@ class ClassPage(CommonPage):
             tags.span("class", class_='py-keyword'), " ",
             tags.span(self.ob.name, class_='py-defname'),
             self.classSignature(), ":", source
-            )))
+            ), class_='class-signature'))
 
         subclasses = sorted(self.ob.subclasses, key=util.objects_order)
         if subclasses:
