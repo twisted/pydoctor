@@ -80,6 +80,34 @@ def format_signature(function: model.Function) -> "Flattenable":
             [epydoc2stan.get_to_stan_error(e)], section='signature')
         return broken
 
+def format_class_signature(cls: model.Class) -> "Flattenable":
+    """
+    The class signature is the formatted list of bases this class extends. 
+    It's not the class constructor.
+    """
+    r: List["Flattenable"] = []
+    # Here, we should use the parent's linker because a base name
+    # can't be define in the class itself.
+    _linker = cls.parent.docstring_linker
+    if cls.rawbases:
+        r.append('(')
+        with _linker.disable_same_page_optimazation():
+        
+            for idx, (_, base_node) in enumerate(cls.rawbases):
+                if idx != 0:
+                    r.append(', ')
+
+                # link to external class or internal class, using the colorizer here
+                # to link to classes with generics (subscripts and other AST expr).
+                stan = epydoc2stan.safe_to_stan(colorize_inline_pyval(base_node), _linker, cls, 
+                    compact=True, 
+                    fallback=epydoc2stan.colorized_pyval_fallback, 
+                    section='rendering of class signature')
+                r.extend(stan.children)
+                
+        r.append(')')
+    return r
+
 class Nav(TemplateElement):
     """
     Common navigation header.
@@ -419,29 +447,7 @@ class ClassPage(CommonPage):
         return r
 
     def classSignature(self) -> "Flattenable":
-
-        r: List["Flattenable"] = []
-        # Here, we should use the parent's linker because a base name
-        # can't be define in the class itself.
-        _linker = self.ob.parent.docstring_linker
-        if self.ob.rawbases:
-            r.append('(')
-            with _linker.disable_same_page_optimazation():
-            
-                for idx, (_, base_node) in enumerate(self.ob.rawbases):
-                    if idx != 0:
-                        r.append(', ')
-
-                    # link to external class or internal class, using the colorizer here
-                    # to link to classes with generics (subscripts and other AST expr).
-                    stan = epydoc2stan.safe_to_stan(colorize_inline_pyval(base_node), _linker, self.ob, 
-                        compact=True, 
-                        fallback=epydoc2stan.colorized_pyval_fallback, 
-                        section='rendering of class signature')
-                    r.extend(stan.children)
-                    
-            r.append(')')
-        return r
+        return format_class_signature(self.ob)
 
     @renderer
     def inhierarchy(self, request: object, tag: Tag) -> Tag:
