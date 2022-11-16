@@ -12,7 +12,6 @@ import attr
 from collections import defaultdict
 import datetime
 import importlib
-import inspect
 import platform
 import sys
 import textwrap
