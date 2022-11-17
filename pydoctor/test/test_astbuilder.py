@@ -12,7 +12,6 @@ from pydoctor.epydoc.markup.epytext import Element, ParsedEpytextDocstring
 from pydoctor.epydoc2stan import format_summary, get_parsed_type
 from pydoctor.test.test_packages import processPackage
 from pydoctor.utils import partialclass
-from pydoctor.templatewriter.pages import format_class_signature
 
 from . import CapSys, NotFoundLinker, posonlyargs, typecomment
 import pytest
