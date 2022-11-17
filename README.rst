@@ -76,6 +76,10 @@ What's New?
 in development
 ^^^^^^^^^^^^^^
 * Fix some name resolution edge cases.
+* Add support for the ``@overload`` decorator.
+* Show type annotations in function's signatures.
+* If none of a function's parameters have documentation, do not render the parameter table.
+* Themes have been adjusted to render annotations more concisely.
 
 pydoctor 22.9.1
 ^^^^^^^^^^^^^^^
