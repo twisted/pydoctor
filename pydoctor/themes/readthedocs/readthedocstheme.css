@@ -64,13 +64,6 @@ body > footer > hr {
 
 /* xref stlyles */
 
-code > a {
-    background: rgb(255, 255, 255);
-    font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
-    border: 1px solid rgb(225, 228, 229);
-    padding: 1px 2px;
-    font-size: 14px;
-}
 
 .sourceLink {
     font-size: 14px;
@@ -83,8 +76,21 @@ code, .pre, #childList > div .functionHeader,
     font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
 }
 
-code {
-    background: transparent;
+code, .literal {
+    border-radius:2px;
+    font-size: 14px;
+}
+
+#main code, .literal {
+    border: 1px solid rgb(225, 228, 229);
+    padding:1px 2px;
+}
+
+/* special cases where pydoctor's default theme renders ok with the background,
+but doesn't render nicely with this theme. */
+.class-signature > code, .page-header code, pre code{
+    background-color: transparent;
+    border: none !important;
 }
 
 /* Header */ 
@@ -105,7 +111,7 @@ code {
 }
 
 .page-header > h1 code > a {
-    font-size: 18px;
+    font-size: 20px;
 }
 
 /* Titles */
@@ -247,6 +253,7 @@ a:hover{
     border-width: 0px 0px 0px 3px;
     margin: 0px 0px 6px;
     padding: 6px;
+    font-size: 15px;
 }
 
 .functionBody{

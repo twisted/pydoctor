@@ -45,10 +45,14 @@ def objects_order(o: model.Documentable) -> Tuple[int, int, str]:
 
     return (-o.privacyClass.value, -map_kind(o.kind).value if o.kind else 0, o.fullName().lower())
 
-def format_decorators(obj: Union[model.Function, model.Attribute]) -> Iterator["Flattenable"]:
+def format_decorators(obj: Union[model.Function, model.Attribute, model.FunctionOverload]) -> Iterator["Flattenable"]:
+    # Since we use this function to colorize the FunctionOverload decorators and it's not an actual Documentable subclass, we use the overload's 
+    # primary function for parts that requires an interface to Documentable methods or attributes
+    documentable_obj = obj if not isinstance(obj, model.FunctionOverload) else obj.primary
+
     for dec in obj.decorators or ():
         if isinstance(dec, ast.Call):
-            fn = node2fullname(dec.func, obj)
+            fn = node2fullname(dec.func, documentable_obj)
             # We don't want to show the deprecated decorator;
             # it shows up as an infobox.
             if fn in ("twisted.python.deprecate.deprecated",
@@ -57,28 +61,58 @@ def format_decorators(obj: Union[model.Function, model.Attribute]) -> Iterator["
 
         # Colorize decorators!
         doc = colorize_inline_pyval(dec)
-
-        stan = epydoc2stan.safe_to_stan(doc, obj.docstring_linker, obj, compact=True, 
+        stan = epydoc2stan.safe_to_stan(doc, documentable_obj.docstring_linker, documentable_obj, compact=True, 
             fallback=epydoc2stan.colorized_pyval_fallback, 
             section='rendering of decorators')
         
-        # Report eventual warnings. It warns when a regex failed to parse or the html2stan() function fails.
-        epydoc2stan.reportWarnings(obj, doc.warnings, section='colorize decorator')
+        # Report eventual warnings. It warns when we can't colorize the expression for some reason.
+        epydoc2stan.reportWarnings(documentable_obj, doc.warnings, section='colorize decorator')
         yield '@', stan.children, tags.br()
 
-def format_signature(function: model.Function) -> "Flattenable":
+def format_signature(func: Union[model.Function, model.FunctionOverload]) -> "Flattenable":
     """
     Return a stan representation of a nicely-formatted source-like function signature for the given L{Function}.
     Arguments default values are linked to the appropriate objects when possible.
     """
     broken = "(...)"
     try:
-        return html2stan(str(function.signature)) if function.signature else broken
+        return html2stan(str(func.signature)) if func.signature else broken
     except Exception as e:
         # We can't use safe_to_stan() here because we're using Signature.__str__ to generate the signature HTML.
-        epydoc2stan.reportErrors(function, 
+        epydoc2stan.reportErrors(func.primary if isinstance(func, model.FunctionOverload) else func, 
             [epydoc2stan.get_to_stan_error(e)], section='signature')
         return broken
+
+
+def format_overloads(func: model.Function) -> Iterator["Flattenable"]:
+    """
+    Format a function overloads definitions as nice HTML signatures.
+    """
+    for overload in func.overloads:
+        yield from format_decorators(overload)
+        yield tags.div(format_function_def(func.name, func.is_async, overload))
+
+def format_function_def(func_name: str, is_async: bool, 
+                        func: Union[model.Function, model.FunctionOverload]) -> List["Flattenable"]:
+    """
+    Format a function definition as nice HTML signature. 
+    
+    If the function is overloaded, it will return an empty list. We use L{format_overloads} for these.
+    """
+    r:List["Flattenable"] = []
+    # If this is a function with overloads, we do not render the principal signature because the overloaded signatures will be shown instead.
+    if isinstance(func, model.Function) and func.overloads:
+        return r
+    def_stmt = 'async def' if is_async else 'def'
+    if func_name.endswith('.setter') or func_name.endswith('.deleter'):
+        func_name = func_name[:func_name.rindex('.')]
+    r.extend([
+        tags.span(def_stmt, class_='py-keyword'), ' ',
+        tags.span(func_name, class_='py-defname'), 
+        tags.span(format_signature(func), class_='function-signature'), ':',
+    ])
+    return r
+    
 
 class Nav(TemplateElement):
     """
@@ -406,7 +440,7 @@ class ClassPage(CommonPage):
             tags.span("class", class_='py-keyword'), " ",
             tags.span(self.ob.name, class_='py-defname'),
             self.classSignature(), ":", source
-            )))
+            ), class_='class-signature'))
 
         subclasses = sorted(self.ob.subclasses, key=util.objects_order)
         if subclasses:

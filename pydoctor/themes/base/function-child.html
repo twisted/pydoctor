@@ -1,5 +1,5 @@
 <div xmlns:t="http://twistedmatrix.com/ns/twisted.web.template/0.1">
-  <meta name="pydoctor-template-version" content="3" />
+  <meta name="pydoctor-template-version" content="4" />
   <t:attr name="class" t:render="class_" />
   <a>
     <t:attr name="name" t:render="functionAnchor" />
@@ -8,6 +8,7 @@
     <t:attr name="name" t:render="shortFunctionAnchor" />
   </a>
   <div class="functionHeader">
+    <t:transparent t:render="overloads" />
     <t:transparent t:render="decorator" />
     <t:transparent t:render="functionDef">
       def functionName():

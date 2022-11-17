@@ -1618,6 +1618,43 @@ def test_ignore_function_contents(systemcls: Type[model.System]) -> None:
     assert not outer.contents
 
 @systemcls_param
+def test_overload(systemcls: Type[model.System], capsys: CapSys) -> None:
+    # Confirm decorators retained on overloads, docstring ignored for overloads,
+    # and that overloads after the primary function are skipped
+    mod = fromText("""
+        from typing import overload, Union
+        def dec(fn):
+            pass
+        @dec
+        @overload
+        def parse(s:str)->str:
+            ...
+        @overload
+        def parse(s:bytes)->bytes:
+            '''Ignored docstring'''
+            ...
+        def parse(s:Union[str, bytes])->Union[str, bytes]:
+            pass
+        @overload
+        def parse(s:str)->bytes:
+            ...
+        """, systemcls=systemcls)
+    func = mod.contents['parse']
+    assert isinstance(func, model.Function)
+    # Work around different space arrangements in Signature.__str__ between python versions
+    assert flatten_text(html2stan(str(func.signature).replace(' ', ''))) == '(s:Union[str,bytes])->Union[str,bytes]'
+    assert [astbuilder.node2dottedname(d) for d in (func.decorators or ())] == []
+    assert len(func.overloads) == 2
+    assert [astbuilder.node2dottedname(d) for d in func.overloads[0].decorators] == [['dec'], ['overload']]
+    assert [astbuilder.node2dottedname(d) for d in func.overloads[1].decorators] == [['overload']]
+    assert flatten_text(html2stan(str(func.overloads[0].signature).replace(' ', ''))) == '(s:str)->str'
+    assert flatten_text(html2stan(str(func.overloads[1].signature).replace(' ', ''))) == '(s:bytes)->bytes'
+    assert capsys.readouterr().out.splitlines() == [
+        '<test>:11: <test>.parse overload has docstring, unsupported',
+        '<test>:15: <test>.parse overload appeared after primary function',
+    ]
+
+@systemcls_param
 def test_constant_module(systemcls: Type[model.System]) -> None:
     """
     Module variables with all-uppercase names are recognized as constants.

@@ -8,10 +8,10 @@ being documented -- a System is a bad of Documentables, in some sense.
 
 import abc
 import ast
+import attr
 from collections import defaultdict
 import datetime
 import importlib
-import inspect
 import platform
 import sys
 import textwrap
@@ -159,24 +159,8 @@ class Documentable:
         self._linker: Optional['linker.DocstringLinker'] = None
 
     def setDocstring(self, node: ast.Str) -> None:
-        doc = node.s
-        lineno = node.lineno
-        if _string_lineno_is_end:
-            # In older CPython versions, the AST only tells us the end line
-            # number and we must approximate the start line number.
-            # This approximation is correct if the docstring does not contain
-            # explicit newlines ('\n') or joined lines ('\' at end of line).
-            lineno -= doc.count('\n')
-
-        # Leading blank lines are stripped by cleandoc(), so we must
-        # return the line number of the first non-blank line.
-        for ch in doc:
-            if ch == '\n':
-                lineno += 1
-            elif not ch.isspace():
-                break
-
-        self.docstring = inspect.cleandoc(doc)
+        lineno, doc = astutils.extract_docstring(node)
+        self.docstring = doc
         self.docstring_lineno = lineno
 
     def setLineNumber(self, lineno: int) -> None:
@@ -726,11 +710,23 @@ class Function(Inheritable):
     annotations: Mapping[str, Optional[ast.expr]]
     decorators: Optional[Sequence[ast.expr]]
     signature: Optional[Signature]
+    overloads: List['FunctionOverload']
 
     def setup(self) -> None:
         super().setup()
         if isinstance(self.parent, Class):
             self.kind = DocumentableKind.METHOD
+        self.signature = None
+        self.overloads = []
+
+@attr.s(auto_attribs=True)
+class FunctionOverload:
+    """
+    @note: This is not an actual documentable type. 
+    """
+    primary: Function
+    signature: Signature
+    decorators: Sequence[ast.expr]
 
 class Attribute(Inheritable):
     kind: Optional[DocumentableKind] = DocumentableKind.ATTRIBUTE
