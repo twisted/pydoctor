@@ -851,7 +851,9 @@ class ModuleVistor(NodeVisitor):
         parameters: List[Parameter] = []
         def add_arg(name: str, kind: Any, default: Optional[ast.expr]) -> None:
             default_val = Parameter.empty if default is None else _ValueFormatter(default, ctx=func)
-            annotation = Parameter.empty if annotations.get(name) is None else _AnnotationValueFormatter(annotations[name], ctx=func)
+            # Annotations should always be resolved in the context of the module scope.
+            # TODO: need to change the linker page context
+            annotation = Parameter.empty if annotations.get(name) is None else _AnnotationValueFormatter(annotations[name], ctx=func.module)
             parameters.append(Parameter(name, kind, default=default_val, annotation=annotation))
 
         for index, arg in enumerate(posonlyargs):
@@ -873,7 +875,7 @@ class ModuleVistor(NodeVisitor):
             add_arg(kwarg.arg, Parameter.VAR_KEYWORD, None)
 
         return_type = annotations.get('return')
-        return_annotation = Parameter.empty if return_type is None or is_none_literal(return_type) else _AnnotationValueFormatter(return_type, ctx=func)
+        return_annotation = Parameter.empty if return_type is None or is_none_literal(return_type) else _AnnotationValueFormatter(return_type, ctx=func.module)
         try:
             signature = Signature(parameters, return_annotation=return_annotation)
         except ValueError as ex:

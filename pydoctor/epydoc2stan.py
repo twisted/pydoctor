@@ -288,7 +288,8 @@ class FieldHandler:
             ) -> None:
         formatted_annotations = {
             name: None if value is None
-                       else ParamType(safe_to_stan(colorize_inline_pyval(value), self.obj.docstring_linker, 
+                        # TODO: need to change the linker page context
+                       else ParamType(safe_to_stan(colorize_inline_pyval(value), self.obj.module.docstring_linker, 
                                 self.obj, compact=True, fallback=colorized_pyval_fallback, section='annotation', report=False), 
                                 # don't spam the log, invalid annotation are going to be reported when the signature gets colorized
                                 origin=FieldOrigin.FROM_AST)

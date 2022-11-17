@@ -13,6 +13,7 @@ from pydoctor.sphinx import SphinxInventory
 from pydoctor.test.test_astbuilder import fromText, unwrap
 from pydoctor.test import CapSys
 from pydoctor.templatewriter.search import stem_identifier
+from pydoctor.templatewriter.pages import format_signature
 from pydoctor.utils import partialclass
 
 if TYPE_CHECKING:
@@ -1686,3 +1687,45 @@ def test_self_cls_in_function_params(capsys: CapSys) -> None:
     assert '<span class="fieldArg">cls</span>' not in html_which
     assert '<span class="fieldArg">self</span>' not in html_init
     assert '<span class="fieldArg">self</span>' in html_bool
+
+# tests for issue https://github.com/twisted/pydoctor/issues/661
+def test_dup_names_resolves_function_signature() -> None:
+    """
+    Annotations should always be resolved in the context of the module scope.
+    
+    For function signature, it's handled by passing module's context at the time we create the value formatter instance. 
+    For the parameter table it's handled by the field handler.
+
+    Annotation are currently renderred twice, which is suboptimal and can cause inconsistencies.
+    """
+
+    src = '''\
+    class System:
+        dup = Union[str, bytes]
+        def Attribute(self, t:'dup') -> Type['Attribute']:
+            """
+            @param t: do not confuse with L{the class level one <dup>}.
+            """
+        
+    class Attribute:
+        ...
+    
+    dup = Union[str, bytes]
+    '''
+
+    mod = fromText(src, modname='model')
+
+    def_Attribute = mod.contents['System'].contents['Attribute']
+    assert isinstance(def_Attribute, model.Function)
+
+    sig = flatten(format_signature(def_Attribute))
+    assert 'title="model.Attribute"' in sig
+    assert 'title="model.dup"' in sig
+    assert 'System' not in sig
+    
+    docstr = docstring2html(def_Attribute)
+    # docstring linker needs to be more smart, solved by https://github.com/twisted/pydoctor/pull/599
+    assert '<a href="index.html#dup" class="internal-link" title="model.dup">dup</a>' in docstr
+    assert '<a href="#dup" class="internal-link" title="model.System.dup">the class level one</a>' in docstr
+
+    
