@@ -86,20 +86,32 @@ def format_class_signature(cls: model.Class) -> "Flattenable":
     It's not the class constructor.
     """
     r: List["Flattenable"] = []
-    # Here, we should use the parent's linker because a base name
-    # can't be define in the class itself.
+    # Here, we should use the module's linker because a base name
+    # can't be define in the class itself and this linker is only used to resolve 
+    # links to intersphinx or argument passed to generic bases. 
+    # But it won't actually resolve the base classes (see comment few lines below)
     _linker = cls.parent.docstring_linker
     if cls.rawbases:
         r.append('(')
         with _linker.disable_same_page_optimazation():
         
-            for idx, (_, base_node) in enumerate(cls.rawbases):
+            for idx, ((str_base, base_node), base_obj) in enumerate(zip(cls.rawbases, cls.baseobjects)):
                 if idx != 0:
                     r.append(', ')
 
-                # link to external class or internal class, using the colorizer here
+                # Make sure we link to the base object directly, 
+                # because it has been resolved already (with two passes).
+                # Otherwise, since the class declaration wins over the imported names,
+                # a class with the same name as a base class confused pydoctor and it would link 
+                # to it self: https://github.com/twisted/pydoctor/issues/662
+
+                refmap = {}
+                if base_obj is not None:
+                    refmap[str_base] = base_obj.fullName()
+                    
+                # link to external class, using the colorizer here
                 # to link to classes with generics (subscripts and other AST expr).
-                stan = epydoc2stan.safe_to_stan(colorize_inline_pyval(base_node), _linker, cls, 
+                stan = epydoc2stan.safe_to_stan(colorize_inline_pyval(base_node, refmap=refmap), _linker, cls, 
                     compact=True, 
                     fallback=epydoc2stan.colorized_pyval_fallback, 
                     section='rendering of class signature')

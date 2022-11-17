@@ -121,13 +121,13 @@ def type2str(type_expr: Optional[ast.expr]) -> Optional[str]:
         assert isinstance(src, str)
         return src.strip()
 
-def type2html(obj: model.Documentable, use_linker:bool=False) -> str:
+def type2html(obj: model.Documentable) -> str:
+    """
+    Uses the NotFoundLinker. 
+    """
     parsed_type = get_parsed_type(obj)
     assert parsed_type is not None
-    if use_linker:
-        return to_html(parsed_type, linker=obj.docstring_linker).replace('<wbr></wbr>', '').replace('<wbr>\n</wbr>', '')
-    else:
-        return to_html(parsed_type).replace('<wbr></wbr>', '').replace('<wbr>\n</wbr>', '')
+    return to_html(parsed_type).replace('<wbr></wbr>', '').replace('<wbr>\n</wbr>', '')
 
 def ann_str_and_line(obj: model.Documentable) -> Tuple[str, int]:
     """Return the textual representation and line number of an object's
@@ -2119,43 +2119,3 @@ def test_prepend_package_real_path(systemcls: Type[model.System]) -> None:
     finally:
         systemcls.systemBuilder = _builderT_init
 
-# tests for issue https://github.com/twisted/pydoctor/issues/661
-@pytest.mark.xfail
-@systemcls_param
-def test_dup_names_reoslves_annotation(systemcls: Type[model.System]) -> None:
-    src = '''\
-    class System:
-        @property
-        def Attribute(self) -> Type['Attribute']:...
-        
-    class Attribute:
-        ...
-    '''
-
-    mod = fromText(src, systemcls=systemcls, modname='model')
-
-    property_Attribute = mod.contents['System'].contents['Attribute']
-    assert isinstance(property_Attribute, model.Attribute)
-    assert 'title="model.Attribute"' in type2html(property_Attribute, use_linker=True)
-
-@pytest.mark.xfail
-@systemcls_param
-def test_dup_names_reoslves_base_class(systemcls: Type[model.System]) -> None:
-
-    src1 = '''\
-    from model import System
-    class System(System):
-        ...
-    '''
-    src2 = '''\
-    class System:
-        ...    
-    '''
-    system = systemcls()
-    builder = system.systemBuilder(system)
-    builder.addModuleString(src1, modname='custom')
-    builder.addModuleString(src2, modname='model')
-    builder.buildModules()
-
-    # currently outputs (<a href="custom.System.html" class="internal-link" title="custom.System">System</a>)
-    assert 'href="model.System.html"' in flatten(format_class_signature(system.objForFullName('custom.System')))

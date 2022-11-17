@@ -111,6 +111,13 @@ class _EpydocLinker(DocstringLinker):
     def link_to(self, identifier: str, label: "Flattenable") -> Tag:
         # :Raises _EpydocLinker.LookupFailed: If the identifier cannot be resolved and self.strict is True.
         # Can return a Tag('a') or Tag('transparent') if not found
+        
+        # Check if 'identifier' is the fullName of an object.
+        target = self.obj.system.objForFullName(identifier)
+        if target is not None:
+            return taglink(target, self.obj.page_object.url, label, 
+                           same_page_optimization=self.same_page_optimization)
+
         fullID = self.obj.expandName(identifier)
 
         target = self.obj.system.objForFullName(fullID)

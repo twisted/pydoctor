@@ -774,18 +774,27 @@ def format_undocumented(obj: model.Documentable) -> Tag:
 
 
 def type2stan(obj: model.Documentable) -> Optional[Tag]:
+    """
+    Get the formatted type of this attribute.
+    """
+    # Currently only used for Attribute childs.
     parsed_type = get_parsed_type(obj)
     if parsed_type is None:
         return None
     else:
-        return safe_to_stan(parsed_type, obj.docstring_linker, obj, compact=True, 
+        # Annotations should always be resolved in the context of the module scope.
+        return safe_to_stan(parsed_type, obj.module.docstring_linker, obj, compact=True, 
             fallback=colorized_pyval_fallback, section='annotation')
 
 def get_parsed_type(obj: model.Documentable) -> Optional[ParsedDocstring]:
+    """
+    Get the type of this attribute as parsed docstring.
+    """
     parsed_type = obj.parsed_type
     if parsed_type is not None:
         return parsed_type
 
+    # Only Attribute instances have the 'annotation' attribute.
     annotation: Optional[ast.expr] = getattr(obj, 'annotation', None)
     if annotation is not None:
         return colorize_inline_pyval(annotation)

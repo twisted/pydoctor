@@ -1,4 +1,4 @@
-from typing import List, Optional, cast, TYPE_CHECKING
+from typing import List, Optional, Type, cast, TYPE_CHECKING
 import re
 
 from pytest import mark, raises
@@ -13,6 +13,7 @@ from pydoctor.sphinx import SphinxInventory
 from pydoctor.test.test_astbuilder import fromText, unwrap
 from pydoctor.test import CapSys
 from pydoctor.templatewriter.search import stem_identifier
+from pydoctor.templatewriter.pages import format_class_signature
 from pydoctor.utils import partialclass
 
 if TYPE_CHECKING:
@@ -1636,3 +1637,68 @@ def test_self_cls_in_function_params(capsys: CapSys) -> None:
     assert '<span class="fieldArg">cls</span>' not in html_which
     assert '<span class="fieldArg">self</span>' not in html_init
     assert '<span class="fieldArg">self</span>' in html_bool
+
+# tests for issue https://github.com/twisted/pydoctor/issues/661
+def test_dup_names_resolves_annotation() -> None:
+    """
+    Annotations should always be resolved in the context of the module scope.
+
+    PEP-563 says: Annotations can only use names present in the module scope as 
+        postponed evaluation using local names is not reliable.
+
+    For Attributes, this is handled by the type2stan() function, because name linking is 
+        done at the stan tree generation step.
+    """
+
+    src = '''\
+    class System:
+        @property
+        def Attribute(self) -> Type['Attribute']:...
+        
+    class Attribute:
+        ...
+    '''
+
+    mod = fromText(src, modname='model')
+
+    property_Attribute = mod.contents['System'].contents['Attribute']
+    assert isinstance(property_Attribute, model.Attribute)
+    stan = epydoc2stan.type2stan(property_Attribute)
+    assert stan is not None
+    assert 'title="model.Attribute"' in flatten(stan)
+
+# tests for issue https://github.com/twisted/pydoctor/issues/662
+def test_dup_names_resolves_base_class(systemcls: Type[model.System]) -> None:
+    """
+    The class signature does not get confused when duplicate names are used.
+    """
+
+    src1 = '''\
+    from model import System, Generic
+    class System(System):
+        ...
+    class Generic(Generic[object]):
+        ...
+    '''
+    src2 = '''\
+
+    class System:
+        ...
+    class Generic:
+        ...    
+    '''
+    system = model.System()
+    builder = system.systemBuilder(system)
+    builder.addModuleString(src1, modname='custom')
+    builder.addModuleString(src2, modname='model')
+    builder.buildModules()
+
+    custommod,_ = system.rootobjects
+
+    systemClass = custommod.contents['System']
+    genericClass = custommod.contents['Generic']
+
+    assert isinstance(systemClass, model.Class) and isinstance(genericClass, model.Class)
+
+    assert 'href="model.System.html"' in flatten(format_class_signature(systemClass))
+    assert 'href="model.Generic.html"' in flatten(format_class_signature(genericClass))
