@@ -1,4 +1,4 @@
-from typing import List, Optional, Type, cast, TYPE_CHECKING
+from typing import List, Optional, cast, TYPE_CHECKING
 import re
 
 from pytest import mark, raises
