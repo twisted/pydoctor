@@ -99,7 +99,7 @@ def format_class_signature(cls: model.Class) -> "Flattenable":
                 if idx != 0:
                     r.append(', ')
 
-                # Make sure we link to the base object directly, 
+                # Make sure we bypass the linker’s resolver process for base object, 
                 # because it has been resolved already (with two passes).
                 # Otherwise, since the class declaration wins over the imported names,
                 # a class with the same name as a base class confused pydoctor and it would link 
