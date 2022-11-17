@@ -1004,6 +1004,10 @@ class PyvalColorizer:
                 state.charpos += segment_len
 
                 if link is True:
+                    # Here, we bypass the linker if refmap contains the segment we're linking to. 
+                    # The linker can be problematic because it has some design blind spots when the same name is declared in the imports and in the module body.
+                    
+                    # Note that the argument name is 'refuri', not 'refuid. 
                     element = obj_reference('', segment, refuri=self.refmap.get(segment, segment))
                 elif css_class is not None:
                     element = nodes.inline('', segment, classes=[css_class])
