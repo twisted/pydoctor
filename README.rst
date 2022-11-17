@@ -75,6 +75,7 @@ What's New?
 
 in development
 ^^^^^^^^^^^^^^
+* Fix some name resolution edge cases.
 
 pydoctor 22.9.1
 ^^^^^^^^^^^^^^^
