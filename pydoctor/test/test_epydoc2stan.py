@@ -1668,7 +1668,7 @@ def test_dup_names_resolves_annotation() -> None:
     assert 'title="model.Attribute"' in flatten(stan)
 
 # tests for issue https://github.com/twisted/pydoctor/issues/662
-def test_dup_names_resolves_base_class(systemcls: Type[model.System]) -> None:
+def test_dup_names_resolves_base_class() -> None:
     """
     The class signature does not get confused when duplicate names are used.
     """
