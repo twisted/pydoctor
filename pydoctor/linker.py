@@ -4,18 +4,17 @@ This module provides implementations of epydoc's L{DocstringLinker} class.
 
 from collections import defaultdict
 import contextlib
-import attr
 from twisted.web.template import Tag, tags
 from typing import  (
      ContextManager, Tuple, TYPE_CHECKING, Dict, Iterable, 
-     Iterator, List, Optional, Set, Union, cast
+     List, Optional, Set, Union, cast
 )
 
-from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring
+from pydoctor.epydoc.markup import DocstringLinker
 
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable
-    from typing_extensions import Literal, NoReturn
+    from typing_extensions import Literal
     
     # This import must be kept in the TYPE_CHECKING block for circular references issues.
     from pydoctor import model
@@ -84,7 +83,7 @@ class _EpydocLinker(DocstringLinker):
         yield
         self._page_object = old_page_object
     
-    def disable_same_page_optimization(self) -> Iterator[None]:
+    def disable_same_page_optimization(self) -> ContextManager[None]:
         return self.switch_page_context(None)
 
     @staticmethod
@@ -287,12 +286,13 @@ class CacheEntry:
     
     @staticmethod
     def _could_be_anchor_link(href:str, page_url:str) -> bool:
-        return page_url and href.startswith(page_url+"#")
+        return bool(page_url and href.startswith(page_url+"#"))
+
     @staticmethod
     def _should_be_full_link(href:str, initial_page_url:str, current_page_url:str) -> bool:
-        return href.startswith("#") and initial_page_url != current_page_url
+        return bool(href.startswith("#") and initial_page_url != current_page_url)
 
-    def deduct_new_href(self, initial_page_url:str, current_page_url:str) -> Optional[Dict[Union[str, bytes], 'Flattenable']]:
+    def deduct_new_href(self, initial_page_url:str, current_page_url:str) -> Optional[str]:
         
         href = self.href
 
