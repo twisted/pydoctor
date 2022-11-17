@@ -7,6 +7,8 @@ U{the epytext documentation<http://epydoc.sourceforge.net/epytext.html>}.
 
 from typing import List
 
+import pytest
+
 from pydoctor.epydoc.markup import ParseError, ParsedDocstring
 from pydoctor.stanutils import flatten
 from pydoctor.epydoc.markup.epytext import parse_docstring
@@ -14,7 +16,7 @@ from pydoctor.node2stan import node2stan
 from pydoctor.test import NotFoundLinker
 from pydoctor.test.epydoc.test_restructuredtext import prettify
 
-from docutils import nodes
+from docutils import nodes, __version_info__ as docutils_version_info
 
 def parse_epytext(s: str) -> ParsedDocstring:
     errors: List[ParseError] = []
@@ -289,6 +291,8 @@ def test_nested_markup() -> None:
     
     assert epytext2html(doc) == squash(expected)
 
+# From docutils 0.18 the toc entries uses different ids.
+@pytest.mark.skipif(docutils_version_info < (0,18), reason="HTML ids in toc tree changed in docutils 0.18.0.")
 def test_get_toc() -> None:
 
     docstring = """
@@ -331,42 +335,42 @@ Other
     expected_html="""
     <li>
  <p class="rst-first">
-  <a class="rst-reference internal" href="#rst-titles" id="rst-id1">
+  <a class="rst-reference internal" href="#rst-titles" id="rst-toc-entry-1">
    Titles
   </a>
  </p>
  <ul class="rst-simple">
   <li>
-   <a class="rst-reference internal" href="#rst-level-2" id="rst-id2">
+   <a class="rst-reference internal" href="#rst-level-2" id="rst-toc-entry-2">
     Level 2
    </a>
    <ul>
     <li>
-     <a class="rst-reference internal" href="#rst-level-3" id="rst-id3">
+     <a class="rst-reference internal" href="#rst-level-3" id="rst-toc-entry-3">
       Level 3
      </a>
     </li>
    </ul>
   </li>
   <li>
-   <a class="rst-reference internal" href="#rst-level-22" id="rst-id4">
+   <a class="rst-reference internal" href="#rst-level-22" id="rst-toc-entry-4">
     Level 2.2
    </a>
   </li>
   <li>
-   <a class="rst-reference internal" href="#rst-level-22-1" id="rst-id5">
+   <a class="rst-reference internal" href="#rst-level-22-1" id="rst-toc-entry-5">
     Level 22
    </a>
   </li>
  </ul>
 </li>
 <li>
- <a class="rst-reference internal" href="#rst-lists" id="rst-id6">
+ <a class="rst-reference internal" href="#rst-lists" id="rst-toc-entry-6">
   Lists
  </a>
 </li>
 <li>
- <a class="rst-reference internal" href="#rst-other" id="rst-id7">
+ <a class="rst-reference internal" href="#rst-other" id="rst-toc-entry-7">
   Other
  </a>
 </li>

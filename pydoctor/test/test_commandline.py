@@ -99,6 +99,17 @@ def test_projectbasedir_relative() -> None:
     assert options.projectbasedirectory.parent == Path.cwd()
 
 
+def test_help_option(capsys: CapSys) -> None:
+    """
+    pydoctor --help 
+    """
+    try:
+        driver.main(args=['--help'])
+    except SystemExit:
+        assert '--project-name PROJECTNAME' in capsys.readouterr().out
+    else:
+        assert False
+
 def test_cache_enabled_by_default() -> None:
     """
     Intersphinx object caching is enabled by default.

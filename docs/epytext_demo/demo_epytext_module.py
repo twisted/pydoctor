@@ -6,7 +6,7 @@ Most part of this documentation is using Python type hinting.
 
 from abc import ABC
 import math
-from typing import AnyStr, Dict, Generator, List, Union, TYPE_CHECKING
+from typing import overload, AnyStr, Dict, Generator, List, Union, Callable, Tuple, TYPE_CHECKING
 from somelib import SomeInterface
 import zope.interface
 import zope.schema
@@ -16,6 +16,11 @@ from twisted.python.deprecate import deprecated, deprecatedProperty
 
 if TYPE_CHECKING:
     from typing_extensions import Final
+
+Parser = Callable[[str], Tuple[int, bytes, bytes]]
+"""
+Type aliases are documented as such and their value is shown just like constants.
+"""
 
 LANG = 'Fr'
 """
@@ -75,6 +80,26 @@ def demo_cross_reference() -> None:
         - L{demo_typing_arguments}
         - L{Custom name <demo_typing_arguments>}
     """
+
+@overload
+def demo_overload(s: str) -> str:
+    ...
+
+@overload
+def demo_overload(s: bytes) -> bytes:
+    ...
+
+def demo_overload(s: Union[str, bytes]) -> Union[str, bytes]:
+    """
+    Overload signatures appear without the main signature and with C{@overload} decorator.
+
+    @param s: Some string or bytes param.
+    @return: Some string or bytes result.
+    """
+    raise NotImplementedError
+
+def demo_undocumented(s: str) -> str:
+    raise NotImplementedError
 
 
 class _PrivateClass:

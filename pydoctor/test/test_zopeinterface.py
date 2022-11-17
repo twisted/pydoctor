@@ -1,7 +1,8 @@
 
-from typing import Type, cast
+from typing import Any, Dict, Iterable, List, Type, cast
 from pydoctor.test.test_astbuilder import fromText, type2html, ZopeInterfaceSystem
 from pydoctor.test.test_packages import processPackage
+from pydoctor.test.test_templatewriter import getHTMLOf
 from pydoctor.extensions.zopeinterface import ZopeInterfaceClass
 from pydoctor.epydoc.markup import ParsedDocstring
 from pydoctor import model
@@ -533,3 +534,83 @@ def test_classimplements_badarg(capsys: CapSys, systemcls: Type[model.System]) -
         'mod:9: argument "mod.f" to classImplements() is not a class\n'
         'mod:10: argument "g" to classImplements() not found\n'
         )
+
+@zope_interface_systemcls_param
+def test_implements_renders_ok(systemcls: Type[model.System]) -> None:
+    """
+    The Class renderer effectively includes the implemented interfaces.
+    """
+    src = '''
+    import zope.interface
+    class IFoo(zope.interface.Interface):
+        pass
+    @zope.interface.implementer(IFoo)
+    class Foo:
+        pass
+    '''
+    mod = fromText(src, modname='zi', systemcls=systemcls)
+    ifoo_html = getHTMLOf(mod.contents['IFoo'])
+    foo_html = getHTMLOf(mod.contents['Foo'])
+    
+    assert 'Known implementations:' in ifoo_html
+    assert 'zi.Foo' in ifoo_html
+
+    assert 'Implements interfaces:' in foo_html
+    assert 'zi.IFoo' in foo_html
+
+
+def _get_modules_test_zope_interface_imports_cycle_proof() -> List[Iterable[Dict[str, Any]]]:
+    src_inteface = '''\
+    from zope.interface import Interface
+    from top.impl import Address
+
+    class IAddress(Interface):
+        ...
+    '''
+
+    src_impl = '''\
+    from zope.interface import implementer
+    from top.interface import IAddress
+    
+    @implementer(IAddress)
+    class Address(object):
+        ...  
+    '''
+
+    mod_interface = {'modname': 'interface', 'text': src_inteface, 'parent_name':'top'}
+    mod_top = {'modname':'top', 'text': 'pass', 'is_package': True}
+    mod_impl = {'modname': 'impl', 'text': src_impl, 'parent_name':'top'}
+
+    return [
+        (mod_top,mod_interface,mod_impl),
+        (mod_top,mod_impl,mod_interface),
+        ]
+
+@pytest.mark.parametrize('modules', _get_modules_test_zope_interface_imports_cycle_proof())
+@zope_interface_systemcls_param
+def test_zope_interface_imports_cycle_proof(systemcls: Type[model.System], modules:Iterable[Dict[str, Any]]) -> None:
+    """
+    Zope interface informations is collected no matter the cyclics imports and the order of processing of modules.
+    This test only check some basic cyclic imports examples.
+    """
+    system = systemcls()
+    builder = system.systemBuilder(system)
+    for m in modules:
+        builder.addModuleString(**m)
+    
+    builder.buildModules()
+
+    interface = system.objForFullName('top.interface.IAddress')
+    impl = system.objForFullName('top.impl.Address')
+
+    assert isinstance(interface, model.Class)
+    assert isinstance(impl, model.Class)
+
+    ihtml = getHTMLOf(interface)
+    html = getHTMLOf(impl)
+    
+    assert 'top.impl.Address' in ihtml
+    assert 'top.interface.IAddress' in html
+    
+
+    

@@ -50,10 +50,10 @@ from docutils.writers import Writer
 from docutils.parsers.rst.directives.admonitions import BaseAdmonition # type: ignore[import]
 from docutils.readers.standalone import Reader as StandaloneReader
 from docutils.utils import Reporter, new_document
-from docutils.parsers.rst import Directive, directives # type:ignore[attr-defined]
+from docutils.parsers.rst import Directive, directives
 from docutils.transforms import Transform, frontmatter
 
-from pydoctor.epydoc.markup import Field, ParseError, ParsedDocstring
+from pydoctor.epydoc.markup import Field, ParseError, ParsedDocstring, append_warnings
 from pydoctor.epydoc.markup.plaintext import ParsedPlaintextDocstring
 from pydoctor.epydoc.markup._types import ParsedTypeDocstring
 from pydoctor.model import Documentable
@@ -79,7 +79,10 @@ CONSOLIDATED_FIELDS = {
 #: a @type field.
 CONSOLIDATED_DEFLIST_FIELDS = ['param', 'arg', 'var', 'ivar', 'cvar', 'keyword']
 
-def parse_docstring(docstring: str, errors: List[ParseError], processtypes: bool = False) -> ParsedDocstring:
+def parse_docstring(docstring: str, 
+                    errors: List[ParseError], 
+                    processtypes: bool = False,
+                    ) -> ParsedDocstring:
     """
     Parse the given docstring, which is formatted using
     ReStructuredText; and return a L{ParsedDocstring} representation
@@ -137,7 +140,9 @@ class ParsedRstDocstring(ParsedDocstring):
         """A ReStructuredText document, encoding the docstring."""
 
         document.reporter = OptimizedReporter(
-            document.reporter.source, 'SEVERE', 'SEVERE', '')
+            document.reporter.source, 
+            report_level=10000, halt_level=10000, 
+            stream='')
 
         ParsedDocstring.__init__(self, fields)
 
@@ -281,8 +286,7 @@ class _SplitFieldsTranslator(nodes.NodeVisitor):
         field_parsed_doc: ParsedDocstring
         if self._processtypes and tagname in ParsedTypeDocstring.FIELDS:
             field_parsed_doc = ParsedTypeDocstring(field_doc)
-            for warning_msg in field_parsed_doc.warnings:
-                    self._errors.append(ParseError(warning_msg, lineno, is_fatal=False))
+            append_warnings(field_parsed_doc.warnings, self._errors, lineno=lineno)
         else:
             field_parsed_doc = ParsedRstDocstring(field_doc, ())
         self.fields.append(Field(tagname, arg, field_parsed_doc, lineno - 1))
@@ -349,13 +353,9 @@ class _SplitFieldsTranslator(nodes.NodeVisitor):
                 isinstance(fbody[0][0], nodes.Text)):
                 text = fbody[0][0].astext()
                 if text[:1] in ':-':
-                    fbody[0][0] = nodes.Text(
-                        text[1:].lstrip(), fbody[0][0].astext()
-                        )
+                    fbody[0][0] = nodes.Text(text[1:].lstrip())
                 elif text[:2] in (' -', ' :'):
-                    fbody[0][0] = nodes.Text(
-                        text[2:].lstrip(), fbody[0][0].astext()
-                        )
+                    fbody[0][0] = nodes.Text(text[2:].lstrip())
 
             # Wrap the field body, and add a new field
             self._add_field(tagname, arg, fbody, fbody[0].line)

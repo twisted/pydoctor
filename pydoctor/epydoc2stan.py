@@ -3,6 +3,7 @@ Convert L{pydoctor.epydoc} parsed markup into renderable content.
 """
 
 from collections import defaultdict
+import enum
 from typing import (
     TYPE_CHECKING, Any, Callable, ClassVar, DefaultDict, Dict, Generator, 
     Iterator, List, Mapping, Optional, Sequence, Tuple, 
@@ -12,10 +13,11 @@ import re
 
 import attr
 
-from pydoctor import model, linker
+from pydoctor import model, linker, node2stan
+from pydoctor.astutils import is_none_literal
 from pydoctor.epydoc.markup import Field as EpydocField, ParseError, get_parser_by_name
 from twisted.web.template import Tag, tags
-from pydoctor.epydoc.markup import ParsedDocstring
+from pydoctor.epydoc.markup import ParsedDocstring, DocstringLinker
 import pydoctor.epydoc.markup.plaintext
 from pydoctor.epydoc.markup._pyval_repr import colorize_pyval, colorize_inline_pyval
 
@@ -26,6 +28,8 @@ taglink = linker.taglink
 """
 Alias to L{pydoctor.linker.taglink()}.
 """
+
+BROKEN = tags.p(class_="undocumented")('Broken description')
 
 def get_parser(obj: model.Documentable) -> Callable[[str, List[ParseError], bool], ParsedDocstring]:
     """
@@ -52,6 +56,15 @@ def get_parser(obj: model.Documentable) -> Callable[[str, List[ParseError], bool
 def get_docstring(
         obj: model.Documentable
         ) -> Tuple[Optional[str], Optional[model.Documentable]]:
+    """
+    Fetch the docstring for a documentable. 
+    Treat empty docstring as undocumented.
+
+    :returns: 
+        - C{(docstring, source)} if the object is documented.
+        - C{(None, None)} if the object has no docstring (even inherited).
+        - C{(None, source)} if the object has an empty docstring.
+    """
     for source in obj.docsources():
         doc = source.docstring
         if doc:
@@ -113,6 +126,11 @@ class FieldDesc:
         else:
             #  <desc>
             yield tags.td(formatted, colspan="2")
+
+@attr.s(auto_attribs=True)
+class SignatureDesc(FieldDesc):
+    type_origin: Optional['FieldOrigin'] = None
+
 
 class RaisesDesc(FieldDesc):
     """Description of an exception that can be raised by function/method."""
@@ -192,7 +210,10 @@ class Field:
 
     def format(self) -> Tag:
         """Present this field's body as HTML."""
-        return self.body.to_stan(self.source.docstring_linker)
+        return safe_to_stan(self.body, self.source.docstring_linker, self.source, compact=True, 
+                    # the parsed docstring maybe doesn't support to_node(), i.e. ParsedTypeDocstring,
+                    # so we can only show the broken text.
+                    fallback=lambda _, __, ___:BROKEN)
 
     def report(self, message: str) -> None:
         self.source.report(message, lineno_offset=self.lineno, section='docstring')
@@ -226,13 +247,22 @@ def format_field_list(singular: str, plural: str, fields: Sequence[Field]) -> It
 
 class VariableArgument(str):
     """
-    Encapsulate the name of C{vararg} parameters.
+    Encapsulate the name of C{vararg} parameters in L{Function.annotations} mapping keys.
     """
 
 class KeywordArgument(str):
     """
-    Encapsulate the name of C{kwarg} parameters.
+    Encapsulate the name of C{kwarg} parameters in L{Function.annotations} mapping keys.
     """
+
+class FieldOrigin(enum.Enum):
+    FROM_AST = 0
+    FROM_DOCSTRING = 1
+
+@attr.s(auto_attribs=True)
+class ParamType:    
+    stan: Tag
+    origin: FieldOrigin
 
 class FieldHandler:
 
@@ -240,10 +270,10 @@ class FieldHandler:
         self.obj = obj
         self._linker = self.obj.docstring_linker
 
-        self.types: Dict[str, Optional[Tag]] = {}
+        self.types: Dict[str, Optional[ParamType]] = {}
 
-        self.parameter_descs: List[FieldDesc] = []
-        self.return_desc: Optional[FieldDesc] = None
+        self.parameter_descs: List[SignatureDesc] = []
+        self.return_desc: Optional[SignatureDesc] = None
         self.yields_desc: Optional[FieldDesc] = None 
         self.raise_descs: List[RaisesDesc] = []
         self.warns_desc: List[FieldDesc] = [] 
@@ -258,7 +288,11 @@ class FieldHandler:
             ) -> None:
         formatted_annotations = {
             name: None if value is None
-                       else colorize_inline_pyval(value).to_stan(self._linker)
+                       else ParamType(safe_to_stan(colorize_inline_pyval(value), self.obj.docstring_linker, 
+                                self.obj, compact=True, fallback=colorized_pyval_fallback, section='annotation', report=False), 
+                                # don't spam the log, invalid annotation are going to be reported when the signature gets colorized
+                                origin=FieldOrigin.FROM_AST)
+                                
             for name, value in annotations.items()
             }
         ret_type = formatted_annotations.pop('return', None)
@@ -269,8 +303,8 @@ class FieldHandler:
             # it from being presented.
             ann_ret = annotations['return']
             assert ann_ret is not None  # ret_type would be None otherwise
-            if not _is_none_literal(ann_ret):
-                self.return_desc = FieldDesc(type=ret_type)
+            if not is_none_literal(ann_ret):
+                self.return_desc = SignatureDesc(type=ret_type.stan, type_origin=ret_type.origin)
 
     @staticmethod
     def _report_unexpected_argument(field:Field) -> None:
@@ -280,7 +314,7 @@ class FieldHandler:
     def handle_return(self, field: Field) -> None:
         self._report_unexpected_argument(field)
         if not self.return_desc:
-            self.return_desc = FieldDesc()
+            self.return_desc = SignatureDesc()
         self.return_desc.body = field.format()
     handle_returns = handle_return
 
@@ -294,8 +328,9 @@ class FieldHandler:
     def handle_returntype(self, field: Field) -> None:
         self._report_unexpected_argument(field)
         if not self.return_desc:
-            self.return_desc = FieldDesc()
+            self.return_desc = SignatureDesc()
         self.return_desc.type = field.format()
+        self.return_desc.type_origin = FieldOrigin.FROM_DOCSTRING
     handle_rtype = handle_returntype
 
     def handle_yieldtype(self, field: Field) -> None:
@@ -368,14 +403,14 @@ class FieldHandler:
             #       inconsistencies.
             name = field.arg
         if name is not None:
-            self.types[name] = field.format()
+            self.types[name] = ParamType(field.format(), origin=FieldOrigin.FROM_DOCSTRING)
 
     def handle_param(self, field: Field) -> None:
         name = self._handle_param_name(field)
         if name is not None:
             if any(desc.name == name for desc in self.parameter_descs):
                 field.report('Parameter "%s" was already documented' % (name,))
-            self.parameter_descs.append(FieldDesc(name=name, body=field.format()))
+            self.parameter_descs.append(SignatureDesc(name=name, body=field.format()))
             if name not in self.types:
                 self._handle_param_not_found(name, field)
 
@@ -385,7 +420,7 @@ class FieldHandler:
         name = self._handle_param_name(field)
         if name is not None:
             # TODO: How should this be matched to the type annotation?
-            self.parameter_descs.append(FieldDesc(name=name, body=field.format()))
+            self.parameter_descs.append(SignatureDesc(name=name, body=field.format()))
             if name in self.types:
                 field.report('Parameter "%s" is documented as keyword' % (name,))
 
@@ -449,24 +484,36 @@ class FieldHandler:
 
         # We create a new parameter_descs list to ensure the parameter order
         # matches the AST order.
-        new_parameter_descs = []
-        for index, (name, type_doc) in enumerate(self.types.items()):
+        new_parameter_descs: List[SignatureDesc] = []
+        for index, (name, param_type) in enumerate(self.types.items()):
             try:
                 param = params.pop(name)
             except KeyError:
-                if index == 0 and name in ('self', 'cls'):
-                    continue
-                param = FieldDesc(name=name, type=type_doc)
-                any_info |= type_doc is not None
+                # parameter is not documented with @param.
+
+                if index == 0:
+                    # Strip 'self' or 'cls' from parameter table when it semantically makes sens.
+                    if name=='self' and self.obj.kind is model.DocumentableKind.METHOD:
+                        continue
+                    if name=='cls' and self.obj.kind is model.DocumentableKind.CLASS_METHOD:
+                        continue
+                
+                param = SignatureDesc(name=name, 
+                    type=param_type.stan if param_type else None, 
+                    type_origin=param_type.origin if param_type else None,)
+
+                any_info |= param_type is not None
             else:
-                param.type = type_doc
+                param.type = param_type.stan if param_type else None
+                param.type_origin = param_type.origin if param_type else None
+            
             new_parameter_descs.append(param)
 
         # Add any leftover parameters, which includes documented **kwargs keywords
         # and non-existing (but documented) parameters.
         new_parameter_descs += params.values()
 
-        # Only replace the descriptions if at least one parameter is documented
+        # Only update the descriptions if at least one parameter is documented
         # or annotated.
         if any_info:
             self.parameter_descs = new_parameter_descs
@@ -474,9 +521,12 @@ class FieldHandler:
     def format(self) -> Tag:
         r: List[Tag] = []
 
-        r += format_desc_list('Parameters', self.parameter_descs)
-        if self.return_desc:
+        # Only include parameter or return sections if any are documented or any type are documented from @type fields.
+        if any((p.body or p.type_origin is FieldOrigin.FROM_DOCSTRING) for p in self.parameter_descs):
+            r += format_desc_list('Parameters', self.parameter_descs)
+        if self.return_desc and (self.return_desc.body or self.return_desc.type_origin is FieldOrigin.FROM_DOCSTRING):
             r += format_desc_list('Returns', [self.return_desc])
+        
         if self.yields_desc:
             r += format_desc_list('Yields', [self.yields_desc])
 
@@ -495,15 +545,19 @@ class FieldHandler:
         else:
             return tags.transparent
 
-
-def _is_none_literal(node: ast.expr) -> bool:
-    """Does this AST node represent the literal constant None?"""
-    return isinstance(node, (ast.Constant, ast.NameConstant)) and node.value is None
-
+def reportWarnings(obj: model.Documentable, warns: Sequence[str], **kwargs:Any) -> None:
+    for message in warns:
+        obj.report(message, **kwargs)
 
 def reportErrors(obj: model.Documentable, errs: Sequence[ParseError], section:str='docstring') -> None:
-    if errs and obj.fullName() not in obj.system.docstring_syntax_errors:
-        obj.system.docstring_syntax_errors.add(obj.fullName())
+    if not errs:
+        return
+    
+    errors = obj.system.parse_errors[section]
+
+    if obj.fullName() not in errors:
+        errors.add(obj.fullName())
+        
         for err in errs:
             obj.report(
                 f'bad {section}: ' + err.descr(),
@@ -558,17 +612,16 @@ def ensure_parsed_docstring(obj: model.Documentable) -> Optional[model.Documenta
     # Use cached or split version if possible.
     parsed_doc = obj.parsed_docstring
 
-    if source is None:
-        if parsed_doc is None:
-            # We don't use 'source' if parsed_doc is None, but mypy is not that
-            # sophisticated, so we fool it by assigning a dummy object.
-            source = obj
-        else:
-            # A split field is documented by its parent.
-            source = obj.parent
-            assert source is not None
+    if source is None and parsed_doc is not None:
+        # No docstring found
+        # A split field is documented by its parent: meaning the parsed_docstring
+        # attribute has been set directly by extract_fields() with @ivar:, @cvar:, etc
+        # Get the source of the docs
+        source = obj.parent
 
     if parsed_doc is None and doc is not None:
+        # The parsed_docstring has not been initialized yet
+        assert source is not None
         parsed_doc = parse_docstring(obj, doc, source)
         obj.parsed_docstring = parsed_doc
     
@@ -613,10 +666,51 @@ def _get_parsed_summary(obj: model.Documentable) -> Tuple[Optional[model.Documen
         assert obj.parsed_docstring is not None
         summary_parsed_doc = obj.parsed_docstring.get_summary()
     
-    assert summary_parsed_doc is not None
     obj.parsed_summary = summary_parsed_doc
 
     return (source, summary_parsed_doc)
+
+def get_to_stan_error(e: Exception) -> ParseError:
+    return ParseError(f"{e.__class__.__name__}: {e}", 0)
+
+def safe_to_stan(parsed_doc: ParsedDocstring, 
+                 linker: 'DocstringLinker',
+                 ctx: model.Documentable, 
+                 compact: bool,
+                 fallback: Callable[[List[ParseError], ParsedDocstring, model.Documentable], Tag],
+                 report: bool = True,
+                 section:str='docstring') -> Tag:
+    """
+    Wraps L{ParsedDocstring.to_stan()} to catch exception and handle them in C{fallback}.
+    This is used to convert docstrings as well as other colorized AST values to stan.
+
+    @param parsed_doc: The L{ParsedDocstring} to "stanify".
+    @param linker: The L{DocstringLinker} to use to resolve links.
+    @param ctx: The documentable context to use to report errors, passed to the C{fallback} function.
+    @param compact: Whether the generated html should be compact.
+    @param fallback: A callable that returns a fallback stan if the convertion failed.
+        It can also be used to set some state on the documentable context.
+        Signature::
+            (errs:List[ParseError], doc:ParsedDocstring, ctx:model.Documentable) -> Tag
+    @param report: Whether to report errors.
+    @param section: Used for error messages.
+    """
+    try:
+        stan = parsed_doc.to_stan(linker, compact=compact)
+    except Exception as e:
+        errs = [get_to_stan_error(e)]
+        stan = fallback(errs, parsed_doc, ctx)
+        if report:
+            reportErrors(ctx, errs, section=section)
+    return stan
+
+def format_docstring_fallback(errs: List[ParseError], parsed_doc:ParsedDocstring, ctx:model.Documentable) -> Tag:
+    if ctx.docstring is None:
+        stan = BROKEN
+    else:
+        parsed_doc_plain = pydoctor.epydoc.markup.plaintext.parse_docstring(ctx.docstring, errs)
+        stan = parsed_doc_plain.to_stan(ctx.docstring_linker)
+    return stan
 
 def format_docstring(obj: model.Documentable) -> Tag:
     """Generate an HTML representation of a docstring"""
@@ -628,16 +722,9 @@ def format_docstring(obj: model.Documentable) -> Tag:
         ret(tags.p(class_='undocumented')("Undocumented"))
     else:
         assert obj.parsed_docstring is not None, "ensure_parsed_docstring() did not do it's job"
-        try:
-            stan = obj.parsed_docstring.to_stan(source.docstring_linker, compact=False)
-        except Exception as e:
-            errs = [ParseError(f'{e.__class__.__name__}: {e}', 1)]
-            if source.docstring is None:
-                stan = tags.p(class_="undocumented")('Broken description')
-            else:
-                parsed_doc_plain = pydoctor.epydoc.markup.plaintext.parse_docstring(source.docstring, errs)
-                stan = parsed_doc_plain.to_stan(source.docstring_linker)
-            reportErrors(source, errs)
+        stan = safe_to_stan(obj.parsed_docstring, source.docstring_linker, source, 
+                            compact=False, fallback=format_docstring_fallback)
+        
         if stan.tagName:
             ret(stan)
         else:
@@ -655,26 +742,26 @@ def format_docstring(obj: model.Documentable) -> Tag:
     ret(fh.format())
     return ret
 
-# TODO: FIX https://github.com/twisted/pydoctor/issues/86 
-# Use to_node() and compute shortened HTML from node tree with a visitor intead of using the raw source. 
+def format_summary_fallback(errs: List[ParseError], parsed_doc:ParsedDocstring, ctx:model.Documentable) -> Tag:
+    stan = BROKEN
+    # override parsed_summary instance variable to remeber this one is broken.
+    ctx.parsed_summary = ParsedStanOnly(stan)
+    return stan
+
 def format_summary(obj: model.Documentable) -> Tag:
     """Generate an shortened HTML representation of a docstring."""
 
     source, parsed_doc = _get_parsed_summary(obj)
     if not source:
         source = obj
-    try:
-        # Make sure we're not
-        # breaking links when including the summaries on other pages.
-        with source.docstring_linker.switch_page_context(None):
-            stan = parsed_doc.to_stan(source.docstring_linker)
     
-    except Exception:
-        # This problem will likely be reported by the full docstring as well,
-        # so don't spam the log.
-        stan = tags.span(class_='undocumented')("Broken description")
-        obj.parsed_summary = ParsedStanOnly(stan)
-        raise # Remove me after deugging
+    # Disallow same_page_optimization in order to make sure we're not
+    # breaking links when including the summaries on other pages.
+    with source.docstring_linker.disable_same_page_optimization():
+        # ParserErrors will likely be reported by the full docstring as well,
+        # so don't spam the log, pass report=False.
+        stan = safe_to_stan(parsed_doc, source.docstring_linker, source, compact=True, report=False,
+                fallback=format_summary_fallback)
 
     return stan
 
@@ -716,7 +803,8 @@ def type2stan(obj: model.Documentable) -> Optional[Tag]:
     if parsed_type is None:
         return None
     else:
-        return parsed_type.to_stan(obj.docstring_linker)
+        return safe_to_stan(parsed_type, obj.docstring_linker, obj, compact=True, 
+            fallback=colorized_pyval_fallback, section='annotation')
 
 def get_parsed_type(obj: model.Documentable) -> Optional[ParsedDocstring]:
     parsed_type = obj.parsed_type
@@ -737,7 +825,8 @@ def format_toc(obj: model.Documentable) -> Optional[Tag]:
         if obj.system.options.sidebartocdepth > 0:
             toc = obj.parsed_docstring.get_toc(depth=obj.system.options.sidebartocdepth)
             if toc:
-                return toc.to_stan(obj.docstring_linker)
+                return safe_to_stan(toc, obj.docstring_linker, obj, compact=True, report=False,
+                    fallback=lambda _,__,___:BROKEN)
     return None
 
 
@@ -800,17 +889,28 @@ def format_kind(kind: model.DocumentableKind, plural: bool = False) -> str:
         model.DocumentableKind.VARIABLE        : 'Variable',
         model.DocumentableKind.SCHEMA_FIELD    : 'Attribute',
         model.DocumentableKind.CONSTANT        : 'Constant',
+        model.DocumentableKind.EXCEPTION       : 'Exception',
+        model.DocumentableKind.TYPE_ALIAS      : 'Type Alias',
+        model.DocumentableKind.TYPE_VARIABLE   : 'Type Variable',
     }
     plurals = {
         model.DocumentableKind.CLASS           : 'Classes', 
         model.DocumentableKind.PROPERTY        : 'Properties',
+        model.DocumentableKind.TYPE_ALIAS      : 'Type Aliases',
     }
     if plural:
         return plurals.get(kind, names[kind] + 's')
     else:
         return names[kind]
 
+def colorized_pyval_fallback(_: List[ParseError], doc:ParsedDocstring, __:model.Documentable) -> Tag:
+    """
+    This fallback function uses L{ParsedDocstring.to_node()}, so it must be used only with L{ParsedDocstring} subclasses that implements C{to_node()}.
+    """
+    return Tag('code')(node2stan.gettext(doc.to_node()))
+
 def _format_constant_value(obj: model.Attribute) -> Iterator["Flattenable"]:
+
     # yield the table title, "Value"
     row = tags.tr(class_="fieldStart")
     row(tags.td(class_="fieldName")("Value"))
@@ -821,11 +921,11 @@ def _format_constant_value(obj: model.Attribute) -> Iterator["Flattenable"]:
         linelen=obj.system.options.pyvalreprlinelen,
         maxlines=obj.system.options.pyvalreprmaxlines)
     
-    value_repr = doc.to_stan(obj.docstring_linker)
+    value_repr = safe_to_stan(doc, obj.docstring_linker, obj, compact=True, 
+        fallback=colorized_pyval_fallback, section='rendering of constant')
 
-    # Report eventual warnings. It warns when a regex failed to parse or the html2stan() function fails.
-    for message in doc.warnings:
-        obj.report(message)
+    # Report eventual warnings. It warns when a regex failed to parse.
+    reportWarnings(obj, doc.warnings, section='colorize constant')
 
     # yield the value repr.
     row = tags.tr()

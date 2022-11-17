@@ -53,7 +53,6 @@ from pydoctor.epydoc.markup import DocstringLinker
 from pydoctor.epydoc.markup.restructuredtext import ParsedRstDocstring
 from pydoctor.epydoc.docutils import set_node_attributes, wbr, obj_reference
 from pydoctor.astutils import node2dottedname, bind_args
-from pydoctor.node2stan import gettext
 
 def decode_with_backslashreplace(s: bytes) -> str:
     r"""
@@ -191,12 +190,7 @@ class ColorizedPyvalRepr(ParsedRstDocstring):
         """
     
     def to_stan(self, docstring_linker: DocstringLinker, compact:bool=False) -> Tag:
-        try:
-            return Tag('code')(super().to_stan(docstring_linker))
-        except Exception as e:
-            # Just in case...
-            self.warnings.append(f"Cannot convert repr to renderable object, error: {str(e)}. Using plaintext.")
-            return Tag('code')(gettext(self.to_node()))
+        return Tag('code')(super().to_stan(docstring_linker))
 
 def colorize_pyval(pyval: Any, linelen:Optional[int], maxlines:int, linebreakok:bool=True) -> ColorizedPyvalRepr:
     """
@@ -288,7 +282,7 @@ class PyvalColorizer:
     LINEWRAP = nodes.inline('', chr(8629), classes=[LINEWRAP_TAG])
     UNKNOWN_REPR = nodes.inline('??', '??', classes=[UNKNOWN_TAG])
     WORD_BREAK_OPPORTUNITY = wbr()
-    NEWLINE = nodes.Text('\n', '\n')
+    NEWLINE = nodes.Text('\n')
 
     GENERIC_OBJECT_RE = re.compile(r'^<(?P<descr>.*) at (?P<addr>0x[0-9a-f]+)>$', re.IGNORECASE)
 

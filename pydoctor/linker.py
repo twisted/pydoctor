@@ -6,8 +6,9 @@ from collections import defaultdict
 import contextlib
 import attr
 from twisted.web.template import Tag, tags
-from typing import (
-    TYPE_CHECKING, Any, ContextManager, Dict, Generator,Iterable, Iterator, List, Optional, Set, Tuple, Union, cast
+from typing import  (
+     ContextManager, Tuple, TYPE_CHECKING, Dict, Iterable, 
+     Iterator, List, Optional, Set, Union, cast
 )
 
 from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring
@@ -77,27 +78,14 @@ class _EpydocLinker(DocstringLinker):
 
     @contextlib.contextmanager #type:ignore[arg-type]
     def switch_page_context(self, ob:Optional['model.Documentable']) -> ContextManager[None]: # type:ignore[misc]
-        """
-        Switch the page context of the linker, keeping the same underlying lookup rules.
-
-        Useful to resolve links with the right L{Documentable} context but
-        create correct - absolute or relative - links to be clicked on from another page 
-        rather than the initial page of the L{Documentable} context.
-
-        Pass C{None} to always generate full URLs (for summaries for example).
-
-        For instance::
-
-            with cls.parent.docstring_linker.switch_context(cls):                
-                # Resolves links in the context of the parent of the class
-                # but create links to be clicked from the class page.
-                flattenbase = colorize_inline_pyval(base_node).to_stan(
-                    cls.parent.docstring_linker)
-        """
+        
         old_page_object = self._page_object
         self._page_object = ob if ob is None else ob.page_object
         yield
         self._page_object = old_page_object
+    
+    def disable_same_page_optimization(self) -> Iterator[None]:
+        return self.switch_page_context(None)
 
     @staticmethod
     def _create_intersphinx_link(label:"Flattenable", url:str) -> Tag:
@@ -264,6 +252,8 @@ class _EpydocLinker(DocstringLinker):
             message += ' (you can link to external docs with --intersphinx)'
         self.obj.report(message, 'resolve_identifier_xref', lineno)
         raise LookupError(identifier)
+    
+    
 
 
 class CacheEntry:

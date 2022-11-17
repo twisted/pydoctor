@@ -4,15 +4,21 @@ This is a module demonstrating reST code documentation features.
 Most part of this documentation is using Python type hinting.
 """
 from abc import ABC
+from ast import Tuple
 import math
 import zope.interface
 import zope.schema
-from typing import Sequence, Optional, AnyStr, Generator, Union, List, Dict, TYPE_CHECKING
+from typing import overload, Callable, Sequence, Optional, AnyStr, Generator, Union, List, Dict, TYPE_CHECKING
 from incremental import Version
 from twisted.python.deprecate import deprecated, deprecatedProperty
 
 if TYPE_CHECKING:
     from typing_extensions import Final
+
+Parser = Callable[[str], Tuple[int, bytes, bytes]]
+"""
+Type aliases are documented as such and their value is shown just like constants.
+"""
 
 LANG = 'Fr'
 """
@@ -83,6 +89,25 @@ def demo_cross_reference() -> None:
     - `demo_typing_arguments`
     """
 
+@overload
+def demo_overload(s: str) -> str:
+    ...
+
+@overload
+def demo_overload(s: bytes) -> bytes:
+    ...
+
+def demo_overload(s: Union[str, bytes]) -> Union[str, bytes]:
+    """
+    Overload signatures appear without the main signature and with ``@overload`` decorator.
+
+    :param s: Some string or bytes param.
+    :return: Some string or bytes result.
+    """
+    raise NotImplementedError
+
+def demo_undocumented(s: str) -> str:
+    raise NotImplementedError
 
 
 class _PrivateClass:

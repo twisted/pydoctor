@@ -1,15 +1,17 @@
-
 from typing import Optional, Tuple, Type, List, overload, cast
 import ast
 
 import astor
 
 
-from pydoctor import astbuilder, model
+from pydoctor import astbuilder, astutils, model
 from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring
+from pydoctor.options import Options
 from pydoctor.stanutils import flatten, html2stan, flatten_text
 from pydoctor.epydoc.markup.epytext import Element, ParsedEpytextDocstring
 from pydoctor.epydoc2stan import format_summary, get_parsed_type
+from pydoctor.test.test_packages import processPackage
+from pydoctor.utils import partialclass
 
 from . import CapSys, NotFoundLinker, posonlyargs, typecomment
 import pytest
@@ -36,12 +38,19 @@ class PydanticSystem(model.System):
     # Add our custom extension as extra
     custom_extensions = ['pydoctor.test.test_pydantic_fields']
 
+class AttrsSystem(model.System):
+    """
+    A system with only the attrs extension enabled.
+    """
+    extensions = ['pydoctor.extensions.attrs']
+
 systemcls_param = pytest.mark.parametrize(
     'systemcls', (model.System, # system with all extensions enalbed
                   ZopeInterfaceSystem, # system with zopeinterface extension only
                   DeprecateSystem, # system with deprecated extension only
                   SimpleSystem, # system with no extensions
                   PydanticSystem,
+                  AttrsSystem,
                  )
     )
 
@@ -1406,7 +1415,7 @@ def test_literal_string_annotation(annotation: str, expected: str) -> None:
     """Strings inside Literal annotations must not be recursively parsed."""
     stmt, = ast.parse(annotation).body
     assert isinstance(stmt, ast.Expr)
-    unstringed = astbuilder._AnnotationStringParser().visit(stmt.value)
+    unstringed = astutils._AnnotationStringParser().visit(stmt.value)
     assert astor.to_source(unstringed).strip() == expected
 
 @systemcls_param
@@ -1456,117 +1465,6 @@ def test_inferred_variable_types(systemcls: Type[model.System]) -> None:
     # Check that type is inferred on assignments with multiple targets.
     assert ann_str_and_line(C.contents['t']) == ('str', 18)
     assert ann_str_and_line(mod.contents['m']) == ('bytes', 19)
-
-@systemcls_param
-def test_attrs_attrib_type(systemcls: Type[model.System]) -> None:
-    """An attr.ib's "type" or "default" argument is used as an alternative
-    type annotation.
-    """
-    mod = fromText('''
-    import attr
-    from attr import attrib
-    @attr.s
-    class C:
-        a = attr.ib(type=int)
-        b = attrib(type=int)
-        c = attr.ib(type='C')
-        d = attr.ib(default=True)
-        e = attr.ib(123)
-    ''', modname='test', systemcls=systemcls)
-    C = mod.contents['C']
-
-    A = C.contents['a']
-    B = C.contents['b']
-    _C = C.contents['c']
-    D = C.contents['d']
-    E = C.contents['e']
-
-    assert isinstance(A, model.Attribute)
-    assert isinstance(B, model.Attribute)
-    assert isinstance(_C, model.Attribute)
-    assert isinstance(D, model.Attribute)
-    assert isinstance(E, model.Attribute)
-
-    assert type2str(A.annotation) == 'int'
-    assert type2str(B.annotation) == 'int'
-    assert type2str(_C.annotation) == 'C'
-    assert type2str(D.annotation) == 'bool'
-    assert type2str(E.annotation) == 'int'
-
-@systemcls_param
-def test_attrs_attrib_instance(systemcls: Type[model.System]) -> None:
-    """An attr.ib attribute is classified as an instance variable."""
-    mod = fromText('''
-    import attr
-    @attr.s
-    class C:
-        a = attr.ib(type=int)
-    ''', modname='test', systemcls=systemcls)
-    C = mod.contents['C']
-    assert C.contents['a'].kind is model.DocumentableKind.INSTANCE_VARIABLE
-
-@systemcls_param
-def test_attrs_attrib_badargs(systemcls: Type[model.System], capsys: CapSys) -> None:
-    """."""
-    fromText('''
-    import attr
-    @attr.s
-    class C:
-        a = attr.ib(nosuchargument='bad')
-    ''', modname='test', systemcls=systemcls)
-    captured = capsys.readouterr().out
-    assert captured == (
-        'test:5: Invalid arguments for attr.ib(): got an unexpected keyword argument "nosuchargument"\n'
-        )
-
-@systemcls_param
-def test_attrs_auto_instance(systemcls: Type[model.System]) -> None:
-    """Attrs auto-attributes are classified as instance variables."""
-    mod = fromText('''
-    from typing import ClassVar
-    import attr
-    @attr.s(auto_attribs=True)
-    class C:
-        a: int
-        b: bool = False
-        c: ClassVar[str]  # explicit class variable
-        d = 123  # ignored by auto_attribs because no annotation
-    ''', modname='test', systemcls=systemcls)
-    C = mod.contents['C']
-    assert C.contents['a'].kind is model.DocumentableKind.INSTANCE_VARIABLE
-    assert C.contents['b'].kind is model.DocumentableKind.INSTANCE_VARIABLE
-    assert C.contents['c'].kind is model.DocumentableKind.CLASS_VARIABLE
-    assert C.contents['d'].kind is model.DocumentableKind.CLASS_VARIABLE
-
-@systemcls_param
-def test_attrs_args(systemcls: Type[model.System], capsys: CapSys) -> None:
-    """Non-existing arguments and invalid values to recognized arguments are
-    rejected with a warning.
-    """
-    fromText('''
-    import attr
-
-    @attr.s()
-    class C0: ...
-
-    @attr.s(repr=False)
-    class C1: ...
-
-    @attr.s(auto_attribzzz=True)
-    class C2: ...
-
-    @attr.s(auto_attribs=not False)
-    class C3: ...
-
-    @attr.s(auto_attribs=1)
-    class C4: ...
-    ''', modname='test', systemcls=systemcls)
-    captured = capsys.readouterr().out
-    assert captured == (
-        'test:10: Invalid arguments for attr.s(): got an unexpected keyword argument "auto_attribzzz"\n'
-        'test:13: Unable to figure out value for "auto_attribs" argument to attr.s(), maybe too complex\n'
-        'test:16: Value for "auto_attribs" argument to attr.s() has type "int", expected "bool"\n'
-        )
 
 @systemcls_param
 def test_detupling_assignment(systemcls: Type[model.System]) -> None:
@@ -1718,6 +1616,43 @@ def test_ignore_function_contents(systemcls: Type[model.System]) -> None:
     ''', systemcls=systemcls)
     outer = mod.contents['outer']
     assert not outer.contents
+
+@systemcls_param
+def test_overload(systemcls: Type[model.System], capsys: CapSys) -> None:
+    # Confirm decorators retained on overloads, docstring ignored for overloads,
+    # and that overloads after the primary function are skipped
+    mod = fromText("""
+        from typing import overload, Union
+        def dec(fn):
+            pass
+        @dec
+        @overload
+        def parse(s:str)->str:
+            ...
+        @overload
+        def parse(s:bytes)->bytes:
+            '''Ignored docstring'''
+            ...
+        def parse(s:Union[str, bytes])->Union[str, bytes]:
+            pass
+        @overload
+        def parse(s:str)->bytes:
+            ...
+        """, systemcls=systemcls)
+    func = mod.contents['parse']
+    assert isinstance(func, model.Function)
+    # Work around different space arrangements in Signature.__str__ between python versions
+    assert flatten_text(html2stan(str(func.signature).replace(' ', ''))) == '(s:Union[str,bytes])->Union[str,bytes]'
+    assert [astbuilder.node2dottedname(d) for d in (func.decorators or ())] == []
+    assert len(func.overloads) == 2
+    assert [astbuilder.node2dottedname(d) for d in func.overloads[0].decorators] == [['dec'], ['overload']]
+    assert [astbuilder.node2dottedname(d) for d in func.overloads[1].decorators] == [['overload']]
+    assert flatten_text(html2stan(str(func.overloads[0].signature).replace(' ', ''))) == '(s:str)->str'
+    assert flatten_text(html2stan(str(func.overloads[1].signature).replace(' ', ''))) == '(s:bytes)->bytes'
+    assert capsys.readouterr().out.splitlines() == [
+        '<test>:11: <test>.parse overload has docstring, unsupported',
+        '<test>:15: <test>.parse overload appeared after primary function',
+    ]
 
 @systemcls_param
 def test_constant_module(systemcls: Type[model.System]) -> None:
@@ -2075,3 +2010,145 @@ def test_reexport_wildcard(systemcls: Type[model.System]) -> None:
     assert system.allobjects['top._impl'].resolveName('f') == system.allobjects['top'].contents['f']
     assert system.allobjects['_impl2'].resolveName('i') == system.allobjects['top'].contents['i']
     assert all(n in system.allobjects['top'].contents for n in  ['f', 'g', 'h', 'i', 'j'])
+
+@systemcls_param
+def test_exception_kind(systemcls: Type[model.System], capsys: CapSys) -> None:
+    """
+    Exceptions are marked with the special kind "EXCEPTION".
+    """
+    mod = fromText('''
+    class Clazz:
+        """Class."""
+    class MyWarning(DeprecationWarning):
+        """Warnings are technically exceptions"""
+    class Error(SyntaxError):
+        """An exeption"""
+    class SubError(Error):
+        """A exeption subclass"""  
+    ''', systemcls=systemcls, modname="mod")
+    
+    warn = mod.contents['MyWarning']
+    ex1 = mod.contents['Error']
+    ex2 = mod.contents['SubError']
+    cls = mod.contents['Clazz']
+
+    assert warn.kind is model.DocumentableKind.EXCEPTION
+    assert ex1.kind is model.DocumentableKind.EXCEPTION
+    assert ex2.kind is model.DocumentableKind.EXCEPTION
+    assert cls.kind is model.DocumentableKind.CLASS
+
+    assert not capsys.readouterr().out
+
+@systemcls_param
+def test_exception_kind_corner_cases(systemcls: Type[model.System], capsys: CapSys) -> None:
+
+    src1 = '''\
+    class Exception:...
+    class LooksLikeException(Exception):... # Not an exception
+    '''
+
+    src2 = '''\
+    class Exception(BaseException):...
+    class LooksLikeException(Exception):... # An exception
+    '''
+
+    mod1 = fromText(src1, modname='src1', systemcls=systemcls)
+    assert mod1.contents['LooksLikeException'].kind == model.DocumentableKind.CLASS
+
+    mod2 = fromText(src2, modname='src2', systemcls=systemcls)
+    assert mod2.contents['LooksLikeException'].kind == model.DocumentableKind.EXCEPTION
+
+    assert not capsys.readouterr().out
+    
+@systemcls_param
+def test_syntax_error(systemcls: Type[model.System], capsys: CapSys) -> None:
+    systemcls = partialclass(systemcls, Options.from_args(['-q']))
+    fromText('''\
+    def f()
+        return True
+    ''', systemcls=systemcls)
+    assert capsys.readouterr().out == '<test>:???: cannot parse string\n'
+
+@systemcls_param
+def test_syntax_error_pack(systemcls: Type[model.System], capsys: CapSys) -> None:
+    systemcls = partialclass(systemcls, Options.from_args(['-q']))
+    processPackage('syntax_error', systemcls)
+    out = capsys.readouterr().out.strip('\n')
+    assert "__init__.py:???: cannot parse file, " in out, out
+
+@systemcls_param
+def test_type_alias(systemcls: Type[model.System]) -> None:
+    """
+    Type aliases and type variables are recognized as such.
+    """
+
+    mod = fromText(
+        '''
+        from typing import Callable, Tuple, TypeAlias, TypeVar
+        
+        T = TypeVar('T')
+        Parser = Callable[[str], Tuple[int, bytes, bytes]]
+        mylst = yourlst = list[str]
+        alist: TypeAlias = 'list[str]'
+        
+        notanalias = 'Callable[[str], Tuple[int, bytes, bytes]]'
+
+        class F:
+            from ext import what
+            L = _j = what.some = list[str]
+            def __init__(self):
+                self.Pouet: TypeAlias = 'Callable[[str], Tuple[int, bytes, bytes]]'
+                self.Q = q = list[str]
+        
+        ''', systemcls=systemcls)
+
+    assert mod.contents['T'].kind == model.DocumentableKind.TYPE_VARIABLE
+    assert mod.contents['Parser'].kind == model.DocumentableKind.TYPE_ALIAS
+    assert mod.contents['mylst'].kind == model.DocumentableKind.TYPE_ALIAS
+    assert mod.contents['yourlst'].kind == model.DocumentableKind.TYPE_ALIAS
+    assert mod.contents['alist'].kind == model.DocumentableKind.TYPE_ALIAS
+    assert mod.contents['notanalias'].kind == model.DocumentableKind.VARIABLE
+    assert mod.contents['F'].contents['L'].kind == model.DocumentableKind.TYPE_ALIAS
+    assert mod.contents['F'].contents['_j'].kind == model.DocumentableKind.TYPE_ALIAS
+
+    # Type variables in instance variables are not recognized
+    assert mod.contents['F'].contents['Pouet'].kind == model.DocumentableKind.INSTANCE_VARIABLE
+    assert mod.contents['F'].contents['Q'].kind == model.DocumentableKind.INSTANCE_VARIABLE
+
+@systemcls_param
+def test_prepend_package(systemcls: Type[model.System]) -> None:
+    """
+   Option --prepend-package option relies simply on the L{ISystemBuilder} interface, 
+   so we can test it by using C{addModuleString}, but it's not exactly what happens when we actually 
+   run pydoctor. See the other test L{test_prepend_package_real_path}. 
+    """
+    system = systemcls()
+    builder = model.prepend_package(system.systemBuilder, package='lib.pack')(system)
+
+    builder.addModuleString('"mod doc"\nclass C:\n    "C doc"', modname='core')
+    builder.buildModules()
+    assert isinstance(system.allobjects['lib'], model.Package)
+    assert isinstance(system.allobjects['lib.pack'], model.Package)
+    assert isinstance(system.allobjects['lib.pack.core.C'], model.Class)
+    assert 'core' not in system.allobjects
+
+
+@systemcls_param
+def test_prepend_package_real_path(systemcls: Type[model.System]) -> None:
+    """ 
+    In this test, we closer mimics what happens in the driver when --prepend-package option is passed. 
+    """
+    _builderT_init = systemcls.systemBuilder
+    try:
+        systemcls.systemBuilder = model.prepend_package(systemcls.systemBuilder, package='lib.pack')
+
+        system = processPackage('basic', systemcls=systemcls)
+
+        assert isinstance(system.allobjects['lib'], model.Package)
+        assert isinstance(system.allobjects['lib.pack'], model.Package)
+        assert isinstance(system.allobjects['lib.pack.basic.mod.C'], model.Class)
+        assert 'basic' not in system.allobjects
+    
+    finally:
+        systemcls.systemBuilder = _builderT_init
+
