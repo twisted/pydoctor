@@ -271,7 +271,12 @@ class CacheEntry:
         self.warned_linenos: Set[int] = warned_linenos or set()
 
         # Not to compute it several times
-        self._stan = Tag('a', attributes=self.attributes)(self.label)
+        if lookup_failed:
+            self._stan = Tag('transparent', attributes=self.attributes)(self.label)
+        else:
+            # Do not create links when there is nothing to link to. 
+            self._stan = Tag('a', attributes=self.attributes)(self.label)
+        
         self._href = str(self.attributes.get('href',''))
     
     @property

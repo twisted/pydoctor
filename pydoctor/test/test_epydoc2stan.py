@@ -1735,3 +1735,28 @@ def test_self_cls_in_function_params(capsys: CapSys) -> None:
     assert '<span class="fieldArg">cls</span>' not in html_which
     assert '<span class="fieldArg">self</span>' not in html_init
     assert '<span class="fieldArg">self</span>' in html_bool
+
+def test_not_found_annotation_does_not_create_link() -> None:
+    """
+    The docstring linker cache does not create empty <a> tags.
+    """
+
+    
+    from pydoctor.test.test_templatewriter import getHTMLOf
+
+    src = '''\
+    __docformat__ = 'numpy'
+
+    def link_to(identifier, label: NotFound):
+        """
+        :param label: the lable of the link.
+        :type identifier: Union[str, NotFound]
+        """
+
+    '''
+
+    mod = fromText(src)
+
+    html = getHTMLOf(mod)
+
+    assert '<a>NotFound</a>' not in html
