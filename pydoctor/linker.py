@@ -267,8 +267,8 @@ class CacheEntry:
     # Warning tracking attribute
     warned_linenos: Set[int] = attr.ib(factory=set)
     
-    __stan: Tag
-    __href: str
+    _stan: Tag
+    _href: str
     
     def __attrs_post_init__(self) -> None:
         def set_attribute(name:str, value:Any) -> None:
@@ -277,22 +277,22 @@ class CacheEntry:
 
         # Not to compute it several times
         if self.lookup_failed:
-            set_attribute('__stan', Tag('transparent', attributes=dict(self.attributes))(self.label))
+            set_attribute('_stan', Tag('transparent', attributes=dict(self.attributes))(self.label))
         else:
             # Do not create links when there is nothing to link to. 
-            set_attribute('__stan', Tag('a', attributes=dict(self.attributes))(self.label))
+            set_attribute('_stan', Tag('a', attributes=dict(self.attributes))(self.label))
         
-        set_attribute('__href', str(self.attributes.get('href','')))
+        set_attribute('_href', str(self.attributes.get('href','')))
     
     @property
     def href(self) -> str:
-        return self.__href
+        return self._href
 
     def __repr__(self) -> str:
         return f"<CacheEntry name={self.name!r} label={self.label!r} attributes={self.attributes!r}>"
     
     def get_stan(self) -> Tag:
-        return self.__stan
+        return self._stan
     
     @staticmethod
     def _could_be_anchor_link(href:str, page_url:str) -> bool:
