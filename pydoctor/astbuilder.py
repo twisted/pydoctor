@@ -890,6 +890,7 @@ class ModuleVistor(NodeVisitor):
             inherited_property = get_inherited_property(property_decorator, parent)
 
             # Looks like inherited property
+            assert deco_name
             if len(deco_name)>2:
                 if inherited_property and inherited_property._property_info:
                     prop = self.builder.addAttribute(node.name, 
