@@ -823,32 +823,8 @@ def init_property(attr:'Attribute') -> Iterator['Function']:
         
         # Set the new attribute parsed docstring
         attr.parsed_docstring = pdoc
-    
-    # We recognize 3 types of properties:
-    # - read-only
-    # - read-write
-    # - read-write-delete
-    # read-delete-only is not useful to be supported
 
-    def get_property_permission_text(write:bool, delete:bool) -> str:
-        if not write:
-            return "This property is *read-only*."
-        if delete:
-            return "This property is *readable*, *writable* and *deletable*."
-        else:
-            return "This property is *readable* and *writable*."
-    
-    parsed_info = epydoc2stan.parse_docstring(
-                        obj=info.declaration,
-                        doc=get_property_permission_text(
-                            write=setter is not None, 
-                            delete=deleter is not None), 
-                        source=info.declaration, 
-                        markup='restructuredtext', 
-                        section='property permission text',)
-    
     # TODO: Add inheritence info to getter/setter/deleters
-    attr.extra_info.append(parsed_info)
 
     # Yield the objects to remove from the Documentable tree
     yield getter

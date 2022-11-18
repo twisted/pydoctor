@@ -82,10 +82,7 @@ def test_twisted_python_deprecate(capsys: CapSys, systemcls: Type[model.System])
     foom_deprecated_property = _class.contents['foom']
     assert isinstance(foom_deprecated_property, model.Attribute)
     info_text = [' '.join(node2stan.gettext(i.to_node())) for i in foom_deprecated_property.extra_info]
-    assert len(info_text) == 2, info_text
-    assert info_text == [
-        'Deprecated since version NEXT:  foom  was deprecated in Twisted NEXT; please use  faam  instead.',
-        'This property is  read-only .', ]
+    assert 'Deprecated since version NEXT:  foom  was deprecated in Twisted NEXT; please use  faam  instead.' in info_text
 
     assert re.match(_html_template_with_replacement.format(
         name='foom', package='Twisted', version=r'NEXT', replacement='faam'
