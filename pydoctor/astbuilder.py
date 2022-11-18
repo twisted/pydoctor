@@ -149,27 +149,32 @@ def extract_final_subscript(annotation: ast.Subscript) -> ast.expr:
         return ann_slice
 
 def is_property_def_decorator(dottedname:List[str], ctx:model.Documentable) -> bool:
-    if dottedname[-1].endswith('property') or dottedname[-1].endswith('Property'):
+    """
+    Whether the last element of the list of names finishes by "property" or "Property".
+    """
+    if len(dottedname) >= 1 and (dottedname[-1].endswith('property') or dottedname[-1].endswith('Property')):
         # TODO: Support property subclasses.
         return True
     return False
 
-def looks_like_property_func_decorator(deco_name:List[str], ctx:model.Documentable) -> bool:
-    if len(deco_name) >= 2 and deco_name[-1] in ('getter' ,'setter', 'deleter'):
+def looks_like_property_func_decorator(dottedname:List[str], ctx:model.Documentable) -> bool:
+    """
+    Whether the last element of the list of names is "getter", "setter" or "deleter". 
+    Won't match C{['geter']}, because we require the list to have a least 2 elements.
+    """
+    if len(dottedname) >= 2 and dottedname[-1] in ('getter' ,'setter', 'deleter'):
         return True
     return False
 
-def get_inherited_property(_property_decorator:ast.expr, _parent: model.Documentable) -> Optional[model.Attribute]:
+def get_inherited_property(dottedname:List[str], _parent: model.Documentable) -> Optional[model.Attribute]:
     """
     Fetch the inherited property that this new decorator overrides.
     None if it doesn't exist.
     """
-    if not get_property_function_kind(_property_decorator):
+    if not get_property_function_kind(dottedname):
         return None
-    (deco_name,_), = astutils.iter_decorator_list((_property_decorator,))
-    assert deco_name is not None
 
-    _property_name = deco_name[:-1]
+    _property_name = dottedname[:-1]
     
     if len(_property_name) <= 1 or _property_name[-1] in _parent.contents:
         # the property already exist
@@ -193,18 +198,17 @@ def get_inherited_property(_property_decorator:ast.expr, _parent: model.Document
     
     return property_def
 
-def get_property_function_kind(_property_decorator:ast.expr) -> Optional[model.PropertyFunctionKind]:
+def get_property_function_kind(dottedname:List[str]) -> Optional[model.PropertyFunctionKind]:
     """
     What kind of property function this decorator declares?
     None if we can't make sens of the decorator.
     """
-    (deco_name,_), = astutils.iter_decorator_list((_property_decorator,))
-    if deco_name:
-        if deco_name[-1] == 'setter':
+    if dottedname:
+        if dottedname[-1] == 'setter':
             return model.PropertyFunctionKind.SETTER
-        if deco_name[-1] == 'getter':
+        if dottedname[-1] == 'getter':
             return model.PropertyFunctionKind.GETTER
-        if deco_name[-1] == 'deleter':
+        if dottedname[-1] == 'deleter':
             return model.PropertyFunctionKind.DELETER
     return None
 
@@ -832,16 +836,15 @@ class ModuleVistor(NodeVisitor):
         is_staticmethod = False
         is_overload_func = False
 
-        is_property = False # True if is_property_def_decorator()
-        has_property_decorator = False # True if looks_like_property_func_decorator()
-        property_decorator: Optional[ast.expr] = None
+        is_property = False
+        property_decorator_dottedname: Optional[List[str]] = None
         
         if node.decorator_list:
-            for deco_name,decnode in astutils.iter_decorator_list(node.decorator_list):
+            for deco_name, _ in astutils.iter_decorator_list(node.decorator_list):
                 if deco_name is None:
                     continue
                 if isinstance(parent, model.Class):
-                    if deco_name[-1].endswith('property') or deco_name[-1].endswith('Property'):
+                    if is_property_def_decorator(deco_name, parent):
                         is_property = True
                     elif deco_name == ['classmethod']:
                         is_classmethod = True
@@ -861,8 +864,7 @@ class ModuleVistor(NodeVisitor):
                         # the property object.
                         
                         func_name = '.'.join(deco_name[-2:])
-                        has_property_decorator = True
-                        property_decorator = decnode
+                        property_decorator_dottedname = deco_name
                 
                 # Determine if the function is decorated with overload
                 if parent.expandName('.'.join(deco_name)) in ('typing.overload', 'typing_extensions.overload'):
@@ -872,31 +874,14 @@ class ModuleVistor(NodeVisitor):
         prop: Optional[model.Attribute] = None
         prop_func_kind: Optional[model.PropertyFunctionKind] = None
         is_new_property: bool = is_property
-
-        if is_property and has_property_decorator:
-            # The function has both @property and @name.getter/setter/delter decorators
-            pass
         
-        elif is_property:
-            prop = self.builder.addAttribute(node.name, 
-                        kind=model.DocumentableKind.PROPERTY, 
-                        parent=parent)
-            prop.setLineNumber(lineno)
-            prop.decorators = node.decorator_list
-            prop_func_kind = model.PropertyFunctionKind.GETTER
-            # rename func, this might create conflict if some overrides the .getter
-            func_name = node.name+'.getter'
-        
-        elif has_property_decorator:
-            assert property_decorator is not None
+        if property_decorator_dottedname is not None:
 
-            (deco_name,_), = astutils.iter_decorator_list((property_decorator,))
-            prop_func_kind = get_property_function_kind(property_decorator)
-            inherited_property = get_inherited_property(property_decorator, parent)
-
+            prop_func_kind = get_property_function_kind(property_decorator_dottedname)
+            
             # Looks like inherited property
-            assert deco_name
-            if len(deco_name)>2:
+            if len(property_decorator_dottedname)>2:
+                inherited_property = get_inherited_property(property_decorator_dottedname, parent)
                 if inherited_property and inherited_property._property_info:
                     prop = self.builder.addAttribute(node.name, 
                             kind=model.DocumentableKind.PROPERTY, 
@@ -908,9 +893,6 @@ class ModuleVistor(NodeVisitor):
                                             **attr.asdict(inherited_property._property_info))
                     is_new_property = True
             
-            elif not prop_func_kind:
-                # should never go there since the deocrator should looks_like_property_func_decorator()
-                pass
             else:
                 # fetch property info to add this info to it
                 maybe_prop = self.builder.current.contents.get(node.name)
@@ -926,12 +908,21 @@ class ModuleVistor(NodeVisitor):
                 else:
                     prop = maybe_prop
         
+        elif is_property:
+            prop = self.builder.addAttribute(node.name, 
+                        kind=model.DocumentableKind.PROPERTY, 
+                        parent=parent)
+            prop.setLineNumber(lineno)
+            prop.decorators = node.decorator_list
+            prop_func_kind = model.PropertyFunctionKind.GETTER
+            # rename func, this might create conflict if some overrides the .getter
+            func_name = node.name+'.getter'
+        
         # Check if this property function is overriding a previously defined
         # property function on the same scope before pushing the new function
         # If it does override something, delete it before handleDuplicate() trigger a unseless warning.
-
         if prop is not None and not is_new_property \
-          and func_name in parent.contents:            
+          and func_name in parent.contents:
             self.system._remove(parent.contents[func_name])
             del parent.contents[func_name]
         
@@ -1015,6 +1006,14 @@ class ModuleVistor(NodeVisitor):
             func.report(f'{func.fullName()} has invalid parameters: {ex}')
             signature = Signature()
 
+        func.annotations = annotations
+
+        # Only set main function signature if it is a non-overload
+        if is_overload_func:
+            func.overloads.append(model.FunctionOverload(primary=func, signature=signature, decorators=node.decorator_list))
+        else:
+            func.signature = signature
+        
         if prop is not None:
             
             if is_classmethod:
@@ -1022,11 +1021,6 @@ class ModuleVistor(NodeVisitor):
             if is_staticmethod:
                 prop.report(f'{prop.fullName()} is both property and staticmethod')
             
-            # assert property_decorator is not None it actually can be None
-
-            # # TODO: maybe deleter this attribute
-            # func.property_decorator = property_decorator
-
             if prop_func_kind is not None:
                 # Store the fact that this function implements one of the getter/setter/deleter
                 # of the property 'prop'.
@@ -1038,13 +1032,6 @@ class ModuleVistor(NodeVisitor):
                 if is_new_property:
                     prop._property_info.declaration = func
     
-        func.annotations = annotations
-
-        # Only set main function signature if it is a non-overload
-        if is_overload_func:
-            func.overloads.append(model.FunctionOverload(primary=func, signature=signature, decorators=node.decorator_list))
-        else:
-            func.signature = signature
 
     def depart_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:
         self.builder.popFunction()

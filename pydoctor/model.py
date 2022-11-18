@@ -716,7 +716,7 @@ class PropertyInfo:
     declaration:'Function' = NotImplemented
     """
     The function that initially declared this property with C{@property} decorator or by overriding
-    the a property function with C{@A.name.setter/getter/deleter} from another class.
+    the property function with C{@A.name.setter/getter/deleter} from another class.
     """
     getter:Optional['Function'] = None
     """
@@ -1490,7 +1490,6 @@ class System:
                 to_delete.extend(init_property(attr))
         for obj in set(to_delete):
             self._remove(obj)
-            assert '.' in obj.name
             assert obj.parent is not None
             if obj.name in obj.parent.contents:
                 del obj.parent.contents[obj.name]

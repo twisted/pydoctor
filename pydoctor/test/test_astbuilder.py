@@ -2472,3 +2472,30 @@ def test_prepend_package_real_path(systemcls: Type[model.System]) -> None:
     finally:
         systemcls.systemBuilder = _builderT_init
 
+@systemcls_param
+def test_property_other_decorators(systemcls: Type[model.System]) -> None:
+
+    src = '''
+    class BaseClass(object):
+        @property
+        @deprecatedProperty
+        def spam(self):
+            """BaseClass.getter"""
+            pass
+        @spam.setter
+        @deprecatedSetProperty
+        def spam(self, value):
+            """BaseClass.setter"""
+            pass
+        @deprecatedDelProperty
+        @spam.deleter
+        def spam(self):
+            """BaseClass.setter"""
+            pass
+        '''
+
+    mod = fromText(src, systemcls=systemcls)
+    p = mod.contents['BaseClass'].contents['spam']
+    assert isinstance(p, model.Attribute)
+    assert isinstance(p.property_setter, model.Function)
+    assert isinstance(p.property_deleter, model.Function)
