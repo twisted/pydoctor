@@ -6,9 +6,11 @@ from collections import defaultdict
 import contextlib
 from twisted.web.template import Tag, tags
 from typing import  (
-     ContextManager, Tuple, TYPE_CHECKING, Dict, Iterable, 
+     Any, ContextManager, Mapping, Tuple, TYPE_CHECKING, Dict, Iterable, 
      List, Optional, Set, Union, cast
 )
+
+import attr
 
 from pydoctor.epydoc.markup import DocstringLinker
 
@@ -255,39 +257,42 @@ class _EpydocLinker(DocstringLinker):
     
 
 
+@attr.s(frozen=True)
 class CacheEntry:
-    def __init__(self, name:str, 
-                 label:'Flattenable', 
-                 attributes: Dict[Union[str, bytes], "Flattenable"], 
-                 lookup_failed: bool, 
-                 warned_linenos: Optional[Set[int]]=None, ) -> None:
-        # Core fields of cache entry
-        self.name: str = name
-        self.label: "Flattenable" = label
-        self.attributes: Dict[Union[str, bytes], "Flattenable"] = attributes
-        
-        # Warning tracking attributes
-        self.lookup_failed: bool = lookup_failed
-        self.warned_linenos: Set[int] = warned_linenos or set()
+    # Core fields of cache entry
+    name: str = attr.ib()
+    label: "Flattenable" = attr.ib()
+    attributes: Mapping[Union[str, bytes], "Flattenable"] = attr.ib()
+    lookup_failed: bool = attr.ib()
+    # Warning tracking attribute
+    warned_linenos: Set[int] = attr.ib(factory=set)
+    
+    __stan: Tag
+    __href: str
+    
+    def __attrs_post_init__(self) -> None:
+        def set_attribute(name:str, value:Any) -> None:
+            # https://github.com/python-attrs/attrs/issues/120
+            object.__setattr__(self, name, value)
 
         # Not to compute it several times
-        if lookup_failed:
-            self._stan = Tag('transparent', attributes=self.attributes)(self.label)
+        if self.lookup_failed:
+            set_attribute('__stan', Tag('transparent', attributes=dict(self.attributes))(self.label))
         else:
             # Do not create links when there is nothing to link to. 
-            self._stan = Tag('a', attributes=self.attributes)(self.label)
+            set_attribute('__stan', Tag('a', attributes=dict(self.attributes))(self.label))
         
-        self._href = str(self.attributes.get('href',''))
+        set_attribute('__href', str(self.attributes.get('href','')))
     
     @property
     def href(self) -> str:
-        return self._href
+        return self.__href
 
     def __repr__(self) -> str:
         return f"<CacheEntry name={self.name!r} label={self.label!r} attributes={self.attributes!r}>"
     
     def get_stan(self) -> Tag:
-        return self._stan
+        return self.__stan
     
     @staticmethod
     def _could_be_anchor_link(href:str, page_url:str) -> bool:
@@ -375,7 +380,7 @@ class _CachedEpydocLinker(_EpydocLinker):
             new_attribs = cached_entry.attributes
         else:
             # Copy the new link into a new attributes dict
-            new_attribs = cached_entry.attributes.copy()
+            new_attribs = dict(cached_entry.attributes)
             new_attribs['href'] = new_href
 
         return self._store_in_cache(
@@ -435,7 +440,7 @@ class _CachedEpydocLinker(_EpydocLinker):
     def _store_in_cache(self, 
                         target: str, 
                         label: "Flattenable", 
-                        attributes: Dict[Union[str, bytes], "Flattenable"],
+                        attributes: Mapping[Union[str, bytes], "Flattenable"],
                         cache_kind: 'Literal["link_to", "link_xref"]' = "link_to", 
                         lookup_failed:bool=False, 
                         warned_linenos: Optional[Set[int]]=None) -> 'CacheEntry':
@@ -444,9 +449,7 @@ class _CachedEpydocLinker(_EpydocLinker):
 
         cache = self._get_cache(cache_kind)
         values = cache[target][self.page_url]
-        entry = CacheEntry(target, label, attributes=attributes, lookup_failed=lookup_failed)
-        if warned_linenos:
-            entry.warned_linenos = warned_linenos # We do not use copy() here by design.
+        entry = CacheEntry(target, label, attributes=attributes, lookup_failed=lookup_failed, warned_linenos=warned_linenos or set()) # We do not use copy() here by design.
         values.insert(0, entry)
         return entry
 
