@@ -2127,23 +2127,23 @@ def test_property_inherited(systemcls: Type[model.System], capsys: CapSys) -> No
     assert isinstance(spam2.property_deleter, model.Function)
     assert isinstance(spam3.property_deleter, model.Function)
 
-    assert spam0._property_info.getter.fullName() == 'mod.BaseClass.spam.getter'
-    assert spam0._property_info.setter.fullName() == 'mod.BaseClass.spam.setter'
-    assert spam0._property_info.deleter.fullName() == 'mod.BaseClass.spam.deleter'
+    assert spam0._property_info.getter.fullName() == 'mod.BaseClass.spam.getter' # type:ignore
+    assert spam0._property_info.setter.fullName() == 'mod.BaseClass.spam.setter' # type:ignore
+    assert spam0._property_info.deleter.fullName() == 'mod.BaseClass.spam.deleter' # type:ignore
 
-    assert spam1._property_info.getter.fullName() == 'mod.SubClass.spam.getter'
-    assert spam1._property_info.setter.fullName() == 'mod.BaseClass.spam.setter'
-    assert spam1._property_info.deleter.fullName() == 'mod.BaseClass.spam.deleter'
+    assert spam1._property_info.getter.fullName() == 'mod.SubClass.spam.getter' # type:ignore
+    assert spam1._property_info.setter.fullName() == 'mod.BaseClass.spam.setter' # type:ignore
+    assert spam1._property_info.deleter.fullName() == 'mod.BaseClass.spam.deleter' # type:ignore
 
-    assert spam2._property_info.getter.fullName() == 'mod.BaseClass.spam.getter'
-    assert spam2._property_info.setter.fullName() == 'mod.SubClass2.spam.setter'
-    assert spam2._property_info.deleter.fullName() == 'mod.BaseClass.spam.deleter'
+    assert spam2._property_info.getter.fullName() == 'mod.BaseClass.spam.getter' # type:ignore
+    assert spam2._property_info.setter.fullName() == 'mod.SubClass2.spam.setter' # type:ignore
+    assert spam2._property_info.deleter.fullName() == 'mod.BaseClass.spam.deleter' # type:ignore
 
-    assert spam3._property_info.getter.fullName() == 'mod.BaseClass.spam.getter'
-    assert spam3._property_info.setter.fullName() == 'mod.BaseClass.spam.setter'
-    assert spam3._property_info.deleter.fullName() == 'mod.SubClass3.spam.deleter'
+    assert spam3._property_info.getter.fullName() == 'mod.BaseClass.spam.getter' # type:ignore
+    assert spam3._property_info.setter.fullName() == 'mod.BaseClass.spam.setter' # type:ignore
+    assert spam3._property_info.deleter.fullName() == 'mod.SubClass3.spam.deleter' # type:ignore
 
-    assert spam1._property_info.getter is not spam0._property_info.getter
+    assert spam1._property_info.getter is not spam0._property_info.getter # type:ignore
 
 @systemcls_param
 def test_property_old_school(systemcls: Type[model.System], capsys: CapSys) -> None:
@@ -2188,7 +2188,7 @@ def test_property_getter_override(systemcls: Type[model.System], capsys: CapSys)
     assert not capsys.readouterr().out
     attr = mod.contents['PropertyNewGetter'].contents['spam']
     # the parsed_docstring attribute gets initiated in post-processing
-    assert node2stan.gettext(attr.parsed_docstring.to_node()) == ['new docstring']
+    assert node2stan.gettext(attr.parsed_docstring.to_node()) == ['new docstring'] # type:ignore
     assert attr.linenumber == 4
 
 @systemcls_param
