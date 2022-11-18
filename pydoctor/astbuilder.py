@@ -918,14 +918,6 @@ class ModuleVistor(NodeVisitor):
             # rename func, this might create conflict if some overrides the .getter
             func_name = node.name+'.getter'
         
-        # Check if this property function is overriding a previously defined
-        # property function on the same scope before pushing the new function
-        # If it does override something, delete it before handleDuplicate() trigger a unseless warning.
-        if prop is not None and not is_new_property \
-          and func_name in parent.contents:
-            self.system._remove(parent.contents[func_name])
-            del parent.contents[func_name]
-        
         # Push and analyse function 
 
         # Check if it's a new func or exists with an overload
@@ -939,6 +931,12 @@ class ModuleVistor(NodeVisitor):
                 existing_func.report(f'{existing_func.fullName()} overload appeared after primary function', lineno_offset=lineno-existing_func.linenumber)
                 raise self.SkipNode()
             # Do not recreate function object, just re-push it
+            self.builder.push(existing_func, lineno)
+            func = existing_func
+        elif isinstance(existing_func, model.Function) and prop is not None and not is_new_property:
+            # Check if this property function is overriding a previously defined
+            # property function on the same scope before pushing the new function
+            # If it does override something, just re-push the function, do not override it.
             self.builder.push(existing_func, lineno)
             func = existing_func
         else:
