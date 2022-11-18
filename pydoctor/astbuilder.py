@@ -871,7 +871,7 @@ class ModuleVistor(NodeVisitor):
                     is_overload_func = True
 
 
-        prop: Optional[model.Attribute] = None
+        func_property: Optional[model.Attribute] = None
         prop_func_kind: Optional[model.PropertyFunctionKind] = None
         is_new_property: bool = is_property
         
@@ -883,39 +883,30 @@ class ModuleVistor(NodeVisitor):
             if len(property_decorator_dottedname)>2:
                 inherited_property = get_inherited_property(property_decorator_dottedname, parent)
                 if inherited_property and inherited_property._property_info:
-                    prop = self.builder.addAttribute(node.name, 
+                    func_property = self.builder.addAttribute(node.name, 
                             kind=model.DocumentableKind.PROPERTY, 
                             parent=parent)
-                    prop.setLineNumber(lineno)
-                    prop.decorators = node.decorator_list
+                    func_property.setLineNumber(lineno)
+                    func_property.decorators = node.decorator_list
                     # copy property info
-                    prop._property_info = model.PropertyInfo(
+                    func_property._property_info = model.PropertyInfo(
                                             **attr.asdict(inherited_property._property_info))
                     is_new_property = True
             
             else:
                 # fetch property info to add this info to it
                 maybe_prop = self.builder.current.contents.get(node.name)
-                if not maybe_prop:
-                    # can't find property
-                    pass
-                elif not isinstance(maybe_prop, model.Attribute):
-                    # object is not a Attribute
-                    prop = None
-                elif not maybe_prop._property_info:
-                    # Attribute is not a property
-                    prop = None
-                else:
-                    prop = maybe_prop
+                if isinstance(maybe_prop, model.Attribute) and maybe_prop._property_info:
+                    func_property = maybe_prop
         
         elif is_property:
-            prop = self.builder.addAttribute(node.name, 
+            func_property = self.builder.addAttribute(node.name, 
                         kind=model.DocumentableKind.PROPERTY, 
                         parent=parent)
-            prop.setLineNumber(lineno)
-            prop.decorators = node.decorator_list
+            func_property.setLineNumber(lineno)
+            func_property.decorators = node.decorator_list
             prop_func_kind = model.PropertyFunctionKind.GETTER
-            # rename func, this might create conflict if some overrides the .getter
+            # rename func X.getter
             func_name = node.name+'.getter'
         
         # Push and analyse function 
@@ -933,13 +924,14 @@ class ModuleVistor(NodeVisitor):
             # Do not recreate function object, just re-push it
             self.builder.push(existing_func, lineno)
             func = existing_func
-        elif isinstance(existing_func, model.Function) and prop is not None and not is_new_property:
+        elif isinstance(existing_func, model.Function) and func_property is not None and not is_new_property:
             # Check if this property function is overriding a previously defined
             # property function on the same scope before pushing the new function
             # If it does override something, just re-push the function, do not override it.
             self.builder.push(existing_func, lineno)
             func = existing_func
         else:
+            # create new function
             func = self.builder.pushFunction(func_name, lineno)
 
         func.is_async = is_async
@@ -1012,23 +1004,17 @@ class ModuleVistor(NodeVisitor):
         else:
             func.signature = signature
         
-        if prop is not None:
+        if func_property is not None:
             
             if is_classmethod:
-                prop.report(f'{prop.fullName()} is both property and classmethod')
+                func_property.report(f'{func_property.fullName()} is both property and classmethod')
             if is_staticmethod:
-                prop.report(f'{prop.fullName()} is both property and staticmethod')
+                func_property.report(f'{func_property.fullName()} is both property and staticmethod')
             
             if prop_func_kind is not None:
                 # Store the fact that this function implements one of the getter/setter/deleter
-                # of the property 'prop'.
-                assert prop._property_info is not None
-                prop._property_info.set(prop_func_kind, func)
-
-                # Store the fact that this function declares a 
-                # new property vs adding new functionality on top of getter
-                if is_new_property:
-                    prop._property_info.declaration = func
+                assert func_property._property_info is not None
+                func_property._property_info.set(prop_func_kind, func)
     
 
     def depart_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:

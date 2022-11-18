@@ -713,14 +713,10 @@ class PropertyFunctionKind(Enum):
 
 @attr.s(auto_attribs=True)
 class PropertyInfo:
-    declaration:'Function' = NotImplemented
-    """
-    The function that initially declared this property with C{@property} decorator or by overriding
-    the property function with C{@A.name.setter/getter/deleter} from another class.
-    """
+
     getter:Optional['Function'] = None
     """
-    The getter. Generally the same as L{declaration} if it has not been overriden.
+    The getter.
     """
     setter: Optional['Function'] = None
     """
@@ -824,7 +820,7 @@ def init_property(attr:'Attribute') -> Iterator['Function']:
         # Set the new attribute parsed docstring
         attr.parsed_docstring = pdoc
 
-    # TODO: Add inheritence info to getter/setter/deleters
+    # maybe TODO: Add inheritence info to getter/setter/deleters
 
     # Yield the objects to remove from the Documentable tree
     yield getter
