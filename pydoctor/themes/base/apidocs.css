@@ -334,7 +334,7 @@ table .module {
     background-color: #fff8e1;
 }
 
-table .class, table .classvariable, table .baseclassvariable {
+table .class, table .classvariable, table .baseclassvariable, table .exception {
     background-color: #fffde7;
 }
 
@@ -392,6 +392,15 @@ table .private {
 
     margin-top: 6px;
     margin-bottom: 6px;
+}
+
+/* Use a slightly more compact presentation for signatures */
+.function-signature {
+    word-spacing: -5px;
+}
+
+.function-signature code {
+    padding: 2px 1px;
 }
 
 /*

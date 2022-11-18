@@ -8,9 +8,10 @@ being documented -- a System is a bad of Documentables, in some sense.
 
 import abc
 import ast
+import attr
+from collections import defaultdict
 import datetime
 import importlib
-import inspect
 import platform
 import sys
 import textwrap
@@ -97,6 +98,7 @@ class DocumentableKind(Enum):
     MODULE              = 900
     CLASS               = 800
     INTERFACE           = 850
+    EXCEPTION           = 750
     CLASS_METHOD        = 700
     STATIC_METHOD       = 600
     METHOD              = 500
@@ -159,24 +161,8 @@ class Documentable:
         self._linker: Optional['linker.DocstringLinker'] = None
 
     def setDocstring(self, node: ast.Str) -> None:
-        doc = node.s
-        lineno = node.lineno
-        if _string_lineno_is_end:
-            # In older CPython versions, the AST only tells us the end line
-            # number and we must approximate the start line number.
-            # This approximation is correct if the docstring does not contain
-            # explicit newlines ('\n') or joined lines ('\' at end of line).
-            lineno -= doc.count('\n')
-
-        # Leading blank lines are stripped by cleandoc(), so we must
-        # return the line number of the first non-blank line.
-        for ch in doc:
-            if ch == '\n':
-                lineno += 1
-            elif not ch.isspace():
-                break
-
-        self.docstring = inspect.cleandoc(doc)
+        lineno, doc = astutils.extract_docstring(node)
+        self.docstring = doc
         self.docstring_lineno = lineno
 
     def setLineNumber(self, lineno: int) -> None:
@@ -372,8 +358,17 @@ class Documentable:
         assert parentMod is not None
         return parentMod
 
-    def report(self, descr: str, section: str = 'parsing', lineno_offset: int = 0) -> None:
-        """Log an error or warning about this documentable object."""
+    def report(self, descr: str, section: str = 'parsing', lineno_offset: int = 0, thresh:int=-1) -> None:
+        """
+        Log an error or warning about this documentable object.
+
+        @param descr: The error/warning string
+        @param section: What the warning is about.
+        @param lineno_offset: Offset
+        @param thresh: Thresh to pass to L{System.msg}, it will use C{-1} by default, 
+          meaning it will count as a violation and will fail the build if option C{-W} is passed.
+          But this behaviour is not applicable if C{thresh} is greater or equal to zero.
+        """
 
         linenumber: object
         if section in ('docstring', 'resolve_identifier_xref'):
@@ -390,7 +385,7 @@ class Documentable:
         self.system.msg(
             section,
             f'{self.description}:{linenumber}: {descr}',
-            thresh=-1)
+            thresh=thresh)
 
     @property
     def docstring_linker(self) -> 'linker.DocstringLinker':
@@ -484,6 +479,39 @@ class Module(CanContainImportsDocumentable):
 
 class Package(Module):
     kind = DocumentableKind.PACKAGE
+
+# List of exceptions class names in the standard library, Python 3.8.10
+_STD_LIB_EXCEPTIONS = ('ArithmeticError', 'AssertionError', 'AttributeError', 
+    'BaseException', 'BlockingIOError', 'BrokenPipeError', 
+    'BufferError', 'BytesWarning', 'ChildProcessError', 
+    'ConnectionAbortedError', 'ConnectionError', 
+    'ConnectionRefusedError', 'ConnectionResetError', 
+    'DeprecationWarning', 'EOFError', 
+    'EnvironmentError', 'Exception', 'FileExistsError', 
+    'FileNotFoundError', 'FloatingPointError', 'FutureWarning', 
+    'GeneratorExit', 'IOError', 'ImportError', 'ImportWarning', 
+    'IndentationError', 'IndexError', 'InterruptedError', 
+    'IsADirectoryError', 'KeyError', 'KeyboardInterrupt', 'LookupError', 
+    'MemoryError', 'ModuleNotFoundError', 'NameError', 
+    'NotADirectoryError', 'NotImplementedError', 
+    'OSError', 'OverflowError', 'PendingDeprecationWarning', 'PermissionError', 
+    'ProcessLookupError', 'RecursionError', 'ReferenceError', 
+    'ResourceWarning', 'RuntimeError', 'RuntimeWarning', 'StopAsyncIteration', 
+    'StopIteration', 'SyntaxError', 'SyntaxWarning', 'SystemError', 
+    'SystemExit', 'TabError', 'TimeoutError', 'TypeError', 
+    'UnboundLocalError', 'UnicodeDecodeError', 'UnicodeEncodeError', 
+    'UnicodeError', 'UnicodeTranslateError', 'UnicodeWarning', 'UserWarning', 
+    'ValueError', 'Warning', 'ZeroDivisionError')
+def is_exception(cls: 'Class') -> bool:
+    """
+    Whether is class should be considered as 
+    an exception and be marked with the special 
+    kind L{DocumentableKind.EXCEPTION}.
+    """
+    for base in cls.mro(True, False):
+        if base in _STD_LIB_EXCEPTIONS:
+            return True
+    return False
 
 def compute_mro(cls:'Class') -> List[Union['Class', str]]:
     """
@@ -719,19 +747,31 @@ class Function(Inheritable):
     annotations: Mapping[str, Optional[ast.expr]]
     decorators: Optional[Sequence[ast.expr]]
     signature: Optional[Signature]
+    overloads: List['FunctionOverload']
 
-    # Property handling is special: This attribute is used in the processing step only.
-    property_decorator: Optional[ast.expr] = None
-    """
-    A property decorator like C{@property} or C{@name.setter} or C{@BaseClass.name.getter} / etc.
+    # # Property handling is special: This attribute is used in the processing step only.
+    # property_decorator: Optional[ast.expr] = None
+    # """
+    # A property decorator like C{@property} or C{@name.setter} or C{@BaseClass.name.getter} / etc.
 
-    C{None} if this function is not decorated with any kind of property decorator.
-    """
+    # C{None} if this function is not decorated with any kind of property decorator.
+    # """
 
     def setup(self) -> None:
         super().setup()
         if isinstance(self.parent, Class):
             self.kind = DocumentableKind.METHOD
+        self.signature = None
+        self.overloads = []
+
+@attr.s(auto_attribs=True)
+class FunctionOverload:
+    """
+    @note: This is not an actual documentable type. 
+    """
+    primary: Function
+    signature: Signature
+    decorators: Sequence[ast.expr]
 
 def init_property(attr:'Attribute') -> Iterator['Function']:
     """
@@ -933,8 +973,11 @@ class System:
 
         self.projectname = 'my project'
 
-        self.docstring_syntax_errors: Set[str] = set()
-        """FullNames of objects for which the docstring failed to parse."""
+        self.parse_errors: Dict[str, Set[str]] = defaultdict(set)
+        """
+        Dict from the name of the thing we're rendering (C{section}) to the FullNames of objects for which the rendereable elements failed to parse.
+        Typically the renderable element is the C{docstring}, but it can be the decorators, parameter default values or any other colorized AST.
+        """
 
         self.verboselevel = 0
         self.needsnl = False
@@ -1028,6 +1071,7 @@ class System:
         @param thresh: The minimum verbosity level of the system for this message to actually be printed.
             Meaning passing thresh=-1 will make message still display if C{-q} is passed but not if C{-qq}. 
             Similarly, passing thresh=1 will make the message only apprear if the verbosity level is at least increased once with C{-v}.
+            Using negative thresh will count this message as a violation and will fail the build if option C{-W} is passed.
         @param topthresh: The maximum verbosity level of the system for this message to actually be printed.
         """
         if once:
@@ -1084,19 +1128,6 @@ class System:
                 raise LookupError(full_name)
 
         return None
-
-
-    def _warning(self,
-            current: Optional[Documentable],
-            message: str,
-            detail: str
-            ) -> None:
-        if current is not None:
-            fn = current.fullName()
-        else:
-            fn = '<None>'
-        if self.options.verbosity > 0:
-            print(fn, message, detail)
 
     def objectsOfType(self, cls: Union[Type['DocumentableT'], str]) -> Iterator['DocumentableT']:
         """Iterate over all instances of C{cls} present in the system. """
@@ -1241,7 +1272,7 @@ class System:
             - Packages wins over modules
             - Else, the last added module wins
         """
-        self._warning(dup.parent, "duplicate", str(first))
+        dup.report(f"duplicate {str(first)}", thresh=1)
 
         if first._is_c_module and not isinstance(dup, Package):
             # C-modules wins
@@ -1361,7 +1392,7 @@ class System:
         while (fullName + ' ' + str(i)) in self.allobjects:
             i += 1
         prev = self.allobjects[fullName]
-        self._warning(obj.parent, "duplicate", str(prev))
+        obj.report(f"duplicate {str(prev)}", thresh=1)
         self._remove(prev)
         prev.name = obj.name + ' ' + str(i)
         def readd(o: Documentable) -> None:
@@ -1402,10 +1433,10 @@ class System:
         else:
             builder = self.defaultBuilder(self)
             if mod._py_string is not None:
-                ast = builder.parseString(mod._py_string)
+                ast = builder.parseString(mod._py_string, mod)
             else:
                 assert mod.source_path is not None
-                ast = builder.parseFile(mod.source_path)
+                ast = builder.parseFile(mod.source_path, mod)
             if ast:
                 self.processing_modules.append(mod.fullName())
                 if mod._py_string is None:
@@ -1436,12 +1467,20 @@ class System:
         were not fully processed yet.
         """
 
-        # default post-processing includes processing of subclasses and MRO computing.
+        # default post-processing includes:
+        # - Processing of subclasses
+        # - MRO computing.
+        # - Checking whether the class is an exception
         for cls in self.objectsOfType(Class):
+            
             cls._init_mro()
+            
             for b in cls.baseobjects:
                 if b is not None:
                     b.subclasses.append(cls)
+            
+            if is_exception(cls):
+                cls.kind = DocumentableKind.EXCEPTION
         
         # Machup property functions into an Attribute that already exist.
         # We are transforming the tree at the end only.
@@ -1455,6 +1494,7 @@ class System:
             assert obj.parent is not None
             if obj.name in obj.parent.contents:
                 del obj.parent.contents[obj.name]
+
 
         for post_processor in self._post_processors:
             post_processor(self)

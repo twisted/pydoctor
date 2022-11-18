@@ -2,6 +2,8 @@
 Various bits of reusable code related to L{ast.AST} node processing.
 """
 
+import inspect
+import platform
 import sys
 from numbers import Number
 from typing import Iterator, Optional, List, Iterable, Sequence, TYPE_CHECKING, Tuple, Union
@@ -146,6 +148,12 @@ else:
     def _is_str_constant(expr: ast.expr, s: str) -> bool:
         return isinstance(expr, ast.Str) and expr.s == s
 
+def get_int_value(expr: ast.expr) -> Optional[int]:
+    num = get_num_value(expr)
+    if isinstance(num, int):
+        return num # type:ignore[unreachable]
+    return None
+
 def is__name__equals__main__(cmp: ast.Compare) -> bool:
     """
     Returns whether or not the given L{ast.Compare} is equal to C{__name__ == '__main__'}.
@@ -191,6 +199,10 @@ def iter_decorator_list(decorator_list:Iterable[ast.expr]) -> Iterator[Tuple[Opt
             deco_name = node2dottedname(d)
         yield deco_name,d
 
+def is_none_literal(node: ast.expr) -> bool:
+    """Does this AST node represent the literal constant None?"""
+    return isinstance(node, (ast.Constant, ast.NameConstant)) and node.value is None
+    
 def unstring_annotation(node: ast.expr, ctx:'model.Documentable') -> ast.expr:
     """Replace all strings in the given expression by parsed versions.
     @return: The unstringed node. If parsing fails, an error is logged
@@ -353,3 +365,49 @@ def is_typing_annotation(node: ast.AST, ctx: 'model.Documentable') -> bool:
     return is_using_annotations(node, TYPING_ALIAS, ctx) or \
             is_using_annotations(node, SUBSCRIPTABLE_CLASSES_PEP585, ctx)
 
+
+_string_lineno_is_end = sys.version_info < (3,8) \
+                    and platform.python_implementation() != 'PyPy'
+"""True iff the 'lineno' attribute of an AST string node points to the last
+line in the string, rather than the first line.
+"""
+
+def extract_docstring_linenum(node: ast.Str) -> int:
+    r"""
+    In older CPython versions, the AST only tells us the end line
+    number and we must approximate the start line number.
+    This approximation is correct if the docstring does not contain
+    explicit newlines ('\n') or joined lines ('\' at end of line).
+
+    Leading blank lines are stripped by cleandoc(), so we must
+    return the line number of the first non-blank line.
+    """
+    doc = node.s
+    lineno = node.lineno
+    if _string_lineno_is_end:
+        # In older CPython versions, the AST only tells us the end line
+        # number and we must approximate the start line number.
+        # This approximation is correct if the docstring does not contain
+        # explicit newlines ('\n') or joined lines ('\' at end of line).
+        lineno -= doc.count('\n')
+
+    # Leading blank lines are stripped by cleandoc(), so we must
+    # return the line number of the first non-blank line.
+    for ch in doc:
+        if ch == '\n':
+            lineno += 1
+        elif not ch.isspace():
+            break
+    
+    return lineno
+
+def extract_docstring(node: ast.Str) -> Tuple[int, str]:
+    """
+    Extract docstring information from an ast node that represents the docstring.
+
+    @returns: 
+        - The line number of the first non-blank line of the docsring. See L{extract_docstring_linenum}.
+        - The docstring to be parsed, cleaned by L{inspect.cleandoc}.
+    """
+    lineno = extract_docstring_linenum(node)
+    return lineno, inspect.cleandoc(node.s)

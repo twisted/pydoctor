@@ -16,8 +16,8 @@ import astor
 import attr
 from pydoctor import epydoc2stan, model, node2stan, extensions, astutils
 from pydoctor.epydoc.markup._pyval_repr import colorize_inline_pyval
-from pydoctor.astutils import (is_typing_annotation, is_using_annotations, is_using_typing_final, node2dottedname, node2fullname, 
-                               is__name__equals__main__, unstring_annotation, iterassign, 
+from pydoctor.astutils import (is_none_literal, is_typing_annotation, is_using_annotations, is_using_typing_final, node2dottedname, node2fullname, 
+                               is__name__equals__main__, unstring_annotation, iterassign, extract_docstring_linenum,  
                                NodeVisitor)
 
 def parseFile(path: Path) -> ast.Module:
@@ -323,7 +323,7 @@ class ModuleVistor(NodeVisitor):
     def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
         ctx = self.builder.current
         if not isinstance(ctx, model.CanContainImportsDocumentable):
-            self.builder.warning("processing import statement in odd context", str(ctx))
+            # processing import statement in odd context
             return
 
         modname = node.module
@@ -364,10 +364,10 @@ class ModuleVistor(NodeVisitor):
         if mod is None:
             # We don't have any information about the module, so we don't know
             # what names to import.
-            self.builder.warning("import * from unknown", modname)
+            self.builder.current.report(f"import * from unknown {modname}", thresh=1)
             return
 
-        self.builder.warning("import *", modname)
+        self.builder.current.report(f"import * from {modname}", thresh=1)
 
         # Get names to import: use __all__ if available, otherwise take all
         # names that are not private.
@@ -422,8 +422,8 @@ class ModuleVistor(NodeVisitor):
             # So we use content.get first to resolve non-alias names. 
             ob = origin_module.contents.get(origin_name) or origin_module.resolveName(origin_name)
             if ob is None:
-                self.builder.warning("cannot resolve re-exported name",
-                                        f'{modname}.{origin_name}')
+                current.report("cannot resolve re-exported name :"
+                                        f'{modname}.{origin_name}', thresh=1)
             else:
                 if origin_module.all is None or origin_name not in origin_module.all:
                     self.system.msg(
@@ -477,8 +477,7 @@ class ModuleVistor(NodeVisitor):
         part of the statement.
         """
         if not isinstance(self.builder.current, model.CanContainImportsDocumentable):
-            self.builder.warning("processing import statement in odd context",
-                                 str(self.builder.current))
+            # processing import statement in odd context
             return
         _localNameToFullName = self.builder.current._localNameToFullName_map
         for al in node.names:
@@ -831,38 +830,44 @@ class ModuleVistor(NodeVisitor):
        
         is_classmethod = False
         is_staticmethod = False
+        is_overload_func = False
 
         is_property = False # True if is_property_def_decorator()
         has_property_decorator = False # True if looks_like_property_func_decorator()
         property_decorator: Optional[ast.expr] = None
-
-        if isinstance(parent, model.Class) and node.decorator_list:
+        
+        if node.decorator_list:
             for deco_name,decnode in astutils.iter_decorator_list(node.decorator_list):
                 if deco_name is None:
                     continue
-                if is_property_def_decorator(deco_name, parent):
-                    is_property = True
-                    property_decorator = decnode
-                elif deco_name == ['classmethod']:
-                    is_classmethod = True
-                elif deco_name == ['staticmethod']:
-                    is_staticmethod = True
-                # Pre-handle property elements
-                elif looks_like_property_func_decorator(deco_name, parent):
-                    # Setters and deleters should have the same name as the property function,
-                    # otherwise ignore it.
-                    # This pollutes the namespace unnecessarily and is generally not recommended. 
-                    # Therefore it makes sense to stick to a single name, 
-                    # which is consistent with the former property definition.
-                    if not deco_name[-2] == func_name:
-                        continue 
-                    
-                    # Rename the setter/deleter, so it doesn't replace
-                    # the property object.
+                if isinstance(parent, model.Class):
+                    if deco_name[-1].endswith('property') or deco_name[-1].endswith('Property'):
+                        is_property = True
+                    elif deco_name == ['classmethod']:
+                        is_classmethod = True
+                    elif deco_name == ['staticmethod']:
+                        is_staticmethod = True
+                        # Pre-handle property elements
+                    elif looks_like_property_func_decorator(deco_name, parent):
+                        # Setters and deleters should have the same name as the property function,
+                        # otherwise ignore it.
+                        # This pollutes the namespace unnecessarily and is generally not recommended. 
+                        # Therefore it makes sense to stick to a single name, 
+                        # which is consistent with the former property definition.
+                        if not deco_name[-2] == func_name:
+                            continue 
+                        
+                        # Rename the setter/deleter, so it doesn't replace
+                        # the property object.
+                        
+                        func_name = '.'.join(deco_name[-2:])
+                        has_property_decorator = True
+                        property_decorator = decnode
+                
+                # Determine if the function is decorated with overload
+                if parent.expandName('.'.join(deco_name)) in ('typing.overload', 'typing_extensions.overload'):
+                    is_overload_func = True
 
-                    func_name = '.'.join(deco_name[-2:])
-                    has_property_decorator = True
-                    property_decorator = decnode
 
         prop: Optional[model.Attribute] = None
         prop_func_kind: Optional[model.PropertyFunctionKind] = None
@@ -932,10 +937,30 @@ class ModuleVistor(NodeVisitor):
         
         # Push and analyse function 
 
-        func = self.builder.pushFunction(func_name, lineno)
+        # Check if it's a new func or exists with an overload
+        existing_func = parent.contents.get(func_name)
+        if isinstance(existing_func, model.Function) and existing_func.overloads:
+            # If the existing function has a signature and this function is an
+            # overload, then the overload came _after_ the primary function
+            # which we do not allow. This also ensures that func will have
+            # properties set for the primary function and not overloads.
+            if existing_func.signature and is_overload_func:
+                existing_func.report(f'{existing_func.fullName()} overload appeared after primary function', lineno_offset=lineno-existing_func.linenumber)
+                raise self.SkipNode()
+            # Do not recreate function object, just re-push it
+            self.builder.push(existing_func, lineno)
+            func = existing_func
+        else:
+            func = self.builder.pushFunction(func_name, lineno)
+
         func.is_async = is_async
         if docstring is not None:
-            func.setDocstring(docstring)
+            # Docstring not allowed on overload
+            if is_overload_func:
+                docline = extract_docstring_linenum(docstring)
+                func.report(f'{func.fullName()} overload has docstring, unsupported', lineno_offset=docline-func.linenumber)
+            else:
+                func.setDocstring(docstring)
         func.decorators = node.decorator_list
         if is_staticmethod:
             if is_classmethod:
@@ -951,6 +976,8 @@ class ModuleVistor(NodeVisitor):
         num_pos_args = len(posonlyargs) + len(node.args.args)
         defaults = node.args.defaults
         default_offset = num_pos_args - len(defaults)
+        annotations = self._annotations_from_function(node)
+
         def get_default(index: int) -> Optional[ast.expr]:
             assert 0 <= index < num_pos_args, index
             index -= default_offset
@@ -959,7 +986,8 @@ class ModuleVistor(NodeVisitor):
         parameters: List[Parameter] = []
         def add_arg(name: str, kind: Any, default: Optional[ast.expr]) -> None:
             default_val = Parameter.empty if default is None else _ValueFormatter(default, ctx=func)
-            parameters.append(Parameter(name, kind, default=default_val))
+            annotation = Parameter.empty if annotations.get(name) is None else _AnnotationValueFormatter(annotations[name], ctx=func)
+            parameters.append(Parameter(name, kind, default=default_val, annotation=annotation))
 
         for index, arg in enumerate(posonlyargs):
             add_arg(arg.arg, Parameter.POSITIONAL_ONLY, get_default(index))
@@ -979,16 +1007,14 @@ class ModuleVistor(NodeVisitor):
         if kwarg is not None:
             add_arg(kwarg.arg, Parameter.VAR_KEYWORD, None)
 
+        return_type = annotations.get('return')
+        return_annotation = Parameter.empty if return_type is None or is_none_literal(return_type) else _AnnotationValueFormatter(return_type, ctx=func)
         try:
-            signature = Signature(parameters)
+            signature = Signature(parameters, return_annotation=return_annotation)
         except ValueError as ex:
             func.report(f'{func.fullName()} has invalid parameters: {ex}')
             signature = Signature()
 
-        func.signature = signature
-        func.annotations = self._annotations_from_function(node)
-
-        
         if prop is not None:
             
             if is_classmethod:
@@ -996,10 +1022,10 @@ class ModuleVistor(NodeVisitor):
             if is_staticmethod:
                 prop.report(f'{prop.fullName()} is both property and staticmethod')
             
-            assert property_decorator is not None
+            # assert property_decorator is not None it actually can be None
 
-            # TODO: maybe deleter this attribute
-            func.property_decorator = property_decorator
+            # # TODO: maybe deleter this attribute
+            # func.property_decorator = property_decorator
 
             if prop_func_kind is not None:
                 # Store the fact that this function implements one of the getter/setter/deleter
@@ -1012,6 +1038,14 @@ class ModuleVistor(NodeVisitor):
                 if is_new_property:
                     prop._property_info.declaration = func
     
+        func.annotations = annotations
+
+        # Only set main function signature if it is a non-overload
+        if is_overload_func:
+            func.overloads.append(model.FunctionOverload(primary=func, signature=signature, decorators=node.decorator_list))
+        else:
+            func.signature = signature
+
     def depart_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:
         self.builder.popFunction()
 
@@ -1081,8 +1115,20 @@ class _ValueFormatter:
         Without the englobing <code> tags.
         """
         # Using node2stan.node2html instead of flatten(to_stan()). 
-        # This avoids calling flatten() twice.
+        # This avoids calling flatten() twice, 
+        # but potential XML parser errors caused by XMLString needs to be handled later.
         return ''.join(node2stan.node2html(self._colorized.to_node(), self._linker))
+
+class _AnnotationValueFormatter(_ValueFormatter):
+    """
+    Special L{_ValueFormatter} for annotations.
+    """
+    def __repr__(self) -> str:
+        """
+        Present the annotation wrapped inside <code> tags.
+        """
+        return '<code>%s</code>' % super().__repr__()
+
 
 def _infer_type(expr: ast.expr) -> Optional[ast.expr]:
     """Infer an expression's type.
@@ -1160,8 +1206,8 @@ class ASTBuilder:
         Create and enter a new object of the given type and add it to the system.
         """
         obj = cls(self.system, name, self.current)
-        self.system.addObject(obj)
         self.push(obj, lineno)
+        self.system.addObject(obj)
         self.currentAttr = None
         return obj
 
@@ -1240,8 +1286,6 @@ class ASTBuilder:
         self.currentAttr = attr
         return attr
 
-    def warning(self, message: str, detail: str) -> None:
-        self.system._warning(self.current, message, detail)
 
     def processModuleAST(self, mod_ast: ast.Module, mod: model.Module) -> None:
 
@@ -1258,24 +1302,25 @@ class ASTBuilder:
         vis.extensions.attach_visitor(vis)
         vis.walkabout(mod_ast)
 
-    def parseFile(self, path: Path) -> Optional[ast.Module]:
+    def parseFile(self, path: Path, ctx: model.Module) -> Optional[ast.Module]:
         try:
             return self.ast_cache[path]
         except KeyError:
             mod: Optional[ast.Module] = None
             try:
                 mod = parseFile(path)
-            except (SyntaxError, ValueError):
-                self.warning("cannot parse", str(path))
+            except (SyntaxError, ValueError) as e:
+                ctx.report(f"cannot parse file, {e}")
+
             self.ast_cache[path] = mod
             return mod
     
-    def parseString(self, py_string:str) -> Optional[ast.Module]:
+    def parseString(self, py_string:str, ctx: model.Module) -> Optional[ast.Module]:
         mod = None
         try:
             mod = _parse(py_string)
         except (SyntaxError, ValueError):
-            self.warning("cannot parse string: ", py_string)
+            ctx.report("cannot parse string")
         return mod
 
 model.System.defaultBuilder = ASTBuilder

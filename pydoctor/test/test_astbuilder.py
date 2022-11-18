@@ -1,4 +1,3 @@
-
 from typing import Optional, Tuple, Type, List, overload, cast
 import ast
 
@@ -6,10 +5,12 @@ import astor
 
 from pydoctor import astbuilder, astutils, model, node2stan
 from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring
+from pydoctor.options import Options
 from pydoctor.stanutils import flatten, html2stan, flatten_text
 from pydoctor.epydoc.markup.epytext import Element, ParsedEpytextDocstring
 from pydoctor.epydoc2stan import format_summary, get_parsed_type
 from pydoctor.test.test_packages import processPackage
+from pydoctor.utils import partialclass
 
 from . import CapSys, NotFoundLinker, posonlyargs, typecomment
 import pytest
@@ -1616,6 +1617,43 @@ def test_ignore_function_contents(systemcls: Type[model.System]) -> None:
     assert not outer.contents
 
 @systemcls_param
+def test_overload(systemcls: Type[model.System], capsys: CapSys) -> None:
+    # Confirm decorators retained on overloads, docstring ignored for overloads,
+    # and that overloads after the primary function are skipped
+    mod = fromText("""
+        from typing import overload, Union
+        def dec(fn):
+            pass
+        @dec
+        @overload
+        def parse(s:str)->str:
+            ...
+        @overload
+        def parse(s:bytes)->bytes:
+            '''Ignored docstring'''
+            ...
+        def parse(s:Union[str, bytes])->Union[str, bytes]:
+            pass
+        @overload
+        def parse(s:str)->bytes:
+            ...
+        """, systemcls=systemcls)
+    func = mod.contents['parse']
+    assert isinstance(func, model.Function)
+    # Work around different space arrangements in Signature.__str__ between python versions
+    assert flatten_text(html2stan(str(func.signature).replace(' ', ''))) == '(s:Union[str,bytes])->Union[str,bytes]'
+    assert [astbuilder.node2dottedname(d) for d in (func.decorators or ())] == []
+    assert len(func.overloads) == 2
+    assert [astbuilder.node2dottedname(d) for d in func.overloads[0].decorators] == [['dec'], ['overload']]
+    assert [astbuilder.node2dottedname(d) for d in func.overloads[1].decorators] == [['overload']]
+    assert flatten_text(html2stan(str(func.overloads[0].signature).replace(' ', ''))) == '(s:str)->str'
+    assert flatten_text(html2stan(str(func.overloads[1].signature).replace(' ', ''))) == '(s:bytes)->bytes'
+    assert capsys.readouterr().out.splitlines() == [
+        '<test>:11: <test>.parse overload has docstring, unsupported',
+        '<test>:15: <test>.parse overload appeared after primary function',
+    ]
+
+@systemcls_param
 def test_constant_module(systemcls: Type[model.System]) -> None:
     """
     Module variables with all-uppercase names are recognized as constants.
@@ -2292,6 +2330,71 @@ def test_property_corner_cases(systemcls: Type[model.System], capsys: CapSys) ->
     assert notfound_both.kind is model.DocumentableKind.METHOD
     assert notfound_alt.kind is model.DocumentableKind.METHOD
     assert not_a_property.kind is model.DocumentableKind.METHOD
+
+@systemcls_param
+def test_exception_kind(systemcls: Type[model.System], capsys: CapSys) -> None:
+    """
+    Exceptions are marked with the special kind "EXCEPTION".
+    """
+    mod = fromText('''
+    class Clazz:
+        """Class."""
+    class MyWarning(DeprecationWarning):
+        """Warnings are technically exceptions"""
+    class Error(SyntaxError):
+        """An exeption"""
+    class SubError(Error):
+        """A exeption subclass"""  
+    ''', systemcls=systemcls, modname="mod")
+    
+    warn = mod.contents['MyWarning']
+    ex1 = mod.contents['Error']
+    ex2 = mod.contents['SubError']
+    cls = mod.contents['Clazz']
+
+    assert warn.kind is model.DocumentableKind.EXCEPTION
+    assert ex1.kind is model.DocumentableKind.EXCEPTION
+    assert ex2.kind is model.DocumentableKind.EXCEPTION
+    assert cls.kind is model.DocumentableKind.CLASS
+
+    assert not capsys.readouterr().out
+
+@systemcls_param
+def test_exception_kind_corner_cases(systemcls: Type[model.System], capsys: CapSys) -> None:
+
+    src1 = '''\
+    class Exception:...
+    class LooksLikeException(Exception):... # Not an exception
+    '''
+
+    src2 = '''\
+    class Exception(BaseException):...
+    class LooksLikeException(Exception):... # An exception
+    '''
+
+    mod1 = fromText(src1, modname='src1', systemcls=systemcls)
+    assert mod1.contents['LooksLikeException'].kind == model.DocumentableKind.CLASS
+
+    mod2 = fromText(src2, modname='src2', systemcls=systemcls)
+    assert mod2.contents['LooksLikeException'].kind == model.DocumentableKind.EXCEPTION
+
+    assert not capsys.readouterr().out
+    
+@systemcls_param
+def test_syntax_error(systemcls: Type[model.System], capsys: CapSys) -> None:
+    systemcls = partialclass(systemcls, Options.from_args(['-q']))
+    fromText('''\
+    def f()
+        return True
+    ''', systemcls=systemcls)
+    assert capsys.readouterr().out == '<test>:???: cannot parse string\n'
+
+@systemcls_param
+def test_syntax_error_pack(systemcls: Type[model.System], capsys: CapSys) -> None:
+    systemcls = partialclass(systemcls, Options.from_args(['-q']))
+    processPackage('syntax_error', systemcls)
+    out = capsys.readouterr().out.strip('\n')
+    assert "__init__.py:???: cannot parse file, " in out, out
 
 @systemcls_param
 def test_type_alias(systemcls: Type[model.System]) -> None:
