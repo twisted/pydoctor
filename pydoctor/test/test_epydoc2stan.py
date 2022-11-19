@@ -1129,7 +1129,7 @@ def test_TestCachedEpydocLinker() -> None:
 
 def test_CachedEpydocLinker_same_page_optimization() -> None:
     """
-    When _CachedEpydocLinker.same_page_optimization is True, 
+    When _CachedEpydocLinker.page_url is empty, 
 
     The linker will create URLs with only the anchor
     if we're lnking to an object on the same page. 
@@ -1751,7 +1751,8 @@ def test_dup_names_resolves_function_signature() -> None:
     src = '''\
     class System:
         dup = Union[str, bytes]
-        def Attribute(self, t:'dup') -> Type['Attribute']:
+        default = 3
+        def Attribute(self, t:'dup'=default) -> Type['Attribute']:
             """
             @param t: do not confuse with L{the class level one <dup>}.
             """
@@ -1759,7 +1760,8 @@ def test_dup_names_resolves_function_signature() -> None:
     class Attribute:
         ...
     
-    dup = Union[str, bytes]
+    dup = Union[str, bytes] # yes this one
+    default = 'not this one'
     '''
 
     mod = fromText(src, modname='model')
@@ -1768,9 +1770,9 @@ def test_dup_names_resolves_function_signature() -> None:
     assert isinstance(def_Attribute, model.Function)
 
     sig = flatten(format_signature(def_Attribute))
-    assert 'title="model.Attribute"' in sig
-    assert 'title="model.dup"' in sig
-    assert 'System' not in sig
+    assert 'href="model.Attribute.html"' in sig
+    assert 'href="index.html#dup"' in sig
+    assert 'href="#default"' in sig
     
     docstr = docstring2html(def_Attribute)
     # docstring linker needs to be more smart, solved by https://github.com/twisted/pydoctor/pull/599

@@ -286,16 +286,21 @@ class FieldHandler:
     def set_param_types_from_annotations(
             self, annotations: Mapping[str, Optional[ast.expr]]
             ) -> None:
-        formatted_annotations = {
-            name: None if value is None
-                        # TODO: need to change the linker page context
-                       else ParamType(safe_to_stan(colorize_inline_pyval(value), self.obj.module.docstring_linker, 
-                                self.obj, compact=True, fallback=colorized_pyval_fallback, section='annotation', report=False), 
-                                # don't spam the log, invalid annotation are going to be reported when the signature gets colorized
-                                origin=FieldOrigin.FROM_AST)
+        # Annotations should always be resolved in the context of the module scope.
+        linker = self.obj.module.docstring_linker
+        
+        # Need to change the linker's page context
+        with linker.switch_page_context(self.obj):
+            formatted_annotations = {
+                name: None if value is None
+                            
+                        else ParamType(safe_to_stan(colorize_inline_pyval(value), linker, 
+                                    self.obj, compact=True, fallback=colorized_pyval_fallback, section='annotation', report=False), 
+                                    # don't spam the log, invalid annotation are going to be reported when the signature gets colorized
+                                    origin=FieldOrigin.FROM_AST)
                                 
-            for name, value in annotations.items()
-            }
+                for name, value in annotations.items()
+                }
         ret_type = formatted_annotations.pop('return', None)
         self.types.update(formatted_annotations)
         if ret_type is not None:

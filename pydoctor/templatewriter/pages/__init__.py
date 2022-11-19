@@ -96,7 +96,7 @@ def format_class_signature(cls: model.Class) -> "Flattenable":
     _linker = cls.parent.docstring_linker
     if cls.rawbases:
         r.append('(')
-        with _linker.disable_same_page_optimazation():
+        with _linker.disable_same_page_optimization():
         
             for idx, ((str_base, base_node), base_obj) in enumerate(zip(cls.rawbases, cls.baseobjects)):
                 if idx != 0:
