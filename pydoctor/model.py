@@ -20,7 +20,7 @@ from enum import Enum
 from inspect import signature, Signature
 from pathlib import Path
 from typing import (
-    TYPE_CHECKING, Any, Callable, Collection, Dict, Iterator, List, Mapping,
+    TYPE_CHECKING, Any, Callable, Collection, Dict, Iterable, Iterator, List, Mapping,
     Optional, Sequence, Set, Tuple, Type, TypeVar, Union, cast, overload
 )
 from urllib.parse import quote
@@ -45,13 +45,17 @@ else:
 #
 # this was misguided.  the tree structure is important, to be sure,
 # but the arrangement of the tree is far from arbitrary and there is
-# at least some code that now relies on this.  so here's a list:
+# at least some code that now relies on this (the reparenting process
+# implicitely relies on this, don't try to nest objects under Documentable 
+# that are not supposed to hold other objects!).  
+# 
+# Here's a list:
 #
-#   Packages can contain Packages and Modules
+#   Packages can contain Packages and Modules Functions and Classes
 #   Modules can contain Functions and Classes
 #   Classes can contain Functions (in this case they get called Methods) and
 #       Classes
-#   Functions can't contain anything.
+#   Functions and Atributes can't contain anything.
 
 
 _string_lineno_is_end = sys.version_info < (3,8) \
@@ -712,7 +716,7 @@ class PropertyFunctionKind(Enum):
     DELETER = 3
 
 @attr.s(auto_attribs=True)
-class PropertyInfo:
+class PropertyDef:
 
     getter:Optional['Function'] = None
     """
@@ -727,7 +731,7 @@ class PropertyInfo:
     None if it has not been set with C{@name.deleter} decorator.
     """
 
-    def set(self, kind:PropertyFunctionKind, func:'Function') -> None:
+    def set(self, kind: PropertyFunctionKind, func:'Function') -> None:
         if kind is PropertyFunctionKind.GETTER:
             self.getter = func
         elif kind is PropertyFunctionKind.SETTER:
@@ -736,6 +740,9 @@ class PropertyInfo:
             self.deleter = func
         else:
             assert False
+
+    def clone(self) -> 'PropertyDef':
+        return PropertyDef(**attr.asdict(self))
 
 class Function(Inheritable):
     kind = DocumentableKind.FUNCTION
@@ -767,7 +774,7 @@ def init_property(attr:'Attribute') -> Iterator['Function']:
 
     Returns the functions to remove from the tree. If the property matchup fails
     """
-    info = attr._property_info
+    info = attr._property_def
     assert info is not None
 
     getter = info.getter
@@ -835,24 +842,22 @@ class Attribute(Inheritable):
     Or maybe it can be that the attribute is a property.
     """
 
-    _property_info:Optional[PropertyInfo] = None
-    
-    @property
-    def property_setter(self) -> Optional[Function]:
-        """
-        The property setter L{Function}, is any defined.
-        Only applicable if L{kind} is L{DocumentableKind.PROPERTY}
-        """
-        if self._property_info:
-            return self._property_info.setter
-        return None
+    _property_def:Optional[PropertyDef] = None
 
     @property
-    def property_deleter(self) -> Optional[Function]:
-        """Idem for the deleter."""
-        if self._property_info:
-            return self._property_info.deleter
-        return None
+    def property_def(self) -> PropertyDef:
+        """
+        Access to this atribute is allowed only on PROPERTY objects.
+        """
+        assert self.kind is DocumentableKind.PROPERTY
+        assert self._property_def is not None
+        return self._property_def
+    
+    @property_def.setter
+    def property_def(self, v:PropertyDef) -> None:
+        assert self.kind is DocumentableKind.PROPERTY
+        self._property_def = v
+    
 
 # Work around the attributes of the same name within the System class.
 _ModuleT = Module
@@ -1450,7 +1455,7 @@ class System:
         # We are transforming the tree at the end only.
         to_delete: List[Documentable] = []
         for attr in self.objectsOfType(Attribute):
-            if attr._property_info is not None:
+            if attr.property_def is not None:
                 to_delete.extend(init_property(attr))
         for obj in set(to_delete):
             self._remove(obj)

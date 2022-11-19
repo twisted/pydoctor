@@ -166,7 +166,7 @@ def looks_like_property_func_decorator(dottedname:List[str], ctx:model.Documenta
         return True
     return False
 
-def get_inherited_property(dottedname:List[str], _parent: model.Documentable) -> Optional[model.Attribute]:
+def get_inherited_property(dottedname:List[str], _parent: model.Documentable) -> Optional[model.PropertyDef]:
     """
     Fetch the inherited property that this new decorator overrides.
     None if it doesn't exist.
@@ -180,7 +180,7 @@ def get_inherited_property(dottedname:List[str], _parent: model.Documentable) ->
         # the property already exist
         return None
 
-    # property_def can be a getter/setter/deleter
+    # attr can be a getter/setter/deleter
     _cls = _parent.resolveName('.'.join(_property_name[:-1]))
     if _cls is None or not isinstance(_cls, model.Class):
         # Can't make sens of property decorator
@@ -192,11 +192,14 @@ def get_inherited_property(dottedname:List[str], _parent: model.Documentable) ->
     
     # The class on which the property is defined (_cls) does not have
     # to be in the MRO of the parent
-    property_def = _cls.find(_property_name[-1])
-    if not isinstance(property_def, model.Attribute):
+    attr_def = _cls.find(_property_name[-1])
+    if not isinstance(attr_def, model.Attribute):
         return None
     
-    return property_def
+    if not attr_def.kind is model.DocumentableKind.PROPERTY:
+        return None
+
+    return attr_def.property_def
 
 def get_property_function_kind(dottedname:List[str]) -> Optional[model.PropertyFunctionKind]:
     """
@@ -882,21 +885,20 @@ class ModuleVistor(NodeVisitor):
             # Looks like inherited property
             if len(property_decorator_dottedname)>2:
                 inherited_property = get_inherited_property(property_decorator_dottedname, parent)
-                if inherited_property and inherited_property._property_info:
+                if inherited_property:
                     func_property = self.builder.addAttribute(node.name, 
                             kind=model.DocumentableKind.PROPERTY, 
                             parent=parent)
                     func_property.setLineNumber(lineno)
                     func_property.decorators = node.decorator_list
                     # copy property info
-                    func_property._property_info = model.PropertyInfo(
-                                            **attr.asdict(inherited_property._property_info))
+                    func_property.property_def = inherited_property.clone()
                     is_new_property = True
             
             else:
                 # fetch property info to add this info to it
                 maybe_prop = self.builder.current.contents.get(node.name)
-                if isinstance(maybe_prop, model.Attribute) and maybe_prop._property_info:
+                if isinstance(maybe_prop, model.Attribute) and maybe_prop.property_def:
                     func_property = maybe_prop
         
         elif is_property:
@@ -1011,10 +1013,9 @@ class ModuleVistor(NodeVisitor):
             if is_staticmethod:
                 func_property.report(f'{func_property.fullName()} is both property and staticmethod')
             
-            if prop_func_kind is not None:
-                # Store the fact that this function implements one of the getter/setter/deleter
-                assert func_property._property_info is not None
-                func_property._property_info.set(prop_func_kind, func)
+            assert prop_func_kind is not None
+            # Store the fact that this function implements one of the getter/setter/deleter
+            func_property.property_def.set(prop_func_kind, func)
     
 
     def depart_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:
@@ -1251,7 +1252,7 @@ class ASTBuilder:
         attr.kind = kind
         if kind is model.DocumentableKind.PROPERTY:
             # init property info if this attribute is a property
-            attr._property_info = model.PropertyInfo()
+            attr.property_def = model.PropertyDef()
         attr.parentMod = parentMod
         system.addObject(attr)
         self.currentAttr = attr
