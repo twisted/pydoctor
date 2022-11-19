@@ -108,9 +108,9 @@ def format_class_signature(cls: model.Class) -> "Flattenable":
                 # a class with the same name as a base class confused pydoctor and it would link 
                 # to it self: https://github.com/twisted/pydoctor/issues/662
 
-                refmap = {}
+                refmap = None
                 if base_obj is not None:
-                    refmap[str_base] = base_obj.fullName()
+                    refmap = {str_base:base_obj.fullName()}
                     
                 # link to external class, using the colorizer here
                 # to link to classes with generics (subscripts and other AST expr).

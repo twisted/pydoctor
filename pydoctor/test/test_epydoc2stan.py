@@ -1792,11 +1792,27 @@ def test_dup_names_resolves_annotation() -> None:
 
     src = '''\
     class System:
-        @property
-        def Attribute(self) -> Type['Attribute']:...
+        Attribute: typing.TypeAlias = 'str'
+        class Inner:
+            @property
+            def Attribute(self) -> Type['Attribute']:...
         
-    class Attribute:
-        ...
+    Attribute = Union[str, int]
+    '''
+
+    mod = fromText(src, modname='model')
+
+    property_Attribute = mod.contents['System'].contents['Inner'].contents['Attribute']
+    assert isinstance(property_Attribute, model.Attribute)
+    stan = epydoc2stan.type2stan(property_Attribute)
+    assert stan is not None
+    assert 'href="index.html#Attribute"' in flatten(stan)
+
+    src = '''\
+    class System:
+        Attribute: Type['Attribute']
+        
+    Attribute = Union[str, int]
     '''
 
     mod = fromText(src, modname='model')
@@ -1805,7 +1821,7 @@ def test_dup_names_resolves_annotation() -> None:
     assert isinstance(property_Attribute, model.Attribute)
     stan = epydoc2stan.type2stan(property_Attribute)
     assert stan is not None
-    assert 'title="model.Attribute"' in flatten(stan)
+    assert 'href="index.html#Attribute"' in flatten(stan)
 
 # tests for issue https://github.com/twisted/pydoctor/issues/662
 def test_dup_names_resolves_base_class() -> None:
