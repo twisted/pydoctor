@@ -305,8 +305,28 @@ class DocstringLinker:
         @return: The URL of the target, or L{None} if not found.
         """
         raise NotImplementedError()
-    
-    def disable_same_page_optimazation(self) -> ContextManager[None]:
+
+    def switch_page_context(self, ob:Optional['Documentable']) -> ContextManager[None]:
+        """
+        Switch the page context of the linker, keeping the same underlying lookup rules.
+
+        Useful to resolve links with the right L{Documentable} context but
+        create correct - absolute or relative - links to be clicked on from another page 
+        rather than the initial page of the L{Documentable} context.
+
+        Pass C{None} to always generate full URLs (for summaries for example).
+
+        For instance::
+
+            with cls.parent.docstring_linker.switch_context(cls):                
+                # Resolves links in the context of the parent of the class
+                # but create links to be clicked from the class page.
+                flattenbase = colorize_inline_pyval(base_node).to_stan(
+                    cls.parent.docstring_linker)
+        """
+        raise NotImplementedError()
+        
+    def disable_same_page_optimization(self) -> ContextManager[None]:
         """
         By default, when linkng to an object on the same page, the linker will generate 
         an URL that links to the anchor only, this will avoid reloading the page needlessly. But sometimes 

@@ -1,4 +1,4 @@
-from typing import List, Optional, cast, TYPE_CHECKING
+from typing import List, Optional, Type, Union, cast, TYPE_CHECKING
 import re
 
 from pytest import mark, raises
@@ -825,7 +825,43 @@ def test_inline_field_name(capsys: CapSys) -> None:
     captured = capsys.readouterr().out
     assert captured == "test:5: Field in variable docstring should not include a name\n"
 
+@pytest.mark.parametrize('linkercls', [linker._EpydocLinker, linker._CachedEpydocLinker])
+def test_EpydocLinker_switch_context(linkercls:Type[Union[linker._EpydocLinker, linker._CachedEpydocLinker]]) -> None:
+    """
+    Test for switching the page context of the EpydocLinker.
+    """
+    mod = fromText('''
+    v=0
+    class Klass:
+        class InnerKlass(Klass):
+            def f():...
+            Klass = 'not this one!'
+            class v: 
+                'not this one!'
+    ''', modname='test')
+    Klass = mod.contents['Klass']
+    assert isinstance(Klass, model.Class)
+    InnerKlass = Klass.contents['InnerKlass']
+    assert isinstance(InnerKlass, model.Class)
+    
+    # patch with the linkercls
+    mod._linker = linkercls(mod)
+    Klass._linker = linkercls(Klass)
+    InnerKlass._linker = linkercls(InnerKlass)
 
+    # Evaluating the name of the base classes must be done in the upper scope
+    # in order to avoid the following to happen:
+    assert 'href="#Klass"' in flatten(InnerKlass.docstring_linker.link_to('Klass', 'Klass'))
+    
+    with Klass.docstring_linker.switch_page_context(InnerKlass):
+        assert 'href="test.Klass.html"' in flatten(Klass.docstring_linker.link_to('Klass', 'Klass'))
+    
+    assert 'href="#v"' in flatten(mod.docstring_linker.link_to('v', 'v'))
+    
+    with mod.docstring_linker.switch_page_context(InnerKlass):
+        assert 'href="index.html#v"' in flatten(mod.docstring_linker.link_to('v', 'v'))
+
+    
 def test_EpydocLinker_look_for_intersphinx_no_link() -> None:
     """
     Return None if inventory had no link for our markup.
@@ -1022,15 +1058,15 @@ def test_CachedEpydocLinker() -> None:
 
     result2 = sut.link_to('base.module.other', 'base.module.other')
     assert 'base.module.other' in sut._link_to_cache
-    assert len(sut._link_to_cache['base.module.other'][True])==1
+    assert len(sut._link_to_cache['base.module.other']['ignore-name.html'])==1
     result1 = sut.link_xref('base.module.other', 'base.module.other', 0).children[0] # wrapped in a code tag
-    assert len(sut._link_xref_cache['base.module.other'][True])==0
-    assert len(sut._link_to_cache['base.module.other'][True])==1
+    assert len(sut._link_xref_cache['base.module.other']['ignore-name.html'])==0
+    assert len(sut._link_to_cache['base.module.other']['ignore-name.html'])==1
     result3 = sut.link_to('base.module.other', 'other')
-    assert len(sut._link_to_cache['base.module.other'][True])==2
+    assert len(sut._link_to_cache['base.module.other']['ignore-name.html'])==2
     result4 = sut.link_xref('base.module.other', 'other', 0).children[0]
-    assert len(sut._link_to_cache['base.module.other'][True])==2
-    assert len(sut._link_xref_cache['base.module.other'][True])==0
+    assert len(sut._link_to_cache['base.module.other']['ignore-name.html'])==2
+    assert len(sut._link_xref_cache['base.module.other']['ignore-name.html'])==0
 
     res = flatten(result2)
     assert flatten(result1) == res == '<a href="http://tm.tld/some.html" class="intersphinx-link">base.module.other</a>'
@@ -1041,8 +1077,8 @@ class _TestCachedEpydocLinker(linker._CachedEpydocLinker):
     Docstring linker for testing the caching of results.
     """
     
-    def __init__(self, obj: model.Documentable, max_lookups:int, same_page_optimization:bool=True) -> None:
-        super().__init__(obj, same_page_optimization)
+    def __init__(self, obj: model.Documentable, max_lookups:int) -> None:
+        super().__init__(obj)
         self.lookups = 0
         self.max_lookups = max_lookups
 
@@ -1083,17 +1119,19 @@ def test_TestCachedEpydocLinker() -> None:
     sut = _TestCachedEpydocLinker(target, 2)
     sut.link_xref('base.module.other', 'other', 1)
     assert sut.lookups==1
-    assert len(sut._link_xref_cache['base.module.other'][True])==1
+    assert len(sut._link_xref_cache['base.module.other']['ignore-name.html'])==1
     sut.link_xref('notfound', 'notfound', 1)
     assert sut.lookups==2
-    assert len(sut._link_xref_cache['notfound'][True])==1
+    assert len(sut._link_xref_cache['notfound']['ignore-name.html'])==1
 
     with pytest.raises(AssertionError):
         sut.link_xref('anothername', 'again notfound', 1)
 
 def test_CachedEpydocLinker_same_page_optimization() -> None:
     """
-    When _CachedEpydocLinker.same_page_optimization is True, the linker will create URLs with only the anchor
+    When _CachedEpydocLinker.same_page_optimization is True, 
+
+    The linker will create URLs with only the anchor
     if we're lnking to an object on the same page. 
     
     Otherwise it will always use return a URL with a filename, this is used to generate the summaries.
@@ -1105,32 +1143,43 @@ def test_CachedEpydocLinker_same_page_optimization() -> None:
     sut = _TestCachedEpydocLinker(mod, 3) # Raise if it makes more than 3 lookups.
     assert isinstance(sut, linker._CachedEpydocLinker)
     
-    sut.same_page_optimization=False
-    assert sut.link_to('base','module.base').attributes['href']=='index.html#base'
-    assert len(sut._link_to_cache['base'][False])==1, repr(sut._link_to_cache['base'][False])
-    assert sut.link_to('base','base').attributes['href']=='index.html#base'
-    assert len(sut._link_to_cache['base'][False])==2, sut._link_to_cache['base'][False]
-    assert sut.link_to('someclass','some random name').attributes['href']=='module.someclass.html'
+    assert sut.page_url == mod.url
+    
+    with sut.switch_page_context(None):
+        assert sut.page_url ==''
+        
+        assert sut.link_to('base','module.base').attributes['href']=='index.html#base'
+        assert sut.link_to('base','module.base').children[0]=='module.base'
+        
+        assert len(sut._link_to_cache['base'][''])==1, repr(sut._link_to_cache['base'])
+        
+        assert sut.link_to('base','base').attributes['href']=='index.html#base'
+        assert sut.link_to('base','base').children[0]=='base'
+        
+        assert len(sut._link_to_cache['base'][''])==2, sut._link_to_cache['base']
+        assert sut.link_to('someclass','some random name').attributes['href']=='module.someclass.html'
+        assert sut.link_to('someclass','some random name').children[0]=='some random name'
 
-    sut.same_page_optimization=True
+    assert sut.page_url == mod.url
+
     assert sut.link_to('base','base').attributes['href']=='#base'
     assert sut.link_to('base','base').attributes['href']=='#base'
-    assert len(sut._link_to_cache['base'][True])==1
+    assert len(sut._link_to_cache['base']['index.html'])==1, sut._link_to_cache['base']['index.html']
     assert sut.link_to('base', tags.transparent('module.base')).attributes['href']=='#base'
     assert sut.link_to('base', tags.transparent('module.base')).attributes['href']=='#base' 
     # Tags are not properly understood right now but that's ok since these are only used
     # when inserting a link with nested markup like L{B{driver} <pydoctor.driver>}
-    assert len(sut._link_to_cache['base'][False])==2
-    assert len(sut._link_to_cache['base'][True])==3
+    assert len(sut._link_to_cache['base'][''])==2
+    assert len(sut._link_to_cache['base']['index.html'])==3
 
     assert sut.link_to('someclass','some other name').attributes['href']=='module.someclass.html'
     assert sut.link_to('someclass','a third name').attributes['href']=='module.someclass.html'
-    assert len(sut._link_to_cache['someclass'][False])==1
-    assert len(sut._link_to_cache['someclass'][True])==2
+    assert len(sut._link_to_cache['someclass'][''])==1
+    assert len(sut._link_to_cache['someclass']['index.html'])==2
 
     assert sut.link_to('notfound', 'notfound').children[0] == 'notfound'
     assert sut.link_to('notfound', 'notfound.notfound').children[0] == 'notfound.notfound'
-    assert len(sut._link_to_cache['notfound'][True])==2
+    assert len(sut._link_to_cache['notfound']['index.html'])==2
 
 def test_CachedEpydocLinker_warnings(capsys: CapSys) -> None:
     """
@@ -1791,3 +1840,28 @@ def test_dup_names_resolves_base_class() -> None:
 
     assert 'href="model.System.html"' in flatten(format_class_signature(systemClass))
     assert 'href="model.Generic.html"' in flatten(format_class_signature(genericClass))
+
+def test_not_found_annotation_does_not_create_link() -> None:
+    """
+    The docstring linker cache does not create empty <a> tags.
+    """
+
+    
+    from pydoctor.test.test_templatewriter import getHTMLOf
+
+    src = '''\
+    __docformat__ = 'numpy'
+
+    def link_to(identifier, label: NotFound):
+        """
+        :param label: the lable of the link.
+        :type identifier: Union[str, NotFound]
+        """
+
+    '''
+
+    mod = fromText(src)
+
+    html = getHTMLOf(mod)
+
+    assert '<a>NotFound</a>' not in html
