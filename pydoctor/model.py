@@ -768,6 +768,20 @@ class FunctionOverload:
     signature: Signature
     decorators: Sequence[ast.expr]
 
+def init_properties(system:'System') -> None:
+    # Machup property functions into an Attribute that already exist.
+    # We are transforming the tree at the end only.
+    to_prune: List[Documentable] = []
+    for attr in system.objectsOfType(Attribute):
+        if attr.kind is DocumentableKind.PROPERTY:
+            to_prune.extend(init_property(attr))
+    
+    for obj in set(to_prune):
+        system._remove(obj)
+        assert obj.parent is not None
+        if obj.name in obj.parent.contents:
+            del obj.parent.contents[obj.name]
+
 def init_property(attr:'Attribute') -> Iterator['Function']:
     """
     Initiates the L{Attribute} that represent the property in the tree.
@@ -849,13 +863,13 @@ class Attribute(Inheritable):
         """
         Access to this atribute is allowed only on PROPERTY objects.
         """
-        assert self.kind is DocumentableKind.PROPERTY
-        assert self._property_def is not None
+        assert self.kind is DocumentableKind.PROPERTY, "property_def must be used on PROPERTY objects only"
+        assert self._property_def is not None, "inconsistent property_def"
         return self._property_def
     
     @property_def.setter
     def property_def(self, v:PropertyDef) -> None:
-        assert self.kind is DocumentableKind.PROPERTY
+        assert self.kind is DocumentableKind.PROPERTY, "property_def must be used on PROPERTY objects only"
         self._property_def = v
     
 
@@ -1451,18 +1465,7 @@ class System:
             if is_exception(cls):
                 cls.kind = DocumentableKind.EXCEPTION
         
-        # Machup property functions into an Attribute that already exist.
-        # We are transforming the tree at the end only.
-        to_delete: List[Documentable] = []
-        for attr in self.objectsOfType(Attribute):
-            if attr.property_def is not None:
-                to_delete.extend(init_property(attr))
-        for obj in set(to_delete):
-            self._remove(obj)
-            assert obj.parent is not None
-            if obj.name in obj.parent.contents:
-                del obj.parent.contents[obj.name]
-
+        init_properties(self)
 
         for post_processor in self._post_processors:
             post_processor(self)
