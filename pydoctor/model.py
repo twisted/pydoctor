@@ -745,14 +745,6 @@ class Function(Inheritable):
     signature: Optional[Signature]
     overloads: List['FunctionOverload']
 
-    # # Property handling is special: This attribute is used in the processing step only.
-    # property_decorator: Optional[ast.expr] = None
-    # """
-    # A property decorator like C{@property} or C{@name.setter} or C{@BaseClass.name.getter} / etc.
-
-    # C{None} if this function is not decorated with any kind of property decorator.
-    # """
-
     def setup(self) -> None:
         super().setup()
         if isinstance(self.parent, Class):
