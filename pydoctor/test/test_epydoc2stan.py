@@ -1755,11 +1755,10 @@ def test_dup_names_resolves_function_signature() -> None:
         def Attribute(self, t:'dup'=default) -> Type['Attribute']:
             """
             @param t: do not confuse with L{the class level one <dup>}.
+            @returns: stuff
             """
         
-    class Attribute:
-        ...
-    
+    Attribute = 'thing'
     dup = Union[str, bytes] # yes this one
     default = 'not this one'
     '''
@@ -1770,14 +1769,14 @@ def test_dup_names_resolves_function_signature() -> None:
     assert isinstance(def_Attribute, model.Function)
 
     sig = flatten(format_signature(def_Attribute))
-    assert 'href="model.Attribute.html"' in sig
+    assert 'href="index.html#Attribute"' in sig
     assert 'href="index.html#dup"' in sig
     assert 'href="#default"' in sig
     
     docstr = docstring2html(def_Attribute)
-    # docstring linker needs to be more smart, solved by https://github.com/twisted/pydoctor/pull/599
     assert '<a href="index.html#dup" class="internal-link" title="model.dup">dup</a>' in docstr
     assert '<a href="#dup" class="internal-link" title="model.System.dup">the class level one</a>' in docstr
+    assert 'href="index.html#Attribute"' in docstr
 
 def test_dup_names_resolves_annotation() -> None:
     """
