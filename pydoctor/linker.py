@@ -264,6 +264,7 @@ class CacheEntry:
     label: "Flattenable" = attr.ib()
     attributes: Mapping[Union[str, bytes], "Flattenable"] = attr.ib()
     lookup_failed: bool = attr.ib()
+    page_url:str = attr.ib()
     # Warning tracking attribute
     warned_linenos: Set[int] = attr.ib(factory=set)
     
@@ -294,15 +295,13 @@ class CacheEntry:
     def get_stan(self) -> Tag:
         return self._stan
     
-    @staticmethod
-    def _could_be_anchor_link(href:str, page_url:str) -> bool:
-        return bool(page_url and href.startswith(page_url+"#"))
+    def _could_be_anchor_link(self, href:str, current_page_url:str) -> bool:
+        return bool(current_page_url and href.startswith(current_page_url+"#"))
 
-    @staticmethod
-    def _should_be_full_link(href:str, initial_page_url:str, current_page_url:str) -> bool:
-        return bool(href.startswith("#") and initial_page_url != current_page_url)
+    def _should_be_full_link(self, href:str, current_page_url:str) -> bool:
+        return bool(href.startswith("#") and self.page_url != current_page_url)
 
-    def deduct_new_href(self, initial_page_url:str, current_page_url:str) -> Optional[str]:
+    def deduct_new_href(self, current_page_url:str) -> Optional[str]:
         
         href = self.href
 
@@ -310,15 +309,13 @@ class CacheEntry:
         if self._could_be_anchor_link(href, current_page_url):
             # The link could be optimized, use only the anchor
             return href[len(current_page_url):]
-        if self._should_be_full_link(href, initial_page_url, current_page_url):
+        if self._should_be_full_link(href, current_page_url):
             # The page context has been changed, use a full URL.
-            return initial_page_url+href
+            return self.page_url+href
         
         return None
     
-    def matches(self, name:str, label:'Flattenable', 
-                initial_page_url:str,
-                current_page_url:str) -> bool:
+    def matches(self, name:str, label:'Flattenable', current_page_url:str) -> bool:
         """
         Whether this cache entry matches the received request.
         """
@@ -330,7 +327,7 @@ class CacheEntry:
                 return True
             
             if self._could_be_anchor_link(href, current_page_url) or \
-                self._should_be_full_link(href, initial_page_url, current_page_url):
+                self._should_be_full_link(href, current_page_url):
                 return False
             else:
                 return True
@@ -371,10 +368,9 @@ class _CachedEpydocLinker(_EpydocLinker):
         @returns: A new deducted cached entry or none if the 
             entry has just the label to change, not the link.
         """
-        # Transform the :
-        # - omit the filename when linking on the same page.
+        # Transform the CacheEntry into a new one that fits the requirements.
 
-        new_href = cached_entry.deduct_new_href(self.obj.page_object.url, self.page_url)
+        new_href = cached_entry.deduct_new_href(self.page_url)
         if new_href is None:
             # Only the label changes
             new_attribs = cached_entry.attributes
@@ -422,10 +418,7 @@ class _CachedEpydocLinker(_EpydocLinker):
         def new_entry(e:CacheEntry) -> CacheEntry:
             return self._new_deducted_entry(e, label, cache_kind)
         
-        _initial_page_url = self.obj.page_object.url
-        _current_page_url = self.page_url
-        _exact_matches = [v for v in values if v.matches(
-                                target, label, _initial_page_url, _current_page_url)]
+        _exact_matches = [v for v in values if v.matches(target, label, self.page_url)]
         
         for entry in _exact_matches:
             return entry, False
@@ -449,7 +442,7 @@ class _CachedEpydocLinker(_EpydocLinker):
 
         cache = self._get_cache(cache_kind)
         values = cache[target][self.page_url]
-        entry = CacheEntry(target, label, attributes=attributes, lookup_failed=lookup_failed, warned_linenos=warned_linenos or set()) # We do not use copy() here by design.
+        entry = CacheEntry(target, label, attributes=attributes, lookup_failed=lookup_failed, page_url=self.page_url, warned_linenos=warned_linenos or set()) # We do not use copy() here by design.
         values.insert(0, entry)
         return entry
 

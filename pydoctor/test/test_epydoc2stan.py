@@ -860,6 +860,29 @@ def test_EpydocLinker_switch_context(linkercls:Type[Union[linker._EpydocLinker, 
     with mod.docstring_linker.switch_page_context(InnerKlass):
         assert 'href="index.html#v"' in flatten(mod.docstring_linker.link_to('v', 'v'))
 
+@pytest.mark.parametrize('linkercls', [linker._EpydocLinker, linker._CachedEpydocLinker])
+def test_EpydocLinker_switch_context_is_reentrant(linkercls:Type[Union[linker._EpydocLinker, linker._CachedEpydocLinker]]) -> None:
+    """
+    We can nest several calls to switch_page_context(), and links will still be valid.
+    """
+    
+    mod = fromText('''
+    v=0
+    class Klass:
+        ...
+    ''', modname='test')
+    
+    Klass = mod.contents['Klass']
+    assert isinstance(Klass, model.Class)
+    
+    # patch with the linkercls
+    mod._linker = linkercls(mod)
+    Klass._linker = linkercls(Klass)
+
+    with Klass.docstring_linker.switch_page_context(mod):
+        assert 'href="#v"' in flatten(Klass.docstring_linker.link_to('v', 'v'))
+        with Klass.docstring_linker.switch_page_context(Klass):
+            assert 'href="index.html#v"' in flatten(Klass.docstring_linker.link_to('v', 'v'))
     
 def test_EpydocLinker_look_for_intersphinx_no_link() -> None:
     """
