@@ -852,37 +852,86 @@ def test_EpydocLinker_switch_context(linkercls:Type[Union[linker._EpydocLinker, 
     # in order to avoid the following to happen:
     assert 'href="#Klass"' in flatten(InnerKlass.docstring_linker.link_to('Klass', 'Klass'))
     
-    with Klass.docstring_linker.switch_page_context(InnerKlass):
+    with Klass.docstring_linker.switch_context(InnerKlass):
         assert 'href="test.Klass.html"' in flatten(Klass.docstring_linker.link_to('Klass', 'Klass'))
     
     assert 'href="#v"' in flatten(mod.docstring_linker.link_to('v', 'v'))
     
-    with mod.docstring_linker.switch_page_context(InnerKlass):
+    with mod.docstring_linker.switch_context(InnerKlass):
         assert 'href="index.html#v"' in flatten(mod.docstring_linker.link_to('v', 'v'))
 
 @pytest.mark.parametrize('linkercls', [linker._EpydocLinker, linker._CachedEpydocLinker])
-def test_EpydocLinker_switch_context_is_reentrant(linkercls:Type[Union[linker._EpydocLinker, linker._CachedEpydocLinker]]) -> None:
+def test_EpydocLinker_switch_context_is_reentrant(linkercls:Type[Union[linker._EpydocLinker, linker._CachedEpydocLinker]], capsys:CapSys) -> None:
     """
-    We can nest several calls to switch_page_context(), and links will still be valid.
+    We can nest several calls to switch_context(), and links will still be valid and warnings line will be correct.
     """
     
     mod = fromText('''
+    "L{thing.notfound}"
     v=0
     class Klass:
+        "L{thing.notfound}"
         ...
     ''', modname='test')
     
     Klass = mod.contents['Klass']
     assert isinstance(Klass, model.Class)
     
+    for ob in mod.system.allobjects.values():
+        epydoc2stan.ensure_parsed_docstring(ob)
+    
     # patch with the linkercls
     mod._linker = linkercls(mod)
     Klass._linker = linkercls(Klass)
 
-    with Klass.docstring_linker.switch_page_context(mod):
+    with Klass.docstring_linker.switch_context(mod):
         assert 'href="#v"' in flatten(Klass.docstring_linker.link_to('v', 'v'))
-        with Klass.docstring_linker.switch_page_context(Klass):
+        with Klass.docstring_linker.switch_context(Klass):
             assert 'href="index.html#v"' in flatten(Klass.docstring_linker.link_to('v', 'v'))
+    
+    assert capsys.readouterr().out == ''
+
+    mod.parsed_docstring.to_stan(mod.docstring_linker, False) # type:ignore
+    mod.parsed_docstring.get_summary().to_stan(mod.docstring_linker, False) # type:ignore
+
+    warnings = ['test:2: Cannot find link target for "thing.notfound" (you can link to external docs with --intersphinx)']
+    if linkercls is linker._EpydocLinker:
+        warnings = warnings * 2
+    assert capsys.readouterr().out.strip().splitlines() == warnings
+
+    # This is wrong:
+    Klass.parsed_docstring.to_stan(mod.docstring_linker, False) # type:ignore
+    Klass.parsed_docstring.get_summary().to_stan(mod.docstring_linker, False) # type:ignore
+    
+    # Because the warnings will be reported on line 2
+    warnings = ['test:2: Cannot find link target for "thing.notfound" (you can link to external docs with --intersphinx)']
+    if linkercls is linker._EpydocLinker:
+        warnings = warnings * 2
+    else:
+        # With the cached linker, the warnings did not get triggered at all
+        warnings = []
+    
+    assert capsys.readouterr().out.strip().splitlines() == warnings
+
+    # assert capsys.readouterr().out == ''
+
+    # Reset stan and summary, because they are supposed to be cached.
+    Klass.parsed_docstring._stan = None # type:ignore
+    Klass.parsed_docstring._summary = None # type:ignore
+
+    # This is better:
+    with mod.docstring_linker.switch_context(Klass):
+        Klass.parsed_docstring.to_stan(mod.docstring_linker, False) # type:ignore
+        Klass.parsed_docstring.get_summary().to_stan(mod.docstring_linker, False) # type:ignore
+
+    warnings = ['test:5: Cannot find link target for "thing.notfound" (you can link to external docs with --intersphinx)']
+    if linkercls is linker._EpydocLinker:
+        warnings = warnings * 2
+    else:
+        # With the cached linker, the warnings got trigerred but we don't have all the failure details
+        warnings = ['test:5: Cannot find link target for "thing.notfound"']
+    
+    assert capsys.readouterr().out.strip().splitlines() == warnings
     
 def test_EpydocLinker_look_for_intersphinx_no_link() -> None:
     """
@@ -1167,7 +1216,7 @@ def test_CachedEpydocLinker_same_page_optimization() -> None:
     
     assert sut.page_url == mod.url
     
-    with sut.switch_page_context(None):
+    with sut.switch_context(None):
         assert sut.page_url ==''
         
         assert sut.link_to('base','module.base').attributes['href']=='index.html#base'

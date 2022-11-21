@@ -755,9 +755,9 @@ def format_summary(obj: model.Documentable) -> Tag:
     if not source:
         source = obj
     
-    # Disallow same_page_optimization in order to make sure we're not
-    # breaking links when including the summaries on other pages.
-    with source.docstring_linker.disable_same_page_optimization():
+    # do not optimize url in order to make sure we're alwasy geberaing full urls.
+    # avoids breaking links when including the summaries on other pages.
+    with source.docstring_linker.switch_context(None):
         # ParserErrors will likely be reported by the full docstring as well,
         # so don't spam the log, pass report=False.
         stan = safe_to_stan(parsed_doc, source.docstring_linker, source, compact=True, report=False,
