@@ -726,7 +726,7 @@ def format_docstring(obj: model.Documentable) -> Tag:
             ret(stan)
         else:
             body = stan.children
-            if len(body)==1 and not isinstance(body[0], Tag):
+            if len(body)==1 and (not isinstance(body[0], Tag) or body[0].tagName!='p'):
                 # ensure there is one paragraph at least
                 ret(tags.p(*stan.children))
             else:
