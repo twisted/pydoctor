@@ -54,18 +54,8 @@ class _EpydocLinker(DocstringLinker):
     """
     This linker implements the xref lookup logic.
     """
-    
-    class LookupFailed(LookupError):
-        """
-        Encapsulate a link tag that is not actually a link because we could not resolve the name. 
 
-        Used only if L{_EpydocLinker.strict} is True.
-        """
-        def __init__(self, *args: object, link: Tag) -> None:
-            super().__init__(*args)
-            self.link: Tag = link
-
-    def __init__(self, obj: 'model.Documentable', strict:bool=False) -> None:
+    def __init__(self, obj: 'model.Documentable') -> None:
         self.reporting_obj = obj
         """
         Object used for reporting link not found errors. Changed when the linker L{switch_context}.
@@ -73,15 +63,19 @@ class _EpydocLinker(DocstringLinker):
         
         self._init_obj = obj
         self._page_object: Optional['model.Documentable'] = obj.page_object
-
-        self.strict = strict
     
     @property
     def obj(self) -> 'model.Documentable':
+        """
+        Object used for resolving the target name, NOT not change when the linker L{switch_context}.
+        """
         return self._init_obj
     
     @property
     def page_url(self) -> str:
+        """
+        URL to the page object in wich the link will be presented.
+        """
         pageob = self._page_object
         if pageob is not None:
             return pageob.url
@@ -153,8 +147,8 @@ class _EpydocLinker(DocstringLinker):
             return self._create_intersphinx_link(label, url=url)
 
         link = tags.transparent(label)
-        if self.strict:
-            raise self.LookupFailed(identifier, link=link)
+        # if self.strict:
+        #     raise self.LookupFailed(identifier, link=link)
         return link
 
     def link_xref(self, target: str, label: "Flattenable", lineno: int) -> Tag:
@@ -169,8 +163,8 @@ class _EpydocLinker(DocstringLinker):
             resolved = self._resolve_identifier_xref(target, lineno)
         except LookupError as e:
             xref = label
-            if self.strict:
-                raise self.LookupFailed(str(e), link=tags.code(xref)) from e
+            # if self.strict:
+            #     raise self.LookupFailed(str(e), link=tags.code(xref)) from e
         else:
             if isinstance(resolved, str):
                 xref = self._create_intersphinx_link(label, url=resolved)
@@ -267,248 +261,3 @@ class _EpydocLinker(DocstringLinker):
         self.reporting_obj.report(message, 'resolve_identifier_xref', lineno)
         raise LookupError(identifier)
     
-
-@attr.s(frozen=True)
-class CacheEntry: # type:ignore[no-untyped-def]
-    # Core fields of cache entry
-    name: str = attr.ib()
-    label: "Flattenable" = attr.ib()
-    attributes: Mapping[Union[str, bytes], "Flattenable"] = attr.ib()
-    lookup_failed: bool = attr.ib()
-    page_url:str = attr.ib()
-    # Warning tracking attribute
-    warned_linenos: Mapping['model.Documentable', Set[int]] = attr.ib(factory=lambda:defaultdict(set), # type:ignore[var-annotated]
-        converter=lambda v: v if v is not None else defaultdict(set))
-    
-    _stan: Tag
-    _href: str
-    
-    def __attrs_post_init__(self) -> None:
-        def set_attribute(name:str, value:Any) -> None:
-            # https://github.com/python-attrs/attrs/issues/120
-            object.__setattr__(self, name, value)
-
-        # Not to compute it several times
-        if self.lookup_failed:
-            set_attribute('_stan', Tag('transparent', attributes=dict(self.attributes))(self.label))
-        else:
-            # Do not create links when there is nothing to link to. 
-            set_attribute('_stan', Tag('a', attributes=dict(self.attributes))(self.label))
-        
-        set_attribute('_href', str(self.attributes.get('href','')))
-    
-    @property
-    def href(self) -> str:
-        return self._href
-
-    def __repr__(self) -> str:
-        return f"<CacheEntry name={self.name!r} label={self.label!r} attributes={self.attributes!r}>"
-    
-    def get_stan(self) -> Tag:
-        return self._stan
-    
-    def _could_be_anchor_link(self, href:str, current_page_url:str) -> bool:
-        return bool(current_page_url and href.startswith(current_page_url+"#"))
-
-    def _should_be_full_link(self, href:str, current_page_url:str) -> bool:
-        return bool(href.startswith("#") and self.page_url != current_page_url)
-
-    def deduct_new_href(self, current_page_url:str) -> Optional[str]:
-        
-        href = self.href
-
-        # Reason about page object context
-        if self._could_be_anchor_link(href, current_page_url):
-            # The link could be optimized, use only the anchor
-            return href[len(current_page_url):]
-        if self._should_be_full_link(href, current_page_url):
-            # The page context has been changed, use a full URL.
-            return self.page_url+href
-        
-        return None
-    
-    def matches(self, name:str, label:'Flattenable', current_page_url:str) -> bool:
-        """
-        Whether this cache entry matches the received request.
-        """
-        if self.name == name \
-            and self.label == label:
-
-            href = self.href
-            if not href:
-                return True
-            
-            if self._could_be_anchor_link(href, current_page_url) or \
-                self._should_be_full_link(href, current_page_url):
-                return False
-            else:
-                return True
-        else:
-            return False
-
-class _CachedEpydocLinker(_EpydocLinker):
-    """
-    This linker implements smart caching functionalities on top of public methods defined in L{_EpydocLinker}.
-
-    The cache is implemented at the L{Tag} (Stan) level, letting us do transformation over cached L{Tag} instances
-    and recycle already resolved URLs and adjust them to change formatting as requested by link_xref(). 
-
-    It compares the link label and href, so 
-    """
-    _CacheType = Dict[str, Dict[str, List['CacheEntry']]]
-    # Dict name to dict page object url to list of cached entries
-
-
-    def __init__(self, obj: 'model.Documentable') -> None:
-        super().__init__(obj, strict=True)
-        
-        self._link_to_cache: '_CachedEpydocLinker._CacheType' = defaultdict(lambda:defaultdict(list))
-        self._link_xref_cache: '_CachedEpydocLinker._CacheType' = defaultdict(lambda:defaultdict(list))
-    
-    def _get_cache(self, cache_kind: 'Literal["link_to", "link_xref"]' = "link_to") -> '_CachedEpydocLinker._CacheType':
-        cache_dict = getattr(self, f"_{cache_kind}_cache")
-        assert isinstance(cache_dict, dict)
-        return cast('_CachedEpydocLinker._CacheType', cache_dict)
-
-    def _new_deducted_entry(self, 
-                    cached_entry: 'CacheEntry', 
-                    label: "Flattenable", 
-                    cache_kind: 'Literal["link_to", "link_xref"]' = "link_to") -> 'CacheEntry':
-        """
-        Get an entry from the cache.
-
-        @returns: A new deducted cached entry or none if the 
-            entry has just the label to change, not the link.
-        """
-        # Transform the CacheEntry into a new one that fits the requirements.
-
-        new_href = cached_entry.deduct_new_href(self.page_url)
-        if new_href is None:
-            # Only the label changes
-            new_attribs = cached_entry.attributes
-        else:
-            # Copy the new link into a new attributes dict
-            new_attribs = dict(cached_entry.attributes)
-            new_attribs['href'] = new_href
-
-        return self._store_in_cache(
-                        cached_entry.name, 
-                        label, 
-                        attributes=new_attribs, 
-                        cache_kind=cache_kind,
-                        lookup_failed=cached_entry.lookup_failed,
-                        warned_linenos=cached_entry.warned_linenos # We do not use copy() here by design.
-                    )
-    
-    def _lookup_cached_entry(self, target:str, label: "Flattenable", 
-                          cache_kind: 'Literal["link_to", "link_xref"]' = "link_to") -> Optional[Tuple['CacheEntry', bool]]:
-        # Lookup an entry in the cache,
-        # 
-        # if the exact entry could not be found
-        # but we could extrapolate the correct link from the link we already had in the cache.
-        # Returns None if no coresponding entry has been found in the cache.
-        
-        # For xrefs, we first look into the link_to cache.
-        if cache_kind == "link_xref":
-            cached = self._lookup_cached_entry(target, label, cache_kind="link_to")
-            if cached is not None: return cached
-        
-        # Get the cached entries
-        cache = self._get_cache(cache_kind)
-        values:List[CacheEntry] = []
-
-        for v in cache[target].values():
-            values.extend(v)
-            
-        # Not found
-        if not values: 
-            return None
-        
-        # Here we iterate, but we could transform this into a dict access for more speed.
-        # But at the same time, usually there are not a lot of different labels applied 
-        # to the same link in the same docstring, so the current behaviour is good enough.
-        def new_entry(e:CacheEntry) -> CacheEntry:
-            return self._new_deducted_entry(e, label, cache_kind)
-        
-        _exact_matches = [v for v in values if v.matches(target, label, self.page_url)]
-        
-        for entry in _exact_matches:
-            return entry, False
-        else:
-            # Automatically deduce what would 
-            # be the link with a different label and/or relative or full link.
-            # This will add a new entry in the cache.
-            _first_match = next(v for v in values if v not in _exact_matches)
-            return new_entry(_first_match), True
-
-    
-    def _store_in_cache(self, 
-                        target: str, 
-                        label: "Flattenable", 
-                        attributes: Mapping[Union[str, bytes], "Flattenable"],
-                        cache_kind: 'Literal["link_to", "link_xref"]' = "link_to", 
-                        lookup_failed:bool=False, 
-                        warned_linenos: Optional[Mapping['model.Documentable', Set[int]]]=None) -> 'CacheEntry':
-
-        # Store a new resolved link in the cache.
-
-        cache = self._get_cache(cache_kind)
-        values = cache[target][self.page_url]
-        entry = CacheEntry(target, label, attributes=attributes, 
-                           lookup_failed=lookup_failed, page_url=self.page_url, 
-                           warned_linenos=warned_linenos) 
-        values.insert(0, entry)
-        return entry
-
-    def _lookup_cached_link_to(self, target: str, label: "Flattenable") -> Optional[Tag]:
-        # Lookup a link_to() cached value.
-        cached = self._lookup_cached_entry(target, label, cache_kind="link_to")
-        if cached:
-            return cached[0].get_stan()
-        return None
-
-    def link_to(self, target: str, label: "Flattenable") -> Tag:
-        link = self._lookup_cached_link_to(target, label)
-        if link is None: 
-            failed=False 
-            try:
-                link = super().link_to(target, label)
-            except self.LookupFailed as e:
-                link = e.link
-                failed=True
-            self._store_in_cache(target, label, link.attributes, 
-                                 cache_kind="link_to", 
-                                 lookup_failed=failed)
-        return link
-    
-    def _lookup_cached_link_xref(self, target: str, label: "Flattenable", lineno: int) -> Optional[Tag]:
-        # Lookup a link_xref() cached value. 
-        # Warns if the link is derived from a link that failed the URL lookup.
-        cached = self._lookup_cached_entry(target, label, cache_kind="link_xref")
-        if cached:
-            entry, new = cached
-            # Warns only if the line number differs from any other values we have already in cache.
-            if new and entry.lookup_failed and lineno not in entry.warned_linenos[self.reporting_obj]:
-                self.reporting_obj.report(f'Cannot find link target for "{entry.name}"', 'resolve_identifier_xref', lineno_offset=lineno)
-                entry.warned_linenos[self.reporting_obj].add(lineno) # Add lineno such that the warning does not trigger again for this line.
-        
-            return entry.get_stan()
-        return None
-
-    def link_xref(self, target: str, label: "Flattenable", lineno: int) -> Tag:
-        link: Optional["Flattenable"] = self._lookup_cached_link_xref(target, label, lineno)
-        if link is None:
-            failed=False 
-            try:
-                link = super().link_xref(target, label, lineno).children[0]
-            except self.LookupFailed as e:
-                link = e.link.children[0]
-                failed=True
-            if not isinstance(link, Tag): 
-                link = tags.transparent(link)
-            new_cached = self._store_in_cache(target, label, link.attributes, 
-                                              cache_kind="link_xref", 
-                                              lookup_failed=failed)
-            if failed:
-                new_cached.warned_linenos[self.reporting_obj].add(lineno)
-        return tags.code(link)
