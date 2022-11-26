@@ -189,9 +189,9 @@ class ColorizedPyvalRepr(ParsedRstDocstring):
         List of warnings
         """
     
-    def to_stan(self, docstring_linker: DocstringLinker, compact:bool=False) -> Tag:
+    def to_stan(self, docstring_linker: DocstringLinker) -> Tag:
         return Tag('code')(super().to_stan(docstring_linker))
-
+    
 def colorize_pyval(pyval: Any, linelen:Optional[int], maxlines:int, linebreakok:bool=True) -> ColorizedPyvalRepr:
     """
     @return: A L{ColorizedPyvalRepr} describing the given pyval.

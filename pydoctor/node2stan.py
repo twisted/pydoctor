@@ -16,15 +16,15 @@ from pydoctor.epydoc.docutils import get_lineno
 from pydoctor.epydoc.doctest import colorize_codeblock, colorize_doctest
 from pydoctor.stanutils import flatten, html2stan
 
-def node2html(node: nodes.Node, docstring_linker: 'DocstringLinker', compact:bool=True) -> List[str]:
+def node2html(node: nodes.Node, docstring_linker: 'DocstringLinker') -> List[str]:
     """
     Convert a L{docutils.nodes.Node} object to HTML strings.
     """
-    visitor = HTMLTranslator(node.document, docstring_linker, compact=compact)
+    visitor = HTMLTranslator(node.document, docstring_linker)
     node.walkabout(visitor)
     return visitor.body
 
-def node2stan(node: Union[nodes.Node, Iterable[nodes.Node]], docstring_linker: 'DocstringLinker', compact:bool=True) -> Tag:
+def node2stan(node: Union[nodes.Node, Iterable[nodes.Node]], docstring_linker: 'DocstringLinker') -> Tag:
     """
     Convert L{docutils.nodes.Node} objects to a Stan tree.
 
@@ -35,10 +35,10 @@ def node2stan(node: Union[nodes.Node, Iterable[nodes.Node]], docstring_linker: '
     """
     html = []
     if isinstance(node, nodes.Node):
-        html += node2html(node, docstring_linker, compact)
+        html += node2html(node, docstring_linker)
     else:
         for child in node:
-            html += node2html(child, docstring_linker, compact)
+            html += node2html(child, docstring_linker)
     return html2stan(''.join(html))
 
 
@@ -70,8 +70,7 @@ class HTMLTranslator(html4css1.HTMLTranslator):
 
     def __init__(self,
             document: nodes.document,
-            docstring_linker: 'DocstringLinker',
-            compact: bool = False, 
+            docstring_linker: 'DocstringLinker'
             ):
         self._linker = docstring_linker
 
@@ -95,7 +94,6 @@ class HTMLTranslator(html4css1.HTMLTranslator):
         # don't allow <h1> tags, start at <h2>
         # h1 is reserved for the page nodes.title. 
         self.section_level += 1
-        self._compact = compact
 
     # Handle interpreted text (crossreferences)
     def visit_title_reference(self, node: nodes.Node) -> None:
@@ -127,13 +125,7 @@ class HTMLTranslator(html4css1.HTMLTranslator):
         raise nodes.SkipNode()
 
     def should_be_compact_paragraph(self, node: nodes.Node) -> bool:
-
-        # HTMLTranslator.should_be_compact_paragraph() used to always remove the
-        # p tag when there is only one element in the document. This is a good behaviour
-        # for colorizing AST values, etc, but for the docstring, we want to have at least
-        # one paragraph (for a better margin, so we use option compact=False). 
-
-        if self._compact is True and self.document.children == [node]:
+        if self.document.children == [node]:
             return True
         else:
             return super().should_be_compact_paragraph(node)  # type: ignore[no-any-return]
