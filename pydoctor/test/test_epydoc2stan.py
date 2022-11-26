@@ -74,7 +74,7 @@ def test_html_empty_module() -> None:
     mod = fromText('''
     """Empty module."""
     ''')
-    assert docstring2html(mod) == "<div><p>Empty module.</p></div>"
+    assert docstring2html(mod) == "<div>\n<p>Empty module.</p>\n</div>"
 
 
 def test_xref_link_not_found() -> None:
@@ -752,7 +752,7 @@ def test_ivar_overriding_attribute() -> None:
     sub_a = sub.contents['a']
     assert isinstance(sub_a, model.Attribute)
     assert summary2html(sub_a) == 'sub doc'
-    assert docstring2html(sub_a) == "<div><p>sub doc</p></div>"
+    assert docstring2html(sub_a) == "<div>\n<p>sub doc</p>\n</div>"
     sub_b = sub.contents['b']
     assert isinstance(sub_b, model.Attribute)
     assert summary2html(sub_b) == 'not overridden'
