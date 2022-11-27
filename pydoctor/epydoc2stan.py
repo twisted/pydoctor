@@ -710,6 +710,22 @@ def format_docstring_fallback(errs: List[ParseError], parsed_doc:ParsedDocstring
         stan = parsed_doc_plain.to_stan(ctx.docstring_linker)
     return stan
 
+def _wrap_in_paragraph(body:List["Flattenable"]) -> bool:
+    """
+    This is the counterpart of what we're doing in L{HTMLTranslator.should_be_compact_paragraph()}.
+    Since the L{HTMLTranslator} is generic for all parsed docstrings types, it always generates compact paragraphs.
+
+    But for docstrings, we want to have at least one paragraph for consistency.
+    """
+    has_paragraph = False
+    for e in body:
+        if not isinstance(e, Tag):
+            continue
+        if e.tagName == 'p':
+            has_paragraph = True
+    return not has_paragraph
+
+
 def format_docstring(obj: model.Documentable) -> Tag:
     """Generate an HTML representation of a docstring"""
 
@@ -726,11 +742,11 @@ def format_docstring(obj: model.Documentable) -> Tag:
             ret(stan)
         else:
             body = stan.children
-            if len(body)==1 and (not isinstance(body[0], Tag) or body[0].tagName!='p'):
+            if _wrap_in_paragraph(body):
                 # ensure there is one paragraph at least
-                ret(tags.p(*stan.children))
+                ret(tags.p(*body))
             else:
-                ret(*stan.children)
+                ret(*body)
 
     fh = FieldHandler(obj)
     if isinstance(obj, model.Function):

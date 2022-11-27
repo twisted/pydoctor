@@ -71,6 +71,7 @@ def summary2html(obj: model.Documentable) -> str:
 
 
 def test_html_empty_module() -> None:
+    # checks the presence of at least one paragraph on all docstrings
     mod = fromText('''
     """Empty module."""
     ''')
@@ -89,6 +90,11 @@ def test_html_empty_module() -> None:
     """C{thing}"""
     ''', modname='module')
     assert docstring2html(mod) == '<div>\n<p>\n<tt class="rst-docutils literal">thing</tt>\n</p>\n</div>'
+
+    mod = fromText('''
+    """My C{thing}."""
+    ''', modname='module')
+    assert docstring2html(mod) == '<div>\n<p>My <tt class="rst-docutils literal">thing</tt>.</p>\n</div>'
 
 def test_xref_link_not_found() -> None:
     """A linked name that is not found is output as text."""
