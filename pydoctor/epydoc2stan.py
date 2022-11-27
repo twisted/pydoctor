@@ -723,7 +723,7 @@ def _wrap_in_paragraph(body:List["Flattenable"]) -> bool:
             continue
         if e.tagName == 'p':
             has_paragraph = True
-    return not has_paragraph
+    return body and not has_paragraph
 
 
 def format_docstring(obj: model.Documentable) -> Tag:

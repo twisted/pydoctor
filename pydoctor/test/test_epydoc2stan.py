@@ -96,6 +96,13 @@ def test_html_empty_module() -> None:
     ''', modname='module')
     assert docstring2html(mod) == '<div>\n<p>My <tt class="rst-docutils literal">thing</tt>.</p>\n</div>'
 
+    mod = fromText('''
+    """
+    @note: There is no paragraph here. 
+    """
+    ''')
+    assert '<p>' not in docstring2html(mod)
+
 def test_xref_link_not_found() -> None:
     """A linked name that is not found is output as text."""
     mod = fromText('''
