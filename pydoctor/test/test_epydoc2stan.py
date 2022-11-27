@@ -1174,7 +1174,7 @@ def test_EpydocLinker_warnings(capsys: CapSys) -> None:
     assert captured == ('module:3: Cannot find link target for "notfound"'
                         '\nmodule:3: Cannot find link target for "notfound"'
                         '\nmodule:5: Cannot find link target for "notfound"'
-                        '\nmodule:5: Cannot find link target for "notfound"')
+                        '\nmodule:5: Cannot find link target for "notfound"\n')
 
     assert 'href="index.html#base"' in summary2html(mod)
     summary2html(mod)
