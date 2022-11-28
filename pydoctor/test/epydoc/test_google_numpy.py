@@ -1,5 +1,5 @@
 from typing import List
-from pydoctor.epydoc.markup import ParseError
+from pydoctor.epydoc.markup import ParseError, processtypes
 from unittest import TestCase
 from pydoctor.test import NotFoundLinker
 from pydoctor.model import Attribute, System, Function
@@ -21,7 +21,10 @@ numpy.ndarray: super-dooper attribute"""
 
         errors: List[ParseError] = []
 
-        actual = flatten(parse_docstring(docstring, errors, False).fields[-1].body().to_stan(NotFoundLinker()))
+        parsed_doc = parse_docstring(docstring, errors)
+        processtypes(parsed_doc, errors)
+
+        actual = flatten(parsed_doc.fields[-1].body().to_stan(NotFoundLinker()))
         
         expected = """<code>numpy.ndarray</code>"""
 
@@ -39,7 +42,7 @@ numpy.ndarray: super-dooper attribute"""
 
         errors: List[ParseError] = []
 
-        assert not parse_docstring(docstring, errors, False).fields
+        assert not parse_docstring(docstring, errors).fields
 
     # the numpy inline attribute parsing is the same as google-style
     # as shown in the example_numpy.py from Sphinx docs
@@ -53,9 +56,12 @@ numpy.ndarray: super-dooper attribute"""
 numpy.ndarray: super-dooper attribute"""
 
         errors: List[ParseError] = []
-
-        actual = flatten(parse_docstring(docstring, errors, False).fields[-1].body().to_stan(NotFoundLinker()))
         
+        parsed_doc = parse_docstring(docstring, errors)
+        processtypes(parsed_doc, errors)
+
+        actual = flatten(parsed_doc.fields[-1].body().to_stan(NotFoundLinker()))
+
         expected = """<code>numpy.ndarray</code>"""
 
         self.assertEqual(expected, actual)
@@ -72,7 +78,7 @@ numpy.ndarray: super-dooper attribute"""
 
         errors: List[ParseError] = []
 
-        assert not parse_docstring(docstring, errors, False).fields
+        assert not parse_docstring(docstring, errors).fields
 
 
 class TestWarnings(TestCase):
@@ -115,7 +121,7 @@ Some more text.
 
         errors: List[ParseError] = []
 
-        parse_docstring(docstring, errors, False)
+        processtypes(parse_docstring(docstring, errors),errors)
         
         self.assertEqual(len(errors), 3)
         

@@ -68,6 +68,8 @@ if TYPE_CHECKING:
 # 4. ParseError exceptions
 #
 
+ParserFunction = Callable[[str, List['ParseError']], 'ParsedDocstring']
+
 def get_supported_docformats() -> Iterator[str]:
     """
     Get the list of currently supported docformat.
@@ -79,7 +81,7 @@ def get_supported_docformats() -> Iterator[str]:
         else:
             yield moduleName
 
-def get_parser_by_name(docformat: str, obj: Optional['Documentable'] = None) -> Callable[[str, List['ParseError'], bool], 'ParsedDocstring']:
+def get_parser_by_name(docformat: str, obj: Optional['Documentable'] = None) -> ParserFunction:
     """
     Get the C{parse_docstring(str, List[ParseError], bool) -> ParsedDocstring} function based on a parser name. 
 
@@ -89,6 +91,17 @@ def get_parser_by_name(docformat: str, obj: Optional['Documentable'] = None) -> 
     mod = import_module(f'pydoctor.epydoc.markup.{docformat}')
     # We can safely ignore this mypy warning, since we can be sure the 'get_parser' function exist and is "correct".
     return mod.get_parser(obj) # type:ignore[no-any-return]
+
+def processtypes(doc: 'ParsedDocstring', errs: List['ParseError']) -> None:
+    """
+    Mutates the type fields to provide option --process-types.
+    """
+    from pydoctor.epydoc.markup._types import ParsedTypeDocstring
+    for field in doc.fields:
+        if field.tag() in ParsedTypeDocstring.FIELDS:
+            body = ParsedTypeDocstring(field.body().to_node(), lineno=field.lineno)
+            append_warnings(body.warnings, errs, lineno=field.lineno+1)
+            field.replace_body(body)
 
 ##################################################
 ## ParsedDocstring
@@ -250,6 +263,9 @@ class Field:
         @return: This field's body.
         """
         return self._body
+    
+    def replace_body(self, newbody:ParsedDocstring) -> None:
+        self._body = newbody
 
     def __repr__(self) -> str:
         if self._arg is None:

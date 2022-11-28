@@ -17,7 +17,7 @@ from pydoctor import model, linker, node2stan
 from pydoctor.astutils import is_none_literal
 from pydoctor.epydoc.markup import Field as EpydocField, ParseError, get_parser_by_name
 from twisted.web.template import Tag, tags
-from pydoctor.epydoc.markup import ParsedDocstring, DocstringLinker
+from pydoctor.epydoc.markup import ParsedDocstring, DocstringLinker, processtypes
 import pydoctor.epydoc.markup.plaintext
 from pydoctor.epydoc.markup._pyval_repr import colorize_pyval, colorize_inline_pyval
 
@@ -31,27 +31,19 @@ Alias to L{pydoctor.linker.taglink()}.
 
 BROKEN = tags.p(class_="undocumented")('Broken description')
 
-def get_parser(obj: model.Documentable) -> Callable[[str, List[ParseError], bool], ParsedDocstring]:
+def _get_docformat(obj: model.Documentable) -> str:
     """
-    Get the C{parse_docstring(str, List[ParseError], bool) -> ParsedDocstring} function. 
-    """    
+    Returns the docformat to use to parse the docstring of this object.
+    """
     # Use module's __docformat__ if specified, else use system's. 
     # Except if system's docformat is plaintext, in this case, use plaintext.
     # See https://github.com/twisted/pydoctor/issues/503 for the reason
     # of this behavior. 
     if obj.system.options.docformat == 'plaintext':
-        return pydoctor.epydoc.markup.plaintext.parse_docstring
+        return 'plaintext'
     # the docstring should be parsed using the format of the module it was inherited from
     docformat = obj.module.docformat or obj.system.options.docformat
-    
-    try:
-        return get_parser_by_name(docformat, obj)
-    except ImportError as e:
-        msg = 'Error trying to import %r parser:\n\n    %s: %s\n\nUsing plain text formatting only.'%(
-            docformat, e.__class__.__name__, e)
-        obj.system.msg('epydoc2stan', msg, thresh=-1, once=True)
-        return pydoctor.epydoc.markup.plaintext.parse_docstring
-
+    return docformat
 
 def get_docstring(
         obj: model.Documentable
@@ -583,10 +575,30 @@ def parse_docstring(
     @param section: A custom section to use.
     """
 
-    parser = get_parser(source) if not markup else get_parser_by_name(markup, obj)
+    docformat = _get_docformat(source) if not markup else markup
+
+    # fetch the parser function
+    try:
+        parser = get_parser_by_name(docformat, obj)
+    except ImportError as e:
+        _err = 'Error trying to import %r parser:\n\n    %s: %s\n\nUsing plain text formatting only.'%(
+            docformat, e.__class__.__name__, e)
+        obj.system.msg('epydoc2stan', _err, thresh=-1, once=True)
+        parser = pydoctor.epydoc.markup.plaintext.parse_docstring
+
     errs: List[ParseError] = []
     try:
-        parsed_doc = parser(doc, errs, obj.system.options.processtypes)
+        # parse docstring
+        parsed_doc = parser(doc, errs)
+
+        # This allows epytext markup to use TypeDocstring as well with a CLI option: --process-types.
+        # We process types here instead of doing it the parser modules for less code duplication.
+        # It's still technically part of the parsing process, 
+        # so we make sure to be inside the try/except block.
+        if obj.system.options.processtypes or docformat in ('google', 'numpy'):
+             # type processing is always enabled for google and numpy docformat, it's part of the specification.
+            processtypes(parsed_doc, errs)
+
     except Exception as e:
         errs.append(ParseError(f'{e.__class__.__name__}: {e}', 1))
         parsed_doc = pydoctor.epydoc.markup.plaintext.parse_docstring(doc, errs)
