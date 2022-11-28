@@ -39,7 +39,6 @@ import re
 import ast
 import functools
 import sys
-import sre_constants
 from inspect import signature
 from typing import Any, AnyStr, Union, Callable, Dict, Iterable, Sequence, Optional, List, Tuple, cast
 
@@ -48,7 +47,7 @@ import astor.op_util
 from docutils import nodes, utils
 from twisted.web.template import Tag
 
-from pydoctor.epydoc import sre_parse36
+from pydoctor.epydoc import sre_parse36, sre_constants36 as sre_constants
 from pydoctor.epydoc.markup import DocstringLinker
 from pydoctor.epydoc.markup.restructuredtext import ParsedRstDocstring
 from pydoctor.epydoc.docutils import set_node_attributes, wbr, obj_reference
@@ -717,7 +716,7 @@ class PyvalColorizer:
             # Can raise ValueError or re.error
             # Value of type variable "AnyStr" cannot be "Union[bytes, str]": Yes it can.
             self._colorize_re_pattern_str(pat, state) #type:ignore[type-var]
-        except (ValueError, re.error) as e:
+        except Exception as e:
             # Colorize the ast.Call as any other node if the pattern parsing fails.
             state.restore(mark)
             state.warnings.append(f"Cannot colorize regular expression, error: {str(e)}")
@@ -947,7 +946,7 @@ class PyvalColorizer:
                                         state, False, groups )
                 self._output(']', self.RE_GROUP_TAG, state)
             else:
-                raise RuntimeError(f"Error colorizing regexp, unknown element :{elt}")
+                raise ValueError(f"Unsupported element :{elt}")
         if len(tree) > 1 and not noparen:
             self._output(')', self.RE_GROUP_TAG, state)
 
