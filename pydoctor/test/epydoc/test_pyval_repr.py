@@ -1244,6 +1244,8 @@ def color_re(s: Union[bytes, str],
         
         expected = s
         if not raw_string:
+            assert isinstance(expected, str) 
+            # we only test invalid regexes with strings currently
             expected = expected.replace('\\', '\\\\')
         
         assert round_trip == expected, "%s != %s" % (repr(round_trip), repr(s))
