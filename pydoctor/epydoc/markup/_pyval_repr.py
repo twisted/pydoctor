@@ -716,7 +716,8 @@ class PyvalColorizer:
             # Can raise ValueError or re.error
             # Value of type variable "AnyStr" cannot be "Union[bytes, str]": Yes it can.
             self._colorize_re_pattern_str(pat, state) #type:ignore[type-var]
-        except Exception as e:
+        except (ValueError, sre_constants.error) as e:
+            # Make sure not to swallow control flow errors.
             # Colorize the ast.Call as any other node if the pattern parsing fails.
             state.restore(mark)
             state.warnings.append(f"Cannot colorize regular expression, error: {str(e)}")
