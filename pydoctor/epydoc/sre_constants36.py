@@ -16,7 +16,7 @@
 
 MAGIC = 20140917
 
-MAXREPEAT = 4294967295
+_MAXREPEAT = 4294967295
 MAXGROUPS = 2147483647
 
 # SRE standard exception (access as sre.error)
@@ -64,7 +64,7 @@ class _NamedIntConstant(int):
 
     __repr__ = __str__
 
-MAXREPEAT = _NamedIntConstant(MAXREPEAT, 'MAXREPEAT')
+MAXREPEAT = _NamedIntConstant(_MAXREPEAT, 'MAXREPEAT')
 
 def _makecodes(names):
     names = names.strip().split()
