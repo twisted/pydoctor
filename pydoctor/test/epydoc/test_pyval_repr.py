@@ -19,7 +19,7 @@ def color(v: Any, linebreakok:bool=True, maxlines:int=5, linelen:int=40) -> str:
 def colorhtml(v: Any, linebreakok:bool=True, maxlines:int=5, linelen:int=40) -> str:
     colorizer = PyvalColorizer(linelen=linelen, linebreakok=linebreakok, maxlines=maxlines)
     parsed_doc = colorizer.colorize(v)
-    return flatten(parsed_doc.to_stan(NotFoundLinker(), compact=True))
+    return flatten(parsed_doc.to_stan(NotFoundLinker()))
 
 def test_simple_types() -> None:
     """
