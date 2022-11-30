@@ -1,5 +1,5 @@
 from typing import List
-from pydoctor.epydoc.markup import ParseError, processtypes
+from pydoctor.epydoc.markup import ParseError
 from unittest import TestCase
 from pydoctor.test import NotFoundLinker
 from pydoctor.model import Attribute, System, Function
