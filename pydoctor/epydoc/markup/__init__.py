@@ -130,7 +130,6 @@ class ParsedDocstring(abc.ABC):
 
         self._stan: Optional[Tag] = None
         self._summary: Optional['ParsedDocstring'] = None
-        self._compact = True
 
     @abc.abstractproperty
     def has_body(self) -> bool:
@@ -158,7 +157,7 @@ class ParsedDocstring(abc.ABC):
         else:
             return None
 
-    def to_stan(self, docstring_linker: 'DocstringLinker', compact:bool=True) -> Tag:
+    def to_stan(self, docstring_linker: 'DocstringLinker') -> Tag:
         """
         Translate this docstring to a Stan tree.
 
@@ -171,21 +170,9 @@ class ParsedDocstring(abc.ABC):
         @raises Exception: If something went wrong. Callers should generally catch C{Exception}
             when calling L{to_stan()}.
         """
-        # The following three lines is a hack in order to still show p tags 
-        # around docstrings content when there is only a single line text
-        # and arguement compact=False is passed. We clear cached stan if required.
-        if compact != self._compact and self._stan is not None:
-            self._stan = None
-        self._compact = compact
-
         if self._stan is not None:
-            return self._stan      
-
-        docstring_stan = node2stan.node2stan(self.to_node(), 
-                                        docstring_linker, 
-                                        compact=compact)
-
-        self._stan = Tag('', children=docstring_stan.children)
+            return self._stan
+        self._stan = Tag('', children=node2stan.node2stan(self.to_node(), docstring_linker).children)
         return self._stan
     
     @abc.abstractmethod
