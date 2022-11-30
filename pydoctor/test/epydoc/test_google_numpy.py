@@ -22,7 +22,6 @@ numpy.ndarray: super-dooper attribute"""
         errors: List[ParseError] = []
 
         parsed_doc = parse_docstring(docstring, errors)
-        processtypes(parsed_doc, errors)
 
         actual = flatten(parsed_doc.fields[-1].body().to_stan(NotFoundLinker()))
         
@@ -58,7 +57,6 @@ numpy.ndarray: super-dooper attribute"""
         errors: List[ParseError] = []
         
         parsed_doc = parse_docstring(docstring, errors)
-        processtypes(parsed_doc, errors)
 
         actual = flatten(parsed_doc.fields[-1].body().to_stan(NotFoundLinker()))
 
@@ -121,7 +119,7 @@ Some more text.
 
         errors: List[ParseError] = []
 
-        processtypes(parse_docstring(docstring, errors),errors)
+        parse_docstring(docstring, errors)
         
         self.assertEqual(len(errors), 3)
         

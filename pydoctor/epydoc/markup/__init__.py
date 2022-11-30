@@ -92,16 +92,29 @@ def get_parser_by_name(docformat: str, obj: Optional['Documentable'] = None) -> 
     # We can safely ignore this mypy warning, since we can be sure the 'get_parser' function exist and is "correct".
     return mod.get_parser(obj) # type:ignore[no-any-return]
 
-def processtypes(doc: 'ParsedDocstring', errs: List['ParseError']) -> None:
+def processtypes(parse:ParserFunction) -> ParserFunction:
     """
-    Mutates the type fields to provide option --process-types.
+    Wraps a docstring parser function to provide option --process-types.
     """
-    from pydoctor.epydoc.markup._types import ParsedTypeDocstring
-    for field in doc.fields:
-        if field.tag() in ParsedTypeDocstring.FIELDS:
-            body = ParsedTypeDocstring(field.body().to_node(), lineno=field.lineno)
-            append_warnings(body.warnings, errs, lineno=field.lineno+1)
-            field.replace_body(body)
+    
+    def _processtypes(doc: 'ParsedDocstring', errs: List['ParseError']) -> None:
+        """
+        Mutates the type fields of the given parsed docstring to replace 
+        their body by parsed version with type auto-linking.
+        """
+        from pydoctor.epydoc.markup._types import ParsedTypeDocstring
+        for field in doc.fields:
+            if field.tag() in ParsedTypeDocstring.FIELDS:
+                body = ParsedTypeDocstring(field.body().to_node(), lineno=field.lineno)
+                append_warnings(body.warnings, errs, lineno=field.lineno+1)
+                field.replace_body(body)
+    
+    def parse_and_processtypes(doc:str, errs:List['ParseError']) -> 'ParsedDocstring':
+        parsed_doc = parse(doc, errs)
+        _processtypes(parsed_doc, errs)
+        return parsed_doc
+
+    return parse_and_processtypes
 
 ##################################################
 ## ParsedDocstring

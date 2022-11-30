@@ -4,7 +4,7 @@ L{pydoctor.epydoc.markup.numpy} and L{pydoctor.epydoc.markup.google}.
 """
 from typing import List, Optional, Type
 
-from pydoctor.epydoc.markup import ParsedDocstring, ParseError
+from pydoctor.epydoc.markup import ParsedDocstring, ParseError, processtypes
 from pydoctor.epydoc.markup import restructuredtext
 from pydoctor.napoleon.docstring import GoogleDocstring, NumpyDocstring
 from pydoctor.model import Attribute, Documentable
@@ -82,4 +82,4 @@ class NapoelonDocstringParser:
         for warn, lineno in docstring_obj.warnings:
             errors.append(ParseError(warn, lineno, is_fatal=False))
         # Get the converted reST string and parse it with docutils
-        return restructuredtext.parse_docstring(str(docstring_obj), errors)
+        return processtypes(restructuredtext.parse_docstring)(str(docstring_obj), errors)

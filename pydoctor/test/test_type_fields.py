@@ -180,8 +180,8 @@ def test_processtypes(capsys: CapSys) -> None:
         assert flatten(parse_docstring(epy_string, 'epytext').fields[-1].body().to_stan(NotFoundLinker())) == excepted_html_no_process_types
         assert flatten(parse_docstring(rst_string, 'restructuredtext').fields[-1].body().to_stan(NotFoundLinker())) == excepted_html_no_process_types
 
-        assert flatten(parse_docstring(dedent(goo_string), 'google', processtypes=True).fields[-1].body().to_stan(NotFoundLinker())) == excepted_html_type_processed
-        assert flatten(parse_docstring(dedent(numpy_string), 'numpy', processtypes=True).fields[-1].body().to_stan(NotFoundLinker())) == excepted_html_type_processed
+        assert flatten(parse_docstring(dedent(goo_string), 'google').fields[-1].body().to_stan(NotFoundLinker())) == excepted_html_type_processed
+        assert flatten(parse_docstring(dedent(numpy_string), 'numpy').fields[-1].body().to_stan(NotFoundLinker())) == excepted_html_type_processed
 
         assert flatten(parse_docstring(epy_string, 'epytext', processtypes=True).fields[-1].body().to_stan(NotFoundLinker())) == excepted_html_type_processed
         assert flatten(parse_docstring(rst_string, 'restructuredtext', processtypes=True).fields[-1].body().to_stan(NotFoundLinker())) == excepted_html_type_processed
@@ -314,8 +314,7 @@ def test_processtypes_warning_unexpected_element(capsys: CapSys) -> None:
     
     # Test epytext
     epy_errors: List[ParseError] = []
-    epy_parsed = get_parser_by_name('epytext')(epy_string, epy_errors)
-    pydoctor.epydoc.markup.processtypes(epy_parsed, epy_errors)
+    epy_parsed = pydoctor.epydoc.markup.processtypes(get_parser_by_name('epytext'))(epy_string, epy_errors)
 
     assert len(epy_errors)==1
     assert "Unexpected element in type specification field: element 'doctest_block'" in epy_errors.pop().descr()
@@ -324,8 +323,7 @@ def test_processtypes_warning_unexpected_element(capsys: CapSys) -> None:
     
     # Test restructuredtext
     rst_errors: List[ParseError] = []
-    rst_parsed = get_parser_by_name('restructuredtext')(rst_string, rst_errors)
-    pydoctor.epydoc.markup.processtypes(rst_parsed, rst_errors)
+    rst_parsed = pydoctor.epydoc.markup.processtypes(get_parser_by_name('restructuredtext'))(rst_string, rst_errors)
 
     assert len(rst_errors)==1
     assert "Unexpected element in type specification field: element 'doctest_block'" in rst_errors.pop().descr()

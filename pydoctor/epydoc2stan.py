@@ -15,9 +15,9 @@ import attr
 
 from pydoctor import model, linker, node2stan
 from pydoctor.astutils import is_none_literal
-from pydoctor.epydoc.markup import Field as EpydocField, ParseError, get_parser_by_name
+from pydoctor.epydoc.markup import Field as EpydocField, ParseError, get_parser_by_name, processtypes
 from twisted.web.template import Tag, tags
-from pydoctor.epydoc.markup import ParsedDocstring, DocstringLinker, processtypes
+from pydoctor.epydoc.markup import ParsedDocstring, DocstringLinker
 import pydoctor.epydoc.markup.plaintext
 from pydoctor.epydoc.markup._pyval_repr import colorize_pyval, colorize_inline_pyval
 
@@ -557,7 +557,7 @@ def reportErrors(obj: model.Documentable, errs: Sequence[ParseError], section:st
                 section=section
                 )
 
-
+_docformat_skip_processtypes = ('google', 'numpy', 'plaintext')
 def parse_docstring(
         obj: model.Documentable,
         doc: str,
@@ -585,20 +585,18 @@ def parse_docstring(
             docformat, e.__class__.__name__, e)
         obj.system.msg('epydoc2stan', _err, thresh=-1, once=True)
         parser = pydoctor.epydoc.markup.plaintext.parse_docstring
+    
+    # type processing is always enabled for google and numpy docformat, 
+    # it's already part of the specification, doing it now would process types twice.
+    if obj.system.options.processtypes and docformat not in _docformat_skip_processtypes:
+        # This allows epytext and restructuredtext markup to use TypeDocstring as well with a CLI option: --process-types.
+        # It's still technically part of the parsing process, so we use a wrapper function.
+        parser = processtypes(parser)
 
     errs: List[ParseError] = []
     try:
         # parse docstring
         parsed_doc = parser(doc, errs)
-
-        # This allows epytext markup to use TypeDocstring as well with a CLI option: --process-types.
-        # We process types here instead of doing it the parser modules for less code duplication.
-        # It's still technically part of the parsing process, 
-        # so we make sure to be inside the try/except block.
-        if obj.system.options.processtypes or docformat in ('google', 'numpy'):
-             # type processing is always enabled for google and numpy docformat, it's part of the specification.
-            processtypes(parsed_doc, errs)
-
     except Exception as e:
         errs.append(ParseError(f'{e.__class__.__name__}: {e}', 1))
         parsed_doc = pydoctor.epydoc.markup.plaintext.parse_docstring(doc, errs)
