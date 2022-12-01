@@ -10,8 +10,8 @@ from inspect import Parameter, Signature
 from itertools import chain
 from pathlib import Path
 from typing import (
-    Any, Callable, Collection, Dict, Generic, Iterable, Iterator, List, Mapping, MutableMapping, MutableSequence, Optional, Sequence, Set, Tuple,
-    Type, TypeAlias, TypeVar, Union, cast
+    Any, Callable, Collection, Dict, Generic, Iterable, Iterator, List, Mapping, MutableMapping, MutableSequence, Optional, Sequence, Tuple,
+    Type, TypeVar, Union, cast, TYPE_CHECKING
 )
 
 import astor
@@ -21,6 +21,11 @@ from pydoctor.epydoc.markup._pyval_repr import colorize_inline_pyval
 from pydoctor.astutils import (is_none_literal, is_typing_annotation, is_using_annotations, is_using_typing_final, node2dottedname, node2fullname, 
                                is__name__equals__main__, unstring_annotation, iterassign, iterassignfull, extract_docstring_linenum, dottedname2node, 
                                NodeVisitor, setfield, getfield)
+
+if TYPE_CHECKING:
+    from typing import TypeAlias
+else:
+    TypeAlias = object
 
 def parseFile(path: Path) -> ast.Module:
     """Parse the contents of a Python source file."""
