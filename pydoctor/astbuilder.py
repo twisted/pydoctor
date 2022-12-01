@@ -1251,7 +1251,7 @@ class Symbol:
     statements: Sequence['StmtNode[_SymbolNodeT]'] = attr.ib(factory=list, init=False)
 
     def filterstmt(self, *types:Type[_NodeT]) -> Sequence['StmtNode[_NodeT]']:
-        return list(filter(lambda stmt: isinstance(stmt.node, types), self.statements)) # type:ignore[arg-type]
+        return list(filter(lambda stmt: isinstance(stmt.node, types), self.statements))
 
 @attr.s(frozen=True)
 class StmtNode(Generic[_NodeT]):
@@ -1464,7 +1464,7 @@ class _ScopeTreeBuilder(ast.NodeVisitor):
 
     visit_TryStar = visit_Try
     
-    def visit_Other(self, node:'Union[ast.For, ast.While, ast.AsyncFor, ast.Match]') -> None:
+    def visit_Other(self, node:'Union[ast.For, ast.While, ast.AsyncFor, ast.Match]') -> None: # tpe:ignore[name-defined]
         self._push_constaint(BlockType.OTHER, node)
         self.generic_visit(node)
         self._pop_constaint(BlockType.OTHER, node)
@@ -1486,7 +1486,7 @@ def parseAll(symbol: Symbol, mod: model.Module) -> None:
     # More or less temporary code to keep same functionality level as before.
     # Plus free support for AnnAssign as well.
     # TODO: support augmented assignments
-    assigns = symbol.filterstmt(ast.Assign, ast.AnnAssign) #type:ignore[type-var]
+    assigns = symbol.filterstmt(ast.Assign, ast.AnnAssign)
     values = [stmt.value for stmt in assigns if stmt.value is not None]
     if not values:
         return
@@ -1535,7 +1535,7 @@ def parseDocformat(symbol: Symbol, mod: model.Module) -> None:
         __docformat__ = "restructuredtext"
     """
     # get last assignment and warn if there are multiple.
-    assigns = symbol.filterstmt(ast.Assign, ast.AnnAssign) #type:ignore[type-var]
+    assigns = symbol.filterstmt(ast.Assign, ast.AnnAssign)
     values = [stmt.value for stmt in assigns if stmt.value is not None]
     if not values:
         return
