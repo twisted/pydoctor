@@ -1,6 +1,8 @@
 """Convert ASTs into L{pydoctor.model.Documentable} instances."""
 
+import abc
 import ast
+import enum
 import sys
 
 from functools import partial
@@ -8,16 +10,17 @@ from inspect import Parameter, Signature
 from itertools import chain
 from pathlib import Path
 from typing import (
-    Any, Callable, Collection, Dict, Iterable, Iterator, List, Mapping, Optional, Sequence, Tuple,
-    Type, TypeVar, Union, cast
+    Any, Callable, Collection, Dict, Generic, Iterable, Iterator, List, Mapping, MutableMapping, MutableSequence, Optional, Sequence, Set, Tuple,
+    Type, TypeAlias, TypeVar, Union, cast
 )
 
 import astor
+import attr
 from pydoctor import epydoc2stan, model, node2stan, extensions
 from pydoctor.epydoc.markup._pyval_repr import colorize_inline_pyval
 from pydoctor.astutils import (is_none_literal, is_typing_annotation, is_using_annotations, is_using_typing_final, node2dottedname, node2fullname, 
-                               is__name__equals__main__, unstring_annotation, iterassign, extract_docstring_linenum,  
-                               NodeVisitor)
+                               is__name__equals__main__, unstring_annotation, iterassign, iterassignfull, extract_docstring_linenum, dottedname2node, 
+                               NodeVisitor, setfield, getfield)
 
 def parseFile(path: Path) -> ast.Module:
     """Parse the contents of a Python source file."""
@@ -60,18 +63,14 @@ def _handleAliasing(
     ctx._localNameToFullName_map[target] = full_name
     return True
 
-def is_constant(obj: model.Attribute) -> bool:
+def isInstanceVarLike(attr:'model.Attribute') -> bool:
     """
-    Detect if the given assignment is a constant. 
-
-    To detect whether a assignment is a constant, this checks two things:
-        - all-caps variable name
-        - typing.Final annotation
-    
-    @note: Must be called after setting obj.annotation to detect variables using Final.
+    Whether this object can be considered as an instance variable.
     """
-
-    return obj.name.isupper() or is_using_typing_final(obj.annotation, obj)
+    return attr.kind in (model.DocumentableKind.ATTRIBUTE, 
+        model.DocumentableKind.SCHEMA_FIELD, 
+        model.DocumentableKind.INSTANCE_VARIABLE, 
+        model.DocumentableKind.PROPERTY)
 
 class TypeAliasVisitorExt(extensions.ModuleVisitorExt):
     """
@@ -118,11 +117,21 @@ class TypeAliasVisitorExt(extensions.ModuleVisitorExt):
     
     visit_AnnAssign = visit_Assign
 
-def is_attribute_overridden(obj: model.Attribute, new_value: Optional[ast.expr]) -> bool:
+class ScopeVisitorExt(extensions.ModuleVisitorExt):
     """
-    Detect if the optional C{new_value} expression override the one already stored in the L{Attribute.value} attribute.
+    Give the builder a better comprehension of scopes.
     """
-    return obj.value is not None and new_value is not None
+    when = extensions.ModuleVisitorExt.When.BEFORE
+
+    def visit_Scope(self, node: Union[ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef]) -> None:
+        self.visitor.builder._stmtStack.append(getfield(node, 'scope'))
+    
+    visit_FunctionDef = visit_AsyncFunctionDef = visit_ClassDef = visit_Scope
+
+    def depart_Scope(self, node: Union[ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef]) -> None:
+        assert self.visitor.builder._stmtStack.pop().node is node
+    
+    depart_FunctionDef = depart_AsyncFunctionDef = depart_ClassDef = depart_Scope
 
 def _extract_annotation_subscript(annotation: ast.Subscript) -> ast.AST:
     """
@@ -452,31 +461,29 @@ class ModuleVistor(NodeVisitor):
                 return True
         return False
     
-    def _warnsConstantAssigmentOverride(self, obj: model.Attribute, lineno_offset: int) -> None:
-        obj.report(f'Assignment to constant "{obj.name}" overrides previous assignment '
-                    f'at line {obj.linenumber}, the original value will not be part of the docs.', 
-                            section='ast', lineno_offset=lineno_offset)
-                            
-    def _warnsConstantReAssigmentInInstance(self, obj: model.Attribute, lineno_offset: int = 0) -> None:
-        obj.report(f'Assignment to constant "{obj.name}" inside an instance is ignored, this value will not be part of the docs.', 
-                        section='ast', lineno_offset=lineno_offset)
+    def _isConstant(self, obj: model.Attribute) -> bool:
+        """
+        Detect if the given assignment is a constant in the context of the current builder state. 
 
-    def _handleConstant(self, obj: model.Attribute, value: Optional[ast.expr], lineno: int) -> None:
-        """Must be called after obj.setLineNumber() to have the right line number in the warning."""
+        To detect whether a assignment is a constant, this checks multiple things:
+            - first, if it's using typing.Final annotation, it will always be flagged a constant.
+            - then, if it's not, the variable must be assigned only once in the current scope of the builder.
+            - finally it's flagged as a constant if it has an all-caps variable name 
+              and the assignment do not have any constraints associated
         
-        if is_attribute_overridden(obj, value):
-            
-            if obj.kind in (model.DocumentableKind.CONSTANT, 
-                                model.DocumentableKind.VARIABLE, 
-                                model.DocumentableKind.CLASS_VARIABLE):
-                # Module/Class level warning, regular override.
-                self._warnsConstantAssigmentOverride(obj=obj, lineno_offset=lineno-obj.linenumber)
-            else:
-                # Instance level warning caught at the time of the constant detection.
-                self._warnsConstantReAssigmentInInstance(obj)
+        @note: Must be called after setting obj.annotation to detect variables using Final.
+        """
+        if isInstanceVarLike(obj):
+            return False
+        if is_using_typing_final(obj.annotation, obj):
+            return True
+        stmts = self.builder.currentScope[obj.name]
+        if len(stmts)==1:
+            return obj.name.isupper() and not stmts[0].constraints
+        return False
 
+    def _handleConstant(self, obj: model.Attribute, value: Optional[ast.expr], lineno: int) -> None:        
         obj.value = value
-        
         obj.kind = model.DocumentableKind.CONSTANT
 
         # A hack to to display variables annotated with Final with the real type instead.
@@ -531,13 +538,10 @@ class ModuleVistor(NodeVisitor):
         obj.annotation = annotation
         obj.setLineNumber(lineno)
         
-        if is_constant(obj):
+        if self._isConstant(obj):
             self._handleConstant(obj=obj, value=expr, lineno=lineno)
         else:
             obj.kind = model.DocumentableKind.VARIABLE
-            # We store the expr value for all Attribute in order to be able to 
-            # check if they have been initialized or not.
-            obj.value = expr
 
         self.builder.currentAttr = obj
 
@@ -579,10 +583,8 @@ class ModuleVistor(NodeVisitor):
         obj.annotation = annotation
         obj.setLineNumber(lineno)
 
-        if is_constant(obj):
+        if self._isConstant(obj):
             self._handleConstant(obj=obj, value=expr, lineno=lineno)
-        else:
-            obj.value = expr
 
         self.builder.currentAttr = obj
 
@@ -613,13 +615,8 @@ class ModuleVistor(NodeVisitor):
         obj.annotation = annotation
         obj.setLineNumber(lineno)
 
-        # Maybe an instance variable overrides a constant, 
-        # so we check before setting the kind to INSTANCE_VARIABLE.
-        if obj.kind is model.DocumentableKind.CONSTANT:
-            self._warnsConstantReAssigmentInInstance(obj, lineno_offset=lineno-obj.linenumber)
-        else:
-            obj.kind = model.DocumentableKind.INSTANCE_VARIABLE
-            obj.value = expr
+        # Even if an instance variable overrides a constant we don't want to warn about it, pydoctor is not a linter.
+        obj.kind = model.DocumentableKind.INSTANCE_VARIABLE
         
         self.builder.currentAttr = obj
 
@@ -1075,8 +1072,13 @@ class ASTBuilder:
         self.currentAttr: Optional[model.Documentable] = None # recently visited attribute object
         
         self._stack: List[model.Documentable] = []
+        self._stmtStack: List[ScopeNode] = []
+
         self.ast_cache: Dict[Path, Optional[ast.Module]] = {}
 
+    @property
+    def currentScope(self) -> 'ScopeNode':
+        return self._stmtStack[-1]
 
     def _push(self, cls: Type[DocumentableT], name: str, lineno: int) -> DocumentableT:
         """
@@ -1162,19 +1164,22 @@ class ASTBuilder:
 
 
     def processModuleAST(self, mod_ast: ast.Module, mod: model.Module) -> None:
+        scope = fetchScopeSymbols(mod_ast)
+        self._stmtStack.append(scope)
 
-        for name, node in findModuleLevelAssign(mod_ast):
+        for name in scope.symbols:
             try:
                 module_var_parser = MODULE_VARIABLES_META_PARSERS[name]
             except KeyError:
                 continue
             else:
-                module_var_parser(node, mod)
+                module_var_parser(scope.symbols[name], mod)
 
         vis = self.ModuleVistor(self, mod)
         vis.extensions.add(*self.system._astbuilder_visitors)
         vis.extensions.attach_visitor(vis)
         vis.walkabout(mod_ast)
+        assert self._stmtStack.pop().node is mod_ast
 
     def parseFile(self, path: Path, ctx: model.Module) -> Optional[ast.Module]:
         try:
@@ -1199,35 +1204,311 @@ class ASTBuilder:
 
 model.System.defaultBuilder = ASTBuilder
 
-def findModuleLevelAssign(mod_ast: ast.Module) -> Iterator[Tuple[str, ast.Assign]]:
-    """
-    Find module level Assign. 
-    Yields tuples containing the assigment name and the Assign node.
-    """
-    for node in mod_ast.body:
-        if isinstance(node, ast.Assign) and \
-            len(node.targets) == 1 and \
-            isinstance(node.targets[0], ast.Name):
-                yield (node.targets[0].id, node)
+# ----- Better static analysis for pydoctor with an actual symbol table. ------
+# Support for match case, loops and assertions is currently missing from design, this is
+# because we are not building an actual control flow graph, rather we're building a nested symbol table
+# with limited support for constraints. Currently it has no support for parent back links, but it might be added
+# later to do more with this new model.
 
-def parseAll(node: ast.Assign, mod: model.Module) -> None:
+_ConstraintNodeT:TypeAlias = 'Union[ast.If, ast.ExceptHandler, ast.While, ast.For, ast.AsyncFor, ast.Match]'
+_ScopeNodeT:TypeAlias = 'Union[ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef]'
+_LeafNodeT:TypeAlias = 'Union[ast.Assign, ast.AnnAssign, ast.AugAssign, ast.arg, ast.Import, ast.ImportFrom, ast.Delete, ast.Global, ast.Nonlocal]'
+_SymbolNodeT:TypeAlias = 'Union[_ScopeNodeT, _LeafNodeT]'
+_NodeT = TypeVar('_NodeT', bound=_SymbolNodeT)
+
+class BlockType(enum.Enum):
+    IF_BLOCK = enum.auto()
+    """
+    The if condition is satisfied.
+    """
+    ELSE_BLOCK = enum.auto()
+    """
+    The if condition is not satisfied.
+    """
+    EXCEPT_BLOCK = enum.auto()
+    """
+    One of the exception that is caught by the handler got raised.
+    """
+    OTHER = enum.auto()
+    """
+    Some other constraints applies to this statement, but we don't explicitely have support for them.
+    """
+
+def _ast_repr(v:Optional[ast.AST]) -> str:
+    if isinstance(v, ast.AST):
+        return f'<{v.__class__.__name__} at line {v.lineno}>'
+    return repr(v)
+
+@attr.s(frozen=True)
+class Symbol:
+    """
+    A symbol has a name and can be composed by multiple statements.
+    """
+
+    name: str = attr.ib()
+    statements: Sequence['StmtNode[_SymbolNodeT]'] = attr.ib(factory=list, init=False)
+
+    def filterstmt(self, *types:Type[_NodeT]) -> Sequence['StmtNode[_NodeT]']:
+        return list(filter(lambda stmt: isinstance(stmt.node, types), self.statements)) # type:ignore[arg-type]
+
+@attr.s(frozen=True)
+class StmtNode(Generic[_NodeT]):
+    node: _NodeT  = attr.ib(repr=_ast_repr)
+    """
+    The AST node.
+    """
+    constraints: Tuple['Constraint',...] = attr.ib()
+    """
+    Constraints applied to the statement.
+    """
+    
+    value: Optional[ast.expr]
+
+@attr.s(frozen=True)
+class LeafNode(StmtNode[_LeafNodeT]):
+    value: Optional[ast.expr] = attr.ib()
+    """
+    The expression value that is assigned for this node. It can be None if 
+    the statement doesn't assign the name any particular value like in the 
+    case of the C{del} statement. It can also be None if we don't have enough
+    understanding of the code.
+
+    @note: import names are encoded as L{ast.Atrtibute} and L{ast.Name} instances.
+    """
+
+@attr.s(frozen=True)
+class ScopeNode(StmtNode[_ScopeNodeT]):
+    """
+    A scope node represents a module, class or function.
+    """
+
+    symbols: Mapping[str, 'Symbol'] = attr.ib(factory=dict, init=False)
+    """
+    This scope's symbol table.
+    """
+    
+    value = None
+    """
+    The value for scope node is always None.
+    """
+
+    def __getitem__(self, name:str) -> Sequence[StmtNode[_SymbolNodeT]]:
+        """
+        Get all statements that declares the given name.
+        """
+        return self.symbols[name].statements
+
+@attr.s(frozen=True)
+class Constraint:
+    block: BlockType = attr.ib()
+    """
+    The block type associated to the node's state.
+    """
+    node: _ConstraintNodeT = attr.ib(repr=_ast_repr)
+    """
+    The AST node that generated this constraint.
+    """
+
+class _ScopeTreeBuilder(ast.NodeVisitor):
+
+    def __init__(self, scope:ScopeNode) -> None:
+        super().__init__()
+        self.scope = scope
+        self._constraints: List[Constraint] = []
+    
+    @classmethod
+    def build(cls, scope:ScopeNode) -> ScopeNode:
+        """
+        Walk this node's AST and fill the symbol table with contents.
+        """
+        # create a two way link with ast meta fields: 
+        setfield(scope.node, 'scope', scope)
+        # recursively build the scope
+        builder = cls(scope)
+        for stmt in ast.iter_child_nodes(scope.node):
+            builder.visit(stmt)
+        return scope
+
+    # constraint stack functions
+
+    def _push_constaint(self, block:BlockType, node:_ConstraintNodeT) -> None:
+        self._constraints.append(Constraint(block, node))
+
+    def _pop_constaint(self, block:BlockType, node:_ConstraintNodeT) -> Constraint:
+        c = self._constraints.pop()
+        assert c.block is block and c.node is node
+        return c
+    
+    @property
+    def constraints(self) -> Tuple[Constraint,...]:
+        return tuple(self._constraints)
+
+    # building symbols
+    
+    def _get_symbol(self, name:str) -> Symbol:
+        """
+        Get the existing symbol or register a new symbol.
+        """
+        symbols = cast(MutableMapping[str, Symbol], self.scope.symbols)
+        if name not in symbols:
+            symbol = Symbol(name)
+            symbols[name] = symbol
+        else:
+            symbol = symbols[name]
+        return symbol
+    
+    def _add_statement(self, name:str, stmt: Union[LeafNode, ScopeNode]) -> None:
+        """
+        Register a statement to the symbol table.
+        """
+        symbol = self._get_symbol(name)
+        statements = cast(MutableSequence[Union[LeafNode, ScopeNode]], symbol.statements)
+        statements.append(stmt)
+
+    # scope symbols: we do recurse on nested scopes
+
+    def visit_Scope(self, node: Union[ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef]) -> None:
+        statement = ScopeNode(node, self.constraints)
+        self._add_statement(node.name, statement)
+        # use a new builder, don't propagate constraints to new scope.
+        _ScopeTreeBuilder.build(statement)
+    
+    visit_FunctionDef = visit_AsyncFunctionDef = visit_ClassDef = visit_Scope
+    
+    # symbol gathering
+
+    def visit_Assign(self, node: Union[ast.Assign, ast.AnnAssign, ast.AugAssign]) -> None:
+        value = node.value
+        statement = LeafNode(node, self.constraints, value)
+        for dottedname, target in iterassignfull(node): 
+            if dottedname:
+                # easy case
+                self._add_statement('.'.join(dottedname), statement)
+            
+            elif isinstance(node, ast.Assign) and isinstance(target, ast.Tuple):
+                values:Union[List[None], List[ast.expr]] = [None] * len(target.elts)
+                
+                if isinstance(value, ast.Tuple) and len(target.elts)==len(value.elts) \
+                   and not any(isinstance(n, ast.Starred) for n in target.elts):
+                    # tuples of the same lengh without unpacking, we can handle it, otherwise
+                    # it uses None values
+                    values = value.elts
+
+                for i, elem in enumerate(target.elts):
+                    dottedname = node2dottedname(elem)
+                    if dottedname:
+                        statement = LeafNode(node, self.constraints, values[i])
+                        self._add_statement('.'.join(dottedname), statement)
+    
+    visit_AnnAssign = visit_AugAssign = visit_Assign
+
+    def visit_arg(self, node:ast.arg) -> None:
+        statement = LeafNode(node, self.constraints, None)
+        self._add_statement(node.arg, statement)
+
+    # some support for imports 
+
+    def visit_Import(self, node: ast.Import) -> None:
+        for al in node.names:
+            fullname, asname = al.name, al.asname
+            # we encode imports targets into ast Attribute and Name instances.
+            statement = LeafNode(node, self.constraints, dottedname2node(fullname))
+            self._add_statement(asname or fullname, statement)
+    
+    def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
+        # we don't record the value of relative imports here
+        modname = node.module if not node.level else None
+        for al in node.names:
+            orgname, asname = al.name, al.asname
+            value = dottedname2node(f'{modname}.{orgname}') if modname else None
+            statement = LeafNode(node, self.constraints, value)
+            self._add_statement(asname or orgname, statement)
+    
+    # support for global/nonlocal and del statements 
+
+    def visit_Delete(self, node:Union[ast.Delete, ast.Global, ast.Nonlocal]) -> None:
+        names = node.names if not isinstance(node, ast.Delete) else \
+            ['.'.join(node2dottedname(n) or ['']) for n in node.targets]
+        statement = LeafNode(node, self.constraints, None)
+        for name in names:
+            if name:
+                self._add_statement(name, statement)
+
+    visit_Global = visit_Nonlocal = visit_Delete
+
+    # constraints gathering
+
+    def visit_If(self, node: ast.If) -> None:
+
+        self._push_constaint(BlockType.IF_BLOCK, node)
+        for b in node.body: self.visit(b)
+        self._pop_constaint(BlockType.IF_BLOCK, node)
+
+        self._push_constaint(BlockType.ELSE_BLOCK, node)
+        for b in node.orelse: self.visit(b)
+        self._pop_constaint(BlockType.ELSE_BLOCK, node)
+    
+    def visit_Try(self, node: Union[ast.Try, 'ast.TryStar']) -> None: #type:ignore[name-defined]
+
+        for b in node.body: self.visit(b)
+
+        for h in node.handlers: 
+            self._push_constaint(BlockType.EXCEPT_BLOCK, h)
+            self.visit(h)
+            self._pop_constaint(BlockType.EXCEPT_BLOCK, h)
+        
+        for b in node.orelse: self.visit(b)
+        for b in node.finalbody: self.visit(b)
+
+    visit_TryStar = visit_Try
+    
+    def visit_Other(self, node:'Union[ast.For, ast.While, ast.AsyncFor, ast.Match]') -> None:
+        self._push_constaint(BlockType.OTHER, node)
+        self.generic_visit(node)
+        self._pop_constaint(BlockType.OTHER, node)
+    
+    visit_For = visit_While = visit_AsyncFor = visit_Match = visit_Other
+
+def fetchScopeSymbols(scope: _ScopeNodeT) -> ScopeNode:
+    """
+    Build a lower level structure that represents code. 
+    This stucture has builtint support for duplicate names and constraint gathering.
+    """
+    return _ScopeTreeBuilder.build(ScopeNode(scope, ()))
+
+
+def parseAll(symbol: Symbol, mod: model.Module) -> None:
     """Find and attempt to parse into a list of names the 
     C{__all__} variable of a module's AST and set L{Module.all} accordingly."""
 
-    if not isinstance(node.value, (ast.List, ast.Tuple)):
+    # More or less temporary code to keep same functionality level as before.
+    # Plus free support for AnnAssign as well.
+    # TODO: support augmented assignments
+    assigns = symbol.filterstmt(ast.Assign, ast.AnnAssign) #type:ignore[type-var]
+    values = [stmt.value for stmt in assigns if stmt.value is not None]
+    if not values:
+        return
+    else:
+        value = values[-1]
+        if len(values)>1:
+            mod.report(
+                'Assignment to "__all__" overrides previous assignment',
+                section='all', lineno_offset=value.lineno)
+
+    if not isinstance(value, (ast.List, ast.Tuple)):
         mod.report(
             'Cannot parse value assigned to "__all__"',
-            section='all', lineno_offset=node.lineno)
+            section='all', lineno_offset=value.lineno)
         return
 
     names = []
-    for idx, item in enumerate(node.value.elts):
+    for idx, item in enumerate(value.elts):
         try:
             name: object = ast.literal_eval(item)
         except ValueError:
             mod.report(
                 f'Cannot parse element {idx} of "__all__"',
-                section='all', lineno_offset=node.lineno)
+                section='all', lineno_offset=value.lineno)
         else:
             if isinstance(name, str):
                 names.append(name)
@@ -1235,15 +1516,12 @@ def parseAll(node: ast.Assign, mod: model.Module) -> None:
                 mod.report(
                     f'Element {idx} of "__all__" has '
                     f'type "{type(name).__name__}", expected "str"',
-                    section='all', lineno_offset=node.lineno)
+                    section='all', lineno_offset=value.lineno)
 
-    if mod.all is not None:
-        mod.report(
-            'Assignment to "__all__" overrides previous assignment',
-            section='all', lineno_offset=node.lineno)
+    assert mod.all is None
     mod.all = names
 
-def parseDocformat(node: ast.Assign, mod: model.Module) -> None:
+def parseDocformat(symbol: Symbol, mod: model.Module) -> None:
     """
     Find C{__docformat__} variable of this 
     module's AST and set L{Module.docformat} accordingly.
@@ -1254,42 +1532,48 @@ def parseDocformat(node: ast.Assign, mod: model.Module) -> None:
         __docformat__ = "epytext"
         __docformat__ = "restructuredtext"
     """
+    # get last assignment and warn if there are multiple.
+    assigns = symbol.filterstmt(ast.Assign, ast.AnnAssign) #type:ignore[type-var]
+    values = [stmt.value for stmt in assigns if stmt.value is not None]
+    if not values:
+        return
+    else:
+        value = values[-1]
+        if len(values)>1:
+            mod.report(
+                'Assignment to "__docformat__" overrides previous assignment',
+                section='all', lineno_offset=value.lineno)
 
     try:
-        value = ast.literal_eval(node.value)
+        docformat = ast.literal_eval(value or 'error')
     except ValueError:
         mod.report(
             'Cannot parse value assigned to "__docformat__": not a string',
-            section='docformat', lineno_offset=node.lineno)
+            section='docformat', lineno_offset=value.lineno)
         return
     
-    if not isinstance(value, str):
+    if not isinstance(docformat, str):
         mod.report(
             'Cannot parse value assigned to "__docformat__": not a string',
-            section='docformat', lineno_offset=node.lineno)
+            section='docformat', lineno_offset=value.lineno)
         return
         
-    if not value.strip():
+    if not docformat.strip():
         mod.report(
             'Cannot parse value assigned to "__docformat__": empty value',
-            section='docformat', lineno_offset=node.lineno)
+            section='docformat', lineno_offset=value.lineno)
         return
     
     # Language is ignored and parser name is lowercased.
-    value = value.split(" ", 1)[0].lower()
+    docformat = docformat.split(" ", 1)[0].lower()
 
-    if mod._docformat is not None:
-        mod.report(
-            'Assignment to "__docformat__" overrides previous assignment',
-            section='docformat', lineno_offset=node.lineno)
+    mod.docformat = docformat
 
-    mod.docformat = value
-
-MODULE_VARIABLES_META_PARSERS: Mapping[str, Callable[[ast.Assign, model.Module], None]] = {
+MODULE_VARIABLES_META_PARSERS: Mapping[str, Callable[[Symbol, model.Module], None]] = {
     '__all__': parseAll,
     '__docformat__': parseDocformat
 }
 
 
 def setup_pydoctor_extension(r:extensions.ExtRegistrar) -> None:
-    r.register_astbuilder_visitor(TypeAliasVisitorExt)
+    r.register_astbuilder_visitor(TypeAliasVisitorExt, ScopeVisitorExt)

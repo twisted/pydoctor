@@ -6,7 +6,7 @@ import inspect
 import platform
 import sys
 from numbers import Number
-from typing import Iterator, Optional, List, Iterable, Sequence, TYPE_CHECKING, Tuple, Union
+from typing import Any, Iterator, Optional, List, Iterable, Sequence, TYPE_CHECKING, Tuple, Union
 from inspect import BoundArguments, Signature
 import ast
 
@@ -59,7 +59,13 @@ class NodeVisitor(visitor.PartialVisitor[ast.AST]):
 class NodeVisitorExt(visitor.VisitorExt[ast.AST]):
     ...
 
-_AssingT = Union[ast.Assign, ast.AnnAssign]
+_AssingT = Union[ast.Assign, ast.AnnAssign, ast.AugAssign]
+
+def iterassignfull(node:_AssingT) -> Iterator[Tuple[Optional[List[str]], ast.expr]]:
+    for target in node.targets if isinstance(node, ast.Assign) else [node.target]:
+        dottedname = node2dottedname(target) 
+        yield dottedname, target
+
 def iterassign(node:_AssingT) -> Iterator[Optional[List[str]]]:
     """
     Utility function to iterate assignments targets. 
@@ -82,8 +88,7 @@ def iterassign(node:_AssingT) -> Iterator[Optional[List[str]]]:
     >>> list(iterassign(node))
     
     """
-    for target in node.targets if isinstance(node, ast.Assign) else [node.target]:
-        dottedname = node2dottedname(target) 
+    for dottedname, _ in iterassignfull(node):
         yield dottedname
 
 def node2dottedname(node: Optional[ast.AST]) -> Optional[List[str]]:
@@ -106,6 +111,19 @@ def node2fullname(expr: Optional[ast.AST], ctx: 'model.Documentable') -> Optiona
     if dottedname is None:
         return None
     return ctx.expandName('.'.join(dottedname))
+
+def dottedname2node(name:str) -> Union[ast.Name, ast.Attribute]:
+    """
+    Transform a dotted name (i.e ``twisted.internet.reactor``) into it's AST couterparts. 
+    More or less reverse operation of L{node2dottedname}.
+    """
+    parts = name.split('.')
+    assert parts, "must not be empty"
+    
+    if len(parts)==1:
+        return ast.Name(parts[0], ast.Load())
+    else:
+        return ast.Attribute(dottedname2node('.'.join(parts[:-1])), parts[-1], ast.Load())
 
 def bind_args(sig: Signature, call: ast.Call) -> BoundArguments:
     """
@@ -403,3 +421,34 @@ def extract_docstring(node: ast.Str) -> Tuple[int, str]:
     """
     lineno = extract_docstring_linenum(node)
     return lineno, inspect.cleandoc(node.s)
+
+# The following code handles attaching extra meta information to AST statements.
+
+_EXTRA_FIELD = '_pydoctor'
+
+def setfield(node:ast.AST, key:str, value:Any) -> None:
+    """
+    Set an extra field on this node.
+    """
+    fields = getattr(node, _EXTRA_FIELD, {})
+    setattr(node, _EXTRA_FIELD, fields)
+    if hasfield(node, key):
+        raise ValueError(f'Node {node!r} already has field {key!r}')
+    fields[key] = value
+
+def hasfield(node:ast.AST, key:str) -> bool:
+    fields = getattr(node, _EXTRA_FIELD, {})
+    return key in fields
+
+def getfield(node:ast.AST, key:str, default:Any=None) -> Any:
+    """
+    Get an extra field from this node.
+    """
+    fields = getattr(node, _EXTRA_FIELD, {})
+    if key not in fields and default is None:
+        raise KeyError(f'Node {node!r} has no field {key!r}')
+    return fields.get(key, default)
+
+def delfield(node:ast.AST, key:str) -> None:
+    fields = getattr(node, _EXTRA_FIELD, {})
+    del fields[key]

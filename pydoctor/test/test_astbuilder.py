@@ -1668,6 +1668,43 @@ def test_constant_module(systemcls: Type[model.System]) -> None:
     assert ast.literal_eval(getattr(mod.resolveName('LANG'), 'value')) == 'FR'
 
 @systemcls_param
+def test_not_a_constant_module(systemcls: Type[model.System], capsys:CapSys) -> None:
+    """
+    If the constant assignment has any kind of constraint or there are multiple assignments in the scope, 
+    then it's not flagged as a constant.
+    """
+    mod = fromText('''
+    while False:
+        LANG = 'FR'
+    
+    if True:
+        THING = 'EN'
+
+    OTHER = 1
+    OTHER += 1
+
+    E: typing.Final = 2
+    E = 4
+
+    LIST = [2.14]
+    LIST.insert(0,0)
+    ''', systemcls=systemcls)
+    assert mod.contents['LANG'].kind is model.DocumentableKind.VARIABLE
+    assert mod.contents['THING'].kind is model.DocumentableKind.VARIABLE
+    assert mod.contents['OTHER'].kind is model.DocumentableKind.VARIABLE
+    assert mod.contents['E'].kind is model.DocumentableKind.VARIABLE
+
+    # all-caps mutables variables are flagged as constant: this is a trade-off
+    # in between our weeknesses in terms static analysis (that is we don't recognized list modifications) 
+    # and our will to do the right thing and display constant values.
+    # This issue could be overcome by showing the value of variables with only one assigment no matter
+    # their kind and restrict the checks to immutable types for a attribute to be flagged as constant.
+    assert mod.contents['LIST'].kind is model.DocumentableKind.CONSTANT
+    
+    # we could warn when a constant is beeing overriden, but we don't: pydoctor is not a checker.
+    assert not capsys.readouterr().out 
+
+@systemcls_param
 def test_constant_module_with_final(systemcls: Type[model.System]) -> None:
     """
     Module variables annotated with typing.Final are recognized as constants.
@@ -1825,9 +1862,9 @@ def test_all_caps_variable_in_instance_is_not_a_constant(systemcls: Type[model.S
     assert not captured
 
 @systemcls_param
-def test_constant_override_in_instace_warns(systemcls: Type[model.System], capsys: CapSys) -> None:
+def test_constant_override_in_instace(systemcls: Type[model.System], capsys: CapSys) -> None:
     """
-    It warns when a constant is beeing re defined in instance. But it ignores it's value. 
+    An instance variable is never marked as a constant.
     """
     mod = fromText('''
     class Clazz:
@@ -1838,18 +1875,13 @@ def test_constant_override_in_instace_warns(systemcls: Type[model.System], capsy
     ''', systemcls=systemcls, modname="mod")
     attr = mod.resolveName('Clazz.LANG')
     assert isinstance(attr, model.Attribute)
-    assert attr.kind == model.DocumentableKind.CONSTANT
-    assert attr.value is not None
-    assert ast.literal_eval(attr.value) == 'EN'
-
-    captured = capsys.readouterr().out
-    assert "mod:6: Assignment to constant \"LANG\" inside an instance is ignored, this value will not be part of the docs.\n" == captured
+    assert attr.kind == model.DocumentableKind.INSTANCE_VARIABLE
+    assert not capsys.readouterr().out
 
 @systemcls_param
-def test_constant_override_in_instace_warns2(systemcls: Type[model.System], capsys: CapSys) -> None:
+def test_constant_override_in_instace_2(systemcls: Type[model.System], capsys: CapSys) -> None:
     """
-    It warns when a constant is beeing re defined in instance. But it ignores it's value. 
-    Even if the actual constant definition is detected after the instance variable of the same name.
+    An instance variable is never marked as a constant, and we don't trigger useless warnings.
     """
     mod = fromText('''
     class Clazz:
@@ -1860,12 +1892,11 @@ def test_constant_override_in_instace_warns2(systemcls: Type[model.System], caps
     ''', systemcls=systemcls, modname="mod")
     attr = mod.resolveName('Clazz.LANG')
     assert isinstance(attr, model.Attribute)
-    assert attr.kind == model.DocumentableKind.CONSTANT
+    assert attr.kind == model.DocumentableKind.INSTANCE_VARIABLE
     assert attr.value is not None
     assert ast.literal_eval(attr.value) == 'EN'
 
-    captured = capsys.readouterr().out
-    assert "mod:5: Assignment to constant \"LANG\" inside an instance is ignored, this value will not be part of the docs.\n" == captured
+    assert not capsys.readouterr().out
 
 @systemcls_param
 def test_constant_override_in_module_warns(systemcls: Type[model.System], capsys: CapSys) -> None:
@@ -1879,12 +1910,11 @@ def test_constant_override_in_module_warns(systemcls: Type[model.System], capsys
     ''', systemcls=systemcls, modname="mod")
     attr = mod.resolveName('IS_64BITS')
     assert isinstance(attr, model.Attribute)
-    assert attr.kind == model.DocumentableKind.CONSTANT
+    assert attr.kind == model.DocumentableKind.VARIABLE
     assert attr.value is not None
     assert ast.literal_eval(attr.value) == True
 
-    captured = capsys.readouterr().out
-    assert "mod:6: Assignment to constant \"IS_64BITS\" overrides previous assignment at line 4, the original value will not be part of the docs.\n" == captured
+    assert not capsys.readouterr().out
 
 @systemcls_param
 def test_constant_override_do_not_warns_when_defined_in_class_docstring(systemcls: Type[model.System], capsys: CapSys) -> None:
