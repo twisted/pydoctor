@@ -1856,8 +1856,6 @@ def test_all_caps_variable_in_instance_is_not_a_constant(systemcls: Type[model.S
     attr = mod.resolveName('Clazz.LANG')
     assert isinstance(attr, model.Attribute)
     assert attr.kind == model.DocumentableKind.INSTANCE_VARIABLE
-    assert attr.value is not None
-    assert ast.literal_eval(attr.value) == 'FR'
     captured = capsys.readouterr().out
     assert not captured
 

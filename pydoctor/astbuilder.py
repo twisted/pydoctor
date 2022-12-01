@@ -488,7 +488,6 @@ class ModuleVistor(NodeVisitor):
         return False
 
     def _handleConstant(self, obj: model.Attribute, value: Optional[ast.expr], lineno: int) -> None:        
-        obj.value = value
         obj.kind = model.DocumentableKind.CONSTANT
 
         # A hack to to display variables annotated with Final with the real type instead.
@@ -536,18 +535,17 @@ class ModuleVistor(NodeVisitor):
 
         if not isinstance(obj, model.Attribute):
             return
-            
+        
+        obj.kind = model.DocumentableKind.VARIABLE
+
         if annotation is None and expr is not None:
             annotation = _infer_type(expr)
         
         obj.annotation = annotation
         obj.setLineNumber(lineno)
-        
+        obj.value = expr
         if self._isConstant(obj):
             self._handleConstant(obj=obj, value=expr, lineno=lineno)
-        else:
-            obj.kind = model.DocumentableKind.VARIABLE
-
         self.builder.currentAttr = obj
 
     def _handleAssignmentInModule(self,
@@ -587,7 +585,7 @@ class ModuleVistor(NodeVisitor):
         
         obj.annotation = annotation
         obj.setLineNumber(lineno)
-
+        obj.value = expr
         if self._isConstant(obj):
             self._handleConstant(obj=obj, value=expr, lineno=lineno)
 
