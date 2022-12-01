@@ -1,6 +1,5 @@
 """Convert ASTs into L{pydoctor.model.Documentable} instances."""
 
-import abc
 import ast
 import enum
 import sys
@@ -23,7 +22,7 @@ from pydoctor.astutils import (is_none_literal, is_typing_annotation, is_using_a
                                NodeVisitor, setfield, getfield)
 
 if TYPE_CHECKING:
-    from typing import TypeAlias
+    from typing_extensions import TypeAlias
 else:
     TypeAlias = object
 
