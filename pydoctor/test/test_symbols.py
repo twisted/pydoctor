@@ -1,11 +1,11 @@
 from textwrap import dedent
 import ast
 
-from pydoctor import astbuilder, astutils
+from pydoctor import lowerastbuilder, astutils
 
-def getScope(text:str) -> astbuilder.ScopeNode:
+def getScope(text:str) -> lowerastbuilder.ScopeNode:
     mod = ast.parse(dedent(text))
-    return astbuilder.fetchScopeSymbols(mod)
+    return lowerastbuilder.fetchScopeSymbols(mod)
 
 def test_symbols_module_level() -> None:
     src = '''
@@ -36,7 +36,7 @@ def test_symbols_module_level() -> None:
     foostmt1, foostmt2 = scope.symbols['FooBar'].statements
     assert not foostmt1.constraints
     constraint, = foostmt2.constraints
-    assert constraint.block is astbuilder.BlockType.EXCEPT_BLOCK
+    assert constraint.block is lowerastbuilder.BlockType.EXCEPT_BLOCK
     cnode = constraint.node
     assert isinstance(cnode, ast.ExceptHandler)
     assert astutils.node2dottedname(cnode.type) == ['ModuleNotFoundError']
@@ -49,23 +49,23 @@ def test_symbols_module_level() -> None:
     
     cnode = constraint1.node
     assert isinstance(cnode, ast.If)
-    assert constraint1.block is astbuilder.BlockType.IF_BLOCK
+    assert constraint1.block is lowerastbuilder.BlockType.IF_BLOCK
     
     cnode = constraint2a.node
     assert isinstance(cnode, ast.If)
-    assert constraint2a.block is astbuilder.BlockType.ELSE_BLOCK
+    assert constraint2a.block is lowerastbuilder.BlockType.ELSE_BLOCK
 
     cnode = constraint2b.node
     assert isinstance(cnode, ast.If)
-    assert constraint2b.block is astbuilder.BlockType.IF_BLOCK
+    assert constraint2b.block is lowerastbuilder.BlockType.IF_BLOCK
 
     cnode = constraint3a.node
     assert isinstance(cnode, ast.If)
-    assert constraint3a.block is astbuilder.BlockType.ELSE_BLOCK
+    assert constraint3a.block is lowerastbuilder.BlockType.ELSE_BLOCK
 
     cnode = constraint3b.node
     assert isinstance(cnode, ast.If)
-    assert constraint3a.block is astbuilder.BlockType.ELSE_BLOCK
+    assert constraint3a.block is lowerastbuilder.BlockType.ELSE_BLOCK
 
 def test_symbols_method() -> None:
     src = '''
@@ -77,9 +77,9 @@ def test_symbols_method() -> None:
 
     mod_scope = getScope(src)
     class_scope = mod_scope['C'][0]
-    assert isinstance(class_scope, astbuilder.ScopeNode)
+    assert isinstance(class_scope, lowerastbuilder.ScopeNode)
     func_scope = class_scope['f'][0] #type:ignore
-    assert isinstance(func_scope, astbuilder.ScopeNode)
+    assert isinstance(func_scope, lowerastbuilder.ScopeNode)
 
     assert isinstance(func_scope['self'][0].node, ast.arg)
     assert isinstance(func_scope['a'][0].node, ast.arg)

@@ -4,7 +4,7 @@ import ast
 import astor
 
 
-from pydoctor import astbuilder, astutils, model
+from pydoctor import lowerastbuilder, astbuilder, astutils, model
 from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring
 from pydoctor.options import Options
 from pydoctor.stanutils import flatten, html2stan, flatten_text
@@ -2199,4 +2199,4 @@ def test_early_ast_parsing(systemcls: Type[model.System]) -> None:
     assert isinstance(class_statement, ast.ClassDef)
     assert class_statement.name=='i'
     assert mod.scope is not None
-    assert isinstance(mod.scope, astbuilder.ScopeNode)
+    assert isinstance(mod.scope, lowerastbuilder.ScopeNode)
