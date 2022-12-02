@@ -1452,7 +1452,7 @@ class _ScopeTreeBuilder(ast.NodeVisitor):
         for b in node.orelse: self.visit(b)
         self._pop_constaint(BlockType.ELSE_BLOCK, node)
     
-    def visit_Try(self, node: Union[ast.Try, 'ast.TryStar']) -> None: #type:ignore[name-defined]
+    def visit_Try(self, node: Union[ast.Try, 'ast.TryStar']) -> None:
 
         for b in node.body: self.visit(b)
 
