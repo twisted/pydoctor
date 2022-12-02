@@ -32,7 +32,8 @@ from pydoctor.sphinx import CacheT, SphinxInventory
 
 if TYPE_CHECKING:
     from typing_extensions import Literal
-    from pydoctor.astbuilder import ASTBuilder, DocumentableT, ScopeNode
+    from pydoctor.astbuilder import ASTBuilder, DocumentableT
+    from pydoctor.lowerastbuilder import ScopeNode
 else:
     Literal = {True: bool, False: bool}
     ASTBuilder = object
