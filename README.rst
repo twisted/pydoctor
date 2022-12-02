@@ -75,6 +75,7 @@ What's New?
 
 in development
 ^^^^^^^^^^^^^^
+* Add support for Python 3.11
 * Add support for the ``@overload`` decorator.
 * Show type annotations in function's signatures.
 * If none of a function's parameters have documentation, do not render the parameter table.
