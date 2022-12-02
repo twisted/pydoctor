@@ -1223,17 +1223,32 @@ def color_re(s: Union[bytes, str],
     val = colorizer.colorize(extract_expr(ast.parse(f"re.compile({repr(s)})")))
 
     if check_roundtrip:
-
+        raw_text = ''.join(gettext(val.to_node()))
         re_begin = 13
+        raw_string = True
+
+        if raw_text[11] != 'r':
+            # the regex has failed to be colorized since we can't find the r prefix
+            # meaning the string has been rendered as plaintext instead.
+            raw_string = False
+            re_begin -= 1
+        
         if isinstance(s, bytes):
             re_begin += 1
         re_end = -2
 
-        round_trip: Union[bytes, str] = ''.join(gettext(val.to_node()))[re_begin:re_end]
+        round_trip: Union[bytes, str] = raw_text[re_begin:re_end]
         if isinstance(s, bytes):
             assert isinstance(round_trip, str)
             round_trip = bytes(round_trip, encoding='utf-8')
-        assert round_trip == s, "%s != %s" % (repr(round_trip), repr(s))
+        
+        expected = s
+        if not raw_string:
+            assert isinstance(expected, str) 
+            # we only test invalid regexes with strings currently
+            expected = expected.replace('\\', '\\\\')
+        
+        assert round_trip == expected, "%s != %s" % (repr(round_trip), repr(s))
     
     return flatten(val.to_stan(NotFoundLinker()))[17:-8]
 
@@ -1343,6 +1358,27 @@ def test_re_flags() -> None:
     assert color_re(r"(?imstux)^Food") == """r<span class="rst-variable-quote">'</span><span class="rst-re-flags">(?imstux)</span>^Food<span class="rst-variable-quote">'</span>"""
      
     assert color_re(r"(?x)This   is   verbose", False) == """r<span class="rst-variable-quote">'</span><span class="rst-re-flags">(?ux)</span>Thisisverbose<span class="rst-variable-quote">'</span>"""
+
+def test_unsupported_regex_features() -> None:
+    """
+    Because pydoctor uses the regex engine of python 3.6, it does not support the 
+    latest features introduced in python3.11 like atomic groupping and possesive qualifiers.
+
+    But still, we should not crash.
+    """
+    regexes = ['e*+e',
+        '(e?){2,4}+a',
+        r"^(\w){1,2}+$",
+        # "^x{}+$", this one fails to round-trip :/
+        r'a++',
+        r'(?:ab)++',
+        r'(?:ab){1,3}+',
+        r'(?>x++)x',
+        r'(?>a{1,3})',
+        r'(?>(?:ab){1,3})',
+        ]
+    for r in regexes:
+        color_re(r)
 
 def test_re_not_literal() -> None:
 
