@@ -159,7 +159,7 @@ class ASTParser:
         """Parse the contents of a Python source file."""
         with open(path, 'rb') as f:
             src = f.read() + b'\n'
-        return self._parse(src, filename=str(path))
+        return ASTParser._parse(src, filename=str(path))
 
     if sys.version_info >= (3,8):
         _parse = partial(ast.parse, type_comments=True)
@@ -189,7 +189,7 @@ class ASTParser:
     def parseString(self, py_string:str, ctx: model.Module) -> Optional[ast.Module]:
         mod = None
         try:
-            mod = self._parse(py_string)
+            mod = ASTParser._parse(py_string)
         except (SyntaxError, ValueError):
             ctx.report("cannot parse string")
         else:
