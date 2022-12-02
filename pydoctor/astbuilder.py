@@ -1277,7 +1277,7 @@ class LeafNode(StmtNode[_LeafNodeT]):
     case of the C{del} statement. It can also be None if we don't have enough
     understanding of the code.
 
-    @note: import names are encoded as L{ast.Atrtibute} and L{ast.Name} instances.
+    @note: import names are encoded as L{ast.Attribute} and L{ast.Name} instances.
     """
 
 @attr.s(frozen=True)
