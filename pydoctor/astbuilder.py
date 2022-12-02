@@ -9,7 +9,8 @@ from inspect import Parameter, Signature
 from itertools import chain
 from pathlib import Path
 from typing import (
-    Any, Callable, Collection, Dict, Generic, Iterable, Iterator, List, Mapping, MutableMapping, MutableSequence, Optional, Sequence, Tuple,
+    Any, Callable, Collection, Dict, Generic, Iterable, Iterator, List, 
+    Mapping, MutableMapping, MutableSequence, Optional, Sequence, Tuple,
     Type, TypeVar, Union, cast, TYPE_CHECKING
 )
 
@@ -26,16 +27,9 @@ if TYPE_CHECKING:
 else:
     TypeAlias = object
 
-def parseFile(path: Path) -> ast.Module:
-    """Parse the contents of a Python source file."""
-    with open(path, 'rb') as f:
-        src = f.read() + b'\n'
-    return _parse(src, filename=str(path))
+if TYPE_CHECKING:
+    import astroid
 
-if sys.version_info >= (3,8):
-    _parse = partial(ast.parse, type_comments=True)
-else:
-    _parse = ast.parse
 
 
 def _maybeAttribute(cls: model.Class, name: str) -> bool:
@@ -123,19 +117,25 @@ class TypeAliasVisitorExt(extensions.ModuleVisitorExt):
 
 class ScopeVisitorExt(extensions.ModuleVisitorExt):
     """
-    Give the builder a better comprehension of scopes.
+    Give the builder a better comprehension of 
+    assignments with a lower level data structure.
     """
     when = extensions.ModuleVisitorExt.When.BEFORE
 
     def visit_Scope(self, node: Union[ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef]) -> None:
         self.visitor.builder._stmtStack.append(getfield(node, 'scope'))
     
-    visit_FunctionDef = visit_AsyncFunctionDef = visit_ClassDef = visit_Scope
+    visit_FunctionDef = visit_AsyncFunctionDef = visit_ClassDef = visit_Module = visit_Scope
 
     def depart_Scope(self, node: Union[ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef]) -> None:
+        builder = self.visitor.builder
+        current = builder.current
+        if current.scope is None:
+            current.scope = builder.currentScope
+
         assert self.visitor.builder._stmtStack.pop().node is node
     
-    depart_FunctionDef = depart_AsyncFunctionDef = depart_ClassDef = depart_Scope
+    depart_FunctionDef = depart_AsyncFunctionDef = depart_ClassDef = depart_Module = depart_Scope
 
 def _extract_annotation_subscript(annotation: ast.Subscript) -> ast.AST:
     """
@@ -159,6 +159,52 @@ def extract_final_subscript(annotation: ast.Subscript) -> ast.expr:
     else:
         assert isinstance(ann_slice, ast.expr)
         return ann_slice
+
+class ASTParser:
+    """
+    Abstraction on top of L{ast.parse} for the builder. 
+    """
+    
+    def _parseFile(self, path: Path) -> ast.Module:
+        """Parse the contents of a Python source file."""
+        with open(path, 'rb') as f:
+            src = f.read() + b'\n'
+        return self._parse(src, filename=str(path))
+
+    if sys.version_info >= (3,8):
+        _parse = partial(ast.parse, type_comments=True)
+    else:
+        _parse = ast.parse
+
+    def __init__(self) -> None:
+        self.ast_cache: Dict[Path, Optional[ast.Module]] = {}
+
+    def _postParse(self, ast_mod:ast.Module, ctx: model.Module) -> None:
+        ctx.scope = fetchScopeSymbols(ast_mod)
+
+    def parseFile(self, path: Path, ctx: model.Module) -> Optional[ast.Module]:
+        try:
+            return self.ast_cache[path]
+        except KeyError:
+            mod: Optional[ast.Module] = None
+            try:
+                mod = self._parseFile(path)
+            except (SyntaxError, ValueError) as e:
+                ctx.report(f"cannot parse file, {e}")
+            else:
+                self._postParse(mod, ctx)
+            self.ast_cache[path] = mod
+            return mod
+    
+    def parseString(self, py_string:str, ctx: model.Module) -> Optional[ast.Module]:
+        mod = None
+        try:
+            mod = self._parse(py_string)
+        except (SyntaxError, ValueError):
+            ctx.report("cannot parse string")
+        else:
+            self._postParse(mod, ctx)
+        return mod
 
 class ModuleVistor(NodeVisitor):
 
@@ -1065,6 +1111,7 @@ class ASTBuilder:
     Keeps tracks of the state of the AST build, creates documentable and adds objects to the system.
     """
     ModuleVistor = ModuleVistor
+    ASTParser = ASTParser
 
     def __init__(self, system: model.System):
         self.system = system
@@ -1166,8 +1213,8 @@ class ASTBuilder:
 
 
     def processModuleAST(self, mod_ast: ast.Module, mod: model.Module) -> None:
-        scope = fetchScopeSymbols(mod_ast)
-        self._stmtStack.append(scope)
+        scope = mod.scope
+        assert scope is not None
 
         for name in scope.symbols:
             try:
@@ -1181,28 +1228,7 @@ class ASTBuilder:
         vis.extensions.add(*self.system._astbuilder_visitors)
         vis.extensions.attach_visitor(vis)
         vis.walkabout(mod_ast)
-        assert self._stmtStack.pop().node is mod_ast
 
-    def parseFile(self, path: Path, ctx: model.Module) -> Optional[ast.Module]:
-        try:
-            return self.ast_cache[path]
-        except KeyError:
-            mod: Optional[ast.Module] = None
-            try:
-                mod = parseFile(path)
-            except (SyntaxError, ValueError) as e:
-                ctx.report(f"cannot parse file, {e}")
-
-            self.ast_cache[path] = mod
-            return mod
-    
-    def parseString(self, py_string:str, ctx: model.Module) -> Optional[ast.Module]:
-        mod = None
-        try:
-            mod = _parse(py_string)
-        except (SyntaxError, ValueError):
-            ctx.report("cannot parse string")
-        return mod
 
 model.System.defaultBuilder = ASTBuilder
 
