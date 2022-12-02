@@ -14,8 +14,10 @@ from xml.dom import minidom
 
 # Newer APIs from importlib_resources should arrive to stdlib importlib.resources in Python 3.9.
 if TYPE_CHECKING:
-    if sys.version_info >= (3, 9):
+    if sys.version_info >= (3,11):
         from importlib.resources.abc import Traversable
+    elif sys.version_info >= (3,9):
+        from importlib.abc import Traversable
     else:
         Traversable = Any
 else:
