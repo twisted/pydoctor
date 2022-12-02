@@ -78,7 +78,7 @@ def test_symbols_method() -> None:
     mod_scope = getScope(src)
     class_scope = mod_scope['C'][0]
     assert isinstance(class_scope, astbuilder.ScopeNode)
-    func_scope = class_scope['f'][0]
+    func_scope = class_scope['f'][0] #type:ignore
     assert isinstance(func_scope, astbuilder.ScopeNode)
 
     assert isinstance(func_scope['self'][0].node, ast.arg)

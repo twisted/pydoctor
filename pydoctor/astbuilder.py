@@ -1251,7 +1251,9 @@ class Symbol:
     statements: Sequence['StmtNode[_SymbolNodeT]'] = attr.ib(factory=list, init=False)
 
     def filterstmt(self, *types:Type[_NodeT]) -> Sequence['StmtNode[_NodeT]']:
-        return list(filter(lambda stmt: isinstance(stmt.node, types), self.statements))
+        def f(n:StmtNode[_SymbolNodeT]) -> bool: 
+            return isinstance(n.node, types)
+        return list(filter(f, self.statements)) # type:ignore
 
 @attr.s(frozen=True)
 class StmtNode(Generic[_NodeT]):
@@ -1486,7 +1488,9 @@ def parseAll(symbol: Symbol, mod: model.Module) -> None:
     # More or less temporary code to keep same functionality level as before.
     # Plus free support for AnnAssign as well.
     # TODO: support augmented assignments
-    assigns = symbol.filterstmt(ast.Assign, ast.AnnAssign)
+    assigns = symbol.filterstmt(ast.Assign, ast.AnnAssign) # type:ignore 
+    # Mypy is not as smart yet: https://github.com/python/mypy/issues/13619
+
     values = [stmt.value for stmt in assigns if stmt.value is not None]
     if not values:
         return
@@ -1535,7 +1539,9 @@ def parseDocformat(symbol: Symbol, mod: model.Module) -> None:
         __docformat__ = "restructuredtext"
     """
     # get last assignment and warn if there are multiple.
-    assigns = symbol.filterstmt(ast.Assign, ast.AnnAssign)
+    assigns = symbol.filterstmt(ast.Assign, ast.AnnAssign) # type:ignore 
+    # Mypy is not as smart yet: https://github.com/python/mypy/issues/13619
+
     values = [stmt.value for stmt in assigns if stmt.value is not None]
     if not values:
         return
