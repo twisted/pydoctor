@@ -62,9 +62,12 @@ class NodeVisitorExt(visitor.VisitorExt[ast.AST]):
 _AssingT = Union[ast.Assign, ast.AnnAssign, ast.AugAssign]
 
 def iterassignfull(node:_AssingT) -> Iterator[Tuple[Optional[List[str]], ast.expr]]:
+    """
+    Utility function to iterate assignments targets. 
+    Like L{iterassign} but returns the L{ast.expr} of the target as well.
+    """
     for target in node.targets if isinstance(node, ast.Assign) else [node.target]:
-        dottedname = node2dottedname(target) 
-        yield dottedname, target
+        yield node2dottedname(target) , target
 
 def iterassign(node:_AssingT) -> Iterator[Optional[List[str]]]:
     """
@@ -86,6 +89,7 @@ def iterassign(node:_AssingT) -> Iterator[Optional[List[str]]]:
     >>> from ast import parse
     >>> node = parse('self.var = target = thing[0] = node.astext()').body[0]
     >>> list(iterassign(node))
+    [['self.var'], ['target'], None]
     
     """
     for dottedname, _ in iterassignfull(node):
@@ -112,18 +116,6 @@ def node2fullname(expr: Optional[ast.AST], ctx: 'model.Documentable') -> Optiona
         return None
     return ctx.expandName('.'.join(dottedname))
 
-def dottedname2node(name:str) -> Union[ast.Name, ast.Attribute]:
-    """
-    Transform a dotted name (i.e ``twisted.internet.reactor``) into it's AST couterparts. 
-    More or less reverse operation of L{node2dottedname}.
-    """
-    parts = name.split('.')
-    assert parts, "must not be empty"
-    
-    if len(parts)==1:
-        return ast.Name(parts[0], ast.Load())
-    else:
-        return ast.Attribute(dottedname2node('.'.join(parts[:-1])), parts[-1], ast.Load())
 
 def bind_args(sig: Signature, call: ast.Call) -> BoundArguments:
     """

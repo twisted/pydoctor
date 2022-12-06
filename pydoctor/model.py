@@ -33,7 +33,7 @@ from pydoctor.sphinx import CacheT, SphinxInventory
 if TYPE_CHECKING:
     from typing_extensions import Literal
     from pydoctor.astbuilder import ASTBuilder, DocumentableT
-    from pydoctor.lowerastbuilder import ScopeNode
+    from pydoctor.symbols import Scope
 else:
     Literal = {True: bool, False: bool}
     ASTBuilder = object
@@ -158,9 +158,9 @@ class Documentable:
     def setup(self) -> None:
         self.contents: Dict[str, Documentable] = {}
         self._linker: Optional['linker.DocstringLinker'] = None
-        self.scope: Optional['ScopeNode'] = None
+        self.scope: Optional['Scope'] = None
         """
-        If this documentable represents a L{ScopeNode}, then it's stored here by the builder.
+        If this documentable represents a L{Scope}, then it's stored here by the builder.
         """
 
     def setDocstring(self, node: ast.Str) -> None:

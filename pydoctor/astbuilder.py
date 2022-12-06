@@ -1,7 +1,6 @@
 """Convert ASTs into L{pydoctor.model.Documentable} instances."""
 
 import ast
-import enum
 import sys
 
 from functools import partial
@@ -15,10 +14,10 @@ from typing import (
 )
 
 import astor
-from pydoctor import epydoc2stan, model, node2stan, extensions, lowerastbuilder
+from pydoctor import epydoc2stan, model, node2stan, extensions, symbols
 from pydoctor.epydoc.markup._pyval_repr import colorize_inline_pyval
 from pydoctor.astutils import (is_none_literal, is_typing_annotation, is_using_annotations, is_using_typing_final, node2dottedname, node2fullname, 
-                               is__name__equals__main__, unstring_annotation, iterassign, iterassignfull, extract_docstring_linenum, dottedname2node, 
+                               is__name__equals__main__, unstring_annotation, iterassign, extract_docstring_linenum,
                                NodeVisitor, getfield)
 
 
@@ -170,7 +169,7 @@ class ASTParser:
         self.ast_cache: Dict[Path, Optional[ast.Module]] = {}
 
     def _postParse(self, ast_mod:ast.Module, ctx: model.Module) -> None:
-        ctx.scope = lowerastbuilder.fetchScopeSymbols(ast_mod)
+        ctx.scope = symbols.buildSymbols(ast_mod, getattr(ctx.parent, 'scope', None))
 
     def parseFile(self, path: Path, ctx: model.Module) -> Optional[ast.Module]:
         try:
@@ -1111,12 +1110,12 @@ class ASTBuilder:
         self.currentAttr: Optional[model.Documentable] = None # recently visited attribute object
         
         self._stack: List[model.Documentable] = []
-        self._stmtStack: List[lowerastbuilder.ScopeNode] = []
+        self._stmtStack: List[symbols.Scope] = []
 
         self.ast_cache: Dict[Path, Optional[ast.Module]] = {}
 
     @property
-    def currentScope(self) -> lowerastbuilder.ScopeNode:
+    def currentScope(self) -> symbols.Scope:
         return self._stmtStack[-1]
 
     def _push(self, cls: Type[DocumentableT], name: str, lineno: int) -> DocumentableT:
@@ -1224,16 +1223,14 @@ class ASTBuilder:
 
 model.System.defaultBuilder = ASTBuilder
 
-def parseAll(symbol: lowerastbuilder.Symbol, mod: model.Module) -> None:
+def parseAll(symbol: symbols.Symbol, mod: model.Module) -> None:
     """Find and attempt to parse into a list of names the 
     C{__all__} variable of a module's AST and set L{Module.all} accordingly."""
 
     # More or less temporary code to keep same functionality level as before.
     # Plus free support for AnnAssign as well.
     # TODO: support augmented assignments
-    assigns = symbol.filterstmt(ast.Assign, ast.AnnAssign) # type:ignore 
-    # Mypy is not as smart yet: https://github.com/python/mypy/issues/13619
-
+    assigns = symbols.filter_stmts_by_type(symbol.statements, symbols.Assignment)
     values = [stmt.value for stmt in assigns if stmt.value is not None]
     if not values:
         return
@@ -1270,7 +1267,7 @@ def parseAll(symbol: lowerastbuilder.Symbol, mod: model.Module) -> None:
     assert mod.all is None
     mod.all = names
 
-def parseDocformat(symbol: lowerastbuilder.Symbol, mod: model.Module) -> None:
+def parseDocformat(symbol: symbols.Symbol, mod: model.Module) -> None:
     """
     Find C{__docformat__} variable of this 
     module's AST and set L{Module.docformat} accordingly.
@@ -1282,9 +1279,7 @@ def parseDocformat(symbol: lowerastbuilder.Symbol, mod: model.Module) -> None:
         __docformat__ = "restructuredtext"
     """
     # get last assignment and warn if there are multiple.
-    assigns = symbol.filterstmt(ast.Assign, ast.AnnAssign) # type:ignore 
-    # Mypy is not as smart yet: https://github.com/python/mypy/issues/13619
-
+    assigns = symbols.filter_stmts_by_type(symbol.statements, symbols.Assignment)
     values = [stmt.value for stmt in assigns if stmt.value is not None]
     if not values:
         return
@@ -1320,7 +1315,7 @@ def parseDocformat(symbol: lowerastbuilder.Symbol, mod: model.Module) -> None:
 
     mod.docformat = docformat
 
-MODULE_VARIABLES_META_PARSERS: Mapping[str, Callable[[lowerastbuilder.Symbol, model.Module], None]] = {
+MODULE_VARIABLES_META_PARSERS: Mapping[str, Callable[[symbols.Symbol, model.Module], None]] = {
     '__all__': parseAll,
     '__docformat__': parseDocformat
 }
