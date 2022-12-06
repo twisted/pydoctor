@@ -43,8 +43,8 @@ _ArgumentsNodeT = ast.arguments
 _DeleteNodeT = ast.Delete
 _OutterScopeVarRefNodeT: TypeAlias = 'Union[ast.Global, ast.Nonlocal]'
 _LeafNodeT:TypeAlias = 'Union[_ImportNodeT, _AssignNodeT, _AugAssignNodeT, _ArgumentsNodeT, _DeleteNodeT, _OutterScopeVarRefNodeT]'
-_SymbolNodeT:TypeAlias = 'Union[_ScopeT, _LeafNodeT]'
-_NodeT = TypeVar('_NodeT', bound=_SymbolNodeT)
+_StmtNodeT:TypeAlias = 'Union[_ScopeT, _LeafNodeT]'
+_NodeT = TypeVar('_NodeT', bound=_StmtNodeT)
 
 class BlockType(enum.Enum):
     """
@@ -73,11 +73,11 @@ def _ast_repr(v:Optional[ast.AST]) -> str:
     return repr(v)
 
 @attr.s(frozen=True)
-class Statement(Generic[_NodeT]):
+class Statement:
     """
-    Base class for all objects in the lower level model.
+    Base class for all statements in the symbol tree.
     """
-    node: _NodeT  = attr.ib(repr=_ast_repr)
+    node: _StmtNodeT  = attr.ib(repr=_ast_repr)
     """
     The AST node.
     """
@@ -103,12 +103,15 @@ class Symbol:
 
     name: str = attr.ib()
     statements: Sequence['StatementNodesT'] = attr.ib(factory=list, init=False)
+    # scope: 'Scope' = attr.ib() # is a link to the symbol's scope needed? 
 
 @attr.s(frozen=True)
-class Import(Statement[_ImportNodeT]):
+class Import(Statement):
     """
     Wraps L{ast.Import} and L{ast.ImportFrom} nodes.
     """
+    node:_ImportNodeT
+    parent:'Scope'
     
     target: Optional[str] = attr.ib()
     """
@@ -116,10 +119,12 @@ class Import(Statement[_ImportNodeT]):
     """
 
 @attr.s(frozen=True)
-class Assignment(Statement[_AssignNodeT]):
+class Assignment(Statement):
     """
     Wraps L{ast.Assign}, L{ast.AnnAssign} nodes.
     """
+    node:_AssignNodeT
+    parent:'Scope'
     
     value: Optional[ast.expr] = attr.ib()
     """
@@ -128,33 +133,41 @@ class Assignment(Statement[_AssignNodeT]):
     """
 
 @attr.s(frozen=True)
-class AugAssignment(Statement[_AugAssignNodeT]):
+class AugAssignment(Statement):
     """
     Wraps L{ast.AugAssign} nodes.
     """
+    node:_AugAssignNodeT
+    parent:'Scope'
     
     value: Optional[ast.expr] = attr.ib()
     
 @attr.s(frozen=True)
-class Deletion(Statement[_DeleteNodeT]):
+class Deletion(Statement):
     """
     Wraps an L{ast.Delete} statement.
     """
+    node:_DeleteNodeT
+    parent:'Scope'
 
 @attr.s(frozen=True)
-class OuterScopeVarRef(Statement[_OutterScopeVarRefNodeT]):
+class OuterScopeVarRef(Statement):
     """
     Wraps a L{ast.Global} or L{ast.Nonlocal} statement.
     """
+    node:_OutterScopeVarRefNodeT
+    parent:'Scope'
 
 @attr.s(frozen=True)
-class Arguments(Statement[_ArgumentsNodeT]):
+class Arguments(Statement):
     """
     Wraps an L{ast.arguments} statement.
     """
+    node:_ArgumentsNodeT
+    parent:'Scope'
 
 @attr.s(frozen=True)
-class Scope(Statement[_ScopeT]):
+class Scope(Statement):
     """
     Wraps an L{ast.Module}, {ast.ClassDef}, L{ast.FunctionDef} or L{ast.AsyncFunctionDef} statement.
     """
@@ -163,6 +176,8 @@ class Scope(Statement[_ScopeT]):
     """
     This scope's symbol table.
     """
+
+    node:_ScopeT
 
     def __getitem__(self, name:str) -> Sequence['StatementNodesT']:
         """
@@ -185,7 +200,6 @@ class Scope(Statement[_ScopeT]):
     #         for name in self.symbols:
     #             yield from self[name]
     #     return sort_stmts_by_lineno(all_statements())
-
 
 
 StatementNodesT = Union[Import, Assignment, AugAssignment, 
@@ -289,12 +303,9 @@ class _SymbolTreeBuilder(ast.NodeVisitor):
     def visit_Scope(self, node: Union[ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef]) -> None:
         statement = Scope(node, self.scope, self.constraints)
 
-        self._scopes.append(statement)
         self._add_statement(node.name, statement)
         # use a new builder, don't propagate constraints to new scope.
         _SymbolTreeBuilder.build(statement)
-        
-        assert self._scopes.pop() is statement
     
     visit_FunctionDef = visit_AsyncFunctionDef = visit_ClassDef = visit_Scope
     
