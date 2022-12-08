@@ -46,27 +46,6 @@ _LeafNodeT:TypeAlias = 'Union[_ImportNodeT, _AssignNodeT, _AugAssignNodeT, _Argu
 _StmtNodeT:TypeAlias = 'Union[_ScopeT, _LeafNodeT]'
 _NodeT = TypeVar('_NodeT', bound=_StmtNodeT)
 
-class BlockType(enum.Enum):
-    """
-    A L{Constraint}'s block type. It's L{OTHER} for loops and other constructs.
-    """
-    IF_BLOCK = enum.auto()
-    """
-    The if condition is satisfied.
-    """
-    ELSE_BLOCK = enum.auto()
-    """
-    The if condition is not satisfied.
-    """
-    EXCEPT_BLOCK = enum.auto()
-    """
-    One of the exception that is caught by the handler got raised.
-    """
-    OTHER = enum.auto()
-    """
-    Some other constraints applies to this statement, but we don't explicitely have support for them.
-    """
-
 def _ast_repr(v:Optional[ast.AST]) -> str:
     if isinstance(v, ast.AST):
         return f'<{v.__class__.__name__} at line {v.lineno}>'
@@ -207,13 +186,36 @@ StatementNodesT = Union[Import, Assignment, AugAssignment,
 
 @attr.s(frozen=True)
 class Constraint:
-    block: BlockType = attr.ib()
     """
-    The block type associated to the node's state.
+    Encapsulate a constraint information for statements.
+    Only constraints accumulated from if/else and except branches are supported.
     """
-    node: _ConstraintNodeT = attr.ib(repr=_ast_repr)
+
+@attr.s(frozen=True)
+class IfConstraint(Constraint):
     """
-    The AST node that generated this constraint.
+    The test condition is satisfied.
+    """
+    test: ast.expr = attr.ib()
+
+@attr.s(frozen=True)
+class ElseConstraint(Constraint):
+    """
+    The test condition is not satisfied.
+    """
+    test: ast.expr = attr.ib()
+
+@attr.s(frozen=True)
+class ExceptHandlerConstraint(Constraint):
+    """
+    One of the exception types that is caught by the handler got raised.
+    """
+    types: Optional[Sequence[Optional[str]]] = attr.ib()
+
+@attr.s(frozen=True)
+class UnsupportedConstraint(Constraint):
+    """
+    Some other constraints applies to this statement, but we don't explicitely have support for them.
     """
 
 def filter_stmts_by_type(stmts:Iterable['StatementNodesT'], typ:Type[_StatementT])-> Sequence['_StatementT']:
@@ -261,12 +263,12 @@ class _SymbolTreeBuilder(ast.NodeVisitor):
 
     # constraint stack functions
 
-    def _push_constaint(self, block:BlockType, node:_ConstraintNodeT) -> None:
-        self._constraints.append(Constraint(block, node))
+    def _push_constaint(self, c:Constraint) -> None:
+        self._constraints.append(c)
 
-    def _pop_constaint(self, block:BlockType, node:_ConstraintNodeT) -> Constraint:
+    def _pop_constaint(self, t:Type[Constraint]) -> Constraint:
         c = self._constraints.pop()
-        assert c.block is block and c.node is node
+        assert isinstance(c, t)
         return c
     
     @property
@@ -387,22 +389,33 @@ class _SymbolTreeBuilder(ast.NodeVisitor):
 
     def visit_If(self, node: ast.If) -> None:
 
-        self._push_constaint(BlockType.IF_BLOCK, node)
+        self._push_constaint(IfConstraint(node.test))
         for b in node.body: self.visit(b)
-        self._pop_constaint(BlockType.IF_BLOCK, node)
+        self._pop_constaint(IfConstraint)
 
-        self._push_constaint(BlockType.ELSE_BLOCK, node)
+        self._push_constaint(ElseConstraint(node.test))
         for b in node.orelse: self.visit(b)
-        self._pop_constaint(BlockType.ELSE_BLOCK, node)
+        self._pop_constaint(ElseConstraint)
     
     def visit_Try(self, node: Union[ast.Try, 'ast.TryStar']) -> None:
+
+        def handlerTypes(h:ast.ExceptHandler) -> Optional[Sequence[Optional[str]]]:
+            
+            dottedname = lambda n: '.'.join(node2dottedname(n) or ('',)) or None
+            
+            if isinstance(h.type, ast.Tuple):
+                return [dottedname(n) for n in h.type.elts]
+            elif h.type is None:
+                return None
+            else:
+                return [dottedname(h.type)]
 
         for b in node.body: self.visit(b)
 
         for h in node.handlers: 
-            self._push_constaint(BlockType.EXCEPT_BLOCK, h)
+            self._push_constaint(ExceptHandlerConstraint(handlerTypes(h)))
             self.visit(h)
-            self._pop_constaint(BlockType.EXCEPT_BLOCK, h)
+            self._pop_constaint(ExceptHandlerConstraint)
         
         for b in node.orelse: self.visit(b)
         for b in node.finalbody: self.visit(b)
@@ -410,8 +423,8 @@ class _SymbolTreeBuilder(ast.NodeVisitor):
     visit_TryStar = visit_Try
     
     def visit_Other(self, node:'Union[ast.For, ast.While, ast.AsyncFor, ast.Match]') -> None: # tpe:ignore[name-defined]
-        self._push_constaint(BlockType.OTHER, node)
+        self._push_constaint(UnsupportedConstraint())
         self.generic_visit(node)
-        self._pop_constaint(BlockType.OTHER, node)
+        self._pop_constaint(UnsupportedConstraint)
     
     visit_For = visit_While = visit_AsyncFor = visit_Match = visit_Other

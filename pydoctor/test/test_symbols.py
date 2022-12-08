@@ -36,10 +36,8 @@ def test_symbols_module_level() -> None:
     foostmt1, foostmt2 = scope.symbols['FooBar'].statements
     assert not foostmt1.constraints
     constraint, = foostmt2.constraints
-    assert constraint.block is symbols.BlockType.EXCEPT_BLOCK
-    cnode = constraint.node
-    assert isinstance(cnode, ast.ExceptHandler)
-    assert astutils.node2dottedname(cnode.type) == ['ModuleNotFoundError']
+    assert isinstance(constraint, symbols.ExceptHandlerConstraint)
+    assert constraint.types == ['ModuleNotFoundError']
 
     greetstmt1, greetstmt2, greetstmt3 = scope.symbols['greet_os'].statements
 
@@ -47,25 +45,11 @@ def test_symbols_module_level() -> None:
     constraint2a, constraint2b, = greetstmt2.constraints
     constraint3a, constraint3b, = greetstmt3.constraints
     
-    cnode = constraint1.node
-    assert isinstance(cnode, ast.If)
-    assert constraint1.block is symbols.BlockType.IF_BLOCK
-    
-    cnode = constraint2a.node
-    assert isinstance(cnode, ast.If)
-    assert constraint2a.block is symbols.BlockType.ELSE_BLOCK
-
-    cnode = constraint2b.node
-    assert isinstance(cnode, ast.If)
-    assert constraint2b.block is symbols.BlockType.IF_BLOCK
-
-    cnode = constraint3a.node
-    assert isinstance(cnode, ast.If)
-    assert constraint3a.block is symbols.BlockType.ELSE_BLOCK
-
-    cnode = constraint3b.node
-    assert isinstance(cnode, ast.If)
-    assert constraint3a.block is symbols.BlockType.ELSE_BLOCK
+    assert isinstance(constraint1, symbols.IfConstraint)
+    assert isinstance(constraint2a, symbols.ElseConstraint)
+    assert isinstance(constraint2b, symbols.IfConstraint)
+    assert isinstance(constraint3a, symbols.ElseConstraint)
+    assert isinstance(constraint3b, symbols.ElseConstraint)
 
 def test_symbols_method() -> None:
     src = '''
@@ -81,11 +65,11 @@ def test_symbols_method() -> None:
     func_scope = class_scope['f'][0]
     assert isinstance(func_scope, symbols.Scope)
 
-    assert isinstance(func_scope['self'][0].node, ast.arguments)
-    assert isinstance(func_scope['a'][0].node, ast.arguments)
-    assert isinstance(func_scope['b'][0].node, ast.arguments)
-    assert isinstance(func_scope['ag'][0].node, ast.arguments)
-    assert isinstance(func_scope['kw'][0].node, ast.arguments)
+    assert isinstance(func_scope['self'][0], symbols.Arguments)
+    assert isinstance(func_scope['a'][0], symbols.Arguments)
+    assert isinstance(func_scope['b'][0], symbols.Arguments)
+    assert isinstance(func_scope['ag'][0], symbols.Arguments)
+    assert isinstance(func_scope['kw'][0], symbols.Arguments)
 
     assert func_scope['self.d']
     assert func_scope['self.a']
