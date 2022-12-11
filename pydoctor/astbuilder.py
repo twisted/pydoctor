@@ -119,8 +119,8 @@ class ScopeVisitorExt(extensions.ModuleVisitorExt):
     def depart_Scope(self, node: Union[ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef]) -> None:
         builder = self.visitor.builder
         current = builder.current
-        if current.scope is None:
-            current.scope = builder.currentScope
+        if current._stmt is None:
+            current._stmt = builder.currentScope
 
         assert self.visitor.builder._stmtStack.pop().node is node
     
@@ -169,7 +169,9 @@ class ASTParser:
         self.ast_cache: Dict[Path, Optional[ast.Module]] = {}
 
     def _postParse(self, ast_mod:ast.Module, ctx: model.Module) -> None:
-        ctx.scope = symbols.buildSymbols(ast_mod, getattr(ctx.parent, 'scope', None))
+        ctx._stmt = symbols.buildSymbols(ast_mod, 
+            parent=ctx.parent._stmt if ctx.parent is not None else None,
+            name=ctx.name)
 
     def parseFile(self, path: Path, ctx: model.Module) -> Optional[ast.Module]:
         try:
@@ -1202,18 +1204,17 @@ class ASTBuilder:
 
 
     def processModuleAST(self, mod_ast: ast.Module, mod: model.Module) -> None:
-        scope = mod.scope
-        assert scope is not None
+        module_stmt = mod._stmt
+        assert module_stmt is not None
 
-        # TODO, the iteration should go in the oter way checking if any of the keys in MODULE_VARIABLES_META_PARSERS
-        # are present in the symbols instead of the opposite.
-        for name in scope.symbols:
+        for name in MODULE_VARIABLES_META_PARSERS:
             try:
-                module_var_parser = MODULE_VARIABLES_META_PARSERS[name]
+                symbol = module_stmt.symbols[name]
             except KeyError:
                 continue
             else:
-                module_var_parser(scope.symbols[name], mod)
+                module_var_parser = MODULE_VARIABLES_META_PARSERS[name]
+                module_var_parser(symbol, mod)
 
         vis = self.ModuleVistor(self, mod)
         vis.extensions.add(*self.system._astbuilder_visitors)
@@ -1230,7 +1231,7 @@ def parseAll(symbol: symbols.Symbol, mod: model.Module) -> None:
     # More or less temporary code to keep same functionality level as before.
     # Plus free support for AnnAssign as well.
     # TODO: support augmented assignments
-    assigns = symbols.filter_stmts_by_type(symbol.statements, symbols.Assignment)
+    assigns = [stmt for stmt in symbol.statements if isinstance(stmt, symbols.Assignment)]
     values = [stmt.value for stmt in assigns if stmt.value is not None]
     if not values:
         return
@@ -1279,7 +1280,7 @@ def parseDocformat(symbol: symbols.Symbol, mod: model.Module) -> None:
         __docformat__ = "restructuredtext"
     """
     # get last assignment and warn if there are multiple.
-    assigns = symbols.filter_stmts_by_type(symbol.statements, symbols.Assignment)
+    assigns = [stmt for stmt in symbol.statements if isinstance(stmt, symbols.Assignment)]
     values = [stmt.value for stmt in assigns if stmt.value is not None]
     if not values:
         return

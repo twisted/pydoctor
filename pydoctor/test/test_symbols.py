@@ -1,11 +1,14 @@
 from textwrap import dedent
 import ast
+from typing import Optional
 
-from pydoctor import symbols, astutils
+import pytest
 
-def getScope(text:str) -> symbols.Scope:
+from pydoctor import symbols
+
+def getScope(text:str, modname:str='test') -> symbols.Scope:
     mod = ast.parse(dedent(text))
-    return symbols.buildSymbols(mod)
+    return symbols.buildSymbols(mod, name=modname)
 
 def test_symbols_module_level() -> None:
     src = '''
@@ -86,7 +89,7 @@ def test_del_statement() -> None:
     stmts = mod_scope['f']
     assert len(stmts) == 2
     _, delstmt = stmts
-    assert delstmt is symbols.filter_stmts_by_type(mod_scope['f'], symbols.Deletion)[0]
+    assert isinstance(delstmt.node, ast.Delete)
 
 def test_global_nonlocal() -> None:
     src = '''
@@ -103,3 +106,36 @@ def test_global_nonlocal() -> None:
         g(a,b)
         return d
     '''
+
+def test_localNameToFullName() -> None:
+
+    mod = getScope('''
+    class session:
+        from twisted.conch.interfaces import ISession
+        sc = ISession
+    ''', modname='test')
+
+    def lookup(name: str) -> Optional[str]:
+        return symbols.localNameToFullName(mod['session'][0], mod['session'][0], name=name)
+
+    # Local names are returned with their full name.
+    assert lookup('session') == 'test.session'
+
+    # Unknown names throws an exceptions
+    with pytest.raises(LookupError):
+        lookup('nosuchname')
+    
+    # Dotted names are not supported
+    with pytest.raises(LookupError):
+        lookup('session.nosuchname')
+    
+    with pytest.raises(LookupError):
+        lookup('session.ISession')
+    
+    # Aliases are not supported
+    with pytest.raises(LookupError):
+        lookup('sc')
+    
+    # Imports asre supported, tho
+    assert lookup('ISession') == 'twisted.conch.interfaces.ISession'
+    

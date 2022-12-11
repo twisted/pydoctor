@@ -2198,5 +2198,5 @@ def test_early_ast_parsing(systemcls: Type[model.System]) -> None:
     class_statement = astnode.body[0]
     assert isinstance(class_statement, ast.ClassDef)
     assert class_statement.name=='i'
-    assert mod.scope is not None
-    assert isinstance(mod.scope, symbols.Scope)
+    assert mod._stmt is not None
+    assert isinstance(mod._stmt, symbols.Scope)

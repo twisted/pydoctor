@@ -26,7 +26,7 @@ from typing import (
 from urllib.parse import quote
 
 from pydoctor.options import Options
-from pydoctor import factory, qnmatch, utils, linker, astutils, mro
+from pydoctor import factory, qnmatch, utils, linker, astutils, mro, symbols
 from pydoctor.epydoc.markup import ParsedDocstring
 from pydoctor.sphinx import CacheT, SphinxInventory
 
@@ -52,12 +52,6 @@ else:
 #       Classes
 #   Functions can't contain anything.
 
-
-_string_lineno_is_end = sys.version_info < (3,8) \
-                    and platform.python_implementation() != 'PyPy'
-"""True iff the 'lineno' attribute of an AST string node points to the last
-line in the string, rather than the first line.
-"""
 
 
 class DocLocation(Enum):
@@ -158,7 +152,7 @@ class Documentable:
     def setup(self) -> None:
         self.contents: Dict[str, Documentable] = {}
         self._linker: Optional['linker.DocstringLinker'] = None
-        self.scope: Optional['Scope'] = None
+        self._stmt: Optional[symbols.Statement] = None
         """
         If this documentable represents a L{Scope}, then it's stored here by the builder.
         """
@@ -227,11 +221,7 @@ class Documentable:
             return f'{page_url}#{quote(self.name)}'
 
     def fullName(self) -> str:
-        parent = self.parent
-        if parent is None:
-            return self.name
-        else:
-            return f'{parent.fullName()}.{self.name}'
+        return symbols.HasNameAndParent.fullName(self)
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__} {self.fullName()!r}"
@@ -297,10 +287,24 @@ class Documentable:
         In the context of mod2.E, expandName("RenamedExternal") should be
         "external_location.External" and expandName("renamed_mod.Local")
         should be "mod1.Local". """
+        def localNameToFullName(o:Documentable, n:str) ->str:
+            try:
+                full_name = obj._localNameToFullName(p)
+            except LookupError:
+                # Fallback to symbols.localNameToFullName() if possible.
+                if obj._stmt is not None:
+                    try:
+                        full_name = symbols.localNameToFullName(obj._stmt, obj._stmt, name)
+                    except LookupError:
+                        full_name = p
+                else:
+                    full_name = p
+            return full_name
+                    
         parts = name.split('.')
         obj: Documentable = self
         for i, p in enumerate(parts):
-            full_name = obj._localNameToFullName(p)
+            full_name = localNameToFullName(obj, p)
             if full_name == p and i != 0:
                 # The local name was not found.
                 # If we're looking at a class, we try our luck with the inherited members
@@ -310,8 +314,6 @@ class Documentable:
                         full_name = inherited.fullName()
                 if full_name == p:
                     # We don't have a full name
-                    # TODO: Instead of returning the input, _localNameToFullName()
-                    #       should probably either return None or raise LookupError.
                     full_name = f'{obj.fullName()}.{p}'
                     break
             nxt = self.system.objForFullName(full_name)
@@ -455,7 +457,7 @@ class Module(CanContainImportsDocumentable):
         elif name in self._localNameToFullName_map:
             return self._localNameToFullName_map[name]
         else:
-            return name
+            raise LookupError()
 
     @property
     def module(self) -> 'Module':
