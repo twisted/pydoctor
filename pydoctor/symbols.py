@@ -110,7 +110,7 @@ class HasNameAndParent(Protocol):
             return f'{parent.fullName()}.{self.name}'
 
 @attr.s(frozen=True)
-class Symbol(HasNameAndParent):
+class Symbol:
     """
     The Symbol class is a container for one or multiple statements that affects a given name,
     meaning all statements that should be interpreted to semantically analyze a symbol within the scope.
@@ -121,6 +121,9 @@ class Symbol(HasNameAndParent):
     name: str = attr.ib()
     parent: 'Scope' = attr.ib()
     statements: Sequence['StatementNodesT'] = attr.ib(factory=list, init=False)
+
+    def fullName(self) -> str:
+        return HasNameAndParent.fullName(self)
 
 @attr.s(frozen=True)
 class Import(Statement):
@@ -197,7 +200,7 @@ class Arguments(Statement):
     parent:'Scope'
 
 @attr.s(frozen=True)
-class Scope(Statement, HasNameAndParent):
+class Scope(Statement):
     """
     Wraps an L{ast.Module}, {ast.ClassDef}, L{ast.FunctionDef} or L{ast.AsyncFunctionDef} statement.
     """
@@ -220,6 +223,9 @@ class Scope(Statement, HasNameAndParent):
         """
         return self.symbols[name].statements
     
+    def fullName(self) -> str:
+        return HasNameAndParent.fullName(self)
+    
     # def body(self) -> Sequence['StatementNodesT']:
     #     """
     #     Get all statements within the scope, sorted by linenumber.
@@ -231,15 +237,21 @@ class Scope(Statement, HasNameAndParent):
 
 @attr.s(frozen=True)
 class Class(Scope):
-    ...
+    """
+    A class.
+    """
 
 @attr.s(frozen=True)
 class Function(Scope):
-    ...
+    """
+    A function.
+    """
 
 @attr.s(frozen=True)
 class Module(Scope):
-    ...
+    """
+    A module.
+    """
 
 
 StatementNodesT = Union[Import, Assignment, AugAssignment, 
@@ -344,6 +356,9 @@ class _SymbolTreeBuilder(ast.NodeVisitor):
         """
         Walk this node's AST and fill the symbol table with contents.
         """
+        if isinstance(scope, (Class, Function)):
+            assert scope.parent is not None, scope
+
         # create a link from ast object to this scope 
         setfield(scope.node, 'scope', scope)
         # recursively build the scope
@@ -393,14 +408,13 @@ class _SymbolTreeBuilder(ast.NodeVisitor):
 
     # scope symbols: recurse on nested scopes
 
-    _scopeTypes = {
-        ast.ClassDef:Class,
-        ast.FunctionDef:Function,
-        ast.AsyncFunctionDef:Function,
-    }
     def visit_Scope(self, node: Union[ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef]) -> None:
-        
-        statement = self._scopeTypes[type(node)](node, self.scope, self.constraints, name=node.name)
+        assert self.scope is not None
+        if isinstance(node, ast.ClassDef):
+            statement:Scope = Class(node=node, parent=self.scope, constraints=self.constraints, name=node.name)
+        else:
+            statement = Function(node=node, parent=self.scope, constraints=self.constraints, name=node.name)
+        assert statement.parent is not None, statement
 
         self._add_statement(node.name, statement)
         # use a new builder, don't propagate constraints to new scope.

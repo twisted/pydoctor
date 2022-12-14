@@ -115,6 +115,8 @@ def test_localNameToFullName() -> None:
         sc = ISession
     ''', modname='test')
 
+    assert mod['session'][0].fullName() == 'test.session' #type:ignore[union-attr]
+
     def lookup(name: str) -> Optional[str]:
         return symbols.localNameToFullName(mod['session'][0], mod['session'][0], name=name)
 
@@ -133,9 +135,8 @@ def test_localNameToFullName() -> None:
         lookup('session.ISession')
     
     # Aliases are not supported
-    with pytest.raises(LookupError):
-        lookup('sc')
+    assert lookup('sc') == 'test.session.sc'
     
-    # Imports asre supported, tho
+    # Imports are supported, tho
     assert lookup('ISession') == 'twisted.conch.interfaces.ISession'
     

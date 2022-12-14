@@ -266,6 +266,24 @@ class Documentable:
     def _localNameToFullName(self, name: str) -> str:
         raise NotImplementedError(self._localNameToFullName)
 
+    def _betterLocalNameToFullName(self, name:str) ->str:
+        """
+        Wraps L{_localNameToFullName} and fallback to L{symbols.localNameToFullName} if 
+        the name is not found. 
+        """
+        try:
+            full_name = self._localNameToFullName(name)
+        except LookupError:
+            # Fallback to symbols.localNameToFullName() if possible.
+            if self._stmt is not None:
+                try:
+                    full_name = symbols.localNameToFullName(self._stmt, self._stmt, name)
+                except LookupError:
+                    full_name = name
+            else:
+                full_name = name
+        return full_name
+
     def expandName(self, name: str) -> str:
         """Return a fully qualified name for the possibly-dotted `name`.
 
@@ -287,24 +305,10 @@ class Documentable:
         In the context of mod2.E, expandName("RenamedExternal") should be
         "external_location.External" and expandName("renamed_mod.Local")
         should be "mod1.Local". """
-        def localNameToFullName(o:Documentable, n:str) ->str:
-            try:
-                full_name = obj._localNameToFullName(p)
-            except LookupError:
-                # Fallback to symbols.localNameToFullName() if possible.
-                if obj._stmt is not None:
-                    try:
-                        full_name = symbols.localNameToFullName(obj._stmt, obj._stmt, name)
-                    except LookupError:
-                        full_name = p
-                else:
-                    full_name = p
-            return full_name
-                    
         parts = name.split('.')
         obj: Documentable = self
         for i, p in enumerate(parts):
-            full_name = localNameToFullName(obj, p)
+            full_name = obj._betterLocalNameToFullName(p)
             if full_name == p and i != 0:
                 # The local name was not found.
                 # If we're looking at a class, we try our luck with the inherited members

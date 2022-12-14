@@ -1205,7 +1205,7 @@ class ASTBuilder:
 
     def processModuleAST(self, mod_ast: ast.Module, mod: model.Module) -> None:
         module_stmt = mod._stmt
-        assert module_stmt is not None
+        assert isinstance(module_stmt, symbols.Module)
 
         for name in MODULE_VARIABLES_META_PARSERS:
             try:
