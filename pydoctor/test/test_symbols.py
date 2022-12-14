@@ -118,7 +118,7 @@ def test_localNameToFullName() -> None:
     assert mod['session'][0].fullName() == 'test.session' #type:ignore[union-attr]
 
     def lookup(name: str) -> Optional[str]:
-        return symbols.localNameToFullName(mod['session'][0], mod['session'][0], name=name)
+        return symbols.localNameToFullName(mod['session'][0], mod['session'][0], name=name) #type:ignore[arg-type]
 
     # Local names are returned with their full name.
     assert lookup('session') == 'test.session'

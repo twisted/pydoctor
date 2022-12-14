@@ -169,8 +169,9 @@ class ASTParser:
         self.ast_cache: Dict[Path, Optional[ast.Module]] = {}
 
     def _postParse(self, ast_mod:ast.Module, ctx: model.Module) -> None:
+        pscope = ctx.parent._stmt if ctx.parent is not None else None
         ctx._stmt = symbols.buildSymbols(ast_mod, 
-            parent=ctx.parent._stmt if ctx.parent is not None else None,
+            parent=cast(symbols.Scope, pscope),
             name=ctx.name)
 
     def parseFile(self, path: Path, ctx: model.Module) -> Optional[ast.Module]:

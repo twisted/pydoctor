@@ -90,6 +90,19 @@ class Statement:
     Constraints applied to the statement.
     """
 
+    @property
+    def scope(self) -> 'Scope':
+        """
+        Returns the L{Scope} object that contains this statement, 
+        or the statement itself if it's a L{Scope} already. 
+        """
+        if isinstance(self, Scope):
+            return self
+        elif self.parent is not None:
+            return self.parent.scope
+        else:
+            raise RuntimeError(f'missing parent on {self}')
+
 class HasNameAndParent(Protocol):
     """
     Abstract class for something with a L{fullName}.
@@ -122,7 +135,7 @@ class Symbol:
     parent: 'Scope' = attr.ib()
     statements: Sequence['StatementNodesT'] = attr.ib(factory=list, init=False)
 
-    def fullName(self) -> str:
+    def fullName(self:HasNameAndParent) -> str:
         return HasNameAndParent.fullName(self)
 
 @attr.s(frozen=True)
@@ -215,7 +228,7 @@ class Scope(Statement):
     This scope's symbol table.
     """
     
-    node:_ScopeT
+    node: _ScopeT
 
     def __getitem__(self, name:str) -> Sequence['StatementNodesT']:
         """
@@ -223,7 +236,7 @@ class Scope(Statement):
         """
         return self.symbols[name].statements
     
-    def fullName(self) -> str:
+    def fullName(self:HasNameAndParent) -> str:
         return HasNameAndParent.fullName(self)
     
     # def body(self) -> Sequence['StatementNodesT']:
@@ -301,7 +314,7 @@ def _first_non_class_parent(scope:Scope) -> Union[Module, Function]:
         assert parent_scope is not None
         return _first_non_class_parent(parent_scope)
 
-def _lookup(ctx:Scope, statement:'StatementNodesT', name:str) -> Symbol:
+def _lookup(ctx:Scope, statement:Statement, name:str) -> Symbol:
     if '.' in name:
         raise LookupError("dotted names not supported")
 
@@ -319,7 +332,7 @@ def _lookup(ctx:Scope, statement:'StatementNodesT', name:str) -> Symbol:
     upper_level_scope = _first_non_class_parent(scope)
     return _lookup(upper_level_scope, statement, name)
 
-def localNameToFullName(ctx:Scope, statement:'StatementNodesT', name:str) -> str:
+def localNameToFullName(ctx:Scope, statement:Statement, name:str) -> str:
     """
     Caller should always catch L{LookupError} exceptions.
     """
@@ -327,7 +340,7 @@ def localNameToFullName(ctx:Scope, statement:'StatementNodesT', name:str) -> str
     full_name = symbol.fullName()
 
     # take the last unconstrained statement, otherwise the first statement.
-    # TODO: should we filter statements based on statement's location?
+    # TODO: filter statements based on statement's location following the reaching definitions.
     try:
         stmt = next(stmt for stmt in reversed(symbol.statements) if not stmt.constraints)
     except StopIteration:

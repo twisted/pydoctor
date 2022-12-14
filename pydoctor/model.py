@@ -275,9 +275,10 @@ class Documentable:
             full_name = self._localNameToFullName(name)
         except LookupError:
             # Fallback to symbols.localNameToFullName() if possible.
-            if self._stmt is not None:
+            stmt = self._stmt
+            if stmt is not None:
                 try:
-                    full_name = symbols.localNameToFullName(self._stmt, self._stmt, name)
+                    full_name = symbols.localNameToFullName(stmt.scope, stmt, name)
                 except LookupError:
                     full_name = name
             else:
