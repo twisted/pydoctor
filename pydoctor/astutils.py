@@ -64,7 +64,7 @@ _AssingT = Union[ast.Assign, ast.AnnAssign, ast.AugAssign]
 def iterassignfull(node:_AssingT) -> Iterator[Tuple[Optional[List[str]], ast.expr]]:
     """
     Utility function to iterate assignments targets. 
-    Like L{iterassign} but returns the L{ast.expr} of the target as well.
+    Like L{iterassign} but returns the C{ast.expr} of the target as well.
     """
     for target in node.targets if isinstance(node, ast.Assign) else [node.target]:
         yield node2dottedname(target) , target

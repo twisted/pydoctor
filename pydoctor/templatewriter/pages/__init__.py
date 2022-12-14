@@ -71,7 +71,7 @@ def format_decorators(obj: Union[model.Function, model.Attribute, model.Function
 
 def format_signature(func: Union[model.Function, model.FunctionOverload]) -> "Flattenable":
     """
-    Return a stan representation of a nicely-formatted source-like function signature for the given L{Function}.
+    Return a stan representation of a nicely-formatted source-like function signature for the given L{model.Function}.
     Arguments default values are linked to the appropriate objects when possible.
     """
     broken = "(...)"

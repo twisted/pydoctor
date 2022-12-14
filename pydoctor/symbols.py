@@ -64,17 +64,17 @@ class Statement:
     The symbol tree is not an 1-1 representation for AST, some nodes does not exist in this model,
     and some nodes are represented with multiple statements. 
 
-    - Nodes having a 1-1 corespondance: L{ast.ClassDef}, L{ast.FunctionDef}, L{ast.AsyncFunctionDef}, L{ast.Module}.
+        - Nodes having a 1-1 corespondance: L{ast.ClassDef}, L{ast.FunctionDef}, L{ast.AsyncFunctionDef}, C{ast.Module}.
 
-    - Nodes that may be spiltted in several statements: 
-      L{ast.Assign}, L{ast.Import}, L{ast.ImportFrom}, L{ast.Global}, L{ast.Nonlocal}, L{ast.Delete}.
+        - Nodes that may be spiltted in several statements: 
+        L{ast.Assign}, L{ast.Import}, L{ast.ImportFrom}, L{ast.Global}, L{ast.Nonlocal}, L{ast.Delete}.
 
-    - Represented by C{Constraint}s: L{ast.If}, L{ast.Try}, L{ast.TryStar}.
-    
-    - Unsupported nodes for Constraints: L{ast.For}, L{ast.While}, L{ast.AsyncFor}, L{ast.Match}.
-    
-    - Not present in the statement tree: 
-      L{ast.Expr}, L{ast.With}, L{ast.Pass}, L{ast.Break}, L{ast.Continue}, L{ast.Assert}.
+        - Represented by C{Constraint}s: L{ast.If}, L{ast.Try}, L{ast.TryStar}.
+        
+        - Unsupported nodes for Constraints: L{ast.For}, L{ast.While}, L{ast.AsyncFor}, L{ast.Match}.
+        
+        - Not present in the statement tree: 
+        L{ast.Expr}, L{ast.With}, L{ast.Pass}, L{ast.Break}, L{ast.Continue}, L{ast.Assert}.
 
     """
     node: _StmtNodeT  = attr.ib()
@@ -215,7 +215,7 @@ class Arguments(Statement):
 @attr.s(frozen=True)
 class Scope(Statement):
     """
-    Wraps an L{ast.Module}, {ast.ClassDef}, L{ast.FunctionDef} or L{ast.AsyncFunctionDef} statement.
+    Wraps an C{ast.Module}, {ast.ClassDef}, L{ast.FunctionDef} or L{ast.AsyncFunctionDef} statement.
     """
     
     name:str = attr.ib()

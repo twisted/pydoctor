@@ -438,7 +438,7 @@ class Module(CanContainImportsDocumentable):
         
         self.node: Optional[ast.Module] = None
         """
-        The L{ast.Module} counterpart of this L{Module}. 
+        The C{ast.Module} counterpart of this L{Module}. 
         It's None when the module was built from introspection.
         """
 
@@ -1115,7 +1115,7 @@ class System:
 
     def _parseModuleAST(self, mod: _ModuleT) -> None:
         """
-        Set the L{_AstModules.ast_node} and L{_AstModules.astroid_node} attributes on the L{Module._nodes} instance.
+        Set the L{Module.node} attribute.
         """
         # Parse the ast of the module early. 
         # We parse AST only if the module has NOT been imported.
