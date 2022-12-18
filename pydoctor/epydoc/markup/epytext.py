@@ -132,15 +132,14 @@ __docformat__ = 'epytext en'
 #   4. helpers
 #   5. testing
 
-from typing import Any, Callable, Iterable, List, Optional, Sequence, Set, Union, cast, overload
+from typing import Any, Iterable, List, Optional, Sequence, Set, Union, cast, overload
 import re
 import unicodedata
 
 from docutils import utils, nodes
 from twisted.web.template import Tag
 
-from pydoctor.epydoc.markup import Field, ParseError, ParsedDocstring, append_warnings
-from pydoctor.epydoc.markup._types import ParsedTypeDocstring
+from pydoctor.epydoc.markup import Field, ParseError, ParsedDocstring, ParserFunction
 from pydoctor.epydoc.docutils import set_node_attributes
 from pydoctor.model import Documentable
 
@@ -1268,7 +1267,7 @@ class ColorizingError(ParseError):
 ##                    SUPPORT FOR EPYDOC
 #################################################################
 
-def parse_docstring(docstring: str, errors: List[ParseError], processtypes: bool = False) -> ParsedDocstring:
+def parse_docstring(docstring: str, errors: List[ParseError]) -> ParsedDocstring:
     """
     Parse the given docstring, which is formatted using epytext; and
     return a L{ParsedDocstring} representation of its contents.
@@ -1276,7 +1275,6 @@ def parse_docstring(docstring: str, errors: List[ParseError], processtypes: bool
     @param docstring: The docstring to parse
     @param errors: A list where any errors generated during parsing
         will be stored.
-    @param processtypes: Use L{ParsedTypeDocstring} to parsed 'type' fields.
     """
     tree = parse(docstring, errors)
     if tree is None:
@@ -1303,16 +1301,8 @@ def parse_docstring(docstring: str, errors: List[ParseError], processtypes: bool
 
             # Process the field.
             field.tag = 'epytext'
-
             field_parsed_doc: ParsedDocstring = ParsedEpytextDocstring(field, ())
-
             lineno = int(field.attribs['lineno'])
-            
-            # This allows epytext markup to use TypeDocstring as well with a CLI option: --process-types
-            if processtypes and tag in ParsedTypeDocstring.FIELDS:
-                field_parsed_doc = ParsedTypeDocstring(field_parsed_doc.to_node(), lineno=lineno)
-                append_warnings(field_parsed_doc.warnings, errors, lineno=lineno)
-            
             fields.append(Field(tag, arg, field_parsed_doc, lineno))
 
     # Save the remaining docstring as the description.
@@ -1321,7 +1311,7 @@ def parse_docstring(docstring: str, errors: List[ParseError], processtypes: bool
     else:
         return ParsedEpytextDocstring(None, fields)
 
-def get_parser(obj: Optional[Documentable]) -> Callable[[str, List[ParseError], bool], ParsedDocstring]:
+def get_parser(obj: Optional[Documentable]) -> ParserFunction:
     """
     Get the L{parse_docstring} function. 
     """
