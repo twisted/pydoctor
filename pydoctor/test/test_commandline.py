@@ -4,8 +4,6 @@ from pathlib import Path
 import re
 import sys
 
-from pytest import raises
-
 from pydoctor.options import Options
 from pydoctor import driver
 
