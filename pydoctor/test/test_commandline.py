@@ -1,6 +1,7 @@
 from contextlib import redirect_stdout
 from io import StringIO
 from pathlib import Path
+import re
 import sys
 
 from pytest import raises
@@ -226,15 +227,31 @@ def test_main_symlinked_paths(tmp_path: Path) -> None:
 
 def test_main_source_outside_basedir(capsys: CapSys) -> None:
     """
-    If a --project-base-dir is given, all package and module paths must
-    be located inside that base directory.
+    If a --project-base-dir is given, all package and module paths should
+    be located inside that base directory if source links wants to be generated.
+    Otherwise it's OK, but no source links will be genrated
     """
-    with raises(SystemExit):
-        driver.main(args=[
-            '--project-base-dir=docs',
-            'pydoctor/test/testpackages/basic/'
-            ])
-    assert "Source path lies outside base directory:" in capsys.readouterr().err
+    # with raises(SystemExit):
+    assert driver.main(args=[
+        '--html-viewsource-base=notnone',
+        '--project-base-dir=docs',
+        'pydoctor/test/testpackages/basic/'
+        ]) == 0
+    re.match("No source links can be generated for module .+/pydoctor/test/testpackages/basic/: source path lies outside base directory .+/docs\n", 
+        capsys.readouterr().out)
+
+    assert driver.main(args=[
+        '--project-base-dir=docs',
+        'pydoctor/test/testpackages/basic/'
+        ]) == 0
+    assert "No source links can be generated" not in capsys.readouterr().out
+
+    assert driver.main(args=[
+        '--html-viewsource-base=notnone',
+        '--project-base-dir=pydoctor/test/testpackages/',
+        'pydoctor/test/testpackages/basic/'
+        ]) == 0
+    assert "No source links can be generated" not in capsys.readouterr().out
 
 
 def test_make_intersphix(tmp_path: Path) -> None:
