@@ -231,7 +231,6 @@ def test_main_source_outside_basedir(capsys: CapSys) -> None:
     be located inside that base directory if source links wants to be generated.
     Otherwise it's OK, but no source links will be genrated
     """
-    # with raises(SystemExit):
     assert driver.main(args=[
         '--html-viewsource-base=notnone',
         '--project-base-dir=docs',
