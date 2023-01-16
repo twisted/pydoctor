@@ -1408,10 +1408,7 @@ class SystemBuilder(ISystemBuilder):
                     # We now support building documentation when the source path is outside of the build directory.
                     # We simply leave a warning and skip the sourceHref attribute.
                     # https://github.com/twisted/pydoctor/issues/658
-                    pack_path = path
-                    while path.parent in self._added:
-                        pack_path = path.parent
-                    _warn_msg = f"No source links can be generated for module {pack_path}: source path lies outside base directory {projBaseDir}"
+                    _warn_msg = f"No source links can be generated for module {path}: source path lies outside base directory {projBaseDir}"
                     self.system.msg('addPackage', _warn_msg, once=True)
         parent: Optional[Package] = None
         if parent_name:
