@@ -56,7 +56,7 @@ class _EpydocLinker(DocstringLinker):
     """
 
     def __init__(self, obj: 'model.Documentable') -> None:
-        self.reporting_obj = obj
+        self.reporting_obj:Optional['model.Documentable'] = obj
         """
         Object used for reporting link not found errors. Changed when the linker L{switch_context}.
         """
