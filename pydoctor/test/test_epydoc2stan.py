@@ -917,7 +917,7 @@ def test_EpydocLinker_switch_context_is_reentrant(linkercls:Type[linker._EpydocL
     
     assert capsys.readouterr().out == ''
 
-    mod.parsed_docstring.to_stan(mod.docstring_linker)
+    mod.parsed_docstring.to_stan(mod.docstring_linker) #type:ignore
     mod.parsed_docstring.get_summary().to_stan(mod.docstring_linker) # type:ignore
 
     warnings = ['test:2: Cannot find link target for "thing.notfound" (you can link to external docs with --intersphinx)']

@@ -117,7 +117,7 @@ class _EpydocLinker(DocstringLinker):
                 potential_targets.append(target)
         if len(potential_targets) == 1:
             return potential_targets[0]
-        elif len(potential_targets) > 1:
+        elif len(potential_targets) > 1 and self.reporting_obj:
             self.reporting_obj.report(
                 "ambiguous ref to %s, could be %s" % (
                     name,
