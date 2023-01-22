@@ -2,21 +2,17 @@
 This module provides implementations of epydoc's L{DocstringLinker} class.
 """
 
-from collections import defaultdict
 import contextlib
 from twisted.web.template import Tag, tags
 from typing import  (
-     Any, ContextManager, Mapping, Tuple, TYPE_CHECKING, Dict, Iterable, 
-     List, Optional, Set, Union, cast
+     ContextManager, TYPE_CHECKING, Iterable, 
+     Optional, Union
 )
-
-import attr
 
 from pydoctor.epydoc.markup import DocstringLinker
 
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable
-    from typing_extensions import Literal
     
     # This import must be kept in the TYPE_CHECKING block for circular references issues.
     from pydoctor import model
@@ -134,8 +130,6 @@ class _EpydocLinker(DocstringLinker):
         return self.obj.system.intersphinx.getLink(name)
 
     def link_to(self, identifier: str, label: "Flattenable") -> Tag:
-        # :Raises _EpydocLinker.LookupFailed: If the identifier cannot be resolved and self.strict is True.
-        # Can return a Tag('a') or Tag('transparent') if not found
         fullID = self.obj.expandName(identifier)
 
         target = self.obj.system.objForFullName(fullID)
@@ -147,24 +141,14 @@ class _EpydocLinker(DocstringLinker):
             return self._create_intersphinx_link(label, url=url)
 
         link = tags.transparent(label)
-        # if self.strict:
-        #     raise self.LookupFailed(identifier, link=link)
         return link
 
     def link_xref(self, target: str, label: "Flattenable", lineno: int) -> Tag:
-        # :Raises _EpydocLinker.LookupFailed: If the identifier cannot be resolved and self.strict is True.
-        # Otherwise returns a Tag('code'). 
-        # If not foud the code tag will simply contain the label as Flattenable, like:
-        # Tag('code', children=['label as Flattenable'])
-        # If the link is found it gives something like:
-        # Tag('code', children=[Tag('a', href='...', children=['label as Flattenable'])])
         xref: "Flattenable"
         try:
             resolved = self._resolve_identifier_xref(target, lineno)
-        except LookupError as e:
+        except LookupError:
             xref = label
-            # if self.strict:
-            #     raise self.LookupFailed(str(e), link=tags.code(xref)) from e
         else:
             if isinstance(resolved, str):
                 xref = self._create_intersphinx_link(label, url=resolved)
