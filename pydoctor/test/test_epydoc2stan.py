@@ -6,7 +6,7 @@ import pytest
 from twisted.web.template import Tag, tags
 
 from pydoctor import epydoc2stan, model, linker
-from pydoctor.epydoc.markup import DocstringLinker
+from pydoctor.epydoc.markup import DocstringLinker, get_supported_docformats
 from pydoctor.stanutils import flatten, flatten_text
 from pydoctor.epydoc.markup.epytext import ParsedEpytextDocstring
 from pydoctor.sphinx import SphinxInventory
@@ -71,6 +71,7 @@ def summary2html(obj: model.Documentable) -> str:
 
 
 def test_html_empty_module() -> None:
+    # checks the presence of at least one paragraph on all docstrings
     mod = fromText('''
     """Empty module."""
     ''')
@@ -89,6 +90,18 @@ def test_html_empty_module() -> None:
     """C{thing}"""
     ''', modname='module')
     assert docstring2html(mod) == '<div>\n<p>\n<tt class="rst-docutils literal">thing</tt>\n</p>\n</div>'
+
+    mod = fromText('''
+    """My C{thing}."""
+    ''', modname='module')
+    assert docstring2html(mod) == '<div>\n<p>My <tt class="rst-docutils literal">thing</tt>.</p>\n</div>'
+
+    mod = fromText('''
+    """
+    @note: There is no paragraph here. 
+    """
+    ''')
+    assert '<p>' not in docstring2html(mod)
 
 def test_xref_link_not_found() -> None:
     """A linked name that is not found is output as text."""
@@ -1680,6 +1693,7 @@ def test_self_cls_in_function_params(capsys: CapSys) -> None:
     assert '<span class="fieldArg">self</span>' not in html_init
     assert '<span class="fieldArg">self</span>' in html_bool
 
+
 def test_not_found_annotation_does_not_create_link() -> None:
     """
     The docstring linker cache does not create empty <a> tags.
@@ -1704,3 +1718,7 @@ def test_not_found_annotation_does_not_create_link() -> None:
     html = getHTMLOf(mod)
 
     assert '<a>NotFound</a>' not in html
+
+def test_docformat_skip_processtypes() -> None:
+    assert all([d in get_supported_docformats() for d in epydoc2stan._docformat_skip_processtypes])
+
