@@ -800,8 +800,8 @@ class PyvalColorizer:
         # Our regex understanding is not up to date with python's, we use python 3.6 engine.
         # This causes some regular expression to be falsely interpreted, so we check if the 
         # colorized regex round trips, and if it doesn't, then use the regular string colorization.
-        colorized_regex_text = gettext(state.result[marked.length:])
-        if isinstance(expected, bytes):
+        colorized_regex_text = ''.join(gettext(state.result[marked.length:]))
+        if isinstance(pat, bytes):
             try:
                 colorized_regex_text = bytes(colorized_regex_text, encoding='utf-8')
             except Exception:
