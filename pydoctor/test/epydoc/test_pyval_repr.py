@@ -1511,12 +1511,16 @@ def test_crash_surrogates_not_allowed() -> None:
     Test that the colorizer does not make the flatten function crash when passing surrogates unicode strings.
     """
     assert color2('surrogates:\udc80\udcff') == "'surrogates:\\udc80\\udcff'"
+    assert color2(b'surrogates:\udc80\udcff') == "b'surrogates:\\udc80\\udcff'"
 
 def test_surrogates_cars_in_re() -> None:
     """
-    Regex string are escaped their own way. See https://github.com/twisted/pydoctor/pull/493
+    Original string is used when the regex doesn't round-trips.
+    See https://github.com/twisted/pydoctor/pull/493 and https://github.com/twisted/pydoctor/pull/678 for later modification of the test.
     """
-    assert color2(extract_expr(ast.parse("re.compile('surrogates:\\udc80\\udcff')"))) == "re.compile(r'surrogates:\\udc80\\udcff')"
+    assert color2(extract_expr(ast.parse("re.compile('surrogates:\\udc80\\udcff')"))) == "re.compile('surrogates:\\udc80\\udcff')"
+    assert color2(extract_expr(ast.parse("re.compile(b'surrogates:\\udc80\\udcff')"))) == "re.compile(b'surrogates:\\udc80\\udcff')"
+
 
 def test_repr_text() -> None:
     """Test a few representations, with a plain text version.

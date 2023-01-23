@@ -787,13 +787,14 @@ class PyvalColorizer:
         self._output(prefix, None, state)
         self._output(quote, self.QUOTE_TAG, state)
         
+        marked = state.mark()
+       
         if flags != sre_constants.SRE_FLAG_UNICODE:
             # If developers included flags in the regex string, display them.
             # By default, do not display the '(?u)'
+            # the usage of flags might cause regex to not round-trip, but that's not really bad.
             self._colorize_re_flags(flags, state)
         
-        marked = state.mark()
-
         # Colorize it!
         self._colorize_re_tree(tree.data, state, True, groups)
 
