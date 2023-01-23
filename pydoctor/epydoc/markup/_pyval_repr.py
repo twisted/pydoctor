@@ -804,7 +804,7 @@ class PyvalColorizer:
         colorized_regex_text: Union[str, bytes] = ''.join(gettext(state.result[marked.length:]))
         if isinstance(pat, bytes):
             try:
-                colorized_regex_text = bytes(colorized_regex_text, encoding='utf-8')
+                colorized_regex_text = bytes(cast(str, colorized_regex_text), encoding='utf-8')
             except Exception:
                 raise ValueError("canot encode regex as utf-8")
         if colorized_regex_text != pat:
