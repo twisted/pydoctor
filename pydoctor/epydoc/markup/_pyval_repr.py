@@ -52,6 +52,8 @@ from pydoctor.epydoc.markup import DocstringLinker
 from pydoctor.epydoc.markup.restructuredtext import ParsedRstDocstring
 from pydoctor.epydoc.docutils import set_node_attributes, wbr, obj_reference
 from pydoctor.astutils import node2dottedname, bind_args
+from pydoctor.node2stan import gettext
+
 
 def decode_with_backslashreplace(s: bytes) -> str:
     r"""
@@ -790,8 +792,22 @@ class PyvalColorizer:
             # By default, do not display the '(?u)'
             self._colorize_re_flags(flags, state)
         
+        marked = state.mark()
+
         # Colorize it!
         self._colorize_re_tree(tree.data, state, True, groups)
+
+        # Our regex understanding is not up to date with python's, we use python 3.6 engine.
+        # This causes some regular expression to be falsely interpreted, so we check if the 
+        # colorized regex round trips, and if it doesn't, then use the regular string colorization.
+        colorized_regex_text = gettext(state.result[marked.length:])
+        if isinstance(expected, bytes):
+            try:
+                colorized_regex_text = bytes(colorized_regex_text, encoding='utf-8')
+            except Exception:
+                raise ValueError("canot encode regex as utf-8")
+        if colorized_regex_text != pat:
+            raise ValueError("regex doesn't round-trips")
 
         # Close quote.
         self._output(quote, self.QUOTE_TAG, state)
