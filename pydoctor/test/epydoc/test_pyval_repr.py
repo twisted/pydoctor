@@ -1257,9 +1257,9 @@ def color_re(s: Union[bytes, str], *,
         raise
     
     if not raw_string and expect_failure is False:
-        raise AssertionError(f'regex colorization failed for {s!r}') from e
+        raise AssertionError(f'regex colorization failed for {s!r}')
     elif raw_string and expect_failure is True:
-        raise AssertionError(f'regex colorization was expected to failed for {s!r} (but it succeeded)') from e
+        raise AssertionError(f'regex colorization was expected to failed for {s!r} (but it succeeded)')
     
     return flatten(val.to_stan(NotFoundLinker()))[17:-8]
 
