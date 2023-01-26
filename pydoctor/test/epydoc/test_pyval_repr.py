@@ -1217,7 +1217,7 @@ def test_ast_regex() -> None:
     )\n"""
 
 def color_re(s: Union[bytes, str], *,
-             expect_failure:Optional[bool]=False) -> str:
+             expect_failure:Optional[bool]=None) -> str:
 
     colorizer = PyvalColorizer(linelen=55, maxlines=5)
     val = colorizer.colorize(extract_expr(ast.parse(f"re.compile({repr(s)})")))
