@@ -877,8 +877,6 @@ class PyvalColorizer:
                         raise ValueError("can't figure out regex literal caracter")
                     if current_caracter == '\\' and next_caracter == c:
                         self._output('\\', self.RE_CHAR_TAG, state)
-                    elif current_caracter != c:
-                        raise ValueError("regex doesn't round-trips")
                 
                 self._output(c, self.RE_CHAR_TAG, state)
 
