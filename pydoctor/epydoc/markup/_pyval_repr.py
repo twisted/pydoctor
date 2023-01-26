@@ -855,13 +855,13 @@ class PyvalColorizer:
                     c = r'\f'
                 elif c == '\v': 
                     c = r'\v'
-                else:
-                    escaping = False
                 # Keep unicode chars as is, so do nothing if ord(c) > 65535
                 elif ord(c) > 255 and ord(c) <= 65535: 
                    c = rb'\u%04x' % ord(c) # type:ignore[assignment]
                 elif (ord(c)<32 or ord(c)>=127) and ord(c) <= 65535: 
                     c = rb'\x%02x' % ord(c) # type:ignore[assignment]
+                else:
+                    escaping = False
                 
                 # Maybe the developper added backslash for a caracter that doesn't need escaping
                 # so we check the original regex string and output a backslash if that's 
