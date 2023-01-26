@@ -257,6 +257,10 @@ class PyvalColorizer:
         self.maxlines: Union[int, float] = maxlines if maxlines!=0 else float('inf')
         self.linebreakok = linebreakok
 
+        # state linked to regex colorization
+        self._regex_begins: _MarkedColorizerState = _MarkedColorizerState(0,0,0,False)
+        self._regex_pattern: AnyStr = ''
+
     #////////////////////////////////////////////////////////////
     # Colorization Tags & other constants
     #////////////////////////////////////////////////////////////
@@ -787,7 +791,9 @@ class PyvalColorizer:
         self._output(prefix, None, state)
         self._output(quote, self.QUOTE_TAG, state)
         
-        marked = state.mark()
+        # init the regex specifics state
+        self._regex_begins = marked = state.mark()
+        self._regex_pattern = pat
        
         if flags != sre_constants.SRE_FLAG_UNICODE:
             # If developers included flags in the regex string, display them.
@@ -806,12 +812,15 @@ class PyvalColorizer:
             try:
                 colorized_regex_text = bytes(cast(str, colorized_regex_text), encoding='utf-8')
             except Exception:
-                raise ValueError("canot encode regex as utf-8")
+                raise ValueError("cannot encode regex from bytes as utf-8")
         if colorized_regex_text != pat:
             raise ValueError("regex doesn't round-trips")
 
         # Close quote.
         self._output(quote, self.QUOTE_TAG, state)
+        
+        # Close regex state
+        self._regex_pattern = ''
 
     def _colorize_re_flags(self, flags: int, state: _ColorizerState) -> None:
         if flags:
@@ -833,6 +842,7 @@ class PyvalColorizer:
             if op == sre_constants.LITERAL: #type:ignore[attr-defined]
                 c = chr(cast(int, args))
                 # Add any appropriate escaping.
+                escaping = True
                 if c in '.^$\\*+?{}[]|()\'': 
                     c = '\\' + c
                 elif c == '\t': 
@@ -845,11 +855,31 @@ class PyvalColorizer:
                     c = r'\f'
                 elif c == '\v': 
                     c = r'\v'
+                else:
+                    escaping = False
                 # Keep unicode chars as is, so do nothing if ord(c) > 65535
                 elif ord(c) > 255 and ord(c) <= 65535: 
                    c = rb'\u%04x' % ord(c) # type:ignore[assignment]
                 elif (ord(c)<32 or ord(c)>=127) and ord(c) <= 65535: 
                     c = rb'\x%02x' % ord(c) # type:ignore[assignment]
+                
+                # Maybe the developper added backslash for a caracter that doesn't need escaping
+                # so we check the original regex string and output a backslash if that's 
+                # what the developper did, to keep the round-trip possible.
+                # This rely on the fact that we don't break regex patterns in several segments, 
+                # so there is no '↵' in the regex pattern.
+                if not escaping:
+                    try:
+                        outputed_re = ''.join(gettext(state.result[self._regex_begins.length:]))
+                        current_caracter = self._regex_pattern[len(outputed_re)]
+                        next_caracter = self._regex_pattern[len(outputed_re)+1]
+                    except Exception:
+                        raise ValueError("can't figure out regex literal caracter")
+                    if current_caracter == '\\' and next_caracter == c:
+                        self._output('\\', self.RE_CHAR_TAG, state)
+                    elif current_caracter != c:
+                        raise ValueError("regex doesn't round-trips")
+                
                 self._output(c, self.RE_CHAR_TAG, state)
 
             elif op == sre_constants.ANY: #type:ignore[attr-defined]
@@ -1005,11 +1035,12 @@ class PyvalColorizer:
 
             # If the segment fits on the current line, then just call
             # markup to tag it, and store the result.
-            # Don't break links into separate segments, neither quotes.
+            # Don't break links into separate segments, neither quotes, neither regex patterns.
             if (self.linelen is None or 
                 state.charpos + segment_len <= self.linelen 
                 or link is True 
-                or css_class in ('variable-quote',)):
+                or css_class in ('variable-quote',)
+                or self._regex_pattern):
 
                 state.charpos += segment_len
 

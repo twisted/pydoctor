@@ -1,7 +1,7 @@
 import ast
 import sys
 from textwrap import dedent
-from typing import Any, Union
+from typing import Any, Union, Optional
 import xml.sax
 
 import pytest
@@ -1216,40 +1216,50 @@ def test_ast_regex() -> None:
         re.X
     )\n"""
 
-def color_re(s: Union[bytes, str], 
-             check_roundtrip:bool=True) -> str:
+def color_re(s: Union[bytes, str], *,
+             expect_failure:Optional[bool]=False) -> str:
 
     colorizer = PyvalColorizer(linelen=55, maxlines=5)
     val = colorizer.colorize(extract_expr(ast.parse(f"re.compile({repr(s)})")))
 
-    if check_roundtrip:
-        raw_text = ''.join(gettext(val.to_node()))
-        re_begin = 13
-        raw_string = True
+    raw_text = ''.join(gettext(val.to_node()))
+    re_begin = 13
+    raw_string = True
 
-        if raw_text[11] != 'r':
-            # the regex has failed to be colorized since we can't find the r prefix
-            # meaning the string has been rendered as plaintext instead.
-            raw_string = False
-            re_begin -= 1
-        
-        if isinstance(s, bytes):
-            re_begin += 1
-        re_end = -2
+    if raw_text[11] != 'r':
+        # the regex has failed to be colorized since we can't find the r prefix
+        # meaning the string has been rendered as plaintext instead.
+        raw_string = False
+        re_begin -= 1
+    
+    if isinstance(s, bytes):
+        re_begin += 1
+    re_end = -2
 
-        round_trip: Union[bytes, str] = raw_text[re_begin:re_end]
-        if isinstance(s, bytes):
-            assert isinstance(round_trip, str)
-            round_trip = bytes(round_trip, encoding='utf-8')
-        
-        expected = s
-        if not raw_string:
-            if isinstance(expected, bytes):
-                expected = expected.replace(b'\\', b'\\\\')
-            else:
-                expected = expected.replace('\\', '\\\\')
-        
+    round_trip: Union[bytes, str] = raw_text[re_begin:re_end]
+    if isinstance(s, bytes):
+        assert isinstance(round_trip, str)
+        round_trip = bytes(round_trip, encoding='utf-8')
+    
+    expected = s
+    if not raw_string:
+        if isinstance(expected, bytes):
+            expected = expected.replace(b'\\', b'\\\\')
+        else:
+            expected = expected.replace('\\', '\\\\')
+    try:
         assert round_trip == expected, "%s != %s" % (repr(round_trip), repr(s))
+    except AssertionError as e:
+        if not raw_string and expect_failure is False:
+            raise AssertionError(f'regex colorization failed for {s!r} (and did not round-trip!)') from e
+        elif raw_string and expect_failure is True:
+            raise AssertionError(f'regex did not did not round-trip and was expected to failed for {s!r} (but it succeeded)') from e
+        raise
+    
+    if not raw_string and expect_failure is False:
+        raise AssertionError(f'regex colorization failed for {s!r}') from e
+    elif raw_string and expect_failure is True:
+        raise AssertionError(f'regex colorization was expected to failed for {s!r} (but it succeeded)') from e
     
     return flatten(val.to_stan(NotFoundLinker()))[17:-8]
 
@@ -1381,7 +1391,7 @@ def test_unsupported_regex_features() -> None:
         color_re(r)
 
 def test_regex_corner_case_roudtrips() -> None:
-    color_re("^x{}+$")
+    color_re("^x{}+$", expect_failure=True)
     color_re(r"(?x)This   is   verbose")
     color_re(r'abc \t\r\n\f\v \xff \uffff')
 
@@ -1389,16 +1399,31 @@ def test_regex_corner_case_roudtrips() -> None:
     color_re(rb"(?x)This   is   verbose")
     color_re(rb'abc \t\r\n\f\v \xff \uffff')
 
+    # found in epytext.py
+    color_re(r'{|}', expect_failure=False)
+
+    # found in _configparser.py
+    color_re(r'(^\"(?:\\.|[^\"\\])*\"$)|'
+             r'(^\'(?:\\.|[^\'\\])*\'$)', expect_failure=False)
+    
+    # found in node2stan.py
+    color_re(r'^(.*?)\s*<(?:URI:|URL:)?([^<>]+)>$', expect_failure=False)
+
+    # found in options.py
+    color_re(r'(^https?:\/\/sourceforge\.net\/)',  expect_failure=False)
+    color_re(r'(.*)?', expect_failure=False)
+
 def test_re_not_literal() -> None:
 
     assert color_re(r"[^0-9]") == """r<span class="rst-variable-quote">'</span><span class="rst-re-group">[</span><span class="rst-re-op">^</span>0<span class="rst-re-op">-</span>9<span class="rst-re-group">]</span><span class="rst-variable-quote">'</span>"""
 
 def test_re_named_groups() -> None:
-    # This regex triggers some weird behaviour: it adds the &crarr; element at the end where it should not be...
-    # The regex is 42 caracters long, so more than 40, maybe that's why?
-    # assert color_re(r'^<(?P<descr>.*) at (?P<addr>0x[0-9a-f]+)>$') == """"""
-    
     assert color_re(r'^<(?P<descr>.*)>$') == """r<span class="rst-variable-quote">'</span>^&lt;<span class="rst-re-group">(?P&lt;</span><span class="rst-re-ref">descr</span><span class="rst-re-group">&gt;</span>.<span class="rst-re-op">*</span><span class="rst-re-group">)</span>&gt;$<span class="rst-variable-quote">'</span>"""
+
+def test_re_named_groups_weird() -> None:
+    # This regex triggers some weird behaviour: it adds the &crarr; element at the end where it should not be...
+    # The regex is 42 caracters long, re.compile(r' is 13 caracter long, the color_re function uses linelen=55.
+    assert '&crarr;' not in color_re(r'^<(?P<descr>.*) at (?P<addr>0x[0-9a-f]+)>$')
 
 def test_re_multiline() -> None:
 
