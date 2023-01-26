@@ -504,15 +504,7 @@ def _parse_sub(source, state, verbose, nested):
             continue # check next one
         break
 
-    # check if the branch can be replaced by a character set
-    for item in items:
-        if len(item) != 1 or item[0][0] is not LITERAL:
-            break
-    else:
-        # we can store this as a character set instead of a
-        # branch (the compiler may optimize this even more)
-        subpatternappend((IN, [item[0] for item in items]))
-        return subpattern
+    # pydoctor: remove all optimizations for round-tripping issues
 
     subpattern.append((BRANCH, (None, items)))
     return subpattern
@@ -619,14 +611,8 @@ def _parse(source, state, verbose, nested, first=False):
                         code1 = code1[1][0]
                     setappend(code1)
 
-            # XXX: <fl> should move set optimization to compiler!
-            if _len(set)==1 and set[0][0] is LITERAL:
-                subpatternappend(set[0]) # optimization
-            elif _len(set)==2 and set[0][0] is NEGATE and set[1][0] is LITERAL:
-                subpatternappend((NOT_LITERAL, set[1][1])) # optimization
-            else:
-                # XXX: <fl> should add charmap optimization here
-                subpatternappend((IN, set))
+            # pydoctor: remove all optimizations for round-tripping issues
+            subpatternappend((IN, set))
 
         elif this in REPEAT_CHARS:
             # repeat previous item
