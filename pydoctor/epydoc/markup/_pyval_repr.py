@@ -258,8 +258,8 @@ class PyvalColorizer:
         self.linebreakok = linebreakok
 
         # state linked to regex colorization
-        self._regex_begins: _MarkedColorizerState = _MarkedColorizerState(0,0,0,False)
-        self._regex_pattern: AnyStr = ''
+        self._regex_begins: Optional[_MarkedColorizerState] = None
+        self._regex_pattern: Optional[AnyStr] = None
 
     #////////////////////////////////////////////////////////////
     # Colorization Tags & other constants
@@ -810,7 +810,8 @@ class PyvalColorizer:
         colorized_regex_text: Union[str, bytes] = ''.join(gettext(state.result[marked.length:]))
         if isinstance(pat, bytes):
             try:
-                colorized_regex_text = bytes(cast(str, colorized_regex_text), encoding='utf-8')
+                assert isinstance(colorized_regex_text, str)
+                colorized_regex_text = bytes(colorized_regex_text, encoding='utf-8')
             except Exception:
                 raise ValueError("cannot encode regex from bytes as utf-8")
         if colorized_regex_text != pat:
@@ -820,7 +821,7 @@ class PyvalColorizer:
         self._output(quote, self.QUOTE_TAG, state)
         
         # Close regex state
-        self._regex_pattern = ''
+        self._regex_pattern = self._regex_begins = None
 
     def _colorize_re_flags(self, flags: int, state: _ColorizerState) -> None:
         if flags:
@@ -1029,6 +1030,8 @@ class PyvalColorizer:
                 state.lineno += 1
                 state.charpos = 0
             
+            # segments_len = len(segments)
+            # remaining_segments = segments_len - 1 - i
             segment_len = len(segment) 
 
             # If the segment fits on the current line, then just call
@@ -1038,7 +1041,7 @@ class PyvalColorizer:
                 state.charpos + segment_len <= self.linelen 
                 or link is True 
                 or css_class in ('variable-quote',)
-                or self._regex_pattern):
+                or self._regex_pattern is not None):
 
                 state.charpos += segment_len
 
