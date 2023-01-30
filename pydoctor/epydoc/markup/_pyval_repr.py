@@ -72,13 +72,14 @@ def decode_with_backslashreplace(s: bytes) -> str:
             .encode('ascii', 'backslashreplace')
             .decode('ascii'))
 
-@attr.s(auto_attribs=True)
+@attr.s(auto_attribs=True, frozen=True)
 class _MarkedColorizerState:
     length: int
     charpos: int
     lineno: int
     linebreakok: bool
 
+@attr.s(auto_attribs=True)
 class _ColorizerState:
     """
     An object uesd to keep track of the current state of the pyval
@@ -88,12 +89,15 @@ class _ColorizerState:
     their object on a single line (setting linebreakok=False); and
     then fall back on a multi-line output if that fails.  
     """
-    def __init__(self) -> None:
-        self.result: List[nodes.Node] = []
-        self.charpos = 0
-        self.lineno = 1
-        self.linebreakok = True
-        self.warnings: List[str] = []
+    result: List[nodes.Node] = attr.ib(factory=list, init=False)
+    charpos:int = attr.ib(default=0, init=False)
+    lineno:int = attr.ib(default=1, init=False)
+    linebreakok:bool = attr.ib(default=False, init=False)
+    warnings: List[str] = attr.ib(factory=list)
+
+    # state linked to regex colorization
+    _regex_begins: Optional[_MarkedColorizerState] = attr.ib(default=None, init=False)
+    _regex_pattern: Optional[Union[str, bytes]] = attr.ib(default=None, init=False)
 
     def mark(self) -> _MarkedColorizerState:
         return _MarkedColorizerState(
@@ -256,10 +260,6 @@ class PyvalColorizer:
         self.linelen: Optional[int] = linelen if linelen!=0 else None
         self.maxlines: Union[int, float] = maxlines if maxlines!=0 else float('inf')
         self.linebreakok = linebreakok
-
-        # state linked to regex colorization
-        self._regex_begins: Optional[_MarkedColorizerState] = None
-        self._regex_pattern: Optional[AnyStr] = None
 
     #////////////////////////////////////////////////////////////
     # Colorization Tags & other constants
@@ -726,7 +726,9 @@ class PyvalColorizer:
             # Make sure not to swallow control flow errors.
             # Colorize the ast.Call as any other node if the pattern parsing fails.
             state.restore(mark)
-            state.warnings.append(f"Cannot colorize regular expression, error: {str(e)}")
+            # We do not log the error since we know our colorizer is not perfect, no spamming for issues
+            # that the developpers can't fix.
+
             self._colorize_ast_call_generic(node, state)
             return
 
@@ -792,36 +794,39 @@ class PyvalColorizer:
         self._output(quote, self.QUOTE_TAG, state)
         
         # init the regex specifics state
-        self._regex_begins = marked = state.mark()
-        self._regex_pattern = pat
+        state._regex_begins = marked = state.mark()
+        state._regex_pattern = pat
+
+        try:
        
-        if flags != sre_constants.SRE_FLAG_UNICODE:
-            # If developers included flags in the regex string, display them.
-            # By default, do not display the '(?u)'
-            # the usage of flags might cause regex to not round-trip, but that's not really bad.
-            self._colorize_re_flags(flags, state)
-        
-        # Colorize it!
-        self._colorize_re_tree(tree.data, state, True, groups)
+            if flags != sre_constants.SRE_FLAG_UNICODE:
+                # If developers included flags in the regex string, display them.
+                # By default, do not display the '(?u)'
+                # the usage of flags might cause regex to not round-trip, but that's not really bad.
+                self._colorize_re_flags(flags, state)
+            
+            # Colorize it!
+            self._colorize_re_tree(tree.data, state, True, groups)
 
-        # Our regex understanding is not up to date with python's, we use python 3.6 engine.
-        # This causes some regular expression to be falsely interpreted, so we check if the 
-        # colorized regex round trips, and if it doesn't, then use the regular string colorization.
-        colorized_regex_text: Union[str, bytes] = ''.join(gettext(state.result[marked.length:]))
-        if isinstance(pat, bytes):
-            try:
-                assert isinstance(colorized_regex_text, str)
-                colorized_regex_text = bytes(colorized_regex_text, encoding='utf-8')
-            except Exception:
-                raise ValueError("cannot encode regex from bytes as utf-8")
-        if colorized_regex_text != pat:
-            raise ValueError("regex doesn't round-trips")
+            # Our regex understanding is not up to date with python's, we use python 3.6 engine.
+            # This causes some regular expression to be falsely interpreted, so we check if the 
+            # colorized regex round trips, and if it doesn't, then use the default string colorization.
+            colorized_regex_text: Union[str, bytes] = ''.join(gettext(state.result[marked.length:]))
+            if isinstance(pat, bytes):
+                try:
+                    assert isinstance(colorized_regex_text, str)
+                    colorized_regex_text = bytes(colorized_regex_text, encoding='utf-8')
+                except Exception:
+                    raise ValueError("cannot encode regular expression as utf-8")
+            if colorized_regex_text != pat:
+                raise ValueError("regex doesn't round-trips")
 
-        # Close quote.
-        self._output(quote, self.QUOTE_TAG, state)
+            # Close quote.
+            self._output(quote, self.QUOTE_TAG, state)
         
-        # Close regex state
-        self._regex_pattern = self._regex_begins = None
+        finally:
+            # Close regex state
+            state._regex_pattern = state._regex_begins = None
 
     def _colorize_re_flags(self, flags: int, state: _ColorizerState) -> None:
         if flags:
@@ -870,14 +875,19 @@ class PyvalColorizer:
                 # This rely on the fact that we don't break regex patterns in several segments, 
                 # so there is no '↵' in the regex pattern.
                 if not escaping:
+                    if state._regex_pattern is None or state._regex_begins is None:
+                        raise RuntimeError(f'inconsistent colorizer state: {state!r}')
+                    # this adds a lot of computing only used for roud-tripping issues...
+                    # but it does not seem to really impact performance
                     try:
-                        outputed_re = ''.join(gettext(state.result[self._regex_begins.length:]))
-                        current_caracter = self._regex_pattern[len(outputed_re)]
-                        next_caracter = self._regex_pattern[len(outputed_re)+1]
-                    except Exception:
-                        raise ValueError("can't figure out regex literal caracter")
-                    if current_caracter == '\\' and next_caracter == c:
-                        self._output('\\', self.RE_CHAR_TAG, state)
+                        outputed_re = ''.join(gettext(state.result[state._regex_begins.length:]))
+                        current_caracter = state._regex_pattern[len(outputed_re)]
+                        next_caracter = state._regex_pattern[len(outputed_re)+1]
+                    except IndexError:
+                        pass
+                    else:
+                        if current_caracter == '\\' and next_caracter == c:
+                            self._output('\\', self.RE_CHAR_TAG, state)
                 
                 self._output(c, self.RE_CHAR_TAG, state)
 
@@ -1041,7 +1051,7 @@ class PyvalColorizer:
                 state.charpos + segment_len <= self.linelen 
                 or link is True 
                 or css_class in ('variable-quote',)
-                or self._regex_pattern is not None):
+                or state._regex_pattern is not None):
 
                 state.charpos += segment_len
 
