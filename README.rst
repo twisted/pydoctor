@@ -75,6 +75,7 @@ What's New?
 
 in development
 ^^^^^^^^^^^^^^
+
 * Add support for Python 3.11
 * Add support for the ``@overload`` decorator.
 * Show type annotations in function's signatures.
@@ -82,6 +83,12 @@ in development
 * Themes have been adjusted to render annotations more concisely.
 * Fix a rare crash in the type inference. 
   Invalid python code like a set of lists would raise a uncaught TypeError in the evaluation.
+* Support when source path lies outside base directory (``--project-base-dir``).
+  Since pydoctor support generating docs for multiple packages, 
+  it is not certain that all of the source is even viewable below a single URL. 
+  We now allow to add arbitrary paths to the system, 
+  but only the objects inside a module wich path is relative to
+  the base directory can have a source control link generated.
 
 pydoctor 22.9.1
 ^^^^^^^^^^^^^^^
