@@ -12,7 +12,7 @@ jobs:
 
     strategy:
       matrix:
-        tox_target: [twisted-apidoc, cpython-summary, python-igraph-apidocs, cpython-apidocs, numpy-apidocs, git-buildpackage-apidocs]
+        tox_target: [twisted-apidoc, cpython-summary, python-igraph-apidocs, cpython-apidocs, numpy-apidocs, git-buildpackage-apidocs, pytype-apidocs]
 
     steps:
     - uses: actions/checkout@v2
