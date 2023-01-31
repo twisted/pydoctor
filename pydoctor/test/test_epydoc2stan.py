@@ -1715,3 +1715,40 @@ def test_self_cls_in_function_params(capsys: CapSys) -> None:
 
 def test_docformat_skip_processtypes() -> None:
     assert all([d in get_supported_docformats() for d in epydoc2stan._docformat_skip_processtypes])
+
+def test_returns_undocumented_still_show_up_if_params_documented() -> None:
+    """
+    The returns section will show up if any of the 
+    parameter are documented and the fucntion has a return annotation.
+    """
+    src = '''
+    def f(c:int) -> bool:
+        """
+        @param c: stuff
+        """
+    def g(c) -> bool:
+        """
+        @type c: int
+        """
+    def h(c):
+        """
+        @param c: stuff
+        """
+    def i(c) -> None:
+        """
+        @param c: stuff
+        """
+    '''
+
+    mod = fromText(src)
+
+    html_f = docstring2html(mod.contents['f'])
+    html_g = docstring2html(mod.contents['g'])
+    html_h = docstring2html(mod.contents['h'])
+    html_i = docstring2html(mod.contents['i'])
+
+    assert 'Returns</td>' in html_f
+    assert 'Returns</td>' in html_g
+
+    assert 'Returns</td>' not in html_h
+    assert 'Returns</td>' not in html_i
