@@ -80,6 +80,8 @@ in development
 * Show type annotations in function's signatures.
 * If none of a function's parameters have documentation, do not render the parameter table.
 * Themes have been adjusted to render annotations more concisely.
+* Fix a rare crash in the type inference. 
+  Invalid python code like a set of lists would raise a uncaught TypeError in the evaluation.
 
 pydoctor 22.9.1
 ^^^^^^^^^^^^^^^
