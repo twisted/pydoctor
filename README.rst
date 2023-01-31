@@ -86,7 +86,7 @@ in development
   it is not certain that all of the source is even viewable below a single URL. 
   We now allow to add arbitrary paths to the system, 
   but only the objects inside a module wich path is relative to
-  the base directory can have a source control link generated at this point.
+  the base directory can have a source control link generated.
 
 pydoctor 22.9.1
 ^^^^^^^^^^^^^^^
