@@ -18,13 +18,13 @@ jobs:
     - uses: actions/checkout@v2
 
     - name: Set up CPython
-      if: ${{ matrix.tox_target }} == 'python-igraph-apidocs'
+      if: ${{ matrix.tox_target == 'python-igraph-apidocs' }}
       uses: actions/setup-python@v2
       with:
         python-version: '3.8'
     
     - name: Set up PyPy
-      if: ${{ matrix.tox_target }} != 'python-igraph-apidocs'
+      if: ${{ matrix.tox_target != 'python-igraph-apidocs' }}
       uses: actions/setup-python@v2
       with:
         python-version: 'pypy-3.6'
