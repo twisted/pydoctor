@@ -1109,7 +1109,7 @@ def _infer_type(expr: ast.expr) -> Optional[ast.expr]:
     """
     try:
         value: object = ast.literal_eval(expr)
-    except ValueError:
+    except (ValueError, TypeError):
         return None
     else:
         ann = _annotation_for_value(value)

@@ -61,7 +61,7 @@ def format_decorators(obj: Union[model.Function, model.Attribute, model.Function
 
         # Colorize decorators!
         doc = colorize_inline_pyval(dec)
-        stan = epydoc2stan.safe_to_stan(doc, documentable_obj.docstring_linker, documentable_obj, compact=True, 
+        stan = epydoc2stan.safe_to_stan(doc, documentable_obj.docstring_linker, documentable_obj,
             fallback=epydoc2stan.colorized_pyval_fallback, 
             section='rendering of decorators')
         
@@ -310,7 +310,7 @@ class CommonPage(Page):
         """
         r: List[Tag] = []
         for extra in ob.extra_info:
-            r.append(epydoc2stan.safe_to_stan(extra, ob.docstring_linker, ob, compact=False, 
+            r.append(epydoc2stan.safe_to_stan(extra, ob.docstring_linker, ob,
                 fallback = lambda _,__,___:epydoc2stan.BROKEN, section='extra'))
         return r
 
@@ -469,7 +469,6 @@ class ClassPage(CommonPage):
                     # link to external class or internal class, using the colorizer here
                     # to link to classes with generics (subscripts and other AST expr).
                     stan = epydoc2stan.safe_to_stan(colorize_inline_pyval(base_node), _linker, self.ob, 
-                        compact=True, 
                         fallback=epydoc2stan.colorized_pyval_fallback, 
                         section='rendering of class signature')
                     r.extend(stan.children)
