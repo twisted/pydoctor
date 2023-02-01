@@ -1059,10 +1059,18 @@ class System:
         if self.sourcebase is None:
             mod.sourceHref = None
         else:
+            # pydoctor supports generating documentation covering more than one package, 
+            # in which case it is not certain that all of the source is even viewable below a single URL.
+            # We ignore this limitation by not assigning sourceHref for now, but it would be good to add support for it.
             projBaseDir = mod.system.options.projectbasedirectory
             assert projBaseDir is not None
-            relative = source_path.relative_to(projBaseDir).as_posix()
-            mod.sourceHref = f'{self.sourcebase}/{relative}'
+            try:
+                relative = source_path.relative_to(projBaseDir).as_posix()
+            except ValueError:
+                # The links cannot be computed because the source path lies outside base directory.
+                pass
+            else:
+                mod.sourceHref = f'{self.sourcebase}/{relative}'
 
     @overload
     def analyzeModule(self,
@@ -1389,13 +1397,19 @@ class SystemBuilder(ISystemBuilder):
         if path in self._added:
             return
         # Path validity check
-        if self.system.options.projectbasedirectory is not None:
+        projBaseDir = self.system.options.projectbasedirectory
+        if projBaseDir is not None:
             # Note: Path.is_relative_to() was only added in Python 3.9,
             #       so we have to use this workaround for now.
             try:
-                path.relative_to(self.system.options.projectbasedirectory)
-            except ValueError as ex:
-                raise SystemBuildingError(f"Source path lies outside base directory: {ex}")
+                path.relative_to(projBaseDir)
+            except ValueError:
+                if self.system.options.htmlsourcebase:  
+                    # We now support building documentation when the source path is outside of the build directory.
+                    # We simply leave a warning and skip the sourceHref attribute.
+                    # https://github.com/twisted/pydoctor/issues/658
+                    _warn_msg = f"No source links can be generated for module {path}: source path lies outside base directory {projBaseDir}"
+                    self.system.msg('addPackage', _warn_msg, once=True)
         parent: Optional[Package] = None
         if parent_name:
             _p = self.system.allobjects[parent_name]

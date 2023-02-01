@@ -514,9 +514,12 @@ class FieldHandler:
         r: List[Tag] = []
 
         # Only include parameter or return sections if any are documented or any type are documented from @type fields.
+        include_params = False
         if any((p.body or p.type_origin is FieldOrigin.FROM_DOCSTRING) for p in self.parameter_descs):
             r += format_desc_list('Parameters', self.parameter_descs)
-        if self.return_desc and (self.return_desc.body or self.return_desc.type_origin is FieldOrigin.FROM_DOCSTRING):
+            include_params = True
+        
+        if self.return_desc and (include_params or self.return_desc.body or self.return_desc.type_origin is FieldOrigin.FROM_DOCSTRING):
             r += format_desc_list('Returns', [self.return_desc])
         
         if self.yields_desc:
