@@ -2152,3 +2152,28 @@ def test_prepend_package_real_path(systemcls: Type[model.System]) -> None:
     finally:
         systemcls.systemBuilder = _builderT_init
 
+@systemcls_param
+def test_crash_type_inference_unhashable_type(systemcls: Type[model.System], capsys:CapSys) -> None:
+    """
+    This test is about not crashing.
+
+    A TypeError is raised by ast.literal_eval() in some cases, when we're trying to do a set of lists or a dict with list keys.
+    We do not bother reporting it because pydoctor is not a checker.
+    """
+
+    src = '''
+    # Unhashable type, will raise an error in ast.literal_eval()
+    x = {[1, 2]}
+    class C:
+        v = {[1,2]:1}
+        def __init__(self):
+            self.y = [{'str':2}, {[1,2]:1}]
+    Y = [{'str':2}, {{[1, 2]}:1}]
+    '''
+
+    mod = fromText(src, systemcls=systemcls, modname='m')
+    for obj in ['m.x', 'm.C.v', 'm.C.y', 'm.Y']:
+        o = mod.system.allobjects[obj]
+        assert isinstance(o, model.Attribute)
+        assert o.annotation is None
+    assert not capsys.readouterr().out

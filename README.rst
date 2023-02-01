@@ -81,6 +81,8 @@ in development
 * Show type annotations in function's signatures.
 * If none of a function's parameters have documentation, do not render the parameter table.
 * Themes have been adjusted to render annotations more concisely.
+* Fix a rare crash in the type inference. 
+  Invalid python code like a set of lists would raise a uncaught TypeError in the evaluation.
 * Support when source path lies outside base directory (``--project-base-dir``).
   Since pydoctor support generating docs for multiple packages, 
   it is not certain that all of the source is even viewable below a single URL. 
