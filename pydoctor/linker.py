@@ -24,7 +24,7 @@ def taglink(o: 'model.Documentable', page_url: str,
 
     @param o: The object to link to
     @param page_url: The URL of the current page, pass empty string to
-        aloways generate full urls that includes the filename.
+        always generate full urls that includes the filename.
     @param label: The label to use for the link
     """
     if not o.isVisible:
@@ -63,14 +63,15 @@ class _EpydocLinker(DocstringLinker):
     @property
     def obj(self) -> 'model.Documentable':
         """
-        Object used for resolving the target name, NOT not change when the linker L{switch_context}.
+        Object used for resolving the target name, it's NOT changed when the linker L{switch_context}.
         """
         return self._init_obj
     
     @property
     def page_url(self) -> str:
         """
-        URL to the page object in wich the link will be presented.
+        URL of the page used to compute the relative links from. 
+        Can be an empty string to always generate full urls. 
         """
         pageob = self._page_object
         if pageob is not None:

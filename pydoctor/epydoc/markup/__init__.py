@@ -332,7 +332,7 @@ class DocstringLinker:
         relatively to the new context object.
 
         Pass C{None} to always generate full URLs (for summaries for example), 
-        in this case error will be reported to the initial context.
+        in this case error will NOT be reported at all.
         """
         raise NotImplementedError()
 

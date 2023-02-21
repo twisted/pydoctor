@@ -786,7 +786,7 @@ def format_summary(obj: model.Documentable) -> Tag:
     if not source:
         source = obj
     
-    # do not optimize url in order to make sure we're alwasy geberaing full urls.
+    # do not optimize url in order to make sure we're always generating full urls.
     # avoids breaking links when including the summaries on other pages.
     with source.docstring_linker.switch_context(None):
         # ParserErrors will likely be reported by the full docstring as well,
