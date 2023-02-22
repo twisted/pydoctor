@@ -584,6 +584,7 @@ class Class(CanContainImportsDocumentable):
         self.rawbases: Sequence[Tuple[str, ast.expr]] = []
         self.raw_decorators: Sequence[ast.expr] = []
         self.subclasses: List[Class] = []
+        self.constructors: List[Function] = []
         self._initialbases: List[str] = []
         self._initialbaseobjects: List[Optional['Class']] = []
     
@@ -596,6 +597,37 @@ class Class(CanContainImportsDocumentable):
         except ValueError as e:
             self.report(str(e), 'mro')
             self._mro = list(self.allbases(True))
+    
+    def _init_constructors(self) -> None:
+        """
+        Initiate the L{Class.constructors} list.
+        """
+        # If __new__ is defined, then it takes precedence over __init__
+        _new = self.find('__new__')
+        if isinstance(_new, Function):
+            self.constructors.append(_new)
+        elif _new is None:
+            _init = self.find('__init__')
+            if isinstance(_init, Function):
+                self.constructors.append(_init)
+        
+        # Then look for staticmethod/classmethod constructors
+        for fun in self.contents.values():
+            if not isinstance(fun, Function):
+                continue
+            
+            if not fun.kind in (DocumentableKind.STATIC_METHOD, DocumentableKind.CLASS_METHOD):
+                continue
+            
+            # get return annotation, if it returns the same type as self, it's a constructor method.
+            if not 'return' in fun.annotations:
+                continue 
+            
+            # pydoctor only understand explicit annotation
+            # it does not comprehend the Self-type for instance.
+            return_ann = astutils.node2fullname(fun.annotations['return'], self)
+            if return_ann == self.fullName():
+                self.constructors.append(fun)
 
     @overload
     def mro(self, include_external:'Literal[True]', include_self:bool=True) -> List[Union['Class', str]]:...
