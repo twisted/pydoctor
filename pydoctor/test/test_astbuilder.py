@@ -2323,3 +2323,25 @@ def test_constructor_inner_class(systemcls: Type[model.System]) -> None:
     mod = fromText(src, systemcls=systemcls)
     assert getConstructorsText(mod.contents['Animal'].contents['Bar']) == "Animal.Bar(name)"
     assert getConstructorsText(mod.contents['Animal'].contents['Bar'].contents['Foo']) == "Animal.Bar.Foo.create(name)"
+
+@systemcls_param
+def test_constructor_many_parameters(systemcls: Type[model.System]) -> None:
+    src = '''\
+    class Animal(object):
+        def __new__(cls, name, lastname, age, spec, extinct, group, friends):
+            ...
+    '''
+    mod = fromText(src, systemcls=systemcls)
+
+    assert getConstructorsText(mod.contents['Animal']) == "Animal(name, lastname, age, spec, ...)"
+
+@systemcls_param
+def test_constructor_five_paramters(systemcls: Type[model.System]) -> None:
+    src = '''\
+    class Animal(object):
+        def __new__(cls, name, lastname, age, spec, extinct):
+            ...
+    '''
+    mod = fromText(src, systemcls=systemcls)
+
+    assert getConstructorsText(mod.contents['Animal']) == "Animal(name, lastname, age, spec, extinct)"

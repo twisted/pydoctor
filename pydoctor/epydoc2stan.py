@@ -1041,9 +1041,19 @@ def format_constructor_short_text(constructor: model.Constructor, forclass: mode
     Returns a simplified signature of the constructor.
     """
     args = ''
-    for index, (name, ann) in enumerate(constructor.annotations.items()):
+    # for signature with more than 5 parameters, 
+    # we just show the elipsis after the fourth parameter
+    annotations = constructor.annotations.items()
+    many_param_tresh = 6
+    many_param = len(annotations) > many_param_tresh
+    
+    for index, (name, ann) in enumerate(annotations):
         if name=='return':
             continue
+
+        if many_param and index > many_param_tresh - 2:
+            args += ', ...'
+            break
         
         # Special casing __new__ because it's actually a static method
         if index==0 and (constructor.name in ('__new__', '__init__') or 
@@ -1059,7 +1069,7 @@ def format_constructor_short_text(constructor: model.Constructor, forclass: mode
         if args:
             args += ', '
         
-        args+= f"{star}{name}"
+        args += f"{star}{name}"
     
     # display innner classes with their name starting at the top level class.
     _current = forclass
