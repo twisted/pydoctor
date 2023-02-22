@@ -31,11 +31,11 @@ from pydoctor.epydoc.markup import ParsedDocstring
 from pydoctor.sphinx import CacheT, SphinxInventory
 
 if TYPE_CHECKING:
-    from typing_extensions import Literal
+    from typing_extensions import Literal, Protocol
     from pydoctor.astbuilder import ASTBuilder, DocumentableT
 else:
     Literal = {True: bool, False: bool}
-    ASTBuilder = object
+    ASTBuilder = Protocol = object
 
 
 # originally when I started to write pydoctor I had this idea of a big
@@ -569,11 +569,26 @@ def compute_mro(cls:'Class') -> List[Union['Class', str]]:
     init_finalbaseobjects(cls)
     return mro.mro(cls, getbases)
 
+class Constructor(Protocol):
+    """
+    Protocol implemented by L{Function} objects.
+
+    Makes the assumption that the constructor name is available in the locals of the class
+    it's supposed to create. Typically with __init__ and __new__ it's always the case. But it also means that
+    no regular function (not classmethod or staticmethod) can be interpreted as a constructor for a given class.
+    """
+    name: str
+    annotations: Mapping[str, Optional[ast.expr]]
+    kind: DocumentableKind
+    parent: CanContainImportsDocumentable
+    isVisible: bool
+    def fullName(self) -> str:...
+
 class Class(CanContainImportsDocumentable):
     kind = DocumentableKind.CLASS
     parent: CanContainImportsDocumentable
     decorators: Sequence[Tuple[str, Optional[Sequence[ast.expr]]]]
-    
+
     # set in post-processing:
     _finalbaseobjects: Optional[List[Optional['Class']]] = None 
     _finalbases: Optional[List[str]] = None
@@ -584,7 +599,7 @@ class Class(CanContainImportsDocumentable):
         self.rawbases: Sequence[Tuple[str, ast.expr]] = []
         self.raw_decorators: Sequence[ast.expr] = []
         self.subclasses: List[Class] = []
-        self.constructors: List[Function] = []
+        self.constructors: List[Constructor] = []
         self._initialbases: List[str] = []
         self._initialbaseobjects: List[Optional['Class']] = []
     
@@ -600,9 +615,12 @@ class Class(CanContainImportsDocumentable):
     
     def _init_constructors(self) -> None:
         """
-        Initiate the L{Class.constructors} list.
+        Initiate the L{Class.constructors} list. A constructor MUST be a method accessible 
+        in the locals of the class.
         """
+        # Look for python language powered constructors.
         # If __new__ is defined, then it takes precedence over __init__
+        # Blind spot: we don't understand when a Class is using a metaclass that overrides __call__.
         _new = self.find('__new__')
         if isinstance(_new, Function):
             self.constructors.append(_new)
@@ -611,23 +629,24 @@ class Class(CanContainImportsDocumentable):
             if isinstance(_init, Function):
                 self.constructors.append(_init)
         
-        # Then look for staticmethod/classmethod constructors
+        # Then look for staticmethod/classmethod constructors,
+        # This only happens at the local scope level (i.e not looking in super-classes).
         for fun in self.contents.values():
             if not isinstance(fun, Function):
                 continue
-            
+            # Only static methods and class methods can be recognized as constructors
             if not fun.kind in (DocumentableKind.STATIC_METHOD, DocumentableKind.CLASS_METHOD):
                 continue
-            
             # get return annotation, if it returns the same type as self, it's a constructor method.
             if not 'return' in fun.annotations:
                 continue 
-            
-            # pydoctor only understand explicit annotation
-            # it does not comprehend the Self-type for instance.
+            # pydoctor understand explicit annotation as well as the Self-Type.
             return_ann = astutils.node2fullname(fun.annotations['return'], self)
-            if return_ann == self.fullName():
+            if return_ann == self.fullName() or return_ann in ('typing.Self', 'typing_extensions.Self'):
                 self.constructors.append(fun)
+        
+        from pydoctor import epydoc2stan
+        epydoc2stan.populate_constructors_extra_info(self)
 
     @overload
     def mro(self, include_external:'Literal[True]', include_self:bool=True) -> List[Union['Class', str]]:...
@@ -1359,10 +1378,12 @@ class System:
         # default post-processing includes:
         # - Processing of subclasses
         # - MRO computing.
+        # - Lookup of constructors
         # - Checking whether the class is an exception
         for cls in self.objectsOfType(Class):
             
             cls._init_mro()
+            cls._init_constructors()
             
             for b in cls.baseobjects:
                 if b is not None:

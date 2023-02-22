@@ -5,6 +5,7 @@ import astor
 
 
 from pydoctor import astbuilder, astutils, model
+from pydoctor import epydoc2stan
 from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring
 from pydoctor.options import Options
 from pydoctor.stanutils import flatten, html2stan, flatten_text
@@ -2152,6 +2153,10 @@ def test_prepend_package_real_path(systemcls: Type[model.System]) -> None:
     finally:
         systemcls.systemBuilder = _builderT_init
 
+def getConstructorsText(cls: model.Class) -> str:
+    return '\n'.join(
+        epydoc2stan.format_constructor_short_text(c, cls) for c in cls.constructors)
+
 @systemcls_param
 def test_crash_type_inference_unhashable_type(systemcls: Type[model.System], capsys:CapSys) -> None:
     """
@@ -2195,12 +2200,13 @@ def test_constructor_signature_init(systemcls: Type[model.System]) -> None:
             self.nationality = nationality
             super(Citizen, self).__init__(*args, **kwargs)
         '''
-    
-    # assert that Person.extra_info contains the available constructors names
+    mod = fromText(src, systemcls=systemcls)
+
     # Like "Available constructor: ``Person(name, age)``" that links to Person.__init__ documentation.
+    assert getConstructorsText(mod.contents['Person']) == "Person(name, age)"
     
-    # assert that Citizen.extra_info contains the available constructors names
     # Like "Available constructor: ``Citizen(nationality, *args, **kwargs)``" that links to Citizen.__init__ documentation.
+    assert getConstructorsText(mod.contents['Citizen']) == "Citizen(nationality, *args, **kwargs)"
 
 @systemcls_param
 def test_constructor_signature_new(systemcls: Type[model.System]) -> None:
@@ -2213,6 +2219,10 @@ def test_constructor_signature_new(systemcls: Type[model.System]) -> None:
             obj.name = name 
             return obj
     '''
+
+    mod = fromText(src, systemcls=systemcls)
+
+    assert getConstructorsText(mod.contents['Animal']) == "Animal(name)"
 
 @systemcls_param
 def test_constructor_signature_init_and_new(systemcls: Type[model.System]) -> None:
@@ -2245,6 +2255,11 @@ def test_constructor_signature_init_and_new(systemcls: Type[model.System]) -> No
             self.owner = owner
     '''
 
+    mod = fromText(src, systemcls=systemcls)
+
+    assert getConstructorsText(mod.contents['Animal']) == "Animal(*args, **kw)"
+    assert getConstructorsText(mod.contents['Cat']) == "Cat(*args, **kw)"
+
 @systemcls_param
 def test_constructor_signature_classmethod(systemcls: Type[model.System]) -> None:
 
@@ -2253,7 +2268,7 @@ def test_constructor_signature_classmethod(systemcls: Type[model.System]) -> Non
     def get_default_options() -> 'Options':
         """
         This is another constructor for class 'Options'. 
-        But it's not recognized by pydoctor at this moment.
+        But it's not recognized by pydoctor because it's not defined in the locals of Options.
         """
         return Options()
 
@@ -2283,3 +2298,28 @@ def test_constructor_signature_classmethod(systemcls: Type[model.System]) -> Non
             c.a = num
             return c
         '''
+
+    mod = fromText(src, systemcls=systemcls)
+
+    assert getConstructorsText(mod.contents['Options']) == "Options.create()\nOptions.create_from_num(num)"
+
+@systemcls_param
+def test_constructor_inner_class(systemcls: Type[model.System]) -> None:
+    src = '''\
+    from typing import Self
+    class Animal(object):
+        class Bar(object):
+            # pydoctor can infer the constructor to be: "Animal.Bar(name)"
+            def __new__(cls, name):
+                ...
+            class Foo(object):
+                # pydoctor can infer the constructor to be: "Animal.Bar.Foo.create(name)"
+                @classmethod
+                def create(cls, name) -> 'Self':
+                    c = cls.create()
+                    c.a = num
+                    return c
+    '''
+    mod = fromText(src, systemcls=systemcls)
+    assert getConstructorsText(mod.contents['Animal'].contents['Bar']) == "Animal.Bar(name)"
+    assert getConstructorsText(mod.contents['Animal'].contents['Bar'].contents['Foo']) == "Animal.Bar.Foo.create(name)"
