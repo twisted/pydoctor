@@ -96,9 +96,7 @@ def partialclass(cls: Type[Any], *args: Any, **kwds: Any) -> Type[Any]:
     """
     Bind a class to be created with some predefined __init__ arguments.
     """
-    # mypy gets errors: - Variable "cls" is not valid as a type
-    #                   - Invalid base class "cls" 
-    class NewPartialCls(cls): #type: ignore
+    class NewPartialCls(cls):
         __init__ = functools.partialmethod(cls.__init__, *args, **kwds) #type: ignore
         __class__ = cls
     assert isinstance(NewPartialCls, type)

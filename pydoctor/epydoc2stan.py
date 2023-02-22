@@ -653,6 +653,7 @@ class ParsedStanOnly(ParsedDocstring):
     def __init__(self, stan: Tag):
         super().__init__(fields=[])
         self._fromstan = stan
+    @property
     def has_body(self) -> bool:
         return True
     def to_stan(self, docstring_linker: Any) -> Tag:
