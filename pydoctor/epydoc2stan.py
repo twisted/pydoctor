@@ -739,6 +739,22 @@ def _wrap_in_paragraph(body:Sequence["Flattenable"]) -> bool:
         break
     return bool(len(body)>0 and not has_paragraph)
 
+def wrap_in_paragraph(stan:Tag) -> "Flattenable":
+    """
+    Unwrap the body of the given Tag instance if 
+    it has a non-empty tag name and 
+    ensure there is one paragraph at least.
+
+    Doesn't need a paragraph when the content is already inside 
+    a non-transparent Tag.
+    """
+    if stan.tagName:
+        return stan
+    body = stan.children
+    if _wrap_in_paragraph(body):
+        return tags.p(*body)
+    else:
+        return body
 
 def format_docstring(obj: model.Documentable) -> Tag:
     """Generate an HTML representation of a docstring"""
@@ -751,16 +767,7 @@ def format_docstring(obj: model.Documentable) -> Tag:
     else:
         assert obj.parsed_docstring is not None, "ensure_parsed_docstring() did not do it's job"
         stan = safe_to_stan(obj.parsed_docstring, source.docstring_linker, source, fallback=format_docstring_fallback)
-        
-        if stan.tagName:
-            ret(stan)
-        else:
-            body = stan.children
-            if _wrap_in_paragraph(body):
-                # ensure there is one paragraph at least
-                ret(tags.p(*body))
-            else:
-                ret(*body)
+        ret(wrap_in_paragraph(stan))
 
     fh = FieldHandler(obj)
     if isinstance(obj, model.Function):

@@ -255,7 +255,7 @@ class CommonPage(Page):
     def inhierarchy(self, request: object, tag: Tag) -> "Flattenable":
         return ()
 
-    def extras(self) -> List[Tag]:
+    def extras(self) -> List["Flattenable"]:
         return self.objectExtras(self.ob)
 
     def docstring(self) -> "Flattenable":
@@ -304,14 +304,15 @@ class CommonPage(Page):
                 assert False, type(c)
         return r
 
-    def objectExtras(self, ob: model.Documentable) -> List[Tag]:
+    def objectExtras(self, ob: model.Documentable) -> List["Flattenable"]:
         """
         Flatten each L{model.Documentable.extra_info} list item.
         """
-        r: List[Tag] = []
+        r: List["Flattenable"] = []
         for extra in ob.extra_info:
-            r.append(epydoc2stan.safe_to_stan(extra, ob.docstring_linker, ob,
-                fallback = lambda _,__,___:epydoc2stan.BROKEN, section='extra'))
+            r.append(epydoc2stan.wrap_in_paragraph(
+                epydoc2stan.safe_to_stan(extra, ob.docstring_linker, ob,
+                fallback = lambda _,__,___:epydoc2stan.BROKEN, section='extra')))
         return r
 
 
@@ -347,7 +348,7 @@ class CommonPage(Page):
 class ModulePage(CommonPage):
     ob: model.Module
 
-    def extras(self) -> List[Tag]:
+    def extras(self) -> List["Flattenable"]:
         r: List[Tag] = []
 
         sourceHref = util.srclink(self.ob)
@@ -427,8 +428,8 @@ class ClassPage(CommonPage):
         super().__init__(ob, template_lookup, docgetter)
         self.baselists = util.class_members(self.ob)
 
-    def extras(self) -> List[Tag]:
-        r: List[Tag] = []
+    def extras(self) -> List["Flattenable"]:
+        r: List["Flattenable"] = []
 
         sourceHref = util.srclink(self.ob)
         source: "Flattenable"
