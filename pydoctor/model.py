@@ -569,6 +569,23 @@ def compute_mro(cls:'Class') -> List[Union['Class', str]]:
     init_finalbaseobjects(cls)
     return mro.mro(cls, getbases)
 
+def _find_dunder_constructor(cls:'Class') -> Optional['Function']:
+    """
+    Find the dunder method that has the same signature as the constructor/class call. 
+    Returns C{None} if neither C{__new__} or C{__init__} are defined.
+
+    @note: C{__new__} takes precedence orver C{__init__}. 
+        More infos: U{https://docs.python.org/3/reference/datamodel.html#object.__new__}
+    """
+    _new = cls.find('__new__')
+    if isinstance(_new, Function):
+        return _new
+    elif _new is None:
+        _init = cls.find('__init__')
+        if isinstance(_init, Function):
+            return _init
+    return None
+
 class Class(CanContainImportsDocumentable):
     kind = DocumentableKind.CLASS
     parent: CanContainImportsDocumentable
@@ -611,13 +628,9 @@ class Class(CanContainImportsDocumentable):
         # Look for python language powered constructors.
         # If __new__ is defined, then it takes precedence over __init__
         # Blind spot: we don't understand when a Class is using a metaclass that overrides __call__.
-        _new = self.find('__new__')
-        if isinstance(_new, Function):
-            self.constructors.append(_new)
-        elif _new is None:
-            _init = self.find('__init__')
-            if isinstance(_init, Function):
-                self.constructors.append(_init)
+        dunder_constructor = _find_dunder_constructor(self)
+        if dunder_constructor:
+            self.constructors.append(dunder_constructor)
         
         # Then look for staticmethod/classmethod constructors,
         # This only happens at the local scope level (i.e not looking in super-classes).
@@ -728,12 +741,9 @@ class Class(CanContainImportsDocumentable):
         # __new__()/__init__() parameters. This is incorrect if the metaclass
         # __call__() have different parameters or __init__/__new__ is using
         # signature changing decorators.
-        new = self.find('__new__')
-        if isinstance(new, Function):
-            return new.annotations
-        init = self.find('__init__')
-        if isinstance(init, Function):
-            return init.annotations
+        constructor = _find_dunder_constructor(self)
+        if constructor is not None:
+            return constructor.annotations
         else:
             return {}
 
