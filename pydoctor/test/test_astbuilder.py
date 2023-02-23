@@ -2153,7 +2153,8 @@ def test_prepend_package_real_path(systemcls: Type[model.System]) -> None:
     finally:
         systemcls.systemBuilder = _builderT_init
 
-def getConstructorsText(cls: model.Class) -> str:
+def getConstructorsText(cls: model.Documentable) -> str:
+    assert isinstance(cls, model.Class)
     return '\n'.join(
         epydoc2stan.format_constructor_short_text(c, cls) for c in cls.constructors)
 
@@ -2286,7 +2287,7 @@ def test_constructor_signature_classmethod(systemcls: Type[model.System]) -> Non
         # thanks to type hints, 
         # pydoctor can infer the constructor to be: "Options.create()"
         @staticmethod
-        def create() -> 'Options':
+        def create(important_arg) -> 'Options':
             # the fictional constructor is not detected by pydoctor, because it doesn't exists actually.
             return Options(1,2,3)
         
@@ -2301,7 +2302,7 @@ def test_constructor_signature_classmethod(systemcls: Type[model.System]) -> Non
 
     mod = fromText(src, systemcls=systemcls)
 
-    assert getConstructorsText(mod.contents['Options']) == "Options.create()\nOptions.create_from_num(num)"
+    assert getConstructorsText(mod.contents['Options']) == "Options.create(important_arg)\nOptions.create_from_num(num)"
 
 @systemcls_param
 def test_constructor_inner_class(systemcls: Type[model.System]) -> None:

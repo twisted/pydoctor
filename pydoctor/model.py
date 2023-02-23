@@ -574,14 +574,17 @@ class Constructor(Protocol):
     Protocol implemented by L{Function} objects.
 
     Makes the assumption that the constructor name is available in the locals of the class
-    it's supposed to create. Typically with __init__ and __new__ it's always the case. But it also means that
-    no regular function (not classmethod or staticmethod) can be interpreted as a constructor for a given class.
+    it's supposed to create. Typically with __init__ and __new__ it's always the case. 
+    It means that no regular function can be interpreted as a constructor for a given class.
     """
     name: str
     annotations: Mapping[str, Optional[ast.expr]]
-    kind: DocumentableKind
-    parent: CanContainImportsDocumentable
-    isVisible: bool
+    kind: Optional[DocumentableKind]
+    # parent: CanContainImportsDocumentable
+    @property
+    def privacyClass(self) -> PrivacyClass:...
+    @property
+    def isVisible(self) -> bool:...
     def fullName(self) -> str:...
 
 class Class(CanContainImportsDocumentable):
@@ -639,10 +642,15 @@ class Class(CanContainImportsDocumentable):
                 continue
             # get return annotation, if it returns the same type as self, it's a constructor method.
             if not 'return' in fun.annotations:
+                # we currently only support constructor detection trought explicit annotations.
                 continue 
+            
+            # annotation should be resolved at the module scope
+            return_ann = astutils.node2fullname(fun.annotations['return'], self.module)
+            
             # pydoctor understand explicit annotation as well as the Self-Type.
-            return_ann = astutils.node2fullname(fun.annotations['return'], self)
-            if return_ann == self.fullName() or return_ann in ('typing.Self', 'typing_extensions.Self'):
+            if return_ann == self.fullName() or \
+               return_ann in ('typing.Self', 'typing_extensions.Self'):
                 self.constructors.append(fun)
         
         from pydoctor import epydoc2stan
@@ -755,7 +763,9 @@ class Inheritable(Documentable):
     def _localNameToFullName(self, name: str) -> str:
         return self.parent._localNameToFullName(name)
 
-class Function(Inheritable):
+# Function implements the Constructor protocol, 
+# but not all functions are constructors.
+class Function(Inheritable, Constructor):
     kind = DocumentableKind.FUNCTION
     is_async: bool
     annotations: Mapping[str, Optional[ast.expr]]

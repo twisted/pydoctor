@@ -1044,21 +1044,20 @@ def format_constructor_short_text(constructor: model.Constructor, forclass: mode
     # for signature with more than 5 parameters, 
     # we just show the elipsis after the fourth parameter
     annotations = constructor.annotations.items()
-    many_param_tresh = 6
-    many_param = len(annotations) > many_param_tresh
+    many_param = len(annotations) > 6
     
     for index, (name, ann) in enumerate(annotations):
         if name=='return':
             continue
 
-        if many_param and index > many_param_tresh - 2:
+        if many_param and index > 4:
             args += ', ...'
             break
         
         # Special casing __new__ because it's actually a static method
         if index==0 and (constructor.name in ('__new__', '__init__') or 
                          constructor.kind is model.DocumentableKind.CLASS_METHOD):
-            # Omit first argument (self/cls) from mini signature.
+            # Omit first argument (self/cls) from simplified signature.
             continue
         star = ''
         if isinstance(name, VariableArgument):
@@ -1072,7 +1071,7 @@ def format_constructor_short_text(constructor: model.Constructor, forclass: mode
         args += f"{star}{name}"
     
     # display innner classes with their name starting at the top level class.
-    _current = forclass
+    _current:model.CanContainImportsDocumentable = forclass
     class_name = [] 
     while isinstance(_current, model.Class):
         class_name.append(_current.name)
