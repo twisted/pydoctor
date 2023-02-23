@@ -653,6 +653,7 @@ class ParsedStanOnly(ParsedDocstring):
     def __init__(self, stan: Tag):
         super().__init__(fields=[])
         self._fromstan = stan
+    @property
     def has_body(self) -> bool:
         return True
     def to_stan(self, docstring_linker: Any) -> Tag:
@@ -1036,9 +1037,10 @@ def insert_break_points(text: str) -> 'Flattenable':
             r += [tags.wbr(), '.']
     return tags.transparent(*r)
 
-def format_constructor_short_text(constructor: model.Constructor, forclass: model.Class) -> str:
+def format_constructor_short_text(constructor: model.Function, forclass: model.Class) -> str:
     """
     Returns a simplified signature of the constructor.
+    C{forclass} is not always the function's parent, it can be a subclass.
     """
     args = ''
     # for signature with more than 5 parameters, 

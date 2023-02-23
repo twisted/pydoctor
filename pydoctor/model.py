@@ -569,24 +569,6 @@ def compute_mro(cls:'Class') -> List[Union['Class', str]]:
     init_finalbaseobjects(cls)
     return mro.mro(cls, getbases)
 
-class Constructor(Protocol):
-    """
-    Protocol implemented by L{Function} objects.
-
-    Makes the assumption that the constructor name is available in the locals of the class
-    it's supposed to create. Typically with __init__ and __new__ it's always the case. 
-    It means that no regular function can be interpreted as a constructor for a given class.
-    """
-    name: str
-    annotations: Mapping[str, Optional[ast.expr]]
-    kind: Optional[DocumentableKind]
-    # parent: CanContainImportsDocumentable
-    @property
-    def privacyClass(self) -> PrivacyClass:...
-    @property
-    def isVisible(self) -> bool:...
-    def fullName(self) -> str:...
-
 class Class(CanContainImportsDocumentable):
     kind = DocumentableKind.CLASS
     parent: CanContainImportsDocumentable
@@ -602,7 +584,12 @@ class Class(CanContainImportsDocumentable):
         self.rawbases: Sequence[Tuple[str, ast.expr]] = []
         self.raw_decorators: Sequence[ast.expr] = []
         self.subclasses: List[Class] = []
-        self.constructors: List[Constructor] = []
+        self.constructors: List[Function] = []
+        """
+        Makes the assumption that the constructor name is available in the locals of the class
+        it's supposed to create. Typically with C{__init__} and C{__new__} it's always the case. 
+        It means that no regular function can be interpreted as a constructor for a given class.
+        """
         self._initialbases: List[str] = []
         self._initialbaseobjects: List[Optional['Class']] = []
     
@@ -763,9 +750,7 @@ class Inheritable(Documentable):
     def _localNameToFullName(self, name: str) -> str:
         return self.parent._localNameToFullName(name)
 
-# Function implements the Constructor protocol, 
-# but not all functions are constructors.
-class Function(Inheritable, Constructor):
+class Function(Inheritable):
     kind = DocumentableKind.FUNCTION
     is_async: bool
     annotations: Mapping[str, Optional[ast.expr]]
