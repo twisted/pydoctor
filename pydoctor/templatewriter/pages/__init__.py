@@ -349,7 +349,7 @@ class ModulePage(CommonPage):
     ob: model.Module
 
     def extras(self) -> List["Flattenable"]:
-        r: List[Tag] = []
+        r: List["Flattenable"] = []
 
         sourceHref = util.srclink(self.ob)
         if sourceHref:
@@ -511,12 +511,12 @@ class ClassPage(CommonPage):
             r.extend([' (via ', tail, ')'])
         return r
 
-    def objectExtras(self, ob: model.Documentable) -> List[Tag]:
-        r = list(get_override_info(self.ob, ob.name, self.page_url))
+    def objectExtras(self, ob: model.Documentable) -> List["Flattenable"]:
+        r: List["Flattenable"] = list(get_override_info(self.ob, ob.name, self.page_url))
         r.extend(super().objectExtras(ob))
         return r
 
-def get_override_info(cls:model.Class, member_name:str, page_url:Optional[str]=None) -> Iterator[Tag]:
+def get_override_info(cls:model.Class, member_name:str, page_url:Optional[str]=None) -> Iterator["Flattenable"]:
     page_url = page_url or cls.page_object.url
     for b in cls.mro(include_self=False):
         if member_name not in b.contents:
@@ -537,7 +537,7 @@ def get_override_info(cls:model.Class, member_name:str, page_url:Optional[str]=N
 class ZopeInterfaceClassPage(ClassPage):
     ob: zopeinterface.ZopeInterfaceClass
 
-    def extras(self) -> List[Tag]:
+    def extras(self) -> List["Flattenable"]:
         r = super().extras()
         if self.ob.isinterface:
             namelist = [o.fullName() for o in 
@@ -564,9 +564,9 @@ class ZopeInterfaceClassPage(ClassPage):
                         return method
         return None
 
-    def objectExtras(self, ob: model.Documentable) -> List[Tag]:
+    def objectExtras(self, ob: model.Documentable) -> List["Flattenable"]:
         imeth = self.interfaceMeth(ob.name)
-        r: List[Tag] = []
+        r: List["Flattenable"] = []
         if imeth:
             iface = imeth.parent
             assert iface is not None
