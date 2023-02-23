@@ -726,10 +726,7 @@ def format_docstring_fallback(errs: List[ParseError], parsed_doc:ParsedDocstring
 
 def _wrap_in_paragraph(body:Sequence["Flattenable"]) -> bool:
     """
-    This is the counterpart of what we're doing in L{HTMLTranslator.should_be_compact_paragraph()}.
-    Since the L{HTMLTranslator} is generic for all parsed docstrings types, it always generates compact paragraphs.
-
-    But for docstrings, we want to have at least one paragraph for consistency.
+    Whether to wrap the given docstring stan body inside a paragraph. 
     """
     has_paragraph = False
     for e in body:
@@ -739,14 +736,15 @@ def _wrap_in_paragraph(body:Sequence["Flattenable"]) -> bool:
         break
     return bool(len(body)>0 and not has_paragraph)
 
-def wrap_in_paragraph(stan:Tag) -> "Flattenable":
+def unwrap_docstring_stan(stan:Tag) -> "Flattenable":
     """
-    Unwrap the body of the given Tag instance if 
-    it has a non-empty tag name and 
-    ensure there is one paragraph at least.
+    Unwrap the body of the given C{Tag} instance if it has a non-empty tag name and 
+    ensure there is at least one paragraph. 
 
-    Doesn't need a paragraph when the content is already inside 
-    a non-transparent Tag.
+    @note: This is the counterpart of what we're doing in L{HTMLTranslator.should_be_compact_paragraph()}.
+        Since the L{HTMLTranslator} is generic for all parsed docstrings types, it always generates compact paragraphs.
+
+        But for docstrings, we want to have at least one paragraph for consistency.
     """
     if stan.tagName:
         return stan
@@ -767,7 +765,7 @@ def format_docstring(obj: model.Documentable) -> Tag:
     else:
         assert obj.parsed_docstring is not None, "ensure_parsed_docstring() did not do it's job"
         stan = safe_to_stan(obj.parsed_docstring, source.docstring_linker, source, fallback=format_docstring_fallback)
-        ret(wrap_in_paragraph(stan))
+        ret(unwrap_docstring_stan(stan))
 
     fh = FieldHandler(obj)
     if isinstance(obj, model.Function):

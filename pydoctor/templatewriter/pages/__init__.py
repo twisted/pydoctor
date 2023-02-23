@@ -310,7 +310,7 @@ class CommonPage(Page):
         """
         r: List["Flattenable"] = []
         for extra in ob.extra_info:
-            r.append(epydoc2stan.wrap_in_paragraph(
+            r.append(epydoc2stan.unwrap_docstring_stan(
                 epydoc2stan.safe_to_stan(extra, ob.docstring_linker, ob,
                 fallback = lambda _,__,___:epydoc2stan.BROKEN, section='extra')))
         return r
