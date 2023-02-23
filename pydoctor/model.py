@@ -725,8 +725,12 @@ class Class(CanContainImportsDocumentable):
         """
 
         # We assume that the constructor parameters are the same as the
-        # __init__() parameters. This is incorrect if __new__() or the class
-        # call have different parameters.
+        # __new__()/__init__() parameters. This is incorrect if the metaclass
+        # __call__() have different parameters or __init__/__new__ is using
+        # signature changing decorators.
+        new = self.find('__new__')
+        if isinstance(new, Function):
+            return new.annotations
         init = self.find('__init__')
         if isinstance(init, Function):
             return init.annotations
