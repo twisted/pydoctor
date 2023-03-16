@@ -3,7 +3,7 @@ Code building ``all-documents.html``, ``searchindex.json`` and ``fullsearchindex
 """
 
 from pathlib import Path
-from typing import Iterable, Iterator, List, Optional, Tuple, Type, Dict, TYPE_CHECKING
+from typing import Iterable, Iterator, List, Optional, Set, Tuple, Type, Dict, TYPE_CHECKING
 import json
 
 import attr
@@ -63,6 +63,7 @@ class LunrIndexWriter:
                 'docstring':1,
                 'kind':-1
               }
+    _SKIP_PIPELINES = ["qname", "name", "kind", "names"]
 
     @staticmethod
     def get_ob_boost(ob: model.Documentable) -> int:
@@ -130,15 +131,16 @@ class LunrIndexWriter:
         # Skip some pipelines for better UX
         # https://lunr.readthedocs.io/en/latest/customisation.html#skip-a-pipeline-function-for-specific-field-names
         
+        # For all pipeline functions, stop_word_filter, stemmer and trimmer, skip their action expect for the
+        # docstring field.
         # We want classes named like "For" to be indexed with their name, even if it's matching stop words.
-        builder.pipeline.skip(stop_word_filter.stop_word_filter, ["qname", "name", "kind", "names"])  
-
-        # We don't want "name" and related fields to be stemmed since the field "names"
-        # contains all cased breaked combinaisons and will be stemmed.
-        builder.pipeline.skip(stemmer.stemmer, ["name", "kind", "qname"])
+        # We don't want "name" and related fields to be stemmed since we're stemming ourselves the name.
+        # see https://github.com/twisted/pydoctor/issues/648 for why.
+        for pipeline_function in builder.pipeline.registered_functions.values():
+            builder.pipeline.skip(pipeline_function, self._SKIP_PIPELINES)  
 
         # Removing the stemmer from the search pipeline, see https://github.com/yeraydiazdiaz/lunr.py/issues/112
-        builder.search_pipeline.remove(stemmer.stemmer)
+        builder.search_pipeline.reset()
 
         index = lunr(
             ref='qname',
@@ -169,11 +171,34 @@ def write_lunr_index(output_dir: Path, system: model.System) -> None:
         fields=["name", "names", "qname", "docstring", "kind"]
         ).write()
 
+def _stem(s:str, yielded:Set[str]) -> Iterator[str]:
+    # unused function that generate a lot of contents
+    word_length = len(s)
+    if word_length > 3:
+        for i in range(3, word_length-1):
+            p1 = s[:i]
+            if p1 not in yielded:
+                yielded.add(p1)
+                yield p1
+
 def stem_identifier(identifier: str) -> Iterator[str]:
+    # we are stemming the identifier ourselves because
+    # lunr is removing too much of important data. 
+    # See issue https://github.com/twisted/pydoctor/issues/648
+    yielded = set()
     parts = epydoc2stan._split_indentifier_parts_on_case(identifier)
     for p in parts:
         p = p.strip('_')
-        if p and p.lower() not in stop_word_filter.WORDS: 
-            yield p
+        if p:
+            if p not in yielded:
+                yielded.add(p)
+                yield p
+            # This will create slightly larger indexes since stemmed
+            # names are added to the field and are not replacing the
+            # field anymore.
+            p2 = ''.join(stemmer.porter_stemmer.stem(p))
+            if p2 not in yielded:
+                yielded.add(p2)
+                yield p2
 
 searchpages: List[Type[Page]] = [AllDocuments]
