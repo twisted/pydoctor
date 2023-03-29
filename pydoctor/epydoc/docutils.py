@@ -18,9 +18,12 @@ def new_document(source_path: str, settings: Optional[optparse.Values] = None) -
 
     @returns: L{nodes.document}
     """
+    global _DEFAULT_DOCUTILS_SETTINGS
     if settings is None:
         if _DEFAULT_DOCUTILS_SETTINGS is None:
-            settings = _DEFAULT_DOCUTILS_SETTINGS = frontend.get_default_settings()
+            _DEFAULT_DOCUTILS_SETTINGS = frontend.get_default_settings()
+
+        settings = _DEFAULT_DOCUTILS_SETTINGS
 
     return utils.new_document(source_path, settings)
 
