@@ -12,7 +12,7 @@ __docformat__ = 'epytext en'
 
 _DEFAULT_DOCUTILS_SETTINGS: Optional[optparse.Values] = None
 
-def new_document(source_path: str, settings: Optional[optparse.Values]) -> nodes.document:
+def new_document(source_path: str, settings: Optional[optparse.Values] = None) -> nodes.document:
     """
     Create a new L{nodes.document} using the provided settings or cached default settings.
 
