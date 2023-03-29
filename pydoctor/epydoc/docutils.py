@@ -5,7 +5,7 @@ from typing import Iterable, Iterator, Optional
 
 import optparse
 
-from docutils import nodes, utils, frontend
+from docutils import nodes, utils, frontend, __version_info__ as docutils_version_info
 from docutils.transforms import parts
 
 __docformat__ = 'epytext en'
@@ -19,9 +19,11 @@ def new_document(source_path: str, settings: Optional[optparse.Values] = None) -
     @returns: L{nodes.document}
     """
     global _DEFAULT_DOCUTILS_SETTINGS
-    if settings is None:
+    # If we have docutils >= 0.19 we use get_default_settings to calculate and cache
+    # the default settings. Otherwise we let new_document figure it out.
+    if settings is None and docutils_version_info >= (0,19):
         if _DEFAULT_DOCUTILS_SETTINGS is None:
-            _DEFAULT_DOCUTILS_SETTINGS = frontend.get_default_settings()
+            _DEFAULT_DOCUTILS_SETTINGS = frontend.get_default_settings() # type:ignore[attr-defined]
 
         settings = _DEFAULT_DOCUTILS_SETTINGS
 
