@@ -3,10 +3,26 @@ Collection of helper functions and classes related to the creation and processin
 """
 from typing import Iterable, Iterator, Optional
 
-from docutils import nodes
+import optparse
+
+from docutils import nodes, utils, frontend
 from docutils.transforms import parts
 
 __docformat__ = 'epytext en'
+
+_DEFAULT_DOCUTILS_SETTINGS: optparse.Values | None = None
+
+def new_document(source_path: str, settings: optparse.Values | None) -> nodes.document:
+    """
+    Create a new L{nodes.document} using the provided settings or cached default settings.
+
+    @returns: L{nodes.document}
+    """
+    if settings is None:
+        if _DEFAULT_DOCUTILS_SETTINGS is None:
+            settings = _DEFAULT_DOCUTILS_SETTINGS = frontend.get_default_settings()
+
+    return utils.new_document(source_path, settings)
 
 def _set_nodes_parent(nodes: Iterable[nodes.Node], parent: nodes.Element) -> Iterator[nodes.Node]:
     """

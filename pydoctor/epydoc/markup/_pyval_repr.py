@@ -50,7 +50,7 @@ from twisted.web.template import Tag
 from pydoctor.epydoc import sre_parse36, sre_constants36 as sre_constants
 from pydoctor.epydoc.markup import DocstringLinker
 from pydoctor.epydoc.markup.restructuredtext import ParsedRstDocstring
-from pydoctor.epydoc.docutils import set_node_attributes, wbr, obj_reference
+from pydoctor.epydoc.docutils import set_node_attributes, wbr, obj_reference, new_document
 from pydoctor.astutils import node2dottedname, bind_args
 
 def decode_with_backslashreplace(s: bytes) -> str:
@@ -312,7 +312,7 @@ class PyvalColorizer:
             is_complete = True
         
         # Put it all together.
-        document = utils.new_document('pyval_repr')
+        document = new_document('pyval_repr')
         # This ensure the .parent and .document attributes of the child nodes are set correcly.
         set_node_attributes(document, children=[set_node_attributes(node, document=document) for node in state.result])
         return ColorizedPyvalRepr(document, is_complete, state.warnings)

@@ -140,7 +140,7 @@ from docutils import utils, nodes
 from twisted.web.template import Tag
 
 from pydoctor.epydoc.markup import Field, ParseError, ParsedDocstring, ParserFunction
-from pydoctor.epydoc.docutils import set_node_attributes
+from pydoctor.epydoc.docutils import set_node_attributes, new_document
 from pydoctor.model import Documentable
 
 ##################################################
@@ -1393,9 +1393,9 @@ class ParsedEpytextDocstring(ParsedDocstring):
 
         if self._document is not None:
             return self._document
-        
-        self._document = utils.new_document('epytext')
-        
+
+        self._document = new_document('epytext')
+
         if self._tree is not None:
             node, = self._to_node(self._tree)
             # The contents is encapsulated inside a section node. 

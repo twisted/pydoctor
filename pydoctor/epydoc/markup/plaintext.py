@@ -18,7 +18,7 @@ from twisted.web.template import Tag, tags
 
 from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring, ParseError, ParserFunction
 from pydoctor.model import Documentable
-from pydoctor.epydoc.docutils import set_node_attributes
+from pydoctor.epydoc.docutils import set_node_attributes, new_document
 
 def parse_docstring(docstring: str, errors: List[ParseError]) -> ParsedDocstring:
     """
@@ -63,7 +63,7 @@ class ParsedPlaintextDocstring(ParsedDocstring):
             return self._document
         else:
             # create document
-            _document = utils.new_document('plaintext')
+            _document = new_document('plaintext')
 
             # split text into paragraphs
             paragraphs = [set_node_attributes(nodes.paragraph('',''), children=[
