@@ -1609,7 +1609,7 @@ def test_insert_break_points_dotted_name() -> None:
     assert insert_break_points('pack._mod_.__einÜberlangerName__') == 'pack<wbr></wbr>._mod_<wbr></wbr>.__ein<wbr></wbr>Überlanger<wbr></wbr>Name__'
 
 def test_stem_identifier() -> None:
-    assert list(stem_identifier('__some_very_long_name__')) == [
+    assert list(stem_identifier('__some_very_long_name__')) == list(stem_identifier('__some_very_very_long_name__')) == [
         'some', 'very', 'long', 'name',]
     
     assert list(stem_identifier('transitivity_maximum')) == [
