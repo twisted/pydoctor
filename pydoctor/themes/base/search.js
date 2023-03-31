@@ -168,10 +168,11 @@ function _stopSearchingProcess(){
 //////// SEARCH WARPPER FUNCTIONS /////////
 
 // Values configuring the search-as-you-type feature.
-const SEARCH_DEFAULT_DELAY = 100; // in miliseconds
-const SEARCH_INCREASED_DELAY = 200;
-const SEARCH_INDEX_SIZE_TRESH_INCREASE_DELAY = 10; // in MB
-const SEARCH_INDEX_SIZE_TRESH_DISABLE_SEARCH_AS_YOU_TYPE = 20;
+var SEARCH_DEFAULT_DELAY = 100; // in miliseconds
+var SEARCH_INCREASED_DELAY = 200;
+var SEARCH_INDEX_SIZE_TRESH_INCREASE_DELAY = 10; // in MB
+var SEARCH_INDEX_SIZE_TRESH_DISABLE_SEARCH_AS_YOU_TYPE = 20;
+var SEARCH_AUTO_WILDCARD = true;
 
 // Search delay depends on index size.
 function _getIndexSizePromise(indexURL){
@@ -293,7 +294,7 @@ function launchSearch(noDelay){
     isSearchReadyPromise = _getIsSearchReadyPromise()
   }
   return isSearchReadyPromise.then((r)=>{ 
-  return lunrSearch(_query, indexURL, _fields, "lunr.js", !noDelay?searchDelay:0).then((lunrResults) => { 
+  return lunrSearch(_query, indexURL, _fields, "lunr.js", !noDelay?searchDelay:0, SEARCH_AUTO_WILDCARD).then((lunrResults) => { 
 
       // outdated query results
       if (_searchStartTime != _lastSearchStartTime){return;}

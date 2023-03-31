@@ -14,6 +14,7 @@
 // - query: string
 // - indexJSONData: dict
 // - defaultFields: list of strings
+// - autoWildcard: boolean
 let _lunrWorkerCode = `
 
 // The lunr.js code will be inserted here.
@@ -28,6 +29,9 @@ onmessage = (message) => {
     if (!message.data.defaultFields) {
         throw new Error('No default fields provided.');
     }
+    if (!message.data.hasOwnProperty('autoWildcard')){
+        throw new Error('No value for auto wildcard provided.');
+    }
     // Create index
     let index = lunr.Index.load(message.data.indexJSONData);
     
@@ -37,6 +41,7 @@ onmessage = (message) => {
         // to remove the field 'kind' from the clause since this it's only useful when specifically requested.
         var parser = new lunr.QueryParser(message.data.query, _query)
         parser.parse()
+        var hasWildcard = false;
         _query.clauses.forEach(clause => {
             if (clause.fields == _query.allFields){
                 // we change the query fields when they are applicable to all fields
@@ -44,8 +49,21 @@ onmessage = (message) => {
                 // which should not be matched by default.
                 clause.fields = message.data.defaultFields;
             }
+            // clause.wildcard is actually always NONE due to https://github.com/olivernn/lunr.js/issues/495
+            // But this works...
+            if (clause.term.indexOf('*') != -1){
+                hasWildcard = true
+            }
             // TODO: If fuzzy match is greater than 20 throw an error.
         });
+        // See issue https://github.com/twisted/pydoctor/issues/648
+        if ((message.data.autoWildcard == true) && (hasWildcard == false)){
+            _query.clauses.forEach(clause => {
+                // Setting clause.wildcard is useless due to https://github.com/olivernn/lunr.js/issues/495
+                // But this works...
+                clause.term = clause.term + '*'
+            });
+        }
     }
 
     // Launch the search
@@ -145,8 +163,9 @@ function _getWorkerPromise(lunJsSourceCode){ // -> Promise of a fresh worker to 
  * @param lunrJsURL: URL pointing to a copy of lunr.js.
  * @param searchDelay: Number of miliseconds to wait before actually launching the query. This is useful to set for "search as you type" kind of search box
  *                     because it let a chance to users to continue typing without triggering useless searches (because previous search is aborted on launching a new one).
+ * @param autoWildcard: Whether to automatically append wildcards to all query clauses when no wildcard is already specified. boolean.
  */
-function lunrSearch(query, indexURL, defaultFields, lunrJsURL, searchDelay){
+function lunrSearch(query, indexURL, defaultFields, lunrJsURL, searchDelay, autoWildcard){
     // Abort ongoing search
     abortSearch();
 
@@ -189,7 +208,8 @@ function lunrSearch(query, indexURL, defaultFields, lunrJsURL, searchDelay){
             let _msgData = {
                 'query': query,
                 'indexJSONData': lunrIndexData,
-                'defaultFields': defaultFields
+                'defaultFields': defaultFields,
+                'autoWildcard': autoWildcard, 
             }
             
             if (!_aborted){
