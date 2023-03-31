@@ -1610,25 +1610,20 @@ def test_insert_break_points_dotted_name() -> None:
 
 def test_stem_identifier() -> None:
     assert list(stem_identifier('__some_very_long_name__')) == [
-        'some',
-        'very', 
-        'veri',
-        'long',
-        'name',]
+        'some', 'very', 'long', 'name',]
     
     assert list(stem_identifier('transitivity_maximum')) == [
-        'transitivity', 'transit', 'maximum',]
+        'transitivity', 'maximum',]
     
     assert list(stem_identifier('ForEach')) == [
         'For', 'Each',]
-    
 
     assert list(stem_identifier('__someVeryLongName__')) == [
-        'some', 'Very', 'Veri', 'Long', 'Name'
-    ]
+        'some', 'Very', 'Long', 'Name', ]
+    
     assert list(stem_identifier('_name')) == ['name']
     assert list(stem_identifier('name')) == ['name']
-    assert list(stem_identifier('processModuleAST')) == ['process', 'Module', 'Modul', 'AST']
+    assert list(stem_identifier('processModuleAST')) == ['process', 'Module', 'AST']
 
 def test_self_cls_in_function_params(capsys: CapSys) -> None:
     """
