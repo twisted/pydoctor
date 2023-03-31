@@ -12,7 +12,7 @@ from pydoctor.templatewriter.pages import Page
 from pydoctor import model, epydoc2stan, node2stan
 
 from twisted.web.template import Tag, renderer
-from lunr import lunr, get_default_builder, stop_word_filter, stemmer
+from lunr import lunr, get_default_builder
 
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable
@@ -171,15 +171,6 @@ def write_lunr_index(output_dir: Path, system: model.System) -> None:
         fields=["name", "names", "qname", "docstring", "kind"]
         ).write()
 
-def _stem(s:str, yielded:Set[str]) -> Iterator[str]:
-    # unused function that generate a lot of contents
-    word_length = len(s)
-    if word_length > 3:
-        for i in range(3, word_length-1):
-            p1 = s[:i]
-            if p1 not in yielded:
-                yielded.add(p1)
-                yield p1
 
 def stem_identifier(identifier: str) -> Iterator[str]:
     # we are stemming the identifier ourselves because
@@ -193,12 +184,5 @@ def stem_identifier(identifier: str) -> Iterator[str]:
             if p not in yielded:
                 yielded.add(p)
                 yield p
-            # This will create slightly larger indexes since stemmed
-            # names are added to the field and are not replacing the
-            # field anymore.
-            p2 = ''.join(stemmer.porter_stemmer.stem(p))
-            if p2 not in yielded:
-                yielded.add(p2)
-                yield p2
 
 searchpages: List[Type[Page]] = [AllDocuments]
