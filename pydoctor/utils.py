@@ -25,7 +25,7 @@ def findClassFromDottedName(
         ) -> Type[T]:
     """
     Looks up a class by full name.
-    
+
     @raises ValueError: If can't find the class.
     """
     if '.' not in dottedname:
@@ -97,8 +97,8 @@ def partialclass(cls: Type[Any], *args: Any, **kwds: Any) -> Type[Any]:
     Bind a class to be created with some predefined __init__ arguments.
     """
     # mypy gets errors: - Variable "cls" is not valid as a type
-    #                   - Invalid base class "cls" 
-    class NewPartialCls(cls): #type: ignore
+    #                   - Invalid base class "cls"
+    class NewPartialCls(cls):
         __init__ = functools.partialmethod(cls.__init__, *args, **kwds) #type: ignore
         __class__ = cls
     assert isinstance(NewPartialCls, type)
