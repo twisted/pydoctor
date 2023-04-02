@@ -61,7 +61,7 @@ onmessage = (message) => {
         var new_clauses = [];
         if ((message.data.autoWildcard == true) && (hasTraillingWildcard == false)){
             _query.clauses.forEach(clause => {
-                // Setting clause.wildcard is useless due to https://github.com/olivernn/lunr.js/issues/495
+                // Setting clause.wildcard is useless.
                 // But this works...
                 let new_clause = {...clause}
                 new_clause.term = new_clause.term + '*'
