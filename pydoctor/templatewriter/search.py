@@ -57,14 +57,18 @@ class LunrIndexWriter:
     fields: List[str]
 
     _BOOSTS = {
-                'name':4,
-                'names': 2,
-                'qname':1,
+                'name':6,
+                'names': 1,
+                'qname':2,
                 'docstring':1,
                 'kind':-1
               }
-    _SKIP_PIPELINES = ["qname", "name", "kind", "names"]
-
+    
+    # For all pipeline functions, stop_word_filter, stemmer and trimmer, skip their action expect for the
+    # docstring field.
+    _SKIP_PIPELINES = list(_BOOSTS)
+    _SKIP_PIPELINES.remove('docstring')
+    
     @staticmethod
     def get_ob_boost(ob: model.Documentable) -> int:
         # Advantage container types because they hold more informations.
@@ -131,8 +135,6 @@ class LunrIndexWriter:
         # Skip some pipelines for better UX
         # https://lunr.readthedocs.io/en/latest/customisation.html#skip-a-pipeline-function-for-specific-field-names
         
-        # For all pipeline functions, stop_word_filter, stemmer and trimmer, skip their action expect for the
-        # docstring field.
         # We want classes named like "For" to be indexed with their name, even if it's matching stop words.
         # We don't want "name" and related fields to be stemmed since we're stemming ourselves the name.
         # see https://github.com/twisted/pydoctor/issues/648 for why.
