@@ -41,7 +41,7 @@ onmessage = (message) => {
         // to remove the field 'kind' from the clause since this it's only useful when specifically requested.
         var parser = new lunr.QueryParser(message.data.query, _query)
         parser.parse()
-        var hasWildcard = false;
+        var hasTraillingWildcard = false;
         _query.clauses.forEach(clause => {
             if (clause.fields == _query.allFields){
                 // we change the query fields when they are applicable to all fields
@@ -51,19 +51,30 @@ onmessage = (message) => {
             }
             // clause.wildcard is actually always NONE due to https://github.com/olivernn/lunr.js/issues/495
             // But this works...
-            if (clause.term.indexOf('*') != -1){
-                hasWildcard = true
+            if (clause.term.slice(-1) == '*'){
+                // we want to avoid the auto wildcard system only if a trailling wildcard is already added
+                // not if a leading wildcard exists
+                hasTraillingWildcard = true
             }
-            // TODO: If fuzzy match is greater than 20 throw an error.
         });
-        // See issue https://github.com/twisted/pydoctor/issues/648
-        if ((message.data.autoWildcard == true) && (hasWildcard == false)){
+        // Auto wilcard feature, see issue https://github.com/twisted/pydoctor/issues/648
+        var new_clauses = [];
+        if ((message.data.autoWildcard == true) && (hasTraillingWildcard == false)){
             _query.clauses.forEach(clause => {
                 // Setting clause.wildcard is useless due to https://github.com/olivernn/lunr.js/issues/495
                 // But this works...
-                clause.term = clause.term + '*'
+                let new_clause = {...clause}
+                new_clause.term = new_clause.term + '*'
+                clause.boost = 2
+                new_clause.boost = 0
+                new_clauses.push(new_clause)
             });
         }
+        new_clauses.forEach(clause => {
+            _query.clauses.push(clause)
+        });
+        console.log('Parsed query:')
+        console.dir(_query.clauses)
     }
 
     // Launch the search
