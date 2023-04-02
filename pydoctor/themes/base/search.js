@@ -356,18 +356,8 @@ function displaySearchResults(_query, documentResults, lunrResults){
     results_list.appendChild(buildSearchResult(dobj));
   });
 
-  if (lunrResults[0].score <= 5){
-    if (lunrResults.length > 500){
-      setWarning("Your search yielded a lot of results! and there aren't many great matches. Maybe try with other terms?");
-    }
-    else{
-      setWarning("Unfortunately, it looks like there aren't many great matches for your search. Maybe try with other terms?");
-    }
-  }
-  else {
-    if (lunrResults.length > 500){
-      setWarning("Your search yielded a lot of results! Maybe try with other terms?");
-    }
+  if (lunrResults.length > 500){
+    setWarning("Your search yielded a lot of results! Maybe try with other terms?");
   }
 
   let publicResults = documentResults.filter(function(value){
