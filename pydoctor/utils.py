@@ -25,7 +25,7 @@ def findClassFromDottedName(
         ) -> Type[T]:
     """
     Looks up a class by full name.
-    
+
     @raises ValueError: If can't find the class.
     """
     if '.' not in dottedname:
