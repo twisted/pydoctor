@@ -73,8 +73,8 @@ You can select a different format using the ``--docformat`` option or the ``__do
 What's New?
 ~~~~~~~~~~~
 
-in development
-^^^^^^^^^^^^^^
+pydoctor 23.4.0
+^^^^^^^^^^^^^^^
 
 * Add support for Python 3.11
 * Add support for the ``@overload`` decorator.
