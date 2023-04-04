@@ -44,7 +44,7 @@ from typing import Any, AnyStr, Union, Callable, Dict, Iterable, Sequence, Optio
 
 import attr
 import astor.op_util
-from docutils import nodes, utils
+from docutils import nodes
 from twisted.web.template import Tag
 
 from pydoctor.epydoc import sre_parse36, sre_constants36 as sre_constants

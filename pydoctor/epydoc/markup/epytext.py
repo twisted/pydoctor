@@ -136,7 +136,7 @@ from typing import Any, Iterable, List, Optional, Sequence, Set, Union, cast, ov
 import re
 import unicodedata
 
-from docutils import utils, nodes
+from docutils import nodes
 from twisted.web.template import Tag
 
 from pydoctor.epydoc.markup import Field, ParseError, ParsedDocstring, ParserFunction

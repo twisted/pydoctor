@@ -40,7 +40,7 @@ import re
 from importlib import import_module
 from inspect import getmodulename
 
-from docutils import nodes, utils
+from docutils import nodes
 from twisted.web.template import Tag, tags
 
 from pydoctor import node2stan

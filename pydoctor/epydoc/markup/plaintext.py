@@ -13,7 +13,7 @@ __docformat__ = 'epytext en'
 
 from typing import List, Optional
 
-from docutils import nodes, utils
+from docutils import nodes
 from twisted.web.template import Tag, tags
 
 from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring, ParseError, ParserFunction
