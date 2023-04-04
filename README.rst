@@ -89,6 +89,7 @@ in development
   We now allow to add arbitrary paths to the system, 
   but only the objects inside a module wich path is relative to
   the base directory can have a source control link generated.
+* Cache the default docutils settings on docutils>=0.19 to improve performance.
 * Improve the search bar user experience by automatically appending wildcard to each query terms
   when no terms already contain a wildcard. 
 
