@@ -88,7 +88,7 @@ code, .literal {
 
 /* special cases where pydoctor's default theme renders ok with the background,
 but doesn't render nicely with this theme. */
-.class-signature > code, .page-header  h1 > code, pre code{
+.class-signature > code, h1 > code, pre code{
     background-color: transparent;
     border: none !important;
 }
