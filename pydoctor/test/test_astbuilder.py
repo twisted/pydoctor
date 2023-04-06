@@ -2391,7 +2391,7 @@ def test_explicit_annotation_wins_over_inferred_type(systemcls: Type[model.Syste
         '''
     mod = fromText(src, systemcls=systemcls, modname='mod')
     thing = mod.system.allobjects['mod.Stuff.thing']
-    assert flatten_text(epydoc2stan.type2stan(thing)) == "List[Tuple[Thing, ...]]"
+    assert flatten_text(epydoc2stan.type2stan(thing)) == "List[Tuple[Thing, ...]]" #type:ignore
 
     src = '''\
     class Stuff(object):
@@ -2401,7 +2401,7 @@ def test_explicit_annotation_wins_over_inferred_type(systemcls: Type[model.Syste
         '''
     mod = fromText(src, systemcls=systemcls, modname='mod')
     thing = mod.system.allobjects['mod.Stuff.thing']
-    assert flatten_text(epydoc2stan.type2stan(thing)) == "List[Tuple[Thing, ...]]"
+    assert flatten_text(epydoc2stan.type2stan(thing)) == "List[Tuple[Thing, ...]]" #type:ignore
 
 @systemcls_param
 def test_explicit_inherited_annotation_wins_over_inferred_type(systemcls: Type[model.System]) -> None:
@@ -2415,7 +2415,7 @@ def test_explicit_inherited_annotation_wins_over_inferred_type(systemcls: Type[m
         '''
     mod = fromText(src, systemcls=systemcls, modname='mod')
     thing = mod.system.allobjects['mod.Stuff.thing']
-    assert flatten_text(epydoc2stan.type2stan(thing)) == "List[Tuple[Thing, ...]]"
+    assert flatten_text(epydoc2stan.type2stan(thing)) == "List[Tuple[Thing, ...]]" #type:ignore
 
 @systemcls_param
 def test_inferred_type_override(systemcls: Type[model.System]) -> None:
@@ -2427,4 +2427,4 @@ def test_inferred_type_override(systemcls: Type[model.System]) -> None:
         '''
     mod = fromText(src, systemcls=systemcls, modname='mod')
     thing = mod.system.allobjects['mod.Stuff.thing']
-    assert flatten_text(epydoc2stan.type2stan(thing)) == "tuple[int, ...]"
+    assert flatten_text(epydoc2stan.type2stan(thing)) == "tuple[int, ...]" #type:ignore
