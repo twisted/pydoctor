@@ -2380,3 +2380,52 @@ def test_default_constructors(systemcls: Type[model.System]) -> None:
 
     mod = fromText(src, systemcls=systemcls)
     assert getConstructorsText(mod.contents['Animal']) == "Animal()"
+
+@systemcls_param
+def test_explicit_annotation_wins_over_inferred_type(systemcls: Type[model.System]) -> None:
+    src = '''\
+    class Stuff(object):
+        thing: List[Tuple[Thing, ...]]
+        def __init__(self):
+            self.thing = []
+        '''
+    mod = fromText(src, systemcls=systemcls, modname='mod')
+    thing = mod.system.allobjects['mod.Stuff.thing']
+    assert flatten_text(epydoc2stan.type2stan(thing)) == "List[Tuple[Thing, ...]]"
+
+    src = '''\
+    class Stuff(object):
+        thing = []
+        def __init__(self):
+            self.thing: List[Tuple[Thing, ...]] = []
+        '''
+    mod = fromText(src, systemcls=systemcls, modname='mod')
+    thing = mod.system.allobjects['mod.Stuff.thing']
+    assert flatten_text(epydoc2stan.type2stan(thing)) == "List[Tuple[Thing, ...]]"
+
+@pytest.mark.xfail
+@systemcls_param
+def test_explicit_inherited_annotation_wins_over_inferred_type(systemcls: Type[model.System]) -> None:
+
+    src = '''\
+    class _Stuff(object):
+        thing: List[Tuple[Thing, ...]]
+    class Stuff(_Stuff):
+        def __init__(self):
+            self.thing = []
+        '''
+    mod = fromText(src, systemcls=systemcls, modname='mod')
+    thing = mod.system.allobjects['mod.Stuff.thing']
+    assert flatten_text(epydoc2stan.type2stan(thing)) == "List[Tuple[Thing, ...]]"
+
+@systemcls_param
+def test_inferred_type_override(systemcls: Type[model.System]) -> None:
+    src = '''\
+    class Stuff(object):
+        thing = 1
+        def __init__(self):
+            self.thing = (1,2)
+        '''
+    mod = fromText(src, systemcls=systemcls, modname='mod')
+    thing = mod.system.allobjects['mod.Stuff.thing']
+    assert flatten_text(epydoc2stan.type2stan(thing)) == "tuple[int, ...]"

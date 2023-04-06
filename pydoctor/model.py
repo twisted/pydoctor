@@ -818,7 +818,8 @@ class FunctionOverload:
 
 class Attribute(Inheritable):
     kind: Optional[DocumentableKind] = DocumentableKind.ATTRIBUTE
-    annotation: Optional[ast.expr]
+    annotation: Optional[ast.expr] = None
+    explicit_annotation = False
     decorators: Optional[Sequence[ast.expr]] = None
     value: Optional[ast.expr] = None
     """

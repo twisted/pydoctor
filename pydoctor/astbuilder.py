@@ -495,6 +495,23 @@ class ModuleVistor(NodeVisitor):
                 # Simply ignore it because it's duplication of information.
                 obj.annotation = _infer_type(value) if value else None
 
+    @classmethod
+    def _setAttributeAnnotation(cls, obj: model.Attribute, 
+                                annotation: Optional[ast.expr], 
+                                value: Optional[ast.expr]) -> None:
+        if annotation is None:
+            if obj.explicit_annotation:
+                # do not override an explicit annotation
+                return 
+            elif value is not None:
+                # TODO: We might want to do the type inference is post processing
+                # to handled the inherited attribute with explicit annotation case.
+                obj.annotation = _infer_type(value)
+        else:
+            # What to do when an attribute has several explicit annotations?
+            obj.explicit_annotation = True
+            obj.annotation = annotation
+
     def _handleModuleVar(self,
             target: str,
             annotation: Optional[ast.expr],
@@ -524,11 +541,9 @@ class ModuleVistor(NodeVisitor):
 
         if not isinstance(obj, model.Attribute):
             return
-            
-        if annotation is None and expr is not None:
-            annotation = _infer_type(expr)
         
-        obj.annotation = annotation
+        self._setAttributeAnnotation(obj, annotation, expr)
+        
         obj.setLineNumber(lineno)
         
         if is_constant(obj):
@@ -572,11 +587,8 @@ class ModuleVistor(NodeVisitor):
         if obj.kind is None:
             obj.kind = model.DocumentableKind.CLASS_VARIABLE
 
-        if expr is not None:
-            if annotation is None:
-                annotation = _infer_type(expr)
-        
-        obj.annotation = annotation
+        self._setAttributeAnnotation(obj, annotation, expr)
+
         obj.setLineNumber(lineno)
 
         if is_constant(obj):
@@ -607,10 +619,8 @@ class ModuleVistor(NodeVisitor):
 
             obj = self.builder.addAttribute(name=name, kind=None, parent=cls)
 
-        if annotation is None and expr is not None:
-            annotation = _infer_type(expr)
-        
-        obj.annotation = annotation
+        self._setAttributeAnnotation(obj, annotation, expr)
+
         obj.setLineNumber(lineno)
 
         # Maybe an instance variable overrides a constant, 
