@@ -16,7 +16,7 @@ import astor
 from pydoctor import epydoc2stan, model, node2stan, extensions
 from pydoctor.epydoc.markup._pyval_repr import colorize_inline_pyval
 from pydoctor.astutils import (is_none_literal, is_typing_annotation, is_using_annotations, is_using_typing_final, node2dottedname, node2fullname, 
-                               is__name__equals__main__, unstring_annotation, iterassign, extract_docstring_linenum,  
+                               is__name__equals__main__, unstring_annotation, iterassign, extract_docstring_linenum, infer_type,   
                                NodeVisitor)
 
 def parseFile(path: Path) -> ast.Module:
@@ -486,30 +486,20 @@ class ModuleVistor(NodeVisitor):
                     annotation = extract_final_subscript(obj.annotation)
                 except ValueError as e:
                     obj.report(str(e), section='ast', lineno_offset=lineno-obj.linenumber)
-                    obj.annotation = _infer_type(value) if value else None
+                    obj.annotation = infer_type(value) if value else None
                 else:
                     # Will not display as "Final[str]" but rather only "str"
                     obj.annotation = annotation
             else:
                 # Just plain "Final" annotation.
                 # Simply ignore it because it's duplication of information.
-                obj.annotation = _infer_type(value) if value else None
+                obj.annotation = infer_type(value) if value else None
 
     @classmethod
     def _setAttributeAnnotation(cls, obj: model.Attribute, 
-                                annotation: Optional[ast.expr], 
-                                value: Optional[ast.expr]) -> None:
-        if annotation is None:
-            if obj.explicit_annotation:
-                # do not override an explicit annotation
-                return 
-            elif value is not None:
-                # TODO: We might want to do the type inference is post processing
-                # to handled the inherited attribute with explicit annotation case.
-                obj.annotation = _infer_type(value)
-        else:
+                                annotation: Optional[ast.expr],) -> None:
+        if annotation is not None:
             # What to do when an attribute has several explicit annotations?
-            obj.explicit_annotation = True
             obj.annotation = annotation
 
     def _handleModuleVar(self,
@@ -542,7 +532,7 @@ class ModuleVistor(NodeVisitor):
         if not isinstance(obj, model.Attribute):
             return
         
-        self._setAttributeAnnotation(obj, annotation, expr)
+        self._setAttributeAnnotation(obj, annotation)
         
         obj.setLineNumber(lineno)
         
@@ -587,7 +577,7 @@ class ModuleVistor(NodeVisitor):
         if obj.kind is None:
             obj.kind = model.DocumentableKind.CLASS_VARIABLE
 
-        self._setAttributeAnnotation(obj, annotation, expr)
+        self._setAttributeAnnotation(obj, annotation)
 
         obj.setLineNumber(lineno)
 
@@ -619,7 +609,7 @@ class ModuleVistor(NodeVisitor):
 
             obj = self.builder.addAttribute(name=name, kind=None, parent=cls)
 
-        self._setAttributeAnnotation(obj, annotation, expr)
+        self._setAttributeAnnotation(obj, annotation)
 
         obj.setLineNumber(lineno)
 
@@ -1015,59 +1005,6 @@ class _AnnotationValueFormatter(_ValueFormatter):
         Present the annotation wrapped inside <code> tags.
         """
         return '<code>%s</code>' % super().__repr__()
-
-
-def _infer_type(expr: ast.expr) -> Optional[ast.expr]:
-    """Infer an expression's type.
-    @param expr: The expression's AST.
-    @return: A type annotation, or None if the expression has no obvious type.
-    """
-    try:
-        value: object = ast.literal_eval(expr)
-    except (ValueError, TypeError):
-        return None
-    else:
-        ann = _annotation_for_value(value)
-        if ann is None:
-            return None
-        else:
-            return ast.fix_missing_locations(ast.copy_location(ann, expr))
-
-def _annotation_for_value(value: object) -> Optional[ast.expr]:
-    if value is None:
-        return None
-    name = type(value).__name__
-    if isinstance(value, (dict, list, set, tuple)):
-        ann_elem = _annotation_for_elements(value)
-        if isinstance(value, dict):
-            ann_value = _annotation_for_elements(value.values())
-            if ann_value is None:
-                ann_elem = None
-            elif ann_elem is not None:
-                ann_elem = ast.Tuple(elts=[ann_elem, ann_value])
-        if ann_elem is not None:
-            if name == 'tuple':
-                ann_elem = ast.Tuple(elts=[ann_elem, ast.Ellipsis()])
-            return ast.Subscript(value=ast.Name(id=name),
-                                 slice=ast.Index(value=ann_elem))
-    return ast.Name(id=name)
-
-def _annotation_for_elements(sequence: Iterable[object]) -> Optional[ast.expr]:
-    names = set()
-    for elem in sequence:
-        ann = _annotation_for_value(elem)
-        if isinstance(ann, ast.Name):
-            names.add(ann.id)
-        else:
-            # Nested sequences are too complex.
-            return None
-    if len(names) == 1:
-        name = names.pop()
-        return ast.Name(id=name)
-    else:
-        # Empty sequence or no uniform type.
-        return None
-
 
 DocumentableT = TypeVar('DocumentableT', bound=model.Documentable)
 

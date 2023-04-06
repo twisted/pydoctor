@@ -819,7 +819,6 @@ class FunctionOverload:
 class Attribute(Inheritable):
     kind: Optional[DocumentableKind] = DocumentableKind.ATTRIBUTE
     annotation: Optional[ast.expr] = None
-    explicit_annotation = False
     decorators: Optional[Sequence[ast.expr]] = None
     value: Optional[ast.expr] = None
     """
@@ -827,6 +826,12 @@ class Attribute(Inheritable):
 
     None value means the value is not initialized at the current point of the the process. 
     """
+
+    def _infer_annotation(self) -> None:
+        if self.annotation is not None or self.value is None:
+            # do not override explicit annotation
+            return
+        self.annotation = astutils.infer_type(self.value)
 
 # Work around the attributes of the same name within the System class.
 _ModuleT = Module
@@ -1429,6 +1434,9 @@ class System:
             
             if is_exception(cls):
                 cls.kind = DocumentableKind.EXCEPTION
+        
+        for attr in self.objectsOfType(Attribute):
+            attr._infer_annotation()
 
         for post_processor in self._post_processors:
             post_processor(self)
