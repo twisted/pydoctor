@@ -2215,9 +2215,7 @@ def test_property_corner_cases(systemcls: Type[model.System], capsys: CapSys) ->
     '''
 
     src_mod = '''
-    from typing import TYPE_CHECKING
-    if TYPE_CHECKING:
-        from mod import System
+    from mod import System
     
     class BaseClass(object):
         system: 'System'
