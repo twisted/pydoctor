@@ -1448,8 +1448,8 @@ class System:
             if is_exception(cls):
                 cls.kind = DocumentableKind.EXCEPTION
         
-        for attr in self.objectsOfType(Attribute):
-            attr._infer_annotation()
+        for attrib in self.objectsOfType(Attribute):
+            attrib._infer_annotation()
 
         for post_processor in self._post_processors:
             post_processor(self)
