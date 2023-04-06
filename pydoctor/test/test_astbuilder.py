@@ -2156,7 +2156,7 @@ def test_prepend_package_real_path(systemcls: Type[model.System]) -> None:
 def getConstructorsText(cls: model.Documentable) -> str:
     assert isinstance(cls, model.Class)
     return '\n'.join(
-        epydoc2stan.format_constructor_short_text(c, cls) for c in cls.constructors)
+        epydoc2stan.format_constructor_short_text(c, cls) for c in cls.public_constructors)
 
 @systemcls_param
 def test_crash_type_inference_unhashable_type(systemcls: Type[model.System], capsys:CapSys) -> None:
@@ -2346,3 +2346,37 @@ def test_constructor_five_paramters(systemcls: Type[model.System]) -> None:
     mod = fromText(src, systemcls=systemcls)
 
     assert getConstructorsText(mod.contents['Animal']) == "Animal(name, lastname, age, spec, extinct)"
+
+@systemcls_param
+def test_default_constructors(systemcls: Type[model.System]) -> None:
+    src = '''\
+    class Animal(object):
+        def __init__(self):
+            ...
+        def __new__(cls):
+            ...
+        @classmethod
+        def new(cls) -> 'Animal':
+            ...
+        '''
+
+    mod = fromText(src, systemcls=systemcls)
+    assert getConstructorsText(mod.contents['Animal']) == "Animal.new()"
+
+    src = '''\
+    class Animal(object):
+        def __init__(self):
+            ...
+        '''
+
+    mod = fromText(src, systemcls=systemcls)
+    assert getConstructorsText(mod.contents['Animal']) == ""
+
+    src = '''\
+    class Animal(object):
+        def __init__(self):
+            "thing"
+        '''
+
+    mod = fromText(src, systemcls=systemcls)
+    assert getConstructorsText(mod.contents['Animal']) == "Animal()"

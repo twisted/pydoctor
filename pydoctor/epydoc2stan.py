@@ -45,27 +45,6 @@ def _get_docformat(obj: model.Documentable) -> str:
     docformat = obj.module.docformat or obj.system.options.docformat
     return docformat
 
-def get_docstring(
-        obj: model.Documentable
-        ) -> Tuple[Optional[str], Optional[model.Documentable]]:
-    """
-    Fetch the docstring for a documentable.
-    Treat empty docstring as undocumented.
-
-    :returns:
-        - C{(docstring, source)} if the object is documented.
-        - C{(None, None)} if the object has no docstring (even inherited).
-        - C{(None, source)} if the object has an empty docstring.
-    """
-    for source in obj.docsources():
-        doc = source.docstring
-        if doc:
-            return doc, source
-        if doc is not None:
-            # Treat empty docstring as undocumented.
-            return None, source
-    return None, None
-
 @attr.s(auto_attribs=True)
 class FieldDesc:
     """
@@ -620,7 +599,7 @@ def ensure_parsed_docstring(obj: model.Documentable) -> Optional[model.Documenta
           from C{obj} if the documentation is inherited).
         - If the object is undocumented: C{None}.
     """
-    doc, source = get_docstring(obj)
+    doc, source = model.get_docstring(obj)
 
     # Use cached or split version if possible.
     parsed_doc = obj.parsed_docstring
@@ -1101,11 +1080,11 @@ def populate_constructors_extra_info(cls:model.Class) -> None:
     Adds an extra information to be rendered based on Class constructors.
     """
     from pydoctor.templatewriter import util
-    visibleConstructors = [c for c in cls.constructors if c.isVisible]
-    if visibleConstructors:
-        plural = 's' if len(visibleConstructors)>1 else ''
+    constructors = cls.public_constructors
+    if constructors:
+        plural = 's' if len(constructors)>1 else ''
         extra_epytext = f'Constructor{plural}: '
-        for i, c in enumerate(sorted(visibleConstructors, key=util.objects_order)):
+        for i, c in enumerate(sorted(constructors, key=util.objects_order)):
             if i != 0:
                 extra_epytext += ', '
             short_text = format_constructor_short_text(c, cls)

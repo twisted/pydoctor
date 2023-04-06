@@ -571,7 +571,7 @@ def compute_mro(cls:'Class') -> List[Union['Class', str]]:
 
 def _find_dunder_constructor(cls:'Class') -> Optional['Function']:
     """
-    Find the dunder method that has the same signature as the constructor/class call. 
+    Find the a non-default python-powered dunder constructor.
     Returns C{None} if neither C{__new__} or C{__init__} are defined.
 
     @note: C{__new__} takes precedence orver C{__init__}. 
@@ -603,6 +603,8 @@ class Class(CanContainImportsDocumentable):
         self.subclasses: List[Class] = []
         self.constructors: List[Function] = []
         """
+        List of constructors.
+
         Makes the assumption that the constructor name is available in the locals of the class
         it's supposed to create. Typically with C{__init__} and C{__new__} it's always the case. 
         It means that no regular function can be interpreted as a constructor for a given class.
@@ -701,6 +703,32 @@ class Class(CanContainImportsDocumentable):
         return self._finalbaseobjects if \
             self._finalbaseobjects is not None else self._initialbaseobjects
     
+    @property
+    def public_constructors(self) -> Sequence['Function']:
+        """
+        Yields public constructors for this class.
+        A public constructor must not be hidden and have
+        arguments or have a docstring.
+        """
+        r = []
+        for c in self.constructors:
+            if not c.isVisible:
+                continue
+            args = list(c.annotations)
+            try: args.remove('return')
+            except ValueError: pass
+            if c.kind in (DocumentableKind.CLASS_METHOD, 
+                          DocumentableKind.METHOD):
+                try:
+                    args.pop(0)
+                except IndexError:
+                    pass
+            if (len(args)==0 and get_docstring(c)[0] is None and 
+                c.name in ('__init__', '__new__')):
+                continue
+            r.append(c)
+        return r
+
     def allbases(self, include_self: bool = False) -> Iterator['Class']:
         """
         Iterate on all base objects of this class and it's super classes. Doesn't comply with MRO.
@@ -1411,6 +1439,27 @@ class System:
         """
         for url in self.options.intersphinx:
             self.intersphinx.update(cache, url)
+
+def get_docstring(
+        obj: Documentable
+        ) -> Tuple[Optional[str], Optional[Documentable]]:
+    """
+    Fetch the docstring for a documentable.
+    Treat empty docstring as undocumented.
+
+    :returns:
+        - C{(docstring, source)} if the object is documented.
+        - C{(None, None)} if the object has no docstring (even inherited).
+        - C{(None, source)} if the object has an empty docstring.
+    """
+    for source in obj.docsources():
+        doc = source.docstring
+        if doc:
+            return doc, source
+        if doc is not None:
+            # Treat empty docstring as undocumented.
+            return None, source
+    return None, None
 
 class SystemBuildingError(Exception):
     """
