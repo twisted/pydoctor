@@ -49,12 +49,13 @@ from docutils.core import publish_string
 from docutils.writers import Writer
 from docutils.parsers.rst.directives.admonitions import BaseAdmonition # type: ignore[import]
 from docutils.readers.standalone import Reader as StandaloneReader
-from docutils.utils import Reporter, new_document
+from docutils.utils import Reporter
 from docutils.parsers.rst import Directive, directives
 from docutils.transforms import Transform, frontmatter
 
 from pydoctor.epydoc.markup import Field, ParseError, ParsedDocstring, ParserFunction
 from pydoctor.epydoc.markup.plaintext import ParsedPlaintextDocstring
+from pydoctor.epydoc.docutils import new_document
 from pydoctor.model import Documentable
 
 #: A dictionary whose keys are the "consolidated fields" that are
