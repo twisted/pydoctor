@@ -33,11 +33,11 @@ from pydoctor.sphinx import CacheT, SphinxInventory
 import attr
 
 if TYPE_CHECKING:
-    from typing_extensions import Literal
+    from typing_extensions import Literal, Protocol
     from pydoctor.astbuilder import ASTBuilder, DocumentableT
 else:
     Literal = {True: bool, False: bool}
-    ASTBuilder = object
+    ASTBuilder = Protocol = object
 
 
 # originally when I started to write pydoctor I had this idea of a big
@@ -575,11 +575,28 @@ def compute_mro(cls:'Class') -> List[Union['Class', str]]:
     init_finalbaseobjects(cls)
     return mro.mro(cls, getbases)
 
+def _find_dunder_constructor(cls:'Class') -> Optional['Function']:
+    """
+    Find the a non-default python-powered dunder constructor.
+    Returns C{None} if neither C{__new__} or C{__init__} are defined.
+
+    @note: C{__new__} takes precedence orver C{__init__}. 
+        More infos: U{https://docs.python.org/3/reference/datamodel.html#object.__new__}
+    """
+    _new = cls.find('__new__')
+    if isinstance(_new, Function):
+        return _new
+    elif _new is None:
+        _init = cls.find('__init__')
+        if isinstance(_init, Function):
+            return _init
+    return None
+
 class Class(CanContainImportsDocumentable):
     kind = DocumentableKind.CLASS
     parent: CanContainImportsDocumentable
     decorators: Sequence[Tuple[str, Optional[Sequence[ast.expr]]]]
-    
+
     # set in post-processing:
     _finalbaseobjects: Optional[List[Optional['Class']]] = None 
     _finalbases: Optional[List[str]] = None
@@ -590,6 +607,14 @@ class Class(CanContainImportsDocumentable):
         self.rawbases: Sequence[Tuple[str, ast.expr]] = []
         self.raw_decorators: Sequence[ast.expr] = []
         self.subclasses: List[Class] = []
+        self.constructors: List[Function] = []
+        """
+        List of constructors.
+
+        Makes the assumption that the constructor name is available in the locals of the class
+        it's supposed to create. Typically with C{__init__} and C{__new__} it's always the case. 
+        It means that no regular function can be interpreted as a constructor for a given class.
+        """
         self._initialbases: List[str] = []
         self._initialbaseobjects: List[Optional['Class']] = []
     
@@ -602,6 +627,42 @@ class Class(CanContainImportsDocumentable):
         except ValueError as e:
             self.report(str(e), 'mro')
             self._mro = list(self.allbases(True))
+    
+    def _init_constructors(self) -> None:
+        """
+        Initiate the L{Class.constructors} list. A constructor MUST be a method accessible 
+        in the locals of the class.
+        """
+        # Look for python language powered constructors.
+        # If __new__ is defined, then it takes precedence over __init__
+        # Blind spot: we don't understand when a Class is using a metaclass that overrides __call__.
+        dunder_constructor = _find_dunder_constructor(self)
+        if dunder_constructor:
+            self.constructors.append(dunder_constructor)
+        
+        # Then look for staticmethod/classmethod constructors,
+        # This only happens at the local scope level (i.e not looking in super-classes).
+        for fun in self.contents.values():
+            if not isinstance(fun, Function):
+                continue
+            # Only static methods and class methods can be recognized as constructors
+            if not fun.kind in (DocumentableKind.STATIC_METHOD, DocumentableKind.CLASS_METHOD):
+                continue
+            # get return annotation, if it returns the same type as self, it's a constructor method.
+            if not 'return' in fun.annotations:
+                # we currently only support constructor detection trought explicit annotations.
+                continue 
+            
+            # annotation should be resolved at the module scope
+            return_ann = astutils.node2fullname(fun.annotations['return'], self.module)
+            
+            # pydoctor understand explicit annotation as well as the Self-Type.
+            if return_ann == self.fullName() or \
+               return_ann in ('typing.Self', 'typing_extensions.Self'):
+                self.constructors.append(fun)
+        
+        from pydoctor import epydoc2stan
+        epydoc2stan.populate_constructors_extra_info(self)
 
     @overload
     def mro(self, include_external:'Literal[True]', include_self:bool=True) -> List[Union['Class', str]]:...
@@ -648,6 +709,32 @@ class Class(CanContainImportsDocumentable):
         return self._finalbaseobjects if \
             self._finalbaseobjects is not None else self._initialbaseobjects
     
+    @property
+    def public_constructors(self) -> Sequence['Function']:
+        """
+        Yields public constructors for this class.
+        A public constructor must not be hidden and have
+        arguments or have a docstring.
+        """
+        r = []
+        for c in self.constructors:
+            if not c.isVisible:
+                continue
+            args = list(c.annotations)
+            try: args.remove('return')
+            except ValueError: pass
+            if c.kind in (DocumentableKind.CLASS_METHOD, 
+                          DocumentableKind.METHOD):
+                try:
+                    args.pop(0)
+                except IndexError:
+                    pass
+            if (len(args)==0 and get_docstring(c)[0] is None and 
+                c.name in ('__init__', '__new__')):
+                continue
+            r.append(c)
+        return r
+
     def allbases(self, include_self: bool = False) -> Iterator['Class']:
         """
         Iterate on all base objects of this class and it's super classes. Doesn't comply with MRO.
@@ -685,11 +772,12 @@ class Class(CanContainImportsDocumentable):
         """
 
         # We assume that the constructor parameters are the same as the
-        # __init__() parameters. This is incorrect if __new__() or the class
-        # call have different parameters.
-        init = self.find('__init__')
-        if isinstance(init, Function):
-            return init.annotations
+        # __new__()/__init__() parameters. This is incorrect if the metaclass
+        # __call__() have different parameters or __init__/__new__ is using
+        # signature changing decorators.
+        constructor = _find_dunder_constructor(self)
+        if constructor is not None:
+            return constructor.annotations
         else:
             return {}
 
@@ -1461,10 +1549,12 @@ class System:
         # default post-processing includes:
         # - Processing of subclasses
         # - MRO computing.
+        # - Lookup of constructors
         # - Checking whether the class is an exception
         for cls in self.objectsOfType(Class):
             
             cls._init_mro()
+            cls._init_constructors()
             
             for b in cls.baseobjects:
                 if b is not None:
@@ -1485,6 +1575,27 @@ class System:
         """
         for url in self.options.intersphinx:
             self.intersphinx.update(cache, url)
+
+def get_docstring(
+        obj: Documentable
+        ) -> Tuple[Optional[str], Optional[Documentable]]:
+    """
+    Fetch the docstring for a documentable.
+    Treat empty docstring as undocumented.
+
+    :returns:
+        - C{(docstring, source)} if the object is documented.
+        - C{(None, None)} if the object has no docstring (even inherited).
+        - C{(None, source)} if the object has an empty docstring.
+    """
+    for source in obj.docsources():
+        doc = source.docstring
+        if doc:
+            return doc, source
+        if doc is not None:
+            # Treat empty docstring as undocumented.
+            return None, source
+    return None, None
 
 class SystemBuildingError(Exception):
     """

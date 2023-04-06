@@ -19,7 +19,7 @@ class AttributeChild(TemplateElement):
     def __init__(self,
             docgetter: util.DocGetter,
             ob: Attribute,
-            extras: List[Tag],
+            extras: List["Flattenable"],
             loader: ITemplateLoader,
             funcLoader: ITemplateLoader,
             ):
@@ -69,7 +69,7 @@ class AttributeChild(TemplateElement):
             return ()
 
     @renderer
-    def objectExtras(self, request: object, tag: Tag) -> List[Tag]:
+    def objectExtras(self, request: object, tag: Tag) -> List["Flattenable"]:
         return self._functionExtras
 
     @renderer
