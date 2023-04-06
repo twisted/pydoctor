@@ -2403,7 +2403,6 @@ def test_explicit_annotation_wins_over_inferred_type(systemcls: Type[model.Syste
     thing = mod.system.allobjects['mod.Stuff.thing']
     assert flatten_text(epydoc2stan.type2stan(thing)) == "List[Tuple[Thing, ...]]"
 
-@pytest.mark.xfail
 @systemcls_param
 def test_explicit_inherited_annotation_wins_over_inferred_type(systemcls: Type[model.System]) -> None:
 

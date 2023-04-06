@@ -831,6 +831,19 @@ class Attribute(Inheritable):
         if self.annotation is not None or self.value is None:
             # do not override explicit annotation
             return
+        
+        # lookup inherited annotations, use docsources()
+        docsources = self.docsources()
+        # discard self
+        next(docsources)
+
+        for inherited in docsources:
+            if isinstance(inherited, Attribute) and inherited.annotation:
+                self.annotation = inherited.annotation
+                return
+        
+        # if no inherited annotation is found, try to infer the type from 
+        # it's ast expression
         self.annotation = astutils.infer_type(self.value)
 
 # Work around the attributes of the same name within the System class.
