@@ -3,8 +3,7 @@ from typing import TYPE_CHECKING, List
 from twisted.web.iweb import ITemplateLoader
 from twisted.web.template import Tag, renderer
 
-from pydoctor.model import Function
-from pydoctor.epydoc2stan import get_docstring
+from pydoctor.model import Function, get_docstring
 from pydoctor.templatewriter import TemplateElement, util
 from pydoctor.templatewriter.pages import format_decorators, format_function_def, format_overloads
 
