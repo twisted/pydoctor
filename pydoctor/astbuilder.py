@@ -802,6 +802,14 @@ class ModuleVistor(NodeVisitor):
     def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
         self._handleFunctionDef(node, is_async=False)
 
+    def _addProperty(self, node, parent, lineno,):
+        attribute = self.builder.addAttribute(node.name, 
+                            kind=model.DocumentableKind.PROPERTY, 
+                            parent=parent)
+        attribute.setLineNumber(lineno)
+        attribute.decorators = node.decorator_list
+        return attribute
+
     def _handleFunctionDef(self,
             node: Union[ast.AsyncFunctionDef, ast.FunctionDef],
             is_async: bool
@@ -876,29 +884,21 @@ class ModuleVistor(NodeVisitor):
             
             # Looks like inherited property
             if len(property_deco)>2:
-                inherited_property = _get_inherited_property(property_deco, parent)
-                if inherited_property:
-                    func_property = self.builder.addAttribute(node.name, 
-                            kind=model.DocumentableKind.PROPERTY, 
-                            parent=parent)
-                    func_property.setLineNumber(lineno)
-                    func_property.decorators = node.decorator_list
-                    # copy property info
-                    func_property.property_def = inherited_property.clone()
+                _inherited_property = _get_inherited_property(property_deco, parent)
+                if _inherited_property:
+                    func_property = self._addProperty(node, parent, lineno)
+                    # copy property defs info
+                    func_property.property_def = _inherited_property.clone()
                     is_new_property = True
             
             else:
                 # fetch property info to add this info to it
-                maybe_prop = self.builder.current.contents.get(node.name)
-                if isinstance(maybe_prop, model.Attribute) and maybe_prop.property_def:
-                    func_property = maybe_prop
+                _maybe_prop = self.builder.current.contents.get(node.name)
+                if isinstance(_maybe_prop, model.Attribute) and _maybe_prop.property_def:
+                    func_property = _maybe_prop
         
         elif is_property:
-            func_property = self.builder.addAttribute(node.name, 
-                        kind=model.DocumentableKind.PROPERTY, 
-                        parent=parent)
-            func_property.setLineNumber(lineno)
-            func_property.decorators = node.decorator_list
+            func_property = self._addProperty(node, parent, lineno)
             prop_func_kind = model.PropertyFunctionKind.GETTER
             # rename func X.getter
             func_name = node.name+'.getter'
@@ -913,7 +913,8 @@ class ModuleVistor(NodeVisitor):
             # which we do not allow. This also ensures that func will have
             # properties set for the primary function and not overloads.
             if existing_func.signature and is_overload_func:
-                existing_func.report(f'{existing_func.fullName()} overload appeared after primary function', lineno_offset=lineno-existing_func.linenumber)
+                existing_func.report(f'{existing_func.fullName()} overload appeared after primary function', 
+                                     lineno_offset=lineno-existing_func.linenumber)
                 raise self.SkipNode()
             # Do not recreate function object, just re-push it
             self.builder.push(existing_func, lineno)
@@ -1006,7 +1007,7 @@ class ModuleVistor(NodeVisitor):
                 func_property.report(f'{func_property.fullName()} is both property and staticmethod')
             
             assert prop_func_kind is not None
-            # Store the fact that this function implements one of the getter/setter/deleter
+            # Save the fact that this function implements one of the getter/setter/deleter
             func_property.property_def.set(prop_func_kind, func)
     
 
