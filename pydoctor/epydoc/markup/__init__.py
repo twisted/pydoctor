@@ -40,11 +40,11 @@ import re
 from importlib import import_module
 from inspect import getmodulename
 
-from docutils import nodes, utils
+from docutils import nodes
 from twisted.web.template import Tag, tags
 
 from pydoctor import node2stan
-from pydoctor.epydoc.docutils import set_node_attributes, build_table_of_content
+from pydoctor.epydoc.docutils import set_node_attributes, build_table_of_content, new_document
 
 
 # In newer Python versions, use importlib.resources from the standard library.
@@ -162,7 +162,7 @@ class ParsedDocstring(abc.ABC):
         except NotImplementedError:
             return None
         contents = build_table_of_content(document, depth=depth)
-        docstring_toc = utils.new_document('toc')
+        docstring_toc = new_document('toc')
         if contents:
             docstring_toc.extend(contents)
             from pydoctor.epydoc.markup.restructuredtext import ParsedRstDocstring
@@ -443,7 +443,7 @@ class SummaryExtractor(nodes.NodeVisitor):
             self.other_docs = True
             raise nodes.StopTraversal()
 
-        summary_doc = utils.new_document('summary')
+        summary_doc = new_document('summary')
         summary_pieces = []
 
         # Extract the first sentences from the first paragraph until maximum number 
