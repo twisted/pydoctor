@@ -2428,3 +2428,17 @@ def test_inferred_type_override(systemcls: Type[model.System]) -> None:
     mod = fromText(src, systemcls=systemcls, modname='mod')
     thing = mod.system.allobjects['mod.Stuff.thing']
     assert flatten_text(epydoc2stan.type2stan(thing)) == "tuple[int, ...]" #type:ignore
+
+@systemcls_param
+def test_inferred_type_is_not_propagated_to_subclasses(systemcls: Type[model.System]) -> None:
+    src = '''\
+    class _Stuff(object):
+        def __init__(self):
+            self.thing = []
+    class Stuff(_Stuff):
+        def __init__(self, thing):
+            self.thing = thing
+        '''
+    mod = fromText(src, systemcls=systemcls, modname='mod')
+    thing = mod.system.allobjects['mod.Stuff.thing']
+    assert epydoc2stan.type2stan(thing) is None

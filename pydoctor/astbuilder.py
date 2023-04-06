@@ -501,6 +501,7 @@ class ModuleVistor(NodeVisitor):
         if annotation is not None:
             # What to do when an attribute has several explicit annotations?
             obj.annotation = annotation
+            obj.explicit_annotation = True
 
     def _handleModuleVar(self,
             target: str,

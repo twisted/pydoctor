@@ -819,6 +819,7 @@ class FunctionOverload:
 class Attribute(Inheritable):
     kind: Optional[DocumentableKind] = DocumentableKind.ATTRIBUTE
     annotation: Optional[ast.expr] = None
+    explicit_annotation = False
     decorators: Optional[Sequence[ast.expr]] = None
     value: Optional[ast.expr] = None
     """
@@ -828,7 +829,7 @@ class Attribute(Inheritable):
     """
 
     def _infer_annotation(self) -> None:
-        if self.annotation is not None or self.value is None:
+        if self.annotation is not None:
             # do not override explicit annotation
             return
         
@@ -838,13 +839,14 @@ class Attribute(Inheritable):
         next(docsources)
 
         for inherited in docsources:
-            if isinstance(inherited, Attribute) and inherited.annotation:
+            if isinstance(inherited, Attribute) and inherited.explicit_annotation:
                 self.annotation = inherited.annotation
                 return
         
         # if no inherited annotation is found, try to infer the type from 
         # it's ast expression
-        self.annotation = astutils.infer_type(self.value)
+        if self.value is not None:
+            self.annotation = astutils.infer_type(self.value)
 
 # Work around the attributes of the same name within the System class.
 _ModuleT = Module
