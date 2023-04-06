@@ -92,6 +92,7 @@ pydoctor 23.4.0
 * Cache the default docutils settings on docutils>=0.19 to improve performance.
 * Improve the search bar user experience by automatically appending wildcard to each query terms
   when no terms already contain a wildcard. 
+* Link recognized constructors in class page.
 
 pydoctor 22.9.1
 ^^^^^^^^^^^^^^^
