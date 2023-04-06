@@ -2150,7 +2150,7 @@ def test_property_old_school(systemcls: Type[model.System], capsys: CapSys) -> N
     """
     We don't support it for now.
     """
-    src = '''
+    '''
     class PropertyDocBase(object):
         _spam = 1
         def _get_spam(self):

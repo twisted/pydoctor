@@ -710,26 +710,6 @@ def test_property_getter_setter_no_undocumented() -> None:
     # asserts that no 'Undocumented' shows up!
     assert 'Undocumented' not in html
 
-    # This variant does not test anything special:
-    src3 = '''
-    class A:
-        @property
-        def data(self):
-            """
-            Get the data.
-            @returns: the data
-            """
-        @data.setter
-        def data(self, data):
-            """
-            Sets the data.
-            @param data: the new value
-            """
-        @data.deleter
-        def data(self):
-            "Deletes the data"
-    '''
-
 def test_property_getter_inherits_docs() -> None:
 
     src4 = '''

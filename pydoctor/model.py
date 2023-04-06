@@ -8,11 +8,9 @@ being documented -- a System is a bad of Documentables, in some sense.
 
 import abc
 import ast
-import attr
 from collections import defaultdict
 import datetime
 import importlib
-import platform
 import sys
 import textwrap
 import types
@@ -20,7 +18,7 @@ from enum import Enum
 from inspect import signature, Signature
 from pathlib import Path
 from typing import (
-    TYPE_CHECKING, Any, Callable, Collection, Dict, Iterable, Iterator, List, Mapping,
+    TYPE_CHECKING, Any, Callable, Collection, Dict, Iterator, List, Mapping,
     Optional, Sequence, Set, Tuple, Type, TypeVar, Union, cast, overload
 )
 from urllib.parse import quote
@@ -56,13 +54,6 @@ else:
 #   Classes can contain Functions (in this case they get called Methods) and
 #       Classes
 #   Functions and Atributes can't contain anything.
-
-
-_string_lineno_is_end = sys.version_info < (3,8) \
-                    and platform.python_implementation() != 'PyPy'
-"""True iff the 'lineno' attribute of an AST string node points to the last
-line in the string, rather than the first line.
-"""
 
 
 class DocLocation(Enum):
@@ -860,9 +851,9 @@ def init_properties(system:'System') -> None:
     # Machup property functions into an Attribute that already exist.
     # We are transforming the tree at the end only.
     to_prune: List[Documentable] = []
-    for attr in system.objectsOfType(Attribute):
-        if attr.kind is DocumentableKind.PROPERTY:
-            to_prune.extend(init_property(attr))
+    for attrib in system.objectsOfType(Attribute):
+        if attrib.kind is DocumentableKind.PROPERTY:
+            to_prune.extend(init_property(attrib))
     
     for obj in set(to_prune):
         system._remove(obj)
@@ -870,13 +861,13 @@ def init_properties(system:'System') -> None:
         if obj.name in obj.parent.contents:
             del obj.parent.contents[obj.name]
 
-def init_property(attr:'Attribute') -> Iterator['Function']:
+def init_property(attrib:'Attribute') -> Iterator['Function']:
     """
     Initiates the L{Attribute} that represent the property in the tree.
 
     Returns the functions to remove from the tree. If the property matchup fails
     """
-    info = attr._property_def
+    info = attrib._property_def
     assert info is not None
 
     getter = info.getter
@@ -891,11 +882,11 @@ def init_property(attr:'Attribute') -> Iterator['Function']:
     from pydoctor import epydoc2stan
     
     # Setup Attribute object for the property    
-    attr.docstring = getter.docstring
-    attr.annotation = getter.annotations.get('return')
-    attr.decorators = getter.decorators
+    attrib.docstring = getter.docstring
+    attrib.annotation = getter.annotations.get('return')
+    attrib.decorators = getter.decorators
     
-    attr.extra_info.extend(getter.extra_info)
+    attrib.extra_info.extend(getter.extra_info)
 
     # Parse docstring now.
     if epydoc2stan.ensure_parsed_docstring(getter):
@@ -912,14 +903,14 @@ def init_property(attr:'Attribute') -> Iterator['Function']:
                 if not pdoc.has_body:
                     pdoc = field.body()
             elif tag == 'rtype':
-                attr.parsed_type = field.body()
+                attrib.parsed_type = field.body()
             else:
                 other_fields.append(field)
         
         pdoc.fields = other_fields
         
         # Set the new attribute parsed docstring
-        attr.parsed_docstring = pdoc
+        attrib.parsed_docstring = pdoc
 
     # maybe TODO: Add inheritence info to getter/setter/deleters
 

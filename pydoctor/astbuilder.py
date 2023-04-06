@@ -13,7 +13,6 @@ from typing import (
 )
 
 import astor
-import attr
 from pydoctor import epydoc2stan, model, node2stan, extensions, astutils
 from pydoctor.epydoc.markup._pyval_repr import colorize_inline_pyval
 from pydoctor.astutils import (is_none_literal, is_typing_annotation, is_using_annotations, is_using_typing_final, node2dottedname, node2fullname, 
