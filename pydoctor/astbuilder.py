@@ -895,7 +895,7 @@ class ModuleVistor(NodeVisitor):
             else:
                 # fetch property info to add this info to it
                 _maybe_prop = self.builder.current.contents.get(node.name)
-                if isinstance(_maybe_prop, model.Attribute) and _maybe_prop.property_def:
+                if isinstance(_maybe_prop, model.Attribute) and _maybe_prop.kind is model.DocumentableKind.PROPERTY:
                     func_property = _maybe_prop
         
         elif is_property:
