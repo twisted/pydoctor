@@ -174,7 +174,7 @@ def _get_inherited_property(dottedname:List[str], _parent: model.Documentable) -
 
     # attr can be a getter/setter/deleter
     _cls = _parent.resolveName('.'.join(_property_name[:-1]))
-    if _cls is None or not isinstance(_cls, model.Class):
+    if not isinstance(_cls, model.Class):
         # Can't make sens of property decorator
         # the property decorator is pointing to something external OR 
         # not found in the system yet because of cyclic imports
@@ -802,7 +802,8 @@ class ModuleVistor(NodeVisitor):
     def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
         self._handleFunctionDef(node, is_async=False)
 
-    def _addProperty(self, node, parent, lineno,):
+    def _addProperty(self, node:Union[ast.AsyncFunctionDef, ast.FunctionDef], 
+                     parent:model.Documentable, lineno:int,) -> model.Attribute:
         attribute = self.builder.addAttribute(node.name, 
                             kind=model.DocumentableKind.PROPERTY, 
                             parent=parent)
