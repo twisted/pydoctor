@@ -45,27 +45,6 @@ def _get_docformat(obj: model.Documentable) -> str:
     docformat = obj.module.docformat or obj.system.options.docformat
     return docformat
 
-def get_docstring(
-        obj: model.Documentable
-        ) -> Tuple[Optional[str], Optional[model.Documentable]]:
-    """
-    Fetch the docstring for a documentable.
-    Treat empty docstring as undocumented.
-
-    :returns:
-        - C{(docstring, source)} if the object is documented.
-        - C{(None, None)} if the object has no docstring (even inherited).
-        - C{(None, source)} if the object has an empty docstring.
-    """
-    for source in obj.docsources():
-        doc = source.docstring
-        if doc:
-            return doc, source
-        if doc is not None:
-            # Treat empty docstring as undocumented.
-            return None, source
-    return None, None
-
 @attr.s(auto_attribs=True)
 class FieldDesc:
     """
@@ -620,7 +599,7 @@ def ensure_parsed_docstring(obj: model.Documentable) -> Optional[model.Documenta
           from C{obj} if the documentation is inherited).
         - If the object is undocumented: C{None}.
     """
-    doc, source = get_docstring(obj)
+    doc, source = model.get_docstring(obj)
 
     # Use cached or split version if possible.
     parsed_doc = obj.parsed_docstring
@@ -729,10 +708,7 @@ def format_docstring_fallback(errs: List[ParseError], parsed_doc:ParsedDocstring
 
 def _wrap_in_paragraph(body:Sequence["Flattenable"]) -> bool:
     """
-    This is the counterpart of what we're doing in L{HTMLTranslator.should_be_compact_paragraph()}.
-    Since the L{HTMLTranslator} is generic for all parsed docstrings types, it always generates compact paragraphs.
-
-    But for docstrings, we want to have at least one paragraph for consistency.
+    Whether to wrap the given docstring stan body inside a paragraph. 
     """
     has_paragraph = False
     for e in body:
@@ -742,6 +718,23 @@ def _wrap_in_paragraph(body:Sequence["Flattenable"]) -> bool:
         break
     return bool(len(body)>0 and not has_paragraph)
 
+def unwrap_docstring_stan(stan:Tag) -> "Flattenable":
+    """
+    Unwrap the body of the given C{Tag} instance if it has a non-empty tag name and 
+    ensure there is at least one paragraph. 
+
+    @note: This is the counterpart of what we're doing in L{HTMLTranslator.should_be_compact_paragraph()}.
+        Since the L{HTMLTranslator} is generic for all parsed docstrings types, it always generates compact paragraphs.
+
+        But for docstrings, we want to have at least one paragraph for consistency.
+    """
+    if stan.tagName:
+        return stan
+    body = stan.children
+    if _wrap_in_paragraph(body):
+        return tags.p(*body)
+    else:
+        return body
 
 def format_docstring(obj: model.Documentable) -> Tag:
     """Generate an HTML representation of a docstring"""
@@ -754,16 +747,7 @@ def format_docstring(obj: model.Documentable) -> Tag:
     else:
         assert obj.parsed_docstring is not None, "ensure_parsed_docstring() did not do it's job"
         stan = safe_to_stan(obj.parsed_docstring, source.docstring_linker, source, fallback=format_docstring_fallback)
-
-        if stan.tagName:
-            ret(stan)
-        else:
-            body = stan.children
-            if _wrap_in_paragraph(body):
-                # ensure there is one paragraph at least
-                ret(tags.p(*body))
-            else:
-                ret(*body)
+        ret(unwrap_docstring_stan(stan))
 
     fh = FieldHandler(obj)
     if isinstance(obj, model.Function):
@@ -1040,3 +1024,70 @@ def insert_break_points(text: str) -> 'Flattenable':
             r += [tags.wbr(), '.']
     return tags.transparent(*r)
 
+def format_constructor_short_text(constructor: model.Function, forclass: model.Class) -> str:
+    """
+    Returns a simplified signature of the constructor.
+    C{forclass} is not always the function's parent, it can be a subclass.
+    """
+    args = ''
+    # for signature with more than 5 parameters, 
+    # we just show the elipsis after the fourth parameter
+    annotations = constructor.annotations.items()
+    many_param = len(annotations) > 6
+    
+    for index, (name, ann) in enumerate(annotations):
+        if name=='return':
+            continue
+
+        if many_param and index > 4:
+            args += ', ...'
+            break
+        
+        # Special casing __new__ because it's actually a static method
+        if index==0 and (constructor.name in ('__new__', '__init__') or 
+                         constructor.kind is model.DocumentableKind.CLASS_METHOD):
+            # Omit first argument (self/cls) from simplified signature.
+            continue
+        star = ''
+        if isinstance(name, VariableArgument):
+            star='*'
+        elif isinstance(name, KeywordArgument):
+            star='**'
+        
+        if args:
+            args += ', '
+        
+        args += f"{star}{name}"
+    
+    # display innner classes with their name starting at the top level class.
+    _current:model.CanContainImportsDocumentable = forclass
+    class_name = [] 
+    while isinstance(_current, model.Class):
+        class_name.append(_current.name)
+        _current = _current.parent
+    
+    callable_name = '.'.join(reversed(class_name))
+
+    if constructor.name not in ('__new__', '__init__'):
+        # We assume that the constructor is a method accessible in the Class.
+
+        callable_name += f'.{constructor.name}'
+
+    return f"{callable_name}({args})"
+
+def populate_constructors_extra_info(cls:model.Class) -> None:
+    """
+    Adds an extra information to be rendered based on Class constructors.
+    """
+    from pydoctor.templatewriter import util
+    constructors = cls.public_constructors
+    if constructors:
+        plural = 's' if len(constructors)>1 else ''
+        extra_epytext = f'Constructor{plural}: '
+        for i, c in enumerate(sorted(constructors, key=util.objects_order)):
+            if i != 0:
+                extra_epytext += ', '
+            short_text = format_constructor_short_text(c, cls)
+            extra_epytext += '`%s <%s>`' % (short_text, c.fullName())
+        
+        cls.extra_info.append(parse_docstring(cls, extra_epytext, cls, 'restructuredtext', section='constructor extra'))
