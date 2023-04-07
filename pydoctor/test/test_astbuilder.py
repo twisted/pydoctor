@@ -2464,4 +2464,4 @@ def test_inherited_type_correct_links(systemcls: Type[model.System]) -> None:
     builder.addModuleString(src2, 'mod')
     builder.buildModules()
     thing = system.allobjects['mod.Stuff.thing']
-    assert 'href="base._s.html"' in flatten(epydoc2stan.type2stan(thing))
+    assert 'href="base._s.html"' in flatten(epydoc2stan.type2stan(thing)) #type:ignore

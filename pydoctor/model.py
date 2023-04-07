@@ -828,8 +828,8 @@ class Attribute(Inheritable):
     None value means the value is not initialized at the current point of the the process. 
     """
 
-    def _infer_annotation(self) -> None:
-        if self.annotation is not None:
+    def _infer_type(self) -> None:
+        if self.explicit_annotation:
             # do not override explicit annotation
             return
         
@@ -843,11 +843,13 @@ class Attribute(Inheritable):
                 # parse the type of inherited annotation early with the inherited context 
                 # to ensure validity of generated links.
                 from pydoctor.epydoc2stan import type2stan, ParsedStanOnly
-                self.parsed_type = ParsedStanOnly(type2stan(inherited))
+                stan = type2stan(inherited)
+                if stan: self.parsed_type = ParsedStanOnly(stan)
                 return
         
         # if no inherited annotation is found, try to infer the type from 
-        # it's ast expression
+        # it's ast expression, the result will not be propated to 
+        # subclass members that override this symbol.
         if self.value is not None:
             self.annotation = astutils.infer_type(self.value)
 
@@ -1454,7 +1456,7 @@ class System:
                 cls.kind = DocumentableKind.EXCEPTION
         
         for attrib in self.objectsOfType(Attribute):
-            attrib._infer_annotation()
+            attrib._infer_type()
 
         for post_processor in self._post_processors:
             post_processor(self)
