@@ -875,6 +875,7 @@ class ModuleVistor(NodeVisitor):
                                                               'typing_extensions.overload'):
                     is_overload_func = True
 
+        # Determine if this function is a property of some kind
 
         func_property: Optional[model.Property] = None
         prop_func_kind: Optional[model.Property.Kind] = None
