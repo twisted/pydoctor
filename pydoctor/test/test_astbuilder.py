@@ -1536,12 +1536,12 @@ def test_property_setter(systemcls: Type[model.System], capsys: CapSys) -> None:
 
     assert getter.docstring == """Getter."""
 
-    setter = getter.property_def.setter
+    setter = getter.setter
     assert isinstance(setter, model.Function)
     assert setter.kind is model.DocumentableKind.METHOD
     assert setter.docstring == """Setter."""
 
-    deleter = getter.property_def.deleter
+    deleter = getter.deleter
     assert isinstance(deleter, model.Function)
     assert deleter.kind is model.DocumentableKind.METHOD
     assert deleter.docstring == """Deleter."""
@@ -2118,33 +2118,33 @@ def test_property_inherited(systemcls: Type[model.System], capsys: CapSys) -> No
     assert spam2.kind is model.DocumentableKind.PROPERTY
     assert spam3.kind is model.DocumentableKind.PROPERTY
 
-    assert isinstance(spam0.property_def.setter, model.Function)
-    assert isinstance(spam1.property_def.setter, model.Function)
-    assert isinstance(spam2.property_def.setter, model.Function)
-    assert isinstance(spam3.property_def.setter, model.Function)
+    assert isinstance(spam0.setter, model.Function)
+    assert isinstance(spam1.setter, model.Function)
+    assert isinstance(spam2.setter, model.Function)
+    assert isinstance(spam3.setter, model.Function)
 
-    assert isinstance(spam0.property_def.deleter, model.Function)
-    assert isinstance(spam1.property_def.deleter, model.Function)
-    assert isinstance(spam2.property_def.deleter, model.Function)
-    assert isinstance(spam3.property_def.deleter, model.Function)
+    assert isinstance(spam0.deleter, model.Function)
+    assert isinstance(spam1.deleter, model.Function)
+    assert isinstance(spam2.deleter, model.Function)
+    assert isinstance(spam3.deleter, model.Function)
 
-    assert spam0.property_def.getter.fullName() == 'mod.BaseClass.spam.getter' #type:ignore[union-attr]
-    assert spam0.property_def.setter.fullName() == 'mod.BaseClass.spam.setter'
-    assert spam0.property_def.deleter.fullName() == 'mod.BaseClass.spam.deleter'
+    assert spam0.getter.fullName() == 'mod.BaseClass.spam.getter' #type:ignore[union-attr]
+    assert spam0.setter.fullName() == 'mod.BaseClass.spam.setter'
+    assert spam0.deleter.fullName() == 'mod.BaseClass.spam.deleter'
 
-    assert spam1.property_def.getter.fullName() == 'mod.SubClass.spam.getter' #type:ignore[union-attr]
-    assert spam1.property_def.setter.fullName() == 'mod.BaseClass.spam.setter'
-    assert spam1.property_def.deleter.fullName() == 'mod.BaseClass.spam.deleter'
+    assert spam1.getter.fullName() == 'mod.SubClass.spam.getter' #type:ignore[union-attr]
+    assert spam1.setter.fullName() == 'mod.BaseClass.spam.setter'
+    assert spam1.deleter.fullName() == 'mod.BaseClass.spam.deleter'
 
-    assert spam2.property_def.getter.fullName() == 'mod.BaseClass.spam.getter' #type:ignore[union-attr]
-    assert spam2.property_def.setter.fullName() == 'mod.SubClass2.spam.setter'
-    assert spam2.property_def.deleter.fullName() == 'mod.BaseClass.spam.deleter'
+    assert spam2.getter.fullName() == 'mod.BaseClass.spam.getter' #type:ignore[union-attr]
+    assert spam2.setter.fullName() == 'mod.SubClass2.spam.setter'
+    assert spam2.deleter.fullName() == 'mod.BaseClass.spam.deleter'
 
-    assert spam3.property_def.getter.fullName() == 'mod.BaseClass.spam.getter' #type:ignore[union-attr]
-    assert spam3.property_def.setter.fullName() == 'mod.BaseClass.spam.setter'
-    assert spam3.property_def.deleter.fullName() == 'mod.SubClass3.spam.deleter'
+    assert spam3.getter.fullName() == 'mod.BaseClass.spam.getter' #type:ignore[union-attr]
+    assert spam3.setter.fullName() == 'mod.BaseClass.spam.setter'
+    assert spam3.deleter.fullName() == 'mod.SubClass3.spam.deleter'
 
-    assert spam1.property_def.getter is not spam0.property_def.getter
+    assert spam1.getter is not spam0.getter
 
 @systemcls_param
 def test_property_old_school(systemcls: Type[model.System], capsys: CapSys) -> None:
@@ -2501,8 +2501,8 @@ def test_property_other_decorators(systemcls: Type[model.System]) -> None:
     mod = fromText(src, systemcls=systemcls)
     p = mod.contents['BaseClass'].contents['spam']
     assert isinstance(p, model.Property)
-    assert isinstance(p.property_def.setter, model.Function)
-    assert isinstance(p.property_def.deleter, model.Function)
+    assert isinstance(p.setter, model.Function)
+    assert isinstance(p.deleter, model.Function)
 
 @systemcls_param
 def test_crash_type_inference_unhashable_type(systemcls: Type[model.System], capsys:CapSys) -> None:

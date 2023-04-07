@@ -789,40 +789,6 @@ class Inheritable(Documentable):
     def _localNameToFullName(self, name: str) -> str:
         return self.parent._localNameToFullName(name)
 
-class PropertyFunctionKind(Enum):
-    GETTER = 1
-    SETTER = 2
-    DELETER = 3
-
-@attr.s(auto_attribs=True)
-class PropertyDef:
-
-    getter:Optional['Function'] = None
-    """
-    The getter.
-    """
-    setter: Optional['Function'] = None
-    """
-    None if it has not been set with C{@name.setter} decorator.
-    """
-    deleter: Optional['Function'] = None
-    """
-    None if it has not been set with C{@name.deleter} decorator.
-    """
-
-    def set(self, kind: PropertyFunctionKind, func:'Function') -> None:
-        if kind is PropertyFunctionKind.GETTER:
-            self.getter = func
-        elif kind is PropertyFunctionKind.SETTER:
-            self.setter = func
-        elif kind is PropertyFunctionKind.DELETER:
-            self.deleter = func
-        else:
-            assert False
-
-    def clone(self) -> 'PropertyDef':
-        return PropertyDef(**attr.asdict(self))
-
 class Function(Inheritable):
     kind = DocumentableKind.FUNCTION
     is_async: bool
@@ -866,12 +832,9 @@ def init_property(attrib:'Property') -> Iterator['Function']:
 
     Returns the functions to remove from the tree. If the property matchup fails
     """
-    info = attrib.property_def
-    assert info is not None
-
-    getter = info.getter
-    setter = info.setter
-    deleter = info.deleter
+    getter = attrib.getter
+    setter = attrib.setter
+    deleter = attrib.deleter
 
     if getter is None:
         # The getter should never be None
@@ -935,10 +898,38 @@ class Attribute(Inheritable):
     """
 
 class Property(Attribute):
+    # for the templatewriter, property are just like attributes
     __class__ = Attribute #type:ignore
-    def __init__(self, *args:Any, **kwargs:Any):
-        super().__init__(*args, **kwargs)
-        self.property_def = PropertyDef()    
+    
+    class Kind(Enum):
+        GETTER = 1
+        SETTER = 2
+        DELETER = 3
+
+    def setup(self) -> None:
+        super().setup()
+        self.getter:Optional['Function'] = None
+        """
+        The getter.
+        """
+        self.setter: Optional['Function'] = None
+        """
+        None if it has not been set with C{@<name>.setter} decorator.
+        """
+        self.deleter: Optional['Function'] = None
+        """
+        None if it has not been set with C{@<name>.deleter} decorator.
+        """
+    
+    def store_function(self, kind: 'Property.Kind', func:'Function') -> None:
+        if kind is Property.Kind.GETTER:
+            self.getter = func
+        elif kind is Property.Kind.SETTER:
+            self.setter = func
+        elif kind is Property.Kind.DELETER:
+            self.deleter = func
+        else:
+            assert False
 
 # Work around the attributes of the same name within the System class.
 _ModuleT = Module

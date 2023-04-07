@@ -147,7 +147,7 @@ def extract_final_subscript(annotation: ast.Subscript) -> ast.expr:
         assert isinstance(ann_slice, ast.expr)
         return ann_slice
 
-def _is_property_def_decorator(dottedname:List[str], ctx:model.Documentable) -> bool:
+def _is_property_decorator(dottedname:Sequence[str], ctx:model.Documentable) -> bool:
     """
     Whether the last element of the list of names finishes by "property" or "Property".
     """
@@ -157,12 +157,14 @@ def _is_property_def_decorator(dottedname:List[str], ctx:model.Documentable) -> 
     return False
 
 
-def _get_inherited_property(dottedname:List[str], _parent: model.Documentable) -> Optional[model.PropertyDef]:
+def _get_inherited_property(dottedname:Sequence[str], _parent: model.Documentable) -> Optional[model.Property]:
     """
     Fetch the inherited property that this new decorator overrides.
     Returns C{None} if it doesn't exist in the inherited members or if it's already definied in the locals.
     The dottedname must have at least three elements, else return C{None}.
     """
+    # TODO: It would be best if this job was done in post-processing...
+
     if not _get_property_function_kind(dottedname):
         return None
 
@@ -179,7 +181,6 @@ def _get_inherited_property(dottedname:List[str], _parent: model.Documentable) -
         # the property decorator is pointing to something external OR 
         # not found in the system yet because of cyclic imports
         # OR to something else than a class :/
-        # Don't rename it.
         return None
     
     # note: the class on which the property is defined (_cls) does not have
@@ -189,9 +190,9 @@ def _get_inherited_property(dottedname:List[str], _parent: model.Documentable) -
     if not isinstance(attr_def, model.Property):
         return None
     
-    return attr_def.property_def
+    return attr_def
 
-def _get_property_function_kind(dottedname:List[str]) -> Optional[model.PropertyFunctionKind]:
+def _get_property_function_kind(dottedname:Sequence[str]) -> Optional[model.Property.Kind]:
     """
     What kind of property function this decorator declares?
     None if we can't make sens of the decorator.
@@ -200,11 +201,11 @@ def _get_property_function_kind(dottedname:List[str]) -> Optional[model.Property
     """
     if len(dottedname) >= 2:
         if dottedname[-1] == 'setter':
-            return model.PropertyFunctionKind.SETTER
+            return model.Property.Kind.SETTER
         if dottedname[-1] == 'getter':
-            return model.PropertyFunctionKind.GETTER
+            return model.Property.Kind.GETTER
         if dottedname[-1] == 'deleter':
-            return model.PropertyFunctionKind.DELETER
+            return model.Property.Kind.DELETER
     return None
 
 class ModuleVistor(NodeVisitor):
@@ -847,7 +848,7 @@ class ModuleVistor(NodeVisitor):
                 if deco_name is None:
                     continue
                 if isinstance(parent, model.Class):
-                    if _is_property_def_decorator(deco_name, parent):
+                    if _is_property_decorator(deco_name, parent):
                         is_property = True
                     elif deco_name == ['classmethod']:
                         is_classmethod = True
@@ -876,7 +877,7 @@ class ModuleVistor(NodeVisitor):
 
 
         func_property: Optional[model.Property] = None
-        prop_func_kind: Optional[model.PropertyFunctionKind] = None
+        prop_func_kind: Optional[model.Property.Kind] = None
         is_new_property: bool = is_property
         
         if property_deco is not None:
@@ -889,7 +890,9 @@ class ModuleVistor(NodeVisitor):
                 if _inherited_property:
                     func_property = self._addProperty(node, parent, lineno)
                     # copy property defs info
-                    func_property.property_def = _inherited_property.clone()
+                    func_property.getter = _inherited_property.getter
+                    func_property.setter = _inherited_property.setter
+                    func_property.deleter = _inherited_property.deleter
                     is_new_property = True
             
             else:
@@ -900,9 +903,9 @@ class ModuleVistor(NodeVisitor):
         
         elif is_property:
             func_property = self._addProperty(node, parent, lineno)
-            prop_func_kind = model.PropertyFunctionKind.GETTER
-            # rename func X.getter
-            func_name = node.name+'.getter'
+            prop_func_kind = model.Property.Kind.GETTER
+            # Rename the getter as well
+            func_name = node.name + '.getter'
         
         # Push and analyse function 
 
@@ -1009,7 +1012,7 @@ class ModuleVistor(NodeVisitor):
             
             assert prop_func_kind is not None
             # Save the fact that this function implements one of the getter/setter/deleter
-            func_property.property_def.set(prop_func_kind, func)
+            func_property.store_function(prop_func_kind, func)
     
 
     def depart_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:

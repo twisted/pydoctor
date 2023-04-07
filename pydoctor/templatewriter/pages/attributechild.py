@@ -93,7 +93,7 @@ class AttributeChild(TemplateElement):
 
             assert isinstance(self.ob, Property)
             
-            for func in [f for f in (self.ob.property_def.setter, self.ob.property_def.deleter) if f]:
+            for func in [f for f in (self.ob.setter, self.ob.deleter) if f]:
                 r.append(FunctionChild(self.docgetter, func, extras=[], 
                             loader=self._funcLoader, silent_undoc=True))
         return r
