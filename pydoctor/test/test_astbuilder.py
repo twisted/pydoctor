@@ -2442,3 +2442,26 @@ def test_inferred_type_is_not_propagated_to_subclasses(systemcls: Type[model.Sys
     mod = fromText(src, systemcls=systemcls, modname='mod')
     thing = mod.system.allobjects['mod.Stuff.thing']
     assert epydoc2stan.type2stan(thing) is None
+
+
+@systemcls_param
+def test_inherited_type_correct_links(systemcls: Type[model.System]) -> None:
+    src1 = '''\
+    class _s:...
+    class _Stuff(object):
+        def __init__(self):
+            self.thing:_s = []
+    '''
+    src2 = '''\
+    from base import _Stuff
+    class Stuff(_Stuff):
+        def __init__(self, thing):
+            self.thing = thing
+        '''
+    system = systemcls()
+    builder = system.systemBuilder(system)
+    builder.addModuleString(src1, 'base')
+    builder.addModuleString(src2, 'mod')
+    builder.buildModules()
+    thing = system.allobjects['mod.Stuff.thing']
+    assert 'href="base._s.html"' in flatten(epydoc2stan.type2stan(thing))

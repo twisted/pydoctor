@@ -840,7 +840,10 @@ class Attribute(Inheritable):
 
         for inherited in docsources:
             if isinstance(inherited, Attribute) and inherited.explicit_annotation:
-                self.annotation = inherited.annotation
+                # parse the type of inherited annotation early with the inherited context 
+                # to ensure validity of generated links.
+                from pydoctor.epydoc2stan import type2stan, ParsedStanOnly
+                self.parsed_type = ParsedStanOnly(type2stan(inherited))
                 return
         
         # if no inherited annotation is found, try to infer the type from 
