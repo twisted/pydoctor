@@ -829,8 +829,8 @@ class Attribute(Inheritable):
     """
 
     def _infer_type(self) -> None:
-        if self.explicit_annotation:
-            # do not override explicit annotation
+        if self.annotation is not None:
+            # do not override annotation
             return
         
         # lookup inherited annotations, use docsources()
