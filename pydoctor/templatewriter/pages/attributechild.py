@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING, List
 from twisted.web.iweb import ITemplateLoader
 from twisted.web.template import Tag, renderer, tags
 
-from pydoctor.model import Attribute, DocumentableKind
+from pydoctor.model import Attribute, Property, DocumentableKind
 from pydoctor import epydoc2stan
 from pydoctor.templatewriter import TemplateElement, util
 from pydoctor.templatewriter.pages import format_decorators
@@ -91,7 +91,7 @@ class AttributeChild(TemplateElement):
         if self.ob.kind is DocumentableKind.PROPERTY:
             from pydoctor.templatewriter.pages.functionchild import FunctionChild
 
-            assert isinstance(self.ob, Attribute)
+            assert isinstance(self.ob, Property)
             
             for func in [f for f in (self.ob.property_def.setter, self.ob.property_def.deleter) if f]:
                 r.append(FunctionChild(self.docgetter, func, extras=[], 

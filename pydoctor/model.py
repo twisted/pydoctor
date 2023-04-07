@@ -851,9 +851,8 @@ def init_properties(system:'System') -> None:
     # Machup property functions into an Attribute that already exist.
     # We are transforming the tree at the end only.
     to_prune: List[Documentable] = []
-    for attrib in system.objectsOfType(Attribute):
-        if attrib.kind is DocumentableKind.PROPERTY:
-            to_prune.extend(init_property(attrib))
+    for attrib in system.objectsOfType(Property):
+        to_prune.extend(init_property(attrib))
     
     for obj in set(to_prune):
         system._remove(obj)
@@ -861,13 +860,13 @@ def init_properties(system:'System') -> None:
         if obj.name in obj.parent.contents:
             del obj.parent.contents[obj.name]
 
-def init_property(attrib:'Attribute') -> Iterator['Function']:
+def init_property(attrib:'Property') -> Iterator['Function']:
     """
     Initiates the L{Attribute} that represent the property in the tree.
 
     Returns the functions to remove from the tree. If the property matchup fails
     """
-    info = attrib._property_def
+    info = attrib.property_def
     assert info is not None
 
     getter = info.getter
@@ -935,22 +934,11 @@ class Attribute(Inheritable):
     Or maybe it can be that the attribute is a property.
     """
 
-    _property_def:Optional[PropertyDef] = None
-
-    @property
-    def property_def(self) -> PropertyDef:
-        """
-        Access to this atribute is allowed only on PROPERTY objects.
-        """
-        assert self.kind is DocumentableKind.PROPERTY, "property_def must be used on PROPERTY objects only"
-        assert self._property_def is not None, "inconsistent property_def"
-        return self._property_def
-    
-    @property_def.setter
-    def property_def(self, v:PropertyDef) -> None:
-        assert self.kind is DocumentableKind.PROPERTY, "property_def must be used on PROPERTY objects only"
-        self._property_def = v
-    
+class Property(Attribute):
+    __class__ = Attribute #type:ignore
+    def __init__(self, *args:Any, **kwargs:Any):
+        super().__init__(*args, **kwargs)
+        self.property_def = PropertyDef()    
 
 # Work around the attributes of the same name within the System class.
 _ModuleT = Module
@@ -1092,6 +1080,9 @@ class System:
     @property
     def Attribute(self) -> Type['Attribute']:
         return self._factory.Attribute
+    @property
+    def Property(self) -> Type['Property']:
+        return self._factory.Property
 
     @property
     def sourcebase(self) -> Optional[str]:

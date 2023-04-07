@@ -1531,8 +1531,9 @@ def test_property_setter(systemcls: Type[model.System], capsys: CapSys) -> None:
     C = mod.contents['C']
 
     getter = C.contents['prop']
-    assert isinstance(getter, model.Attribute)
-    assert getter.kind is model.DocumentableKind.PROPERTY
+    assert isinstance(getter, model.Property)
+    assert getter.__class__ is model.Attribute # type:ignore
+
     assert getter.docstring == """Getter."""
 
     setter = getter.property_def.setter
@@ -2107,10 +2108,10 @@ def test_property_inherited(systemcls: Type[model.System], capsys: CapSys) -> No
         list(mod.contents['SubClass2'].contents) == \
         list(mod.contents['SubClass3'].contents) == ['spam']
 
-    assert isinstance(spam0, model.Attribute)
-    assert isinstance(spam1, model.Attribute)
-    assert isinstance(spam2, model.Attribute)
-    assert isinstance(spam3, model.Attribute)
+    assert isinstance(spam0, model.Property)
+    assert isinstance(spam1, model.Property)
+    assert isinstance(spam2, model.Property)
+    assert isinstance(spam3, model.Property)
 
     assert spam0.kind is model.DocumentableKind.PROPERTY
     assert spam1.kind is model.DocumentableKind.PROPERTY
@@ -2499,7 +2500,7 @@ def test_property_other_decorators(systemcls: Type[model.System]) -> None:
 
     mod = fromText(src, systemcls=systemcls)
     p = mod.contents['BaseClass'].contents['spam']
-    assert isinstance(p, model.Attribute)
+    assert isinstance(p, model.Property)
     assert isinstance(p.property_def.setter, model.Function)
     assert isinstance(p.property_def.deleter, model.Function)
 

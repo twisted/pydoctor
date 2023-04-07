@@ -160,7 +160,8 @@ def _is_property_def_decorator(dottedname:List[str], ctx:model.Documentable) -> 
 def _get_inherited_property(dottedname:List[str], _parent: model.Documentable) -> Optional[model.PropertyDef]:
     """
     Fetch the inherited property that this new decorator overrides.
-    None if it doesn't exist.
+    Returns C{None} if it doesn't exist in the inherited members or if it's already definied in the locals.
+    The dottedname must have at least three elements, else return C{None}.
     """
     if not _get_property_function_kind(dottedname):
         return None
@@ -181,21 +182,21 @@ def _get_inherited_property(dottedname:List[str], _parent: model.Documentable) -
         # Don't rename it.
         return None
     
-    # The class on which the property is defined (_cls) does not have
+    # note: the class on which the property is defined (_cls) does not have
     # to be in the MRO of the parent
     attr_def = _cls.find(_property_name[-1])
-    if not isinstance(attr_def, model.Attribute):
+    
+    if not isinstance(attr_def, model.Property):
         return None
     
-    if not attr_def.kind is model.DocumentableKind.PROPERTY:
-        return None
-
     return attr_def.property_def
 
 def _get_property_function_kind(dottedname:List[str]) -> Optional[model.PropertyFunctionKind]:
     """
     What kind of property function this decorator declares?
     None if we can't make sens of the decorator.
+
+    @note: the dottedname must have at least two elements.
     """
     if len(dottedname) >= 2:
         if dottedname[-1] == 'setter':
@@ -802,12 +803,11 @@ class ModuleVistor(NodeVisitor):
         self._handleFunctionDef(node, is_async=False)
 
     def _addProperty(self, node:Union[ast.AsyncFunctionDef, ast.FunctionDef], 
-                     parent:model.Documentable, lineno:int,) -> model.Attribute:
-        attribute = self.builder.addAttribute(node.name, 
-                            kind=model.DocumentableKind.PROPERTY, 
-                            parent=parent)
+                     parent:model.Documentable, lineno:int,) -> model.Property:
+        attribute = self.builder.addProperty(node.name, parent=parent)
         attribute.setLineNumber(lineno)
         attribute.decorators = node.decorator_list
+        assert isinstance(attribute, model.Property)
         return attribute
 
     def _handleFunctionDef(self,
@@ -870,11 +870,12 @@ class ModuleVistor(NodeVisitor):
                         property_deco = deco_name
                 
                 # Determine if the function is decorated with overload
-                if parent.expandName('.'.join(deco_name)) in ('typing.overload', 'typing_extensions.overload'):
+                if parent.expandName('.'.join(deco_name)) in ('typing.overload', 
+                                                              'typing_extensions.overload'):
                     is_overload_func = True
 
 
-        func_property: Optional[model.Attribute] = None
+        func_property: Optional[model.Property] = None
         prop_func_kind: Optional[model.PropertyFunctionKind] = None
         is_new_property: bool = is_property
         
@@ -894,7 +895,7 @@ class ModuleVistor(NodeVisitor):
             else:
                 # fetch property info to add this info to it
                 _maybe_prop = self.builder.current.contents.get(node.name)
-                if isinstance(_maybe_prop, model.Attribute) and _maybe_prop.kind is model.DocumentableKind.PROPERTY:
+                if isinstance(_maybe_prop, model.Property):
                     func_property = _maybe_prop
         
         elif is_property:
@@ -1241,16 +1242,22 @@ class ASTBuilder:
         """
         system = self.system
         parentMod = self.currentMod
-        attr = system.Attribute(system, name, parent)
-        attr.kind = kind
         if kind is model.DocumentableKind.PROPERTY:
-            # init property info if this attribute is a property
-            attr.property_def = model.PropertyDef()
+            attr:model.Attribute = system.Property(system, name, parent)
+        else:
+            attr = system.Attribute(system, name, parent)
+        attr.kind = kind
         attr.parentMod = parentMod
         system.addObject(attr)
         self.currentAttr = attr
         return attr
 
+    def addProperty(self,
+            name: str, parent: model.Documentable
+            ) -> model.Property:
+        return cast(model.Property, self.addAttribute(name, 
+                                 model.DocumentableKind.PROPERTY, 
+                                 parent))
 
     def processModuleAST(self, mod_ast: ast.Module, mod: model.Module) -> None:
 
