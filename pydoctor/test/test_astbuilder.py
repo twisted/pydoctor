@@ -1,15 +1,18 @@
-
 from typing import Optional, Tuple, Type, List, overload, cast
 import ast
 
 import astor
 
 
-from pydoctor import astbuilder, model
+from pydoctor import astbuilder, astutils, model
+from pydoctor import epydoc2stan
 from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring
+from pydoctor.options import Options
 from pydoctor.stanutils import flatten, html2stan, flatten_text
 from pydoctor.epydoc.markup.epytext import Element, ParsedEpytextDocstring
 from pydoctor.epydoc2stan import format_summary, get_parsed_type
+from pydoctor.test.test_packages import processPackage
+from pydoctor.utils import partialclass
 
 from . import CapSys, NotFoundLinker, posonlyargs, typecomment
 import pytest
@@ -1413,7 +1416,7 @@ def test_literal_string_annotation(annotation: str, expected: str) -> None:
     """Strings inside Literal annotations must not be recursively parsed."""
     stmt, = ast.parse(annotation).body
     assert isinstance(stmt, ast.Expr)
-    unstringed = astbuilder._AnnotationStringParser().visit(stmt.value)
+    unstringed = astutils._AnnotationStringParser().visit(stmt.value)
     assert astor.to_source(unstringed).strip() == expected
 
 @systemcls_param
@@ -1614,6 +1617,43 @@ def test_ignore_function_contents(systemcls: Type[model.System]) -> None:
     ''', systemcls=systemcls)
     outer = mod.contents['outer']
     assert not outer.contents
+
+@systemcls_param
+def test_overload(systemcls: Type[model.System], capsys: CapSys) -> None:
+    # Confirm decorators retained on overloads, docstring ignored for overloads,
+    # and that overloads after the primary function are skipped
+    mod = fromText("""
+        from typing import overload, Union
+        def dec(fn):
+            pass
+        @dec
+        @overload
+        def parse(s:str)->str:
+            ...
+        @overload
+        def parse(s:bytes)->bytes:
+            '''Ignored docstring'''
+            ...
+        def parse(s:Union[str, bytes])->Union[str, bytes]:
+            pass
+        @overload
+        def parse(s:str)->bytes:
+            ...
+        """, systemcls=systemcls)
+    func = mod.contents['parse']
+    assert isinstance(func, model.Function)
+    # Work around different space arrangements in Signature.__str__ between python versions
+    assert flatten_text(html2stan(str(func.signature).replace(' ', ''))) == '(s:Union[str,bytes])->Union[str,bytes]'
+    assert [astbuilder.node2dottedname(d) for d in (func.decorators or ())] == []
+    assert len(func.overloads) == 2
+    assert [astbuilder.node2dottedname(d) for d in func.overloads[0].decorators] == [['dec'], ['overload']]
+    assert [astbuilder.node2dottedname(d) for d in func.overloads[1].decorators] == [['overload']]
+    assert flatten_text(html2stan(str(func.overloads[0].signature).replace(' ', ''))) == '(s:str)->str'
+    assert flatten_text(html2stan(str(func.overloads[1].signature).replace(' ', ''))) == '(s:bytes)->bytes'
+    assert capsys.readouterr().out.splitlines() == [
+        '<test>:11: <test>.parse overload has docstring, unsupported',
+        '<test>:15: <test>.parse overload appeared after primary function',
+    ]
 
 @systemcls_param
 def test_constant_module(systemcls: Type[model.System]) -> None:
@@ -1971,3 +2011,372 @@ def test_reexport_wildcard(systemcls: Type[model.System]) -> None:
     assert system.allobjects['top._impl'].resolveName('f') == system.allobjects['top'].contents['f']
     assert system.allobjects['_impl2'].resolveName('i') == system.allobjects['top'].contents['i']
     assert all(n in system.allobjects['top'].contents for n in  ['f', 'g', 'h', 'i', 'j'])
+
+@systemcls_param
+def test_exception_kind(systemcls: Type[model.System], capsys: CapSys) -> None:
+    """
+    Exceptions are marked with the special kind "EXCEPTION".
+    """
+    mod = fromText('''
+    class Clazz:
+        """Class."""
+    class MyWarning(DeprecationWarning):
+        """Warnings are technically exceptions"""
+    class Error(SyntaxError):
+        """An exeption"""
+    class SubError(Error):
+        """A exeption subclass"""  
+    ''', systemcls=systemcls, modname="mod")
+    
+    warn = mod.contents['MyWarning']
+    ex1 = mod.contents['Error']
+    ex2 = mod.contents['SubError']
+    cls = mod.contents['Clazz']
+
+    assert warn.kind is model.DocumentableKind.EXCEPTION
+    assert ex1.kind is model.DocumentableKind.EXCEPTION
+    assert ex2.kind is model.DocumentableKind.EXCEPTION
+    assert cls.kind is model.DocumentableKind.CLASS
+
+    assert not capsys.readouterr().out
+
+@systemcls_param
+def test_exception_kind_corner_cases(systemcls: Type[model.System], capsys: CapSys) -> None:
+
+    src1 = '''\
+    class Exception:...
+    class LooksLikeException(Exception):... # Not an exception
+    '''
+
+    src2 = '''\
+    class Exception(BaseException):...
+    class LooksLikeException(Exception):... # An exception
+    '''
+
+    mod1 = fromText(src1, modname='src1', systemcls=systemcls)
+    assert mod1.contents['LooksLikeException'].kind == model.DocumentableKind.CLASS
+
+    mod2 = fromText(src2, modname='src2', systemcls=systemcls)
+    assert mod2.contents['LooksLikeException'].kind == model.DocumentableKind.EXCEPTION
+
+    assert not capsys.readouterr().out
+    
+@systemcls_param
+def test_syntax_error(systemcls: Type[model.System], capsys: CapSys) -> None:
+    systemcls = partialclass(systemcls, Options.from_args(['-q']))
+    fromText('''\
+    def f()
+        return True
+    ''', systemcls=systemcls)
+    assert capsys.readouterr().out == '<test>:???: cannot parse string\n'
+
+@systemcls_param
+def test_syntax_error_pack(systemcls: Type[model.System], capsys: CapSys) -> None:
+    systemcls = partialclass(systemcls, Options.from_args(['-q']))
+    processPackage('syntax_error', systemcls)
+    out = capsys.readouterr().out.strip('\n')
+    assert "__init__.py:???: cannot parse file, " in out, out
+
+@systemcls_param
+def test_type_alias(systemcls: Type[model.System]) -> None:
+    """
+    Type aliases and type variables are recognized as such.
+    """
+
+    mod = fromText(
+        '''
+        from typing import Callable, Tuple, TypeAlias, TypeVar
+        
+        T = TypeVar('T')
+        Parser = Callable[[str], Tuple[int, bytes, bytes]]
+        mylst = yourlst = list[str]
+        alist: TypeAlias = 'list[str]'
+        
+        notanalias = 'Callable[[str], Tuple[int, bytes, bytes]]'
+
+        class F:
+            from ext import what
+            L = _j = what.some = list[str]
+            def __init__(self):
+                self.Pouet: TypeAlias = 'Callable[[str], Tuple[int, bytes, bytes]]'
+                self.Q = q = list[str]
+        
+        ''', systemcls=systemcls)
+
+    assert mod.contents['T'].kind == model.DocumentableKind.TYPE_VARIABLE
+    assert mod.contents['Parser'].kind == model.DocumentableKind.TYPE_ALIAS
+    assert mod.contents['mylst'].kind == model.DocumentableKind.TYPE_ALIAS
+    assert mod.contents['yourlst'].kind == model.DocumentableKind.TYPE_ALIAS
+    assert mod.contents['alist'].kind == model.DocumentableKind.TYPE_ALIAS
+    assert mod.contents['notanalias'].kind == model.DocumentableKind.VARIABLE
+    assert mod.contents['F'].contents['L'].kind == model.DocumentableKind.TYPE_ALIAS
+    assert mod.contents['F'].contents['_j'].kind == model.DocumentableKind.TYPE_ALIAS
+
+    # Type variables in instance variables are not recognized
+    assert mod.contents['F'].contents['Pouet'].kind == model.DocumentableKind.INSTANCE_VARIABLE
+    assert mod.contents['F'].contents['Q'].kind == model.DocumentableKind.INSTANCE_VARIABLE
+
+@systemcls_param
+def test_prepend_package(systemcls: Type[model.System]) -> None:
+    """
+   Option --prepend-package option relies simply on the L{ISystemBuilder} interface, 
+   so we can test it by using C{addModuleString}, but it's not exactly what happens when we actually 
+   run pydoctor. See the other test L{test_prepend_package_real_path}. 
+    """
+    system = systemcls()
+    builder = model.prepend_package(system.systemBuilder, package='lib.pack')(system)
+
+    builder.addModuleString('"mod doc"\nclass C:\n    "C doc"', modname='core')
+    builder.buildModules()
+    assert isinstance(system.allobjects['lib'], model.Package)
+    assert isinstance(system.allobjects['lib.pack'], model.Package)
+    assert isinstance(system.allobjects['lib.pack.core.C'], model.Class)
+    assert 'core' not in system.allobjects
+
+
+@systemcls_param
+def test_prepend_package_real_path(systemcls: Type[model.System]) -> None:
+    """ 
+    In this test, we closer mimics what happens in the driver when --prepend-package option is passed. 
+    """
+    _builderT_init = systemcls.systemBuilder
+    try:
+        systemcls.systemBuilder = model.prepend_package(systemcls.systemBuilder, package='lib.pack')
+
+        system = processPackage('basic', systemcls=systemcls)
+
+        assert isinstance(system.allobjects['lib'], model.Package)
+        assert isinstance(system.allobjects['lib.pack'], model.Package)
+        assert isinstance(system.allobjects['lib.pack.basic.mod.C'], model.Class)
+        assert 'basic' not in system.allobjects
+    
+    finally:
+        systemcls.systemBuilder = _builderT_init
+
+def getConstructorsText(cls: model.Documentable) -> str:
+    assert isinstance(cls, model.Class)
+    return '\n'.join(
+        epydoc2stan.format_constructor_short_text(c, cls) for c in cls.public_constructors)
+
+@systemcls_param
+def test_crash_type_inference_unhashable_type(systemcls: Type[model.System], capsys:CapSys) -> None:
+    """
+    This test is about not crashing.
+
+    A TypeError is raised by ast.literal_eval() in some cases, when we're trying to do a set of lists or a dict with list keys.
+    We do not bother reporting it because pydoctor is not a checker.
+    """
+
+    src = '''
+    # Unhashable type, will raise an error in ast.literal_eval()
+    x = {[1, 2]}
+    class C:
+        v = {[1,2]:1}
+        def __init__(self):
+            self.y = [{'str':2}, {[1,2]:1}]
+    Y = [{'str':2}, {{[1, 2]}:1}]
+    '''
+
+    mod = fromText(src, systemcls=systemcls, modname='m')
+    for obj in ['m.x', 'm.C.v', 'm.C.y', 'm.Y']:
+        o = mod.system.allobjects[obj]
+        assert isinstance(o, model.Attribute)
+        assert o.annotation is None
+    assert not capsys.readouterr().out
+
+
+@systemcls_param
+def test_constructor_signature_init(systemcls: Type[model.System]) -> None:
+    
+    src = '''\
+    class Person(object):
+        # pydoctor can infer the constructor to be: "Person(name, age)"
+        def __init__(self, name, age):
+            self.name = name
+            self.age = age
+
+    class Citizen(Person):
+        # pydoctor can infer the constructor to be: "Citizen(nationality, *args, **kwargs)"
+        def __init__(self, nationality, *args, **kwargs):
+            self.nationality = nationality
+            super(Citizen, self).__init__(*args, **kwargs)
+        '''
+    mod = fromText(src, systemcls=systemcls)
+
+    # Like "Available constructor: ``Person(name, age)``" that links to Person.__init__ documentation.
+    assert getConstructorsText(mod.contents['Person']) == "Person(name, age)"
+    
+    # Like "Available constructor: ``Citizen(nationality, *args, **kwargs)``" that links to Citizen.__init__ documentation.
+    assert getConstructorsText(mod.contents['Citizen']) == "Citizen(nationality, *args, **kwargs)"
+
+@systemcls_param
+def test_constructor_signature_new(systemcls: Type[model.System]) -> None:
+    src = '''\
+    class Animal(object):
+        # pydoctor can infer the constructor to be: "Animal(name)"
+        def __new__(cls, name):
+            obj = super().__new__(cls)
+            # assignation not recognized by pydoctor, attribute 'name' will not be documented
+            obj.name = name 
+            return obj
+    '''
+
+    mod = fromText(src, systemcls=systemcls)
+
+    assert getConstructorsText(mod.contents['Animal']) == "Animal(name)"
+
+@systemcls_param
+def test_constructor_signature_init_and_new(systemcls: Type[model.System]) -> None:
+    """
+    Pydoctor can't infer the constructor signature when both __new__ and __init__ are defined. 
+    __new__ takes the precedence over __init__ because it's called first. Trying to infer what are the complete 
+    constructor signature when __new__ is defined might be very hard because the method can return an instance of 
+    another class, calling another __init__ method. We're not there yet in term of static analysis.
+    """
+
+    src = '''\
+    class Animal(object):
+        # both __init__ and __new__ are defined, pydoctor only looks at the __new__ method
+        # pydoctor infers the constructor to be: "Animal(*args, **kw)"
+        def __new__(cls, *args, **kw):
+            print('__new__() called.')
+            print('args: ', args, ', kw: ', kw)
+            return super().__new__(cls)
+
+        def __init__(self, name):
+            print('__init__() called.')
+            self.name = name
+            
+    class Cat(Animal):
+        # Idem, but __new__ is inherited.
+        # pydoctor infers the constructor to be: "Cat(*args, **kw)"
+        # This is why it's important to still document __init__ as a regular method.
+        def __init__(self, name, owner):
+            super().__init__(name)
+            self.owner = owner
+    '''
+
+    mod = fromText(src, systemcls=systemcls)
+
+    assert getConstructorsText(mod.contents['Animal']) == "Animal(*args, **kw)"
+    assert getConstructorsText(mod.contents['Cat']) == "Cat(*args, **kw)"
+
+@systemcls_param
+def test_constructor_signature_classmethod(systemcls: Type[model.System]) -> None:
+
+    src = '''\
+    
+    def get_default_options() -> 'Options':
+        """
+        This is another constructor for class 'Options'. 
+        But it's not recognized by pydoctor because it's not defined in the locals of Options.
+        """
+        return Options()
+
+    class Options:
+        a,b,c = None, None, None
+
+        @classmethod
+        def create_no_hints(cls):
+            """
+            Pydoctor can't deduce that this method is a constructor as well,
+            because there is no type annotation.
+            """
+            return cls()
+        
+        # thanks to type hints, 
+        # pydoctor can infer the constructor to be: "Options.create()"
+        @staticmethod
+        def create(important_arg) -> 'Options':
+            # the fictional constructor is not detected by pydoctor, because it doesn't exists actually.
+            return Options(1,2,3)
+        
+        # thanks to type hints, 
+        # pydoctor can infer the constructor to be: "Options.create_from_num(num)"
+        @classmethod
+        def create_from_num(cls, num) -> 'Options':
+            c = cls.create()
+            c.a = num
+            return c
+        '''
+
+    mod = fromText(src, systemcls=systemcls)
+
+    assert getConstructorsText(mod.contents['Options']) == "Options.create(important_arg)\nOptions.create_from_num(num)"
+
+@systemcls_param
+def test_constructor_inner_class(systemcls: Type[model.System]) -> None:
+    src = '''\
+    from typing import Self
+    class Animal(object):
+        class Bar(object):
+            # pydoctor can infer the constructor to be: "Animal.Bar(name)"
+            def __new__(cls, name):
+                ...
+            class Foo(object):
+                # pydoctor can infer the constructor to be: "Animal.Bar.Foo.create(name)"
+                @classmethod
+                def create(cls, name) -> 'Self':
+                    c = cls.create()
+                    c.a = num
+                    return c
+    '''
+    mod = fromText(src, systemcls=systemcls)
+    assert getConstructorsText(mod.contents['Animal'].contents['Bar']) == "Animal.Bar(name)"
+    assert getConstructorsText(mod.contents['Animal'].contents['Bar'].contents['Foo']) == "Animal.Bar.Foo.create(name)"
+
+@systemcls_param
+def test_constructor_many_parameters(systemcls: Type[model.System]) -> None:
+    src = '''\
+    class Animal(object):
+        def __new__(cls, name, lastname, age, spec, extinct, group, friends):
+            ...
+    '''
+    mod = fromText(src, systemcls=systemcls)
+
+    assert getConstructorsText(mod.contents['Animal']) == "Animal(name, lastname, age, spec, ...)"
+
+@systemcls_param
+def test_constructor_five_paramters(systemcls: Type[model.System]) -> None:
+    src = '''\
+    class Animal(object):
+        def __new__(cls, name, lastname, age, spec, extinct):
+            ...
+    '''
+    mod = fromText(src, systemcls=systemcls)
+
+    assert getConstructorsText(mod.contents['Animal']) == "Animal(name, lastname, age, spec, extinct)"
+
+@systemcls_param
+def test_default_constructors(systemcls: Type[model.System]) -> None:
+    src = '''\
+    class Animal(object):
+        def __init__(self):
+            ...
+        def __new__(cls):
+            ...
+        @classmethod
+        def new(cls) -> 'Animal':
+            ...
+        '''
+
+    mod = fromText(src, systemcls=systemcls)
+    assert getConstructorsText(mod.contents['Animal']) == "Animal.new()"
+
+    src = '''\
+    class Animal(object):
+        def __init__(self):
+            ...
+        '''
+
+    mod = fromText(src, systemcls=systemcls)
+    assert getConstructorsText(mod.contents['Animal']) == ""
+
+    src = '''\
+    class Animal(object):
+        def __init__(self):
+            "thing"
+        '''
+
+    mod = fromText(src, systemcls=systemcls)
+    assert getConstructorsText(mod.contents['Animal']) == "Animal()"

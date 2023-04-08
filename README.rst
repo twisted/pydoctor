@@ -4,8 +4,8 @@ pydoctor
 .. image:: https://img.shields.io/pypi/pyversions/pydoctor.svg
   :target: https://pypi.python.org/pypi/pydoctor
 
-.. image:: https://travis-ci.org/twisted/pydoctor.svg?branch=tox-travis-2
-  :target: https://travis-ci.org/twisted/pydoctor
+.. image:: https://github.com/twisted/pydoctor/actions/workflows/unit.yaml/badge.svg
+  :target: https://github.com/twisted/pydoctor/actions/workflows/unit.yaml
 
 .. image:: https://codecov.io/gh/twisted/pydoctor/branch/master/graph/badge.svg
   :target: https://codecov.io/gh/twisted/pydoctor
@@ -75,6 +75,40 @@ What's New?
 
 in development
 ^^^^^^^^^^^^^^
+
+* Add support for Python 3.11
+* Add support for the ``@overload`` decorator.
+* Show type annotations in function's signatures.
+* If none of a function's parameters have documentation, do not render the parameter table.
+* Themes have been adjusted to render annotations more concisely.
+* Fix a rare crash in the type inference. 
+  Invalid python code like a set of lists would raise a uncaught TypeError in the evaluation.
+* Support when source path lies outside base directory (``--project-base-dir``).
+  Since pydoctor support generating docs for multiple packages, 
+  it is not certain that all of the source is even viewable below a single URL. 
+  We now allow to add arbitrary paths to the system, 
+  but only the objects inside a module wich path is relative to
+  the base directory can have a source control link generated.
+* Cache the default docutils settings on docutils>=0.19 to improve performance.
+* Improve the search bar user experience by automatically appending wildcard to each query terms
+  when no terms already contain a wildcard. 
+* Link recognized constructors in class page.
+
+pydoctor 22.9.1
+^^^^^^^^^^^^^^^
+* ``pydoctor --help`` works again.
+
+pydoctor 22.9.0
+^^^^^^^^^^^^^^^
+
+* Add a special kind for exceptions (before, they were treated just like any other class).
+* The ZopeInterface features now renders again. A regression was introduced in pydoctor 22.7.0.
+* Python syntax errors are now logged as violations.
+* Fixed rare crash in the rendering of parsed elements (i.e. docstrings and ASTs). 
+  This is because XHTML entities like non-breaking spaces are not supported by Twisted's ``XMLString`` at the moment.
+* Show the value of type aliases and type variables.
+* The ``--prepend-package`` now work as documented. 
+  A regression was introduced in pydoctor 22.7.0 and it was not nesting new packages under the "fake" package.
 * `self` parameter is now removed only when the target is a method. In the previous version, it was always removed in any context.
 * `cls` parameter is now removed only when the target is a class method. In the previous version, it was always removed in any context.
 * Add anchors aside attributes and functions to ease 

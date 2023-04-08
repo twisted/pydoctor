@@ -6,7 +6,7 @@ import pytest
 from twisted.web.template import Tag, tags
 
 from pydoctor import epydoc2stan, model, linker
-from pydoctor.epydoc.markup import DocstringLinker
+from pydoctor.epydoc.markup import DocstringLinker, get_supported_docformats
 from pydoctor.stanutils import flatten, flatten_text
 from pydoctor.epydoc.markup.epytext import ParsedEpytextDocstring
 from pydoctor.sphinx import SphinxInventory
@@ -71,11 +71,37 @@ def summary2html(obj: model.Documentable) -> str:
 
 
 def test_html_empty_module() -> None:
+    # checks the presence of at least one paragraph on all docstrings
     mod = fromText('''
     """Empty module."""
     ''')
     assert docstring2html(mod) == "<div>\n<p>Empty module.</p>\n</div>"
 
+    mod = fromText('''
+    """
+    Empty module.
+    
+    Another paragraph.
+    """
+    ''')
+    assert docstring2html(mod) == "<div>\n<p>Empty module.</p>\n<p>Another paragraph.</p>\n</div>"
+
+    mod = fromText('''
+    """C{thing}"""
+    ''', modname='module')
+    assert docstring2html(mod) == '<div>\n<p>\n<tt class="rst-docutils literal">thing</tt>\n</p>\n</div>'
+
+    mod = fromText('''
+    """My C{thing}."""
+    ''', modname='module')
+    assert docstring2html(mod) == '<div>\n<p>My <tt class="rst-docutils literal">thing</tt>.</p>\n</div>'
+
+    mod = fromText('''
+    """
+    @note: There is no paragraph here. 
+    """
+    ''')
+    assert '<p>' not in docstring2html(mod)
 
 def test_xref_link_not_found() -> None:
     """A linked name that is not found is output as text."""
@@ -164,7 +190,8 @@ def test_func_undocumented_return_nothing() -> None:
 
 def test_func_undocumented_return_something() -> None:
     """When the returned value is undocumented (no 'return' field) and its type
-    annotation is not None, include the "Returns" entry in the output.
+    annotation is not None, do not include the "Returns" entry in the field
+    table. It will be shown in the signature.
     """
     mod = fromText('''
     def get_answer() -> int:
@@ -173,17 +200,59 @@ def test_func_undocumented_return_something() -> None:
     func = mod.contents['get_answer']
     lines = docstring2html(func).splitlines()
     expected_html = [
-        '<div>', '<p class="undocumented">Undocumented</p>',
-        '<table class="fieldTable">',
+        '<div>',
+        '<p class="undocumented">Undocumented</p>',
+        '</div>',
+    ]
+    assert lines == expected_html, str(lines)
+
+def test_func_only_single_param_doc() -> None:
+    """When only a single parameter is documented, all parameters show with
+    undocumented parameters marked as such.
+    """
+    mod = fromText('''
+    def f(x, y):
+        """
+        @param x: Actual documentation.
+        """
+    ''')
+    lines = docstring2html(mod.contents['f']).splitlines()
+    expected_html = [
+        '<div>', '<table class="fieldTable">',
+        '<tr class="fieldStart">',
+        '<td class="fieldName" colspan="2">Parameters</td>',
+        '</tr>', '<tr>',
+        '<td class="fieldArgContainer">',
+        '<span class="fieldArg">x</span>',
+        '</td>', '<td class="fieldArgDesc">Actual documentation.</td>',
+        '</tr>', '<tr>',
+        '<td class="fieldArgContainer">',
+        '<span class="fieldArg">y</span>',
+        '</td>', '<td class="fieldArgDesc">',
+        '<span class="undocumented">Undocumented</span>',
+        '</td>', '</tr>', '</table>', '</div>',
+    ]
+    assert lines == expected_html, str(lines)
+
+def test_func_only_return_doc() -> None:
+    """When only return is documented but not parameters, only the return
+    section is visible.
+    """
+    mod = fromText('''
+    def f(x: str):
+        """
+        @return: Actual documentation.
+        """
+    ''')
+    lines = docstring2html(mod.contents['f']).splitlines()
+    expected_html = [
+        '<div>', '<table class="fieldTable">',
         '<tr class="fieldStart">',
         '<td class="fieldName" colspan="2">Returns</td>',
-        '</tr>',
-        '<tr>', '<td class="fieldArgContainer">', '<code>int</code>',
-        '</td>',
-        '<td class="fieldArgDesc">',
-        '<span class="undocumented">Undocumented</span>',
-        '</td>', '</tr>', '</table>', '</div>'
-        ]
+        '</tr>', '<tr>',
+        '<td colspan="2">Actual documentation.</td>',
+        '</tr>', '</table>', '</div>',
+    ]
     assert lines == expected_html, str(lines)
 
 # These 3 tests fails because AnnotationDocstring is not using node2stan() yet.
@@ -239,26 +308,60 @@ def test_func_arg_and_ret_annotation_with_override() -> None:
     classic_fmt = docstring2html(classic_mod.contents['f'])
     assert annotation_fmt == classic_fmt
 
-@pytest.mark.xfail
-def test_func_arg_when_doc_missing() -> None:
+def test_func_arg_when_doc_missing_ast_types() -> None:
+    """
+    Type hints are now included in the signature, so no need to 
+    docucument them twice in the param table, only if non of them has documentation.
+    """
     annotation_mod = fromText('''
     def f(a: List[str], b: int) -> bool:
         """
         Today I will not document details
         """
     ''')
-    classic_mod = fromText('''
-    def f(a):
-        """
-        Today I will not document details
+    annotation_fmt = docstring2html(annotation_mod.contents['f'])
+    
+    assert 'fieldTable' not in annotation_fmt
+    assert 'b:' not in annotation_fmt
+
+def _get_test_func_arg_when_doc_missing_docstring_fields_types_cases() -> List[str]:
+    case1="""
         @type a: C{List[str]}
         @type b: C{int}
-        @rtype: C{bool}
+        @rtype: C{bool}"""
+    
+    case2="""
+        Args
+        ----
+        a: List[str]
+        b: int
+        
+        Returns
+        -------
+        bool:"""
+    return [case1,case2]
+
+@pytest.mark.parametrize('sig', ['(a)', '(a:List[str])', '(a) -> bool', '(a:List[str], b:int) -> bool'])
+@pytest.mark.parametrize('doc', _get_test_func_arg_when_doc_missing_docstring_fields_types_cases())
+def test_func_arg_when_doc_missing_docstring_fields_types(sig:str, doc:str) -> None:
+    """
+    When type fields are present (whether they are coming from napoleon extension or epytext), always show the param table.
+    """
+    
+    classic_mod = fromText(f'''
+    __docformat__ = "{'epytext' if '@type' in doc else 'numpy'}"
+    def f{sig}:
+        """
+        Today I will not document details
+        {doc}
         """
     ''')
-    annotation_fmt = docstring2html(annotation_mod.contents['f'])
+
     classic_fmt = docstring2html(classic_mod.contents['f'])
-    assert annotation_fmt == classic_fmt
+    assert 'fieldTable' in classic_fmt
+    assert '<span class="fieldArg' in classic_fmt
+    assert 'Parameters' in classic_fmt
+    assert 'Returns' in classic_fmt
 
 def test_func_param_duplicate(capsys: CapSys) -> None:
     """Warn when the same parameter is documented more than once."""
@@ -589,33 +692,6 @@ def test_func_starargs_more(capsys: CapSys) -> None:
     
     for part in expected_parts:
         assert part in epy_with_asterixes_fmt
-    
-    captured = capsys.readouterr().out
-    assert not captured
-
-def test_func_starargs_no_docstring(capsys: CapSys) -> None:
-    """
-    Star arguments, even if there are not docstring attached, will be rendered with stars.
-
-    @note: This test might not pass anymore when we include the annotations inside the signatures.
-    """
-
-    mod = fromText('''
-    def f(args:str, kwargs:str, *a:Any, **kwa:Any) -> None:
-        """
-        Do something with var-positional and var-keyword arguments.
-        """
-    ''', modname='<great>')
-
-    mod_fmt = docstring2html(mod.contents['f'])
-    
-    expected_parts = ['<span class="fieldArg">args:</span>', 
-                      '<span class="fieldArg">kwargs:</span>',
-                      '<span class="fieldArg">*a:</span>',
-                      '<span class="fieldArg">**kwa:</span>',]
-    
-    for part in expected_parts:
-        assert part in mod_fmt, mod_fmt
     
     captured = capsys.readouterr().out
     assert not captured
@@ -1533,12 +1609,18 @@ def test_insert_break_points_dotted_name() -> None:
     assert insert_break_points('pack._mod_.__einÜberlangerName__') == 'pack<wbr></wbr>._mod_<wbr></wbr>.__ein<wbr></wbr>Überlanger<wbr></wbr>Name__'
 
 def test_stem_identifier() -> None:
-    assert list(stem_identifier('__some_very_long_name__')) == [
-        'very', 'long', 'name'  # 'some' has been filtered out because it's part of the stop words.
-    ] 
+    assert list(stem_identifier('__some_very_long_name__')) == list(stem_identifier('__some_very_very_long_name__')) == [
+        'some', 'very', 'long', 'name',]
+    
+    assert list(stem_identifier('transitivity_maximum')) == [
+        'transitivity', 'maximum',]
+    
+    assert list(stem_identifier('ForEach')) == [
+        'For', 'Each',]
+
     assert list(stem_identifier('__someVeryLongName__')) == [
-        'Very', 'Long', 'Name'
-    ]
+        'some', 'Very', 'Long', 'Name', ]
+    
     assert list(stem_identifier('_name')) == ['name']
     assert list(stem_identifier('name')) == ['name']
     assert list(stem_identifier('processModuleAST')) == ['process', 'Module', 'AST']
@@ -1636,3 +1718,43 @@ def test_self_cls_in_function_params(capsys: CapSys) -> None:
     assert '<span class="fieldArg">cls</span>' not in html_which
     assert '<span class="fieldArg">self</span>' not in html_init
     assert '<span class="fieldArg">self</span>' in html_bool
+
+def test_docformat_skip_processtypes() -> None:
+    assert all([d in get_supported_docformats() for d in epydoc2stan._docformat_skip_processtypes])
+
+def test_returns_undocumented_still_show_up_if_params_documented() -> None:
+    """
+    The returns section will show up if any of the 
+    parameter are documented and the fucntion has a return annotation.
+    """
+    src = '''
+    def f(c:int) -> bool:
+        """
+        @param c: stuff
+        """
+    def g(c) -> bool:
+        """
+        @type c: int
+        """
+    def h(c):
+        """
+        @param c: stuff
+        """
+    def i(c) -> None:
+        """
+        @param c: stuff
+        """
+    '''
+
+    mod = fromText(src)
+
+    html_f = docstring2html(mod.contents['f'])
+    html_g = docstring2html(mod.contents['g'])
+    html_h = docstring2html(mod.contents['h'])
+    html_i = docstring2html(mod.contents['i'])
+
+    assert 'Returns</td>' in html_f
+    assert 'Returns</td>' in html_g
+
+    assert 'Returns</td>' not in html_h
+    assert 'Returns</td>' not in html_i

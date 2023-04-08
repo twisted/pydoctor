@@ -45,10 +45,14 @@ def objects_order(o: model.Documentable) -> Tuple[int, int, str]:
 
     return (-o.privacyClass.value, -map_kind(o.kind).value if o.kind else 0, o.fullName().lower())
 
-def format_decorators(obj: Union[model.Function, model.Attribute]) -> Iterator["Flattenable"]:
+def format_decorators(obj: Union[model.Function, model.Attribute, model.FunctionOverload]) -> Iterator["Flattenable"]:
+    # Since we use this function to colorize the FunctionOverload decorators and it's not an actual Documentable subclass, we use the overload's 
+    # primary function for parts that requires an interface to Documentable methods or attributes
+    documentable_obj = obj if not isinstance(obj, model.FunctionOverload) else obj.primary
+
     for dec in obj.decorators or ():
         if isinstance(dec, ast.Call):
-            fn = node2fullname(dec.func, obj)
+            fn = node2fullname(dec.func, documentable_obj)
             # We don't want to show the deprecated decorator;
             # it shows up as an infobox.
             if fn in ("twisted.python.deprecate.deprecated",
@@ -57,19 +61,58 @@ def format_decorators(obj: Union[model.Function, model.Attribute]) -> Iterator["
 
         # Colorize decorators!
         doc = colorize_inline_pyval(dec)
-        stan = doc.to_stan(obj.docstring_linker)
-        # Report eventual warnings. It warns when a regex failed to parse or the html2stan() function fails.
-        for message in doc.warnings:
-            obj.report(message)
-
+        stan = epydoc2stan.safe_to_stan(doc, documentable_obj.docstring_linker, documentable_obj,
+            fallback=epydoc2stan.colorized_pyval_fallback, 
+            section='rendering of decorators')
+        
+        # Report eventual warnings. It warns when we can't colorize the expression for some reason.
+        epydoc2stan.reportWarnings(documentable_obj, doc.warnings, section='colorize decorator')
         yield '@', stan.children, tags.br()
 
-def format_signature(function: model.Function) -> "Flattenable":
+def format_signature(func: Union[model.Function, model.FunctionOverload]) -> "Flattenable":
     """
     Return a stan representation of a nicely-formatted source-like function signature for the given L{Function}.
     Arguments default values are linked to the appropriate objects when possible.
     """
-    return html2stan(str(function.signature)) if function.signature else "(...)"
+    broken = "(...)"
+    try:
+        return html2stan(str(func.signature)) if func.signature else broken
+    except Exception as e:
+        # We can't use safe_to_stan() here because we're using Signature.__str__ to generate the signature HTML.
+        epydoc2stan.reportErrors(func.primary if isinstance(func, model.FunctionOverload) else func, 
+            [epydoc2stan.get_to_stan_error(e)], section='signature')
+        return broken
+
+
+def format_overloads(func: model.Function) -> Iterator["Flattenable"]:
+    """
+    Format a function overloads definitions as nice HTML signatures.
+    """
+    for overload in func.overloads:
+        yield from format_decorators(overload)
+        yield tags.div(format_function_def(func.name, func.is_async, overload))
+
+def format_function_def(func_name: str, is_async: bool, 
+                        func: Union[model.Function, model.FunctionOverload]) -> List["Flattenable"]:
+    """
+    Format a function definition as nice HTML signature. 
+    
+    If the function is overloaded, it will return an empty list. We use L{format_overloads} for these.
+    """
+    r:List["Flattenable"] = []
+    # If this is a function with overloads, we do not render the principal signature because the overloaded signatures will be shown instead.
+    if isinstance(func, model.Function) and func.overloads:
+        return r
+    def_stmt = 'async def' if is_async else 'def'
+    if func_name.endswith('.setter') or func_name.endswith('.deleter'):
+        func_name = func_name[:func_name.rindex('.')]
+    r.extend([
+        tags.span(def_stmt, class_='py-keyword'), ' ',
+        tags.span(func_name, class_='py-defname'), 
+        tags.span(format_signature(func), class_='function-signature'), ':',
+    ])
+    return r
+    
 
 class Nav(TemplateElement):
     """
@@ -212,7 +255,7 @@ class CommonPage(Page):
     def inhierarchy(self, request: object, tag: Tag) -> "Flattenable":
         return ()
 
-    def extras(self) -> List[Tag]:
+    def extras(self) -> List["Flattenable"]:
         return self.objectExtras(self.ob)
 
     def docstring(self) -> "Flattenable":
@@ -261,13 +304,15 @@ class CommonPage(Page):
                 assert False, type(c)
         return r
 
-    def objectExtras(self, ob: model.Documentable) -> List[Tag]:
+    def objectExtras(self, ob: model.Documentable) -> List["Flattenable"]:
         """
         Flatten each L{model.Documentable.extra_info} list item.
         """
-        r: List[Tag] = []
+        r: List["Flattenable"] = []
         for extra in ob.extra_info:
-            r.append(extra.to_stan(ob.docstring_linker, compact=False))
+            r.append(epydoc2stan.unwrap_docstring_stan(
+                epydoc2stan.safe_to_stan(extra, ob.docstring_linker, ob,
+                fallback = lambda _,__,___:epydoc2stan.BROKEN, section='extra')))
         return r
 
 
@@ -303,8 +348,8 @@ class CommonPage(Page):
 class ModulePage(CommonPage):
     ob: model.Module
 
-    def extras(self) -> List[Tag]:
-        r: List[Tag] = []
+    def extras(self) -> List["Flattenable"]:
+        r: List["Flattenable"] = []
 
         sourceHref = util.srclink(self.ob)
         if sourceHref:
@@ -383,8 +428,8 @@ class ClassPage(CommonPage):
         super().__init__(ob, template_lookup, docgetter)
         self.baselists = util.class_members(self.ob)
 
-    def extras(self) -> List[Tag]:
-        r: List[Tag] = []
+    def extras(self) -> List["Flattenable"]:
+        r: List["Flattenable"] = []
 
         sourceHref = util.srclink(self.ob)
         source: "Flattenable"
@@ -396,7 +441,7 @@ class ClassPage(CommonPage):
             tags.span("class", class_='py-keyword'), " ",
             tags.span(self.ob.name, class_='py-defname'),
             self.classSignature(), ":", source
-            )))
+            ), class_='class-signature'))
 
         subclasses = sorted(self.ob.subclasses, key=util.objects_order)
         if subclasses:
@@ -409,6 +454,7 @@ class ClassPage(CommonPage):
         return r
 
     def classSignature(self) -> "Flattenable":
+
         r: List["Flattenable"] = []
         # Here, we should use the parent's linker because a base name
         # can't be define in the class itself.
@@ -423,7 +469,10 @@ class ClassPage(CommonPage):
 
                     # link to external class or internal class, using the colorizer here
                     # to link to classes with generics (subscripts and other AST expr).
-                    r.extend(colorize_inline_pyval(base_node).to_stan(_linker).children)
+                    stan = epydoc2stan.safe_to_stan(colorize_inline_pyval(base_node), _linker, self.ob, 
+                        fallback=epydoc2stan.colorized_pyval_fallback, 
+                        section='rendering of class signature')
+                    r.extend(stan.children)
                     
             r.append(')')
         return r
@@ -462,12 +511,12 @@ class ClassPage(CommonPage):
             r.extend([' (via ', tail, ')'])
         return r
 
-    def objectExtras(self, ob: model.Documentable) -> List[Tag]:
-        r = list(get_override_info(self.ob, ob.name, self.page_url))
+    def objectExtras(self, ob: model.Documentable) -> List["Flattenable"]:
+        r: List["Flattenable"] = list(get_override_info(self.ob, ob.name, self.page_url))
         r.extend(super().objectExtras(ob))
         return r
 
-def get_override_info(cls:model.Class, member_name:str, page_url:Optional[str]=None) -> Iterator[Tag]:
+def get_override_info(cls:model.Class, member_name:str, page_url:Optional[str]=None) -> Iterator["Flattenable"]:
     page_url = page_url or cls.page_object.url
     for b in cls.mro(include_self=False):
         if member_name not in b.contents:
@@ -488,7 +537,7 @@ def get_override_info(cls:model.Class, member_name:str, page_url:Optional[str]=N
 class ZopeInterfaceClassPage(ClassPage):
     ob: zopeinterface.ZopeInterfaceClass
 
-    def extras(self) -> List[Tag]:
+    def extras(self) -> List["Flattenable"]:
         r = super().extras()
         if self.ob.isinterface:
             namelist = [o.fullName() for o in 
@@ -515,9 +564,9 @@ class ZopeInterfaceClassPage(ClassPage):
                         return method
         return None
 
-    def objectExtras(self, ob: model.Documentable) -> List[Tag]:
+    def objectExtras(self, ob: model.Documentable) -> List["Flattenable"]:
         imeth = self.interfaceMeth(ob.name)
-        r: List[Tag] = []
+        r: List["Flattenable"] = []
         if imeth:
             iface = imeth.parent
             assert iface is not None

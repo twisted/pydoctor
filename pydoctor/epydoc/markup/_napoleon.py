@@ -4,7 +4,7 @@ L{pydoctor.epydoc.markup.numpy} and L{pydoctor.epydoc.markup.google}.
 """
 from typing import List, Optional, Type
 
-from pydoctor.epydoc.markup import ParsedDocstring, ParseError
+from pydoctor.epydoc.markup import ParsedDocstring, ParseError, processtypes
 from pydoctor.epydoc.markup import restructuredtext
 from pydoctor.napoleon.docstring import GoogleDocstring, NumpyDocstring
 from pydoctor.model import Attribute, Documentable
@@ -29,7 +29,7 @@ class NapoelonDocstringParser:
         self.obj = obj
 
     def parse_google_docstring(
-        self, docstring: str, errors: List[ParseError], processtypes: bool = True
+        self, docstring: str, errors: List[ParseError]
     ) -> ParsedDocstring:
         """
         Parse the given docstring, which is formatted as Google style docstring.
@@ -43,7 +43,7 @@ class NapoelonDocstringParser:
             docstring, errors, GoogleDocstring, )
 
     def parse_numpy_docstring(
-        self, docstring: str, errors: List[ParseError], processtypes: bool = True
+        self, docstring: str, errors: List[ParseError]
     ) -> ParsedDocstring:
         """
         Parse the given docstring, which is formatted as NumPy style docstring.
@@ -52,7 +52,6 @@ class NapoelonDocstringParser:
         @param docstring: The docstring to parse
         @param errors: A list where any errors generated during parsing
             will be stored.
-        @param processtypes: processtypes is always ``True`` for google and numpy docstrings.
         """
         return self._parse_docstring(
             docstring, errors, NumpyDocstring, )
@@ -83,4 +82,4 @@ class NapoelonDocstringParser:
         for warn, lineno in docstring_obj.warnings:
             errors.append(ParseError(warn, lineno, is_fatal=False))
         # Get the converted reST string and parse it with docutils
-        return restructuredtext.parse_docstring(str(docstring_obj), errors, processtypes=True)
+        return processtypes(restructuredtext.parse_docstring)(str(docstring_obj), errors)

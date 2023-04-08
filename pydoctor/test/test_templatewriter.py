@@ -1,5 +1,6 @@
 from io import BytesIO
-from typing import Callable, Union, Any, cast, TYPE_CHECKING
+import re
+from typing import Callable, Union, Any, cast, Type, TYPE_CHECKING
 import pytest
 import warnings
 import sys
@@ -7,15 +8,16 @@ import tempfile
 import os
 from pathlib import Path, PurePath
 
-from pydoctor import model, templatewriter, stanutils, __version__
+from pydoctor import model, templatewriter, stanutils, __version__, epydoc2stan
 from pydoctor.templatewriter import (FailedToCreateTemplate, StaticTemplate, pages, writer, util,
                                      TemplateLookup, Template, 
                                      HtmlTemplate, UnsupportedTemplateVersion, 
                                      OverrideTemplateNotAllowed)
 from pydoctor.templatewriter.pages.table import ChildTable
 from pydoctor.templatewriter.summary import isClassNodePrivate, isPrivate, moduleSummary
-from pydoctor.test.test_astbuilder import fromText
+from pydoctor.test.test_astbuilder import fromText, systemcls_param
 from pydoctor.test.test_packages import processPackage, testpackages
+from pydoctor.test import CapSys
 from pydoctor.themes import get_themes
 
 if TYPE_CHECKING:
@@ -520,6 +522,31 @@ def test_isClassNodePrivate() -> None:
     assert not isClassNodePrivate(cast(model.Class, mod.contents['_BaseForPublic']))
     assert isClassNodePrivate(cast(model.Class, mod.contents['_BaseForPrivate']))
 
+@systemcls_param
+def test_format_function_def_overloads(systemcls: Type[model.System]) -> None:
+    mod = fromText("""
+        from typing import overload, Union
+        @overload
+        def parse(s: str) -> str:
+            ...
+        @overload
+        def parse(s: bytes) -> bytes:
+            ...
+        def parse(s: Union[str, bytes]) -> Union[str, bytes]:
+            pass
+        """, systemcls=systemcls)
+    func = mod.contents['parse']
+    assert isinstance(func, model.Function)
+    
+    # We intentionally remove spaces before comparing
+    overloads_html = stanutils.flatten_text(list(pages.format_overloads(func))).replace(' ','')
+    assert '''(s:str)->str:''' in overloads_html
+    assert '''(s:bytes)->bytes:''' in overloads_html
+
+    # Confirm the actual function definition is not rendered
+    function_def_html = stanutils.flatten_text(list(pages.format_function_def(func.name, func.is_async, func)))
+    assert function_def_html == ''
+
 def test_format_signature() -> None:
     """Test C{pages.format_signature}. 
     
@@ -529,9 +556,8 @@ def test_format_signature() -> None:
     def func(a:Union[bytes, str]=_get_func_default(str), b:Any=re.compile(r'foo|bar'), *args:str, **kwargs:Any) -> Iterator[Union[str, bytes]]:
         ...
     ''')
-    assert ("""(a=_get_func_default(<wbr></wbr>str), b=re.compile("""
-            """r<span class="rst-variable-quote">'</span>foo<span class="rst-re-op">|</span>"""
-            """bar<span class="rst-variable-quote">'</span>), *args, **kwargs)""") in flatten(pages.format_signature(cast(model.Function, mod.contents['func'])))
+    assert ("""(a:Union[bytes,str]=_get_func_default(str),b:Any=re.compile(r'foo|bar'),*args:str,**kwargs:Any)->Iterator[Union[str,bytes]]""") in \
+        stanutils.flatten_text(pages.format_signature(cast(model.Function, mod.contents['func']))).replace(' ','')
 
 def test_format_decorators() -> None:
     """Test C{pages.format_decorators}"""
@@ -626,3 +652,124 @@ def test_objects_order_mixed_modules_and_packages() -> None:
 
     assert names == ['aaa', 'aba', 'bbb']
 
+src_crash_xml_entities = '''\
+"""
+These are non-breaking spaces
+=============================
+
+docstring.
+"""
+
+A: Literal['These are non-breaking spaces.'] = True
+
+B = ({}, 'These are non-breaking spaces.')
+
+V = True
+"""
+These are non-breaking spaces.
+"""
+
+@thing('These are non-breaking spaces.')
+def g():
+    ...
+
+def h() -> Literal['These are non-breaking spaces.']:
+    ...
+
+
+def f(a:Literal['These are non-breaking spaces.']='These are non-breaking spaces.') -> int:
+    return {}
+
+def i():
+    """
+    Stuff
+
+    @rtype: V of C
+    """
+    ...
+
+class C(Literal['These are non-breaking spaces.']):
+    ...
+
+'''
+
+@pytest.mark.parametrize('processtypes', [True, False])
+def test_crash_xmlstring_entities(capsys:CapSys, processtypes:bool) -> None:
+    """
+    Crash test for https://github.com/twisted/pydoctor/issues/641
+    
+    This test might fail in the future, when twisted's XMLString supports XHTML entities (see https://github.com/twisted/twisted/issues/11581). 
+    But it will always fail for python 3.6 since twisted dropped support for these versions of python.
+    """
+    system = model.System()
+    system.options.verbosity = -1
+    system.options.processtypes=processtypes
+    mod = fromText(src_crash_xml_entities, system=system, modname='test')
+    for o in mod.system.allobjects.values():
+        epydoc2stan.ensure_parsed_docstring(o)
+    getHTMLOf(mod)
+    getHTMLOf(mod.contents['C'])
+    out = capsys.readouterr().out
+    warnings = '''\
+test:2: bad docstring: SAXParseException: <unknown>.+ undefined entity
+test:25: bad signature: SAXParseException: <unknown>.+ undefined entity
+test:17: bad rendering of decorators: SAXParseException: <unknown>.+ undefined entity
+test:21: bad signature: SAXParseException: <unknown>.+ undefined entity
+test:30: bad docstring: SAXParseException: <unknown>.+ undefined entity
+test:8: bad annotation: SAXParseException: <unknown>:.+ undefined entity
+test:10: bad rendering of constant: SAXParseException: <unknown>.+ undefined entity
+test:14: bad docstring: SAXParseException: <unknown>.+ undefined entity
+test:36: bad rendering of class signature: SAXParseException: <unknown>.+ undefined entity
+'''.splitlines()
+    
+    # Some how the type processing get rid of the non breaking spaces, but it's more an implementation
+    # detail rather than a fix for the bug.
+    if processtypes is True:
+        warnings.remove('test:30: bad docstring: SAXParseException: <unknown>.+ undefined entity')
+    
+    assert re.match('\n'.join(warnings), out)
+
+@pytest.mark.parametrize('processtypes', [True, False])
+def test_crash_xmlstring_entities_rst(capsys:CapSys, processtypes:bool) -> None:
+    """Idem for RST"""
+    system = model.System()
+    system.options.verbosity = -1
+    system.options.processtypes=processtypes
+    system.options.docformat = 'restructuredtext'
+    mod = fromText(src_crash_xml_entities.replace('@type', ':type').replace('@rtype', ':rtype').replace('==', "--"), modname='test', system=system)
+    for o in mod.system.allobjects.values():
+        epydoc2stan.ensure_parsed_docstring(o)
+    getHTMLOf(mod)
+    getHTMLOf(mod.contents['C'])
+    out = capsys.readouterr().out
+    warn_str = '''\
+test:2: bad docstring: SAXParseException: <unknown>.+ undefined entity
+test:25: bad signature: SAXParseException: <unknown>.+ undefined entity
+test:17: bad rendering of decorators: SAXParseException: <unknown>.+ undefined entity
+test:21: bad signature: SAXParseException: <unknown>.+ undefined entity
+test:30: bad docstring: SAXParseException: <unknown>.+ undefined entity
+test:8: bad annotation: SAXParseException: <unknown>.+ undefined entity
+test:10: bad rendering of constant: SAXParseException: <unknown>.+ undefined entity
+test:14: bad docstring: SAXParseException: <unknown>.+ undefined entity
+test:36: bad rendering of class signature: SAXParseException: <unknown>.+ undefined entity
+'''
+    warnings = warn_str.splitlines()
+
+    if processtypes is True:
+        warnings.remove('test:30: bad docstring: SAXParseException: <unknown>.+ undefined entity')
+    
+    assert re.match('\n'.join(warnings), out)
+
+def test_constructor_renders(capsys:CapSys) -> None:
+    ...
+    src = '''\
+    class Animal(object):
+        # pydoctor can infer the constructor to be: "Animal(name)"
+        def __new__(cls, name):
+            ...
+    '''
+
+    mod = fromText(src)
+    html = getHTMLOf(mod.contents['Animal'])
+    assert 'Constructor: ' in html
+    assert 'Animal(name)' in html

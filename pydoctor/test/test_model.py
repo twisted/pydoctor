@@ -168,6 +168,9 @@ def test_fetchIntersphinxInventories_content() -> None:
         """Avoid touching the network."""
         def get(self, url: str) -> bytes:
             return url_content[url]
+        def close(self) -> None:
+            return None
+        
 
     sut.fetchIntersphinxInventories(Cache())
 
@@ -235,6 +238,21 @@ def test_constructor_params_inherited() -> None:
     assert isinstance(C, model.Class)
     assert C.constructor_params.keys() == {'self', 'a', 'b'}
 
+def test_constructor_params_new() -> None:
+    src = '''
+    class A:
+        def __new__(cls, **kwargs):
+            pass
+    class B:
+        def __init__(self, a: int, b: str):
+            pass
+    class C(A, B):
+        pass
+    '''
+    mod = fromText(src)
+    C = mod.contents['C']
+    assert isinstance(C, model.Class)
+    assert C.constructor_params.keys() == {'cls', 'kwargs'}
 
 def test_docstring_lineno() -> None:
     src = '''
