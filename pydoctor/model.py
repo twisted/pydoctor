@@ -827,6 +827,18 @@ class Attribute(Inheritable):
     None value means the value is not initialized at the current point of the the process. 
     """
 
+    def _inherits_instance_variable_kind(self) -> None:
+        if self.value is not None:
+            return
+        if self.kind is not DocumentableKind.CLASS_VARIABLE:
+            return
+        docsources = self.docsources()
+        next(docsources)
+        for inherited in docsources:
+            if inherited.kind is DocumentableKind.INSTANCE_VARIABLE:
+                self.kind = DocumentableKind.INSTANCE_VARIABLE
+                return
+
 # Work around the attributes of the same name within the System class.
 _ModuleT = Module
 _PackageT = Package
@@ -1428,6 +1440,9 @@ class System:
             
             if is_exception(cls):
                 cls.kind = DocumentableKind.EXCEPTION
+
+        for attrib in self.objectsOfType(Attribute):
+            attrib._inherits_instance_variable_kind()
 
         for post_processor in self._post_processors:
             post_processor(self)

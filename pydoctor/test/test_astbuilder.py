@@ -2380,3 +2380,36 @@ def test_default_constructors(systemcls: Type[model.System]) -> None:
 
     mod = fromText(src, systemcls=systemcls)
     assert getConstructorsText(mod.contents['Animal']) == "Animal()"
+
+@systemcls_param
+def test_class_var_override(systemcls: Type[model.System]) -> None:
+
+    src = '''\
+    from number import Number
+    class Thing(object):
+        def __init__(self):
+            self.var: Number = 1
+    class Stuff(Thing):
+        var:float
+        '''
+
+    mod = fromText(src, systemcls=systemcls, modname='mod')
+    var = mod.system.allobjects['mod.Stuff.var']
+    assert var.kind == model.DocumentableKind.INSTANCE_VARIABLE
+
+def test_class_var_override_attrs() -> None:
+
+    systemcls = AttrsSystem
+
+    src = '''\
+    import attr
+    @attr.s
+    class Thing(object):
+        var = attr.ib()
+    class Stuff(Thing):
+        var: float
+        '''
+
+    mod = fromText(src, systemcls=systemcls, modname='mod')
+    var = mod.system.allobjects['mod.Stuff.var']
+    assert var.kind == model.DocumentableKind.INSTANCE_VARIABLE
