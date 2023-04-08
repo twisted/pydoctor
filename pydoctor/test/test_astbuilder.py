@@ -2397,6 +2397,43 @@ def test_class_var_override(systemcls: Type[model.System]) -> None:
     var = mod.system.allobjects['mod.Stuff.var']
     assert var.kind == model.DocumentableKind.INSTANCE_VARIABLE
 
+@systemcls_param
+def test_class_var_override_traverse_subclasses(systemcls: Type[model.System]) -> None:
+
+    src = '''\
+    from number import Number
+    class Thing(object):
+        def __init__(self):
+            self.var: Number = 1
+    class _Stuff(Thing):
+        ...
+    class Stuff(_Stuff):
+        var:float
+        '''
+
+    mod = fromText(src, systemcls=systemcls, modname='mod')
+    var = mod.system.allobjects['mod.Stuff.var']
+    assert var.kind == model.DocumentableKind.INSTANCE_VARIABLE
+
+    src = '''\
+    from number import Number
+    class Thing(object):
+        def __init__(self):
+            self.var: Optional[Number] = 0
+    class _Stuff(Thing):
+        var = None
+    class Stuff(_Stuff):
+        var: float
+        '''
+
+    mod = fromText(src, systemcls=systemcls, modname='mod')
+    var = mod.system.allobjects['mod._Stuff.var']
+    assert var.kind == model.DocumentableKind.INSTANCE_VARIABLE
+    
+    mod = fromText(src, systemcls=systemcls, modname='mod')
+    var = mod.system.allobjects['mod.Stuff.var']
+    assert var.kind == model.DocumentableKind.INSTANCE_VARIABLE
+
 def test_class_var_override_attrs() -> None:
 
     systemcls = AttrsSystem

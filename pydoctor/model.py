@@ -828,8 +828,10 @@ class Attribute(Inheritable):
     """
 
     def _inherits_instance_variable_kind(self) -> None:
-        if self.value is not None:
-            return
+        """
+        If any of the inherited members of a class variable is an instance variable,
+        then the subclass' class variable become an instance variable as well.
+        """
         if self.kind is not DocumentableKind.CLASS_VARIABLE:
             return
         docsources = self.docsources()
@@ -837,7 +839,7 @@ class Attribute(Inheritable):
         for inherited in docsources:
             if inherited.kind is DocumentableKind.INSTANCE_VARIABLE:
                 self.kind = DocumentableKind.INSTANCE_VARIABLE
-                return
+                break
 
 # Work around the attributes of the same name within the System class.
 _ModuleT = Module
