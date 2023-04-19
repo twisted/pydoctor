@@ -40,11 +40,11 @@ import re
 from importlib import import_module
 from inspect import getmodulename
 
-from docutils import nodes, utils
+from docutils import nodes
 from twisted.web.template import Tag, tags
 
 from pydoctor import node2stan
-from pydoctor.epydoc.docutils import set_node_attributes, build_table_of_content
+from pydoctor.epydoc.docutils import set_node_attributes, build_table_of_content, new_document
 
 
 # In newer Python versions, use importlib.resources from the standard library.
@@ -68,6 +68,8 @@ if TYPE_CHECKING:
 # 4. ParseError exceptions
 #
 
+ParserFunction = Callable[[str, List['ParseError']], 'ParsedDocstring']
+
 def get_supported_docformats() -> Iterator[str]:
     """
     Get the list of currently supported docformat.
@@ -79,7 +81,7 @@ def get_supported_docformats() -> Iterator[str]:
         else:
             yield moduleName
 
-def get_parser_by_name(docformat: str, obj: Optional['Documentable'] = None) -> Callable[[str, List['ParseError'], bool], 'ParsedDocstring']:
+def get_parser_by_name(docformat: str, obj: Optional['Documentable'] = None) -> ParserFunction:
     """
     Get the C{parse_docstring(str, List[ParseError], bool) -> ParsedDocstring} function based on a parser name. 
 
@@ -89,6 +91,30 @@ def get_parser_by_name(docformat: str, obj: Optional['Documentable'] = None) -> 
     mod = import_module(f'pydoctor.epydoc.markup.{docformat}')
     # We can safely ignore this mypy warning, since we can be sure the 'get_parser' function exist and is "correct".
     return mod.get_parser(obj) # type:ignore[no-any-return]
+
+def processtypes(parse:ParserFunction) -> ParserFunction:
+    """
+    Wraps a docstring parser function to provide option --process-types.
+    """
+    
+    def _processtypes(doc: 'ParsedDocstring', errs: List['ParseError']) -> None:
+        """
+        Mutates the type fields of the given parsed docstring to replace 
+        their body by parsed version with type auto-linking.
+        """
+        from pydoctor.epydoc.markup._types import ParsedTypeDocstring
+        for field in doc.fields:
+            if field.tag() in ParsedTypeDocstring.FIELDS:
+                body = ParsedTypeDocstring(field.body().to_node(), lineno=field.lineno)
+                append_warnings(body.warnings, errs, lineno=field.lineno+1)
+                field.replace_body(body)
+    
+    def parse_and_processtypes(doc:str, errs:List['ParseError']) -> 'ParsedDocstring':
+        parsed_doc = parse(doc, errs)
+        _processtypes(parsed_doc, errs)
+        return parsed_doc
+
+    return parse_and_processtypes
 
 ##################################################
 ## ParsedDocstring
@@ -117,7 +143,6 @@ class ParsedDocstring(abc.ABC):
 
         self._stan: Optional[Tag] = None
         self._summary: Optional['ParsedDocstring'] = None
-        self._compact = True
 
     @abc.abstractproperty
     def has_body(self) -> bool:
@@ -137,7 +162,7 @@ class ParsedDocstring(abc.ABC):
         except NotImplementedError:
             return None
         contents = build_table_of_content(document, depth=depth)
-        docstring_toc = utils.new_document('toc')
+        docstring_toc = new_document('toc')
         if contents:
             docstring_toc.extend(contents)
             from pydoctor.epydoc.markup.restructuredtext import ParsedRstDocstring
@@ -145,7 +170,7 @@ class ParsedDocstring(abc.ABC):
         else:
             return None
 
-    def to_stan(self, docstring_linker: 'DocstringLinker', compact:bool=True) -> Tag:
+    def to_stan(self, docstring_linker: 'DocstringLinker') -> Tag:
         """
         Translate this docstring to a Stan tree.
 
@@ -158,21 +183,9 @@ class ParsedDocstring(abc.ABC):
         @raises Exception: If something went wrong. Callers should generally catch C{Exception}
             when calling L{to_stan()}.
         """
-        # The following three lines is a hack in order to still show p tags 
-        # around docstrings content when there is only a single line text
-        # and arguement compact=False is passed. We clear cached stan if required.
-        if compact != self._compact and self._stan is not None:
-            self._stan = None
-        self._compact = compact
-
         if self._stan is not None:
-            return self._stan      
-
-        docstring_stan = node2stan.node2stan(self.to_node(), 
-                                        docstring_linker, 
-                                        compact=compact)
-
-        self._stan = Tag('', children=docstring_stan.children)
+            return self._stan
+        self._stan = Tag('', children=node2stan.node2stan(self.to_node(), docstring_linker).children)
         return self._stan
     
     @abc.abstractmethod
@@ -250,6 +263,9 @@ class Field:
         @return: This field's body.
         """
         return self._body
+    
+    def replace_body(self, newbody:ParsedDocstring) -> None:
+        self._body = newbody
 
     def __repr__(self) -> str:
         if self._arg is None:
@@ -306,35 +322,19 @@ class DocstringLinker:
         """
         raise NotImplementedError()
 
-    def switch_page_context(self, ob:Optional['Documentable']) -> ContextManager[None]:
+    def switch_context(self, ob:Optional['Documentable']) -> ContextManager[None]:
         """
-        Switch the page context of the linker, keeping the same underlying lookup rules.
+        Switch the context of the linker, keeping the same underlying lookup rules.
 
         Useful to resolve links with the right L{Documentable} context but
         create correct - absolute or relative - links to be clicked on from another page 
-        rather than the initial page of the L{Documentable} context.
+        rather than the initial page of the context. "Cannot find link target" errors will be reported
+        relatively to the new context object.
 
-        Pass C{None} to always generate full URLs (for summaries for example).
-
-        For instance::
-
-            with cls.parent.docstring_linker.switch_context(cls):                
-                # Resolves links in the context of the parent of the class
-                # but create links to be clicked from the class page.
-                flattenbase = colorize_inline_pyval(base_node).to_stan(
-                    cls.parent.docstring_linker)
+        Pass C{None} to always generate full URLs (for summaries for example), 
+        in this case error will NOT be reported at all.
         """
         raise NotImplementedError()
-        
-    def disable_same_page_optimization(self) -> ContextManager[None]:
-        """
-        By default, when linkng to an object on the same page, the linker will generate 
-        an URL that links to the anchor only, this will avoid reloading the page needlessly. But sometimes 
-        we're using a linker to present the content on another page. This context manager will 
-        make the linker always generate full URLs.
-        """
-        raise NotImplementedError()
-
 
 ##################################################
 ## ParseError exceptions
@@ -447,7 +447,7 @@ class SummaryExtractor(nodes.NodeVisitor):
             self.other_docs = True
             raise nodes.StopTraversal()
 
-        summary_doc = utils.new_document('summary')
+        summary_doc = new_document('summary')
         summary_pieces = []
 
         # Extract the first sentences from the first paragraph until maximum number 

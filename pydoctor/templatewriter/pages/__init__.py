@@ -61,7 +61,7 @@ def format_decorators(obj: Union[model.Function, model.Attribute, model.Function
 
         # Colorize decorators!
         doc = colorize_inline_pyval(dec)
-        stan = epydoc2stan.safe_to_stan(doc, documentable_obj.docstring_linker, documentable_obj, compact=True, 
+        stan = epydoc2stan.safe_to_stan(doc, documentable_obj.docstring_linker, documentable_obj,
             fallback=epydoc2stan.colorized_pyval_fallback, 
             section='rendering of decorators')
         
@@ -96,7 +96,7 @@ def format_class_signature(cls: model.Class) -> "Flattenable":
     _linker = cls.parent.docstring_linker
     if cls.rawbases:
         r.append('(')
-        with _linker.disable_same_page_optimization():
+        with _linker.switch_context(None):
         
             for idx, ((str_base, base_node), base_obj) in enumerate(zip(cls.rawbases, cls.baseobjects)):
                 if idx != 0:
@@ -294,7 +294,7 @@ class CommonPage(Page):
     def inhierarchy(self, request: object, tag: Tag) -> "Flattenable":
         return ()
 
-    def extras(self) -> List[Tag]:
+    def extras(self) -> List["Flattenable"]:
         return self.objectExtras(self.ob)
 
     def docstring(self) -> "Flattenable":
@@ -343,14 +343,15 @@ class CommonPage(Page):
                 assert False, type(c)
         return r
 
-    def objectExtras(self, ob: model.Documentable) -> List[Tag]:
+    def objectExtras(self, ob: model.Documentable) -> List["Flattenable"]:
         """
         Flatten each L{model.Documentable.extra_info} list item.
         """
-        r: List[Tag] = []
+        r: List["Flattenable"] = []
         for extra in ob.extra_info:
-            r.append(epydoc2stan.safe_to_stan(extra, ob.docstring_linker, ob, compact=False, 
-                fallback = lambda _,__,___:epydoc2stan.BROKEN, section='extra'))
+            r.append(epydoc2stan.unwrap_docstring_stan(
+                epydoc2stan.safe_to_stan(extra, ob.docstring_linker, ob,
+                fallback = lambda _,__,___:epydoc2stan.BROKEN, section='extra')))
         return r
 
 
@@ -386,8 +387,8 @@ class CommonPage(Page):
 class ModulePage(CommonPage):
     ob: model.Module
 
-    def extras(self) -> List[Tag]:
-        r: List[Tag] = []
+    def extras(self) -> List["Flattenable"]:
+        r: List["Flattenable"] = []
 
         sourceHref = util.srclink(self.ob)
         if sourceHref:
@@ -466,8 +467,8 @@ class ClassPage(CommonPage):
         super().__init__(ob, template_lookup, docgetter)
         self.baselists = util.class_members(self.ob)
 
-    def extras(self) -> List[Tag]:
-        r: List[Tag] = []
+    def extras(self) -> List["Flattenable"]:
+        r: List["Flattenable"] = []
 
         sourceHref = util.srclink(self.ob)
         source: "Flattenable"
@@ -528,12 +529,12 @@ class ClassPage(CommonPage):
             r.extend([' (via ', tail, ')'])
         return r
 
-    def objectExtras(self, ob: model.Documentable) -> List[Tag]:
-        r = list(get_override_info(self.ob, ob.name, self.page_url))
+    def objectExtras(self, ob: model.Documentable) -> List["Flattenable"]:
+        r: List["Flattenable"] = list(get_override_info(self.ob, ob.name, self.page_url))
         r.extend(super().objectExtras(ob))
         return r
 
-def get_override_info(cls:model.Class, member_name:str, page_url:Optional[str]=None) -> Iterator[Tag]:
+def get_override_info(cls:model.Class, member_name:str, page_url:Optional[str]=None) -> Iterator["Flattenable"]:
     page_url = page_url or cls.page_object.url
     for b in cls.mro(include_self=False):
         if member_name not in b.contents:
@@ -554,7 +555,7 @@ def get_override_info(cls:model.Class, member_name:str, page_url:Optional[str]=N
 class ZopeInterfaceClassPage(ClassPage):
     ob: zopeinterface.ZopeInterfaceClass
 
-    def extras(self) -> List[Tag]:
+    def extras(self) -> List["Flattenable"]:
         r = super().extras()
         if self.ob.isinterface:
             namelist = [o.fullName() for o in 
@@ -581,9 +582,9 @@ class ZopeInterfaceClassPage(ClassPage):
                         return method
         return None
 
-    def objectExtras(self, ob: model.Documentable) -> List[Tag]:
+    def objectExtras(self, ob: model.Documentable) -> List["Flattenable"]:
         imeth = self.interfaceMeth(ob.name)
-        r: List[Tag] = []
+        r: List["Flattenable"] = []
         if imeth:
             iface = imeth.parent
             assert iface is not None

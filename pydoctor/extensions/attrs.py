@@ -1,6 +1,6 @@
 
 """
-Support for L{attrs <attr>}.
+Support for L{attrs}.
 """
 
 import ast
@@ -165,7 +165,7 @@ class AttrsClass(extensions.ClassMixin, model.Class):
         super().setup()
         self.auto_attribs: bool = False
         """
-        L{True} if this class uses the C{auto_attribs} feature of the L{attrs <attr>}
+        L{True} if this class uses the C{auto_attribs} feature of the L{attrs}
         library to automatically convert annotated fields into attributes.
         """
 
