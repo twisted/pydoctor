@@ -1012,7 +1012,7 @@ class _AnnotationValueFormatter(_ValueFormatter):
         """
         # But links should be presented relatively to the actual page context of 
         # the function, which can be different from it's module.
-        with self._linker.switch_page_context(self._ctx):
+        with self._linker.switch_context(self._ctx):
             return '<code>%s</code>' % super().__repr__()
 
 

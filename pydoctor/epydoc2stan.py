@@ -261,7 +261,7 @@ class FieldHandler:
         linker = self.obj.module.docstring_linker
         
         # Need to change the linker's page context
-        with linker.switch_page_context(self.obj):
+        with linker.switch_context(self.obj):
             formatted_annotations = {
             name: None if value is None
                        else ParamType(safe_to_stan(colorize_inline_pyval(value), linker,
@@ -834,7 +834,7 @@ def type2stan(obj: model.Documentable) -> Optional[Tag]:
     else:
         # Annotations should always be resolved in the context of the module scope
         _linker = obj.module.docstring_linker
-        with _linker.switch_page_context(obj): # but with the page context of the object's
+        with _linker.switch_context(obj): # but with the page context of the object's
             return safe_to_stan(parsed_type, _linker, obj,
                 fallback=colorized_pyval_fallback, section='annotation')
 

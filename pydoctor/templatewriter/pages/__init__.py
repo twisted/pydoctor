@@ -115,7 +115,6 @@ def format_class_signature(cls: model.Class) -> "Flattenable":
                 # link to external class, using the colorizer here
                 # to link to classes with generics (subscripts and other AST expr).
                 stan = epydoc2stan.safe_to_stan(colorize_inline_pyval(base_node, refmap=refmap), _linker, cls, 
-                    compact=True, 
                     fallback=epydoc2stan.colorized_pyval_fallback, 
                     section='rendering of class signature')
                 r.extend(stan.children)
