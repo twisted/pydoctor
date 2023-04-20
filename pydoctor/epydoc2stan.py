@@ -835,7 +835,7 @@ def type2stan(obj: model.Documentable) -> Optional[Tag]:
         # Annotations should always be resolved in the context of the module scope
         _linker = obj.module.docstring_linker
         with _linker.switch_page_context(obj): # but with the page context of the object's
-            return safe_to_stan(parsed_type, _linker, obj, compact=True, 
+            return safe_to_stan(parsed_type, _linker, obj,
                 fallback=colorized_pyval_fallback, section='annotation')
 
 def get_parsed_type(obj: model.Documentable) -> Optional[ParsedDocstring]:
