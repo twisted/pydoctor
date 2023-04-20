@@ -389,11 +389,11 @@ class Documentable:
     def docstring_linker(self) -> 'linker.DocstringLinker':
         """
         Returns an instance of L{DocstringLinker} suitable for resolving names
-        in the context of the object scope. 
+        in the context of the object. 
         """
         if self._linker is not None:
             return self._linker
-        self._linker = linker._CachedEpydocLinker(self)
+        self._linker = linker._EpydocLinker(self)
         return self._linker
 
 
