@@ -276,13 +276,20 @@ class Field:
 ##################################################
 ## Docstring Linker (resolves crossreferences)
 ##################################################
-class DocstringLinker:
+class DocstringLinker(abc.ABC):
     """
     A resolver for crossreference links out of a C{ParsedDocstring}.
     C{DocstringLinker} is used by C{ParsedDocstring} to look up the
     target URL for crossreference links.
     """
 
+    @abc.abstractproperty
+    def obj(self) -> 'Documentable':
+        """
+        The L{Documentable} instance used to resolve links.
+        """
+
+    @abc.abstractmethod
     def link_to(self, target: str, label: "Flattenable") -> Tag:
         """
         Format a link to a Python identifier.
@@ -293,8 +300,8 @@ class DocstringLinker:
         @param label: The label to show for the link.
         @return: The link, or just the label if the target was not found.
         """
-        raise NotImplementedError()
 
+    @abc.abstractmethod
     def link_xref(self, target: str, label: "Flattenable", lineno: int) -> Tag:
         """
         Format a cross-reference link to a Python identifier.
@@ -309,8 +316,8 @@ class DocstringLinker:
         @return: The link, or just the label if the target was not found.
             In either case, the returned top-level tag will be C{<code>}.
         """
-        raise NotImplementedError()
 
+    @abc.abstractmethod
     def switch_context(self, ob:Optional['Documentable']) -> ContextManager[None]:
         """
         Switch the context of the linker, keeping the same underlying lookup rules.
@@ -323,7 +330,6 @@ class DocstringLinker:
         Pass C{None} to always generate full URLs (for summaries for example), 
         in this case error will NOT be reported at all.
         """
-        raise NotImplementedError()
 
 ##################################################
 ## ParseError exceptions

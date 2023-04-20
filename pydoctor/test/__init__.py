@@ -1,7 +1,8 @@
 """PyDoctor's test suite."""
 
+import contextlib
 from logging import LogRecord
-from typing import Iterable, TYPE_CHECKING, Optional, Sequence
+from typing import Iterable, TYPE_CHECKING, Optional, Sequence, cast
 import sys
 import pytest
 from pathlib import Path
@@ -92,6 +93,11 @@ class NotFoundLinker(DocstringLinker):
     def link_xref(self, target: str, label: "Flattenable", lineno: int) -> Tag:
         return tags.code(label)
 
-    def resolve_identifier(self, identifier: str) -> Optional[str]:
-        return None
+    @property
+    def obj(self) -> model.Documentable:
+        assert False
+    
+    @contextlib.contextmanager
+    def switch_context(self):
+        yield
         

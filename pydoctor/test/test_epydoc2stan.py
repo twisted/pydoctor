@@ -11,7 +11,7 @@ from pydoctor.stanutils import flatten, flatten_text
 from pydoctor.epydoc.markup.epytext import ParsedEpytextDocstring
 from pydoctor.sphinx import SphinxInventory
 from pydoctor.test.test_astbuilder import fromText, unwrap
-from pydoctor.test import CapSys
+from pydoctor.test import CapSys, NotFoundLinker
 from pydoctor.templatewriter.search import stem_identifier
 from pydoctor.templatewriter.pages import format_signature, format_class_signature
 from pydoctor.utils import partialclass
@@ -1015,7 +1015,7 @@ def test_EpydocLinker_resolve_identifier_xref_intersphinx_absolute_id() -> None:
     sut = target.docstring_linker
     assert isinstance(sut, linker._EpydocLinker)
 
-    url = sut.resolve_identifier('base.module.other')
+    url = sut.link_to('base.module.other', 'o').attributes['href']
     url_xref = sut._resolve_identifier_xref('base.module.other', 0)
 
     assert "http://tm.tld/some.html" == url
@@ -1042,7 +1042,7 @@ def test_EpydocLinker_resolve_identifier_xref_intersphinx_relative_id() -> None:
     assert isinstance(sut, linker._EpydocLinker)
 
     # This is called for the L{ext_module<Pretty Text>} markup.
-    url = sut.resolve_identifier('ext_module')
+    url = sut.link_to('ext_module', 'ext').attributes['href']
     url_xref = sut._resolve_identifier_xref('ext_module', 0)
 
     assert "http://tm.tld/some.html" == url
@@ -1067,7 +1067,7 @@ def test_EpydocLinker_resolve_identifier_xref_intersphinx_link_not_found(capsys:
     assert isinstance(sut, linker._EpydocLinker)
 
     # This is called for the L{ext_module} markup.
-    assert sut.resolve_identifier('ext_module') is None
+    assert sut.link_to('ext_module', 'ext').tagName == ''
     assert not capsys.readouterr().out
     with raises(LookupError):
         sut._resolve_identifier_xref('ext_module', 0)
@@ -1106,7 +1106,7 @@ def test_EpydocLinker_resolve_identifier_xref_order(capsys: CapSys) -> None:
     _linker = mod.docstring_linker
     assert isinstance(_linker, linker._EpydocLinker)
 
-    url = _linker.resolve_identifier('socket.socket')
+    url = _linker.link_to('socket.socket', 's').attributes['href']
     url_xref = _linker._resolve_identifier_xref('socket.socket', 0)
 
     assert 'https://docs.python.org/3/library/socket.html#socket.socket' == url
@@ -1128,7 +1128,7 @@ def test_EpydocLinker_resolve_identifier_xref_internal_full_name() -> None:
     target = model.Module(system, 'ignore-name')
     sut = target.docstring_linker
     assert isinstance(sut, linker._EpydocLinker)
-    url = sut.resolve_identifier('internal_module.C')
+    url = sut.link_to('internal_module.C','C').attributes['href']
     xref = sut._resolve_identifier_xref('internal_module.C', 0)
 
     assert "internal_module.C.html" == url
@@ -1277,7 +1277,7 @@ def test_xref_not_found_restructured_in_para(capsys: CapSys) -> None:
     captured = capsys.readouterr().out
     assert captured == 'test:8: Cannot find link target for "NoSuchName"\n'
 
-class RecordingAnnotationLinker(DocstringLinker):
+class RecordingAnnotationLinker(NotFoundLinker):
     """A DocstringLinker implementation that cannot find any links,
     but does record which identifiers it was asked to link.
     """
@@ -1286,15 +1286,11 @@ class RecordingAnnotationLinker(DocstringLinker):
         self.requests: List[str] = []
 
     def link_to(self, target: str, label: "Flattenable") -> Tag:
-        self.resolve_identifier(target)
+        self.requests.append(target)
         return tags.transparent(label)
 
     def link_xref(self, target: str, label: "Flattenable", lineno: int) -> Tag:
         assert False
-
-    def resolve_identifier(self, identifier: str) -> Optional[str]:
-        self.requests.append(identifier)
-        return None
 
 @mark.parametrize('annotation', (
     '<bool>',
