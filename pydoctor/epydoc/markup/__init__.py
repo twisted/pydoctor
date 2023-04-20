@@ -33,7 +33,7 @@ each error.
 """
 __docformat__ = 'epytext en'
 
-from typing import Callable, ContextManager, List, Optional, Sequence, Iterator, TYPE_CHECKING
+from typing import Callable, ContextManager, List, Optional, Sequence, Iterator, Generator, TYPE_CHECKING
 import abc
 import sys
 import re

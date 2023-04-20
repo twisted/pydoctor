@@ -2,7 +2,7 @@
 
 import contextlib
 from logging import LogRecord
-from typing import Iterable, TYPE_CHECKING, Optional, Sequence, cast
+from typing import ContextManager, Iterable, TYPE_CHECKING, Optional, Sequence, cast
 import sys
 import pytest
 from pathlib import Path
@@ -97,7 +97,7 @@ class NotFoundLinker(DocstringLinker):
     def obj(self) -> model.Documentable:
         assert False
     
-    @contextlib.contextmanager
-    def switch_context(self):
+    @contextlib.contextmanager #type:ignore[arg-type]
+    def switch_context(self, ob: Optional[model.Documentable]) -> ContextManager[None]: #type:ignore[misc]
         yield
         
