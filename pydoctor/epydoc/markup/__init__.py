@@ -311,17 +311,6 @@ class DocstringLinker:
         """
         raise NotImplementedError()
 
-    def resolve_identifier(self, identifier: str) -> Optional[str]:
-        """
-        Resolve a Python identifier.
-        This will resolve the identifier like Python itself would.
-
-        @param identifier: The name of the Python identifier that
-            should be linked to.
-        @return: The URL of the target, or L{None} if not found.
-        """
-        raise NotImplementedError()
-
     def switch_context(self, ob:Optional['Documentable']) -> ContextManager[None]:
         """
         Switch the context of the linker, keeping the same underlying lookup rules.

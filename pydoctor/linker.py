@@ -158,15 +158,6 @@ class _EpydocLinker(DocstringLinker):
                 
         return tags.code(xref)
 
-    def resolve_identifier(self, identifier: str) -> Optional[str]:
-        fullID = self.obj.expandName(identifier)
-
-        target = self.obj.system.objForFullName(fullID)
-        if target is not None:
-            return target.url
-
-        return self.look_for_intersphinx(fullID)
-
     def _resolve_identifier_xref(self,
             identifier: str,
             lineno: int
@@ -247,3 +238,5 @@ class _EpydocLinker(DocstringLinker):
             self.reporting_obj.report(message, 'resolve_identifier_xref', lineno)
         raise LookupError(identifier)
     
+class _CompositeLinker(DocstringLinker):
+    ...
