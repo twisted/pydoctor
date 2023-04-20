@@ -321,16 +321,20 @@ class DocstringLinker:
         @return: The URL of the target, or L{None} if not found.
         """
         raise NotImplementedError()
-    
-    def disable_same_page_optimazation(self) -> ContextManager[None]:
+
+    def switch_context(self, ob:Optional['Documentable']) -> ContextManager[None]:
         """
-        By default, when linkng to an object on the same page, the linker will generate 
-        an URL that links to the anchor only, this will avoid reloading the page needlessly. But sometimes 
-        we're using a linker to present the content on another page. This context manager will 
-        make the linker always generate full URLs.
+        Switch the context of the linker, keeping the same underlying lookup rules.
+
+        Useful to resolve links with the right L{Documentable} context but
+        create correct - absolute or relative - links to be clicked on from another page 
+        rather than the initial page of the context. "Cannot find link target" errors will be reported
+        relatively to the new context object.
+
+        Pass C{None} to always generate full URLs (for summaries for example), 
+        in this case error will NOT be reported at all.
         """
         raise NotImplementedError()
-
 
 ##################################################
 ## ParseError exceptions
