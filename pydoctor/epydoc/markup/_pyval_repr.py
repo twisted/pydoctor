@@ -197,8 +197,8 @@ def colorize_pyval(pyval: Any, linelen:Optional[int], maxlines:int, linebreakok:
 
     @param refmap: A mapping that maps local names to full names. 
         This can be used to explicitely links some objects by assigning an 
-        explicit 'refuri' value on the L{obj_reference} node; the linker will 
-        not do any complex - sometimes wrong - computing and return the full name passed here.
+        explicit 'refuri' value on the L{obj_reference} node.
+        This can be used for cases the where the linker might be wrong, obviously this is just a workaround.
     @return: A L{ColorizedPyvalRepr} describing the given pyval.
     """
     return PyvalColorizer(linelen=linelen, maxlines=maxlines, linebreakok=linebreakok, refmap=refmap).colorize(pyval)

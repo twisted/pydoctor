@@ -1700,10 +1700,10 @@ def test_dup_names_resolves_function_signature() -> None:
     """
     Annotations should always be resolved in the context of the module scope.
     
-    For function signature, it's handled by passing module's context at the time we create the value formatter instance. 
+    For function signature, it's handled by having a special value formatter class for annotations. 
     For the parameter table it's handled by the field handler.
 
-    Annotation are currently renderred twice, which is suboptimal and can cause inconsistencies.
+    Annotation are currently rendered twice, which is suboptimal and can cause inconsistencies.
     """
 
     src = '''\
