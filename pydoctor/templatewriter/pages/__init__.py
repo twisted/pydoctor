@@ -461,7 +461,7 @@ class ClassPage(CommonPage):
         _linker = self.ob.parent.docstring_linker
         if self.ob.rawbases:
             r.append('(')
-            with _linker.disable_same_page_optimazation():
+            with _linker.switch_context(None):
             
                 for idx, (_, base_node) in enumerate(self.ob.rawbases):
                     if idx != 0:
