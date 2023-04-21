@@ -1825,20 +1825,21 @@ def test_class_level_type_alias() -> None:
         var: typ
     '''
     mod = fromText(src, modname='m')
-    C = mod.system.objForFullName('m.C')
-    f = mod.system.objForFullName('m.C.f')
-    var = mod.system.objForFullName('m.C.var')
+    C = mod.system.allobjects['m.C']
+    f = mod.system.allobjects['m.C.f']
+    var = mod.system.allobjects['m.C.var']
 
     assert C.isNameDefined('typ')
 
     assert isinstance(f, model.Function)
+    assert f.signature
     assert "href" in repr(f.signature.parameters['x'].annotation)
     assert "href" in repr(f.signature.return_annotation)
 
     assert isinstance(var, model.Attribute)
-    assert "href" in flatten(epydoc2stan.type2stan(var))
+    assert "href" in flatten(epydoc2stan.type2stan(var) or '')
 
-def test_top_level_type_alias_wins_over_class_level() -> None:
+def test_top_level_type_alias_wins_over_class_level(capsys:CapSys) -> None:
     """
     Pydoctor resolves annotations like pyright when 
     "from __future__ import annotations" is enable, even if 
@@ -1853,16 +1854,25 @@ def test_top_level_type_alias_wins_over_class_level() -> None:
             ...
         var: typ
     '''
-    mod = fromText(src, modname='m')
-    f = mod.system.objForFullName('m.C.f')
-    var = mod.system.objForFullName('m.C.var')
+    system = model.System()
+    system.options.verbosity = 1
+    mod = fromText(src, modname='m', system=system)
+    f = mod.system.allobjects['m.C.f']
+    var = mod.system.allobjects['m.C.var']
 
     assert isinstance(f, model.Function)
+    assert f.signature
     assert 'href="index.html#typ"' in repr(f.signature.parameters['x'].annotation)
     assert 'href="index.html#typ"' in repr(f.signature.return_annotation)
 
     assert isinstance(var, model.Attribute)
-    assert 'href="index.html#typ"' in flatten(epydoc2stan.type2stan(var))
+    assert 'href="index.html#typ"' in flatten(epydoc2stan.type2stan(var) or '')
+
+    assert capsys.readouterr().out == """\
+m:5: ambiguous annotation 'typ', could be interpreted as 'm.C.typ' instead of 'm.typ'
+m:5: ambiguous annotation 'typ', could be interpreted as 'm.C.typ' instead of 'm.typ'
+m:7: ambiguous annotation 'typ', could be interpreted as 'm.C.typ' instead of 'm.typ'
+"""
 
 def test_not_found_annotation_does_not_create_link() -> None:
     """
