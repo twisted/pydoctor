@@ -92,10 +92,6 @@ class NotFoundLinker(DocstringLinker):
 
     def link_xref(self, target: str, label: "Flattenable", lineno: int) -> Tag:
         return tags.code(label)
-
-    @property
-    def obj(self) -> model.Documentable:
-        assert False
     
     @contextlib.contextmanager #type:ignore[arg-type]
     def switch_context(self, ob: Optional[model.Documentable]) -> ContextManager[None]: #type:ignore[misc]

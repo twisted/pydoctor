@@ -239,32 +239,34 @@ class _EpydocLinker(DocstringLinker):
         raise LookupError(identifier)
 
 class _AnnotationLinker(DocstringLinker):
-    def __init__(self, module_linker:DocstringLinker, 
-                 obj_linker:DocstringLinker) -> None:
-        self._module_linker = module_linker
-        self._obj_linker = obj_linker
+    def __init__(self, obj:'model.Documentable') -> None:
+        self._obj = obj
+        self._module = obj.module
+        self._scope = obj.parent or obj
+        self._module_linker = self._module.docstring_linker
+        self._scope_linker = self._scope.docstring_linker
     
     @property
     def obj(self) -> 'model.Documentable':
-        return self._module_linker.obj
+        return self._obj
 
     def warn_ambiguous_annotation(self, target:str) -> None:
         # report a low-level message about ambiguous annotation
-        mod_ann = self._module_linker.obj.expandName(target)
-        obj_ann = self._obj_linker.obj.expandName(target)
+        mod_ann = self._module.expandName(target)
+        obj_ann = self._scope.expandName(target)
         if mod_ann != obj_ann:
-            self._obj_linker.obj.report(
+            self.obj.report(
                 f'ambiguous annotation {target!r}, could be interpreted as '
                 f'{obj_ann!r} instead of {mod_ann!r}', section='annotation',
                 thresh=1
             )
     
     def link_to(self, target: str, label: "Flattenable") -> Tag:
-        if self._module_linker.obj.isNameDefined(target):
+        if self._module.isNameDefined(target):
             self.warn_ambiguous_annotation(target)
             return self._module_linker.link_to(target, label)
-        elif self._obj_linker.obj.isNameDefined(target):
-            return self._obj_linker.link_to(target, label)
+        elif self._scope.isNameDefined(target):
+            return self._scope_linker.link_to(target, label)
         else:
             return self._module_linker.link_to(target, label)
     
@@ -274,5 +276,5 @@ class _AnnotationLinker(DocstringLinker):
     @contextlib.contextmanager #type:ignore[arg-type]
     def switch_context(self, ob:Optional['model.Documentable']) -> ContextManager[None]: # type:ignore[misc]
         with self._module_linker.switch_context(ob):
-            with self._obj_linker.switch_context(ob):
+            with self._scope_linker.switch_context(ob):
                 yield

@@ -490,3 +490,33 @@ def test_privacy_reparented() -> None:
     assert mod_export.resolveName("MyClass") == base
 
     assert base.privacyClass == model.PrivacyClass.PUBLIC
+
+def test_name_defined() -> None:
+    src = '''
+    # module 'm'
+    import pydoctor
+    import twisted.web
+
+    class c:
+        var = True
+    '''
+
+    mod = fromText(src, modname='m')
+
+    assert mod.isNameDefined('pydoctor')
+    assert mod.isNameDefined('twisted.web')
+    assert mod.isNameDefined('twisted')
+    assert not mod.isNameDefined('m')
+    assert mod.isNameDefined('c')
+    assert mod.isNameDefined('c.anything')
+
+    cls = mod.contents['c']
+    assert isinstance(cls, model.Class)
+
+    assert cls.isNameDefined('pydoctor')
+    assert cls.isNameDefined('twisted.web')
+    assert cls.isNameDefined('twisted')
+    assert not mod.isNameDefined('m')
+    assert cls.isNameDefined('c')
+    assert cls.isNameDefined('c.anything')
+    assert cls.isNameDefined('var')

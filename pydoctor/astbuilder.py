@@ -423,6 +423,10 @@ class ModuleVistor(NodeVisitor):
             fullname, asname = al.name, al.asname
             if asname is not None:
                 _localNameToFullName[asname] = fullname
+            else:
+                # we're keeping track of the locally defined names
+                localname = fullname.split('.')[0]
+                _localNameToFullName[localname] = localname
 
 
     def _handleOldSchoolMethodDecoration(self, target: str, expr: Optional[ast.expr]) -> bool:
@@ -1000,13 +1004,11 @@ class _AnnotationValueFormatter(_ValueFormatter):
     """
     Special L{_ValueFormatter} for annotations.
     """
-    def __init__(self, value: Any, ctx: model.Documentable):
+    def __init__(self, value: Any, ctx: model.Function):
         super().__init__(value, ctx)
         # Annotations should always be resolved in the context of the module scope,
         # but we fall back to 
-        self._linker = linker._AnnotationLinker(
-            ctx.module.docstring_linker, 
-            ctx.docstring_linker)
+        self._linker = linker._AnnotationLinker(ctx)
         self._ctx = ctx
     
     def __repr__(self) -> str:

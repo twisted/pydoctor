@@ -92,8 +92,7 @@ def format_class_signature(cls: model.Class) -> "Flattenable":
     # the linker will only be used to resolve the generic arguments of the base classes, 
     # it won't actually resolve the base classes (see comment few lines below).
     # thi is why we're using the annotation linker.
-    _linker = linker._AnnotationLinker(cls.module.docstring_linker,
-                                       cls.parent.docstring_linker)
+    _linker = linker._AnnotationLinker(cls)
     if cls.rawbases:
         r.append('(')
         with _linker.switch_context(None):

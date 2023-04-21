@@ -258,8 +258,7 @@ class FieldHandler:
             self, annotations: Mapping[str, Optional[ast.expr]]
             ) -> None:
         # Annotations should be resolved in the context of the module scope.
-        _linker = linker._AnnotationLinker(self.obj.module.docstring_linker,
-                                          self.obj.docstring_linker)
+        _linker = linker._AnnotationLinker(self.obj)
         
         # Need to change the linker's page context
         with _linker.switch_context(self.obj):
@@ -834,9 +833,7 @@ def type2stan(obj: model.Documentable) -> Optional[Tag]:
         return None
     else:
         # Annotations should always be resolved in the context of the module scope
-        _linker = linker._AnnotationLinker(
-            obj.module.docstring_linker,
-            obj.docstring_linker)
+        _linker = linker._AnnotationLinker(obj)
         
         with _linker.switch_context(obj): # but with the page context of the object's
             return safe_to_stan(parsed_type, _linker, obj,
@@ -877,7 +874,7 @@ field_name_to_kind = {
     }
 
 
-def extract_fields(obj: model.Documentable) -> None:
+def extract_fields(obj: model.CanContainImportsDocumentable) -> None:
     """Populate Attributes for module/class variables using fields from
     that module/class's docstring.
     Must only be called for objects that have a docstring.

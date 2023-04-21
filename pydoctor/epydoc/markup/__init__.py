@@ -283,12 +283,6 @@ class DocstringLinker(abc.ABC):
     target URL for crossreference links.
     """
 
-    @abc.abstractproperty
-    def obj(self) -> 'Documentable':
-        """
-        The L{Documentable} instance used to resolve links.
-        """
-
     @abc.abstractmethod
     def link_to(self, target: str, label: "Flattenable") -> Tag:
         """
