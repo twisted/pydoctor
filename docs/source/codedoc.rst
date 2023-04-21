@@ -217,11 +217,20 @@ Type variables and type aliases will be recognized as such and their value will 
     T = TypeVar('T') # a type variable
     Parser = Callable[[str], Tuple[int, bytes, bytes]] # a type alias
 
+.. note:: About name resolving in annotations: 
+    ``pydoctor`` check for top-level names first before checking for other names, 
+    this is true only for annotations.
+    
+    This behaviour matches pyright's when PEP-563 is enabled 
+    (module starts with ``from __future__ import annotations``). 
+    
+    When there is an ambiguous annotation, a warning can be printed if option ``-v`` is supplied.
+
 Further reading:
 
 - `Python Standard Library: typing -- Support for type hints <https://docs.python.org/3/library/typing.html>`_
 - `PEP 483 -- The Theory of Type Hints <https://www.python.org/dev/peps/pep-0483/>`_
-
+- `PEP 563 -- The Theory of Type Hints <https://www.python.org/dev/peps/pep-0563/>`_
 
 Properties
 ----------
