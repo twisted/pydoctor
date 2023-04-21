@@ -828,7 +828,11 @@ class Attribute(Inheritable):
     None value means the value is not initialized at the current point of the the process. 
     """
 
-    def _infer_type(self) -> None:
+    def _init_annotation(self) -> None:
+        """
+        If this attribute has not explicit annotation, try to look
+        int super classes/interface declarations or infer the type from it's ast expression.
+        """
         if self.annotation is not None:
             # do not override annotation
             return
@@ -1456,7 +1460,7 @@ class System:
                 cls.kind = DocumentableKind.EXCEPTION
         
         for attrib in self.objectsOfType(Attribute):
-            attrib._infer_type()
+            attrib._init_annotation()
 
         for post_processor in self._post_processors:
             post_processor(self)
