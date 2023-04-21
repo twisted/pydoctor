@@ -320,6 +320,16 @@ class Documentable:
         this context, if any is known to pydoctor."""
         return self.system.objForFullName(self.expandName(name))
 
+    def isNameDefined(self, name: str) -> bool:
+        """
+        Is the given name defined in the context of self?
+        Only the first name of a dotted name is checked.
+        """
+        # this implementation relies on the fact that _localNameToFullName()
+        # returns the original name when it can't resolve it.
+        name = name.split('.')[0]
+        return self._localNameToFullName(name) != name
+
     @property
     def privacyClass(self) -> PrivacyClass:
         """How visible this object should be."""

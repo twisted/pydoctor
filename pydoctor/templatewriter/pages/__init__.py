@@ -12,7 +12,7 @@ from twisted.web.template import Element, Tag, renderer, tags
 from pydoctor.extensions import zopeinterface
 
 from pydoctor.stanutils import html2stan
-from pydoctor import epydoc2stan, model, __version__
+from pydoctor import epydoc2stan, model, linker, __version__
 from pydoctor.astbuilder import node2fullname
 from pydoctor.templatewriter import util, TemplateLookup, TemplateElement
 from pydoctor.templatewriter.pages.table import ChildTable
@@ -89,11 +89,11 @@ def format_class_signature(cls: model.Class) -> "Flattenable":
     It's not the class constructor.
     """
     r: List["Flattenable"] = []
-    # Here, we should use the module's linker because a base name
-    # can't be define in the class itself and this linker is only used to resolve 
-    # links to intersphinx or argument passed to generic bases. 
-    # But it won't actually resolve the base classes (see comment few lines below)
-    _linker = cls.parent.docstring_linker
+    # the linker will only be used to resolve the generic arguments of the base classes, 
+    # it won't actually resolve the base classes (see comment few lines below).
+    # thi is why we're using the annotation linker.
+    _linker = linker._AnnotationLinker(cls.module.docstring_linker,
+                                       cls.parent.docstring_linker)
     if cls.rawbases:
         r.append('(')
         with _linker.switch_context(None):

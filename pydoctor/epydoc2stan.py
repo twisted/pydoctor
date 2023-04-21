@@ -258,13 +258,14 @@ class FieldHandler:
             self, annotations: Mapping[str, Optional[ast.expr]]
             ) -> None:
         # Annotations should be resolved in the context of the module scope.
-        linker = self.obj.module.docstring_linker
+        _linker = linker._AnnotationLinker(self.obj.module.docstring_linker,
+                                          self.obj.docstring_linker)
         
         # Need to change the linker's page context
-        with linker.switch_context(self.obj):
+        with _linker.switch_context(self.obj):
             formatted_annotations = {
             name: None if value is None
-                       else ParamType(safe_to_stan(colorize_inline_pyval(value), linker,
+                       else ParamType(safe_to_stan(colorize_inline_pyval(value), _linker,
                                 self.obj, fallback=colorized_pyval_fallback, section='annotation', report=False),
                                 # don't spam the log, invalid annotation are going to be reported when the signature gets colorized
                                 origin=FieldOrigin.FROM_AST)
@@ -833,7 +834,10 @@ def type2stan(obj: model.Documentable) -> Optional[Tag]:
         return None
     else:
         # Annotations should always be resolved in the context of the module scope
-        _linker = obj.module.docstring_linker
+        _linker = linker._AnnotationLinker(
+            obj.module.docstring_linker,
+            obj.docstring_linker)
+        
         with _linker.switch_context(obj): # but with the page context of the object's
             return safe_to_stan(parsed_type, _linker, obj,
                 fallback=colorized_pyval_fallback, section='annotation')

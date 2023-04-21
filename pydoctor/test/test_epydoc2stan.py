@@ -1816,6 +1816,53 @@ def test_dup_names_resolves_base_class() -> None:
     assert 'href="model.System.html"' in flatten(format_class_signature(systemClass))
     assert 'href="model.Generic.html"' in flatten(format_class_signature(genericClass))
 
+def test_class_level_type_alias() -> None:
+    src = '''
+    class C:
+        typ = int|str
+        def f(self, x:typ) -> typ:
+            ...
+        var: typ
+    '''
+    mod = fromText(src, modname='m')
+    C = mod.system.objForFullName('m.C')
+    f = mod.system.objForFullName('m.C.f')
+    var = mod.system.objForFullName('m.C.var')
+
+    assert C.isNameDefined('typ')
+
+    assert isinstance(f, model.Function)
+    assert "href" in repr(f.signature.parameters['x'].annotation)
+    assert "href" in repr(f.signature.return_annotation)
+
+    assert isinstance(var, model.Attribute)
+    assert "href" in flatten(epydoc2stan.type2stan(var))
+
+def test_top_level_type_alias_wins_over_class_level() -> None:
+    """
+    Pydoctor resolves annotations like pyright when 
+    "from __future__ import annotations" is enable, even if 
+    it's not actually enabled.
+    """
+    
+    src = '''
+    typ = str|bytes # <- this IS the one
+    class C:
+        typ = int|str # <- This is NOT the one.
+        def f(self, x:typ) -> typ:
+            ...
+        var: typ
+    '''
+    mod = fromText(src, modname='m')
+    f = mod.system.objForFullName('m.C.f')
+    var = mod.system.objForFullName('m.C.var')
+
+    assert isinstance(f, model.Function)
+    assert 'href="index.html#typ"' in repr(f.signature.parameters['x'].annotation)
+    assert 'href="index.html#typ"' in repr(f.signature.return_annotation)
+
+    assert isinstance(var, model.Attribute)
+    assert 'href="index.html#typ"' in flatten(epydoc2stan.type2stan(var))
 
 def test_not_found_annotation_does_not_create_link() -> None:
     """

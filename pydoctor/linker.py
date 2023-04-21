@@ -237,28 +237,42 @@ class _EpydocLinker(DocstringLinker):
         if self.reporting_obj:
             self.reporting_obj.report(message, 'resolve_identifier_xref', lineno)
         raise LookupError(identifier)
-    
-class _CompositeLinker(DocstringLinker):
-    def __init__(self, primary_linker:DocstringLinker, 
-                 secondary_linker:DocstringLinker) -> None:
-        self._primary_linker = primary_linker
-        self._secondary_linker = secondary_linker
+
+class _AnnotationLinker(DocstringLinker):
+    def __init__(self, module_linker:DocstringLinker, 
+                 obj_linker:DocstringLinker) -> None:
+        self._module_linker = module_linker
+        self._obj_linker = obj_linker
     
     @property
     def obj(self) -> 'model.Documentable':
-        return self._primary_linker.obj
+        return self._module_linker.obj
 
+    def ambiguous_annotation(self, target:str):
+        # report a warning about ambiguous annotation
+        mod_ann = self._module_linker.obj.expandName(target)
+        obj_ann = self._obj_linker.obj.expandName(target)
+        if mod_ann != obj_ann:
+            self._obj_linker.obj.report(
+                f'ambiguous annotation {target!r}, could be interpreted as '
+                f'{obj_ann!r} instead of {mod_ann!r}', 
+            )
+    
     def link_to(self, target: str, label: "Flattenable") -> Tag:
-        for linker in (self._primary_linker, self._secondary_linker):
-            if linker.obj.resolveName(target) is not None:
-                return linker.link_to(target, label)
-        return self._primary_linker.link_to(target, label)
+        if self._module_linker.obj.isNameDefined(target):
+            if self._obj_linker.obj.isNameDefined(target):
+                self.ambiguous_annotation(target)
+            return self._module_linker.link_to(target, label)
+        elif self._obj_linker.obj.isNameDefined(target):
+            return self._obj_linker.link_to(target, label)
+        else:
+            return self._module_linker.link_to(target, label)
     
     def link_xref(self, target: str, label: "Flattenable", lineno: int) -> Tag:
-        return self._primary_linker.link_xref(target, label, lineno)
+        return self._module_linker.link_xref(target, label, lineno)
 
     @contextlib.contextmanager #type:ignore[arg-type]
     def switch_context(self, ob:Optional['model.Documentable']) -> ContextManager[None]: # type:ignore[misc]
-        with self._primary_linker.switch_context(ob):
-            with self._secondary_linker.switch_context(ob):
+        with self._module_linker.switch_context(ob):
+            with self._obj_linker.switch_context(ob):
                 yield

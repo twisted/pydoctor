@@ -13,7 +13,7 @@ from typing import (
 )
 
 import astor
-from pydoctor import epydoc2stan, model, node2stan, extensions
+from pydoctor import epydoc2stan, model, node2stan, extensions, linker
 from pydoctor.epydoc.markup._pyval_repr import colorize_inline_pyval
 from pydoctor.astutils import (is_none_literal, is_typing_annotation, is_using_annotations, is_using_typing_final, node2dottedname, node2fullname, 
                                is__name__equals__main__, unstring_annotation, iterassign, extract_docstring_linenum,  
@@ -1002,8 +1002,11 @@ class _AnnotationValueFormatter(_ValueFormatter):
     """
     def __init__(self, value: Any, ctx: model.Documentable):
         super().__init__(value, ctx)
-        # Annotations should always be resolved in the context of the module scope.
-        self._linker = ctx.module.docstring_linker
+        # Annotations should always be resolved in the context of the module scope,
+        # but we fall back to 
+        self._linker = linker._AnnotationLinker(
+            ctx.module.docstring_linker, 
+            ctx.docstring_linker)
         self._ctx = ctx
     
     def __repr__(self) -> str:
