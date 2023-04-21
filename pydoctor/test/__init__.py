@@ -2,7 +2,7 @@
 
 import contextlib
 from logging import LogRecord
-from typing import ContextManager, Iterable, TYPE_CHECKING, Optional, Sequence, cast
+from typing import ContextManager, Iterable, TYPE_CHECKING, Optional, Sequence
 import sys
 import pytest
 from pathlib import Path

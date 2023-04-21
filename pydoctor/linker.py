@@ -5,7 +5,7 @@ This module provides implementations of epydoc's L{DocstringLinker} class.
 import contextlib
 from twisted.web.template import Tag, tags
 from typing import  (
-     ContextManager, TYPE_CHECKING, Generator, Iterable, 
+     ContextManager, TYPE_CHECKING, Iterable, 
      Optional, Union
 )
 
