@@ -230,7 +230,7 @@ Further reading:
 
 - `Python Standard Library: typing -- Support for type hints <https://docs.python.org/3/library/typing.html>`_
 - `PEP 483 -- The Theory of Type Hints <https://www.python.org/dev/peps/pep-0483/>`_
-- `PEP 563 -- The Theory of Type Hints <https://www.python.org/dev/peps/pep-0563/>`_
+- `PEP 563 -- Postponed Evaluation of Annotations <https://www.python.org/dev/peps/pep-0563/>`_
 
 Properties
 ----------
