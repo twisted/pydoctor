@@ -248,8 +248,8 @@ class _AnnotationLinker(DocstringLinker):
     def obj(self) -> 'model.Documentable':
         return self._module_linker.obj
 
-    def ambiguous_annotation(self, target:str) -> None:
-        # report a warning about ambiguous annotation
+    def warn_ambiguous_annotation(self, target:str) -> None:
+        # report a low-level message about ambiguous annotation
         mod_ann = self._module_linker.obj.expandName(target)
         obj_ann = self._obj_linker.obj.expandName(target)
         if mod_ann != obj_ann:
@@ -261,8 +261,7 @@ class _AnnotationLinker(DocstringLinker):
     
     def link_to(self, target: str, label: "Flattenable") -> Tag:
         if self._module_linker.obj.isNameDefined(target):
-            if self._obj_linker.obj.isNameDefined(target):
-                self.ambiguous_annotation(target)
+            self.warn_ambiguous_annotation(target)
             return self._module_linker.link_to(target, label)
         elif self._obj_linker.obj.isNameDefined(target):
             return self._obj_linker.link_to(target, label)
