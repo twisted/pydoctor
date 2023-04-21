@@ -93,6 +93,9 @@ in development
 * Improve the search bar user experience by automatically appending wildcard to each query terms
   when no terms already contain a wildcard. 
 * Link recognized constructors in class page.
+* Ensure that explicit annotation are honored when there are multiple declarations of the same name.
+* Check in super classes or implemented inferfaces for attributes type hints before 
+  trying to infer the type from it's ast value.
 
 pydoctor 22.9.1
 ^^^^^^^^^^^^^^^
