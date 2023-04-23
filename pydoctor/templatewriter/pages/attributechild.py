@@ -88,11 +88,8 @@ class AttributeChild(TemplateElement):
         # Property info consist in nested function child elements that 
         # formats the setter and deleter docs of the property.
         r = []
-        if self.ob.kind is DocumentableKind.PROPERTY:
+        if isinstance(self.ob, Property):
             from pydoctor.templatewriter.pages.functionchild import FunctionChild
-
-            assert isinstance(self.ob, Property)
-            
             for func in [f for f in (self.ob.setter, self.ob.deleter) if f]:
                 r.append(FunctionChild(self.docgetter, func, extras=[], 
                             loader=self._funcLoader, silent_undoc=True))
