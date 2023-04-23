@@ -1015,10 +1015,7 @@ class _AnnotationValueFormatter(_ValueFormatter):
         """
         Present the annotation wrapped inside <code> tags.
         """
-        # But links should be presented relatively to the actual page context of 
-        # the function, which can be different from it's module.
-        with self._linker.switch_context(self._ctx):
-            return '<code>%s</code>' % super().__repr__()
+        return '<code>%s</code>' % super().__repr__()
 
 
 def _infer_type(expr: ast.expr) -> Optional[ast.expr]:

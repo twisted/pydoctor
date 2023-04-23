@@ -239,12 +239,20 @@ class _EpydocLinker(DocstringLinker):
         raise LookupError(identifier)
 
 class _AnnotationLinker(DocstringLinker):
+    """
+    Specialized linker to resolve annotations attached to the given L{Documentable}. 
+
+    Links will be created in the context of C{obj} but 
+    generated with the C{obj.module}'s linker when possible.
+    """
     def __init__(self, obj:'model.Documentable') -> None:
         self._obj = obj
         self._module = obj.module
         self._scope = obj.parent or obj
         self._module_linker = self._module.docstring_linker
         self._scope_linker = self._scope.docstring_linker
+
+        self.switch_context(obj).__enter__()
     
     @property
     def obj(self) -> 'model.Documentable':

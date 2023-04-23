@@ -91,32 +91,31 @@ def format_class_signature(cls: model.Class) -> "Flattenable":
     r: List["Flattenable"] = []
     # the linker will only be used to resolve the generic arguments of the base classes, 
     # it won't actually resolve the base classes (see comment few lines below).
-    # thi is why we're using the annotation linker.
+    # this is why we're using the annotation linker.
     _linker = linker._AnnotationLinker(cls)
     if cls.rawbases:
         r.append('(')
-        with _linker.switch_context(None):
         
-            for idx, ((str_base, base_node), base_obj) in enumerate(zip(cls.rawbases, cls.baseobjects)):
-                if idx != 0:
-                    r.append(', ')
+        for idx, ((str_base, base_node), base_obj) in enumerate(zip(cls.rawbases, cls.baseobjects)):
+            if idx != 0:
+                r.append(', ')
 
-                # Make sure we bypass the linker’s resolver process for base object, 
-                # because it has been resolved already (with two passes).
-                # Otherwise, since the class declaration wins over the imported names,
-                # a class with the same name as a base class confused pydoctor and it would link 
-                # to it self: https://github.com/twisted/pydoctor/issues/662
+            # Make sure we bypass the linker’s resolver process for base object, 
+            # because it has been resolved already (with two passes).
+            # Otherwise, since the class declaration wins over the imported names,
+            # a class with the same name as a base class confused pydoctor and it would link 
+            # to it self: https://github.com/twisted/pydoctor/issues/662
 
-                refmap = None
-                if base_obj is not None:
-                    refmap = {str_base:base_obj.fullName()}
-                    
-                # link to external class, using the colorizer here
-                # to link to classes with generics (subscripts and other AST expr).
-                stan = epydoc2stan.safe_to_stan(colorize_inline_pyval(base_node, refmap=refmap), _linker, cls, 
-                    fallback=epydoc2stan.colorized_pyval_fallback, 
-                    section='rendering of class signature')
-                r.extend(stan.children)
+            refmap = None
+            if base_obj is not None:
+                refmap = {str_base:base_obj.fullName()}
+                
+            # link to external class, using the colorizer here
+            # to link to classes with generics (subscripts and other AST expr).
+            stan = epydoc2stan.safe_to_stan(colorize_inline_pyval(base_node, refmap=refmap), _linker, cls, 
+                fallback=epydoc2stan.colorized_pyval_fallback, 
+                section='rendering of class signature')
+            r.extend(stan.children)
                 
         r.append(')')
     return r

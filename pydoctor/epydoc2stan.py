@@ -257,12 +257,8 @@ class FieldHandler:
     def set_param_types_from_annotations(
             self, annotations: Mapping[str, Optional[ast.expr]]
             ) -> None:
-        # Annotations should be resolved in the context of the module scope.
         _linker = linker._AnnotationLinker(self.obj)
-        
-        # Need to change the linker's page context
-        with _linker.switch_context(self.obj):
-            formatted_annotations = {
+        formatted_annotations = {
             name: None if value is None
                        else ParamType(safe_to_stan(colorize_inline_pyval(value), _linker,
                                 self.obj, fallback=colorized_pyval_fallback, section='annotation', report=False),
@@ -832,12 +828,9 @@ def type2stan(obj: model.Documentable) -> Optional[Tag]:
     if parsed_type is None:
         return None
     else:
-        # Annotations should always be resolved in the context of the module scope
         _linker = linker._AnnotationLinker(obj)
-        
-        with _linker.switch_context(obj): # but with the page context of the object's
-            return safe_to_stan(parsed_type, _linker, obj,
-                fallback=colorized_pyval_fallback, section='annotation')
+        return safe_to_stan(parsed_type, _linker, obj,
+            fallback=colorized_pyval_fallback, section='annotation')
 
 def get_parsed_type(obj: model.Documentable) -> Optional[ParsedDocstring]:
     """
