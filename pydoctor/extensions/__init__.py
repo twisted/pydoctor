@@ -30,11 +30,13 @@ class FunctionMixin:
     """Base class for mixins applied to L{model.Function} objects."""
 class AttributeMixin:
     """Base class for mixins applied to L{model.Attribute} objects."""
-class DocumentableMixin(ModuleMixin, ClassMixin, FunctionMixin, AttributeMixin):
+class PropertyMixin:
+    """Base class for mixins applied to L{model.Property} objects."""
+class DocumentableMixin(ModuleMixin, ClassMixin, FunctionMixin, AttributeMixin, PropertyMixin):
     """Base class for mixins applied to all L{model.Documentable} objects."""
 class CanContainImportsDocumentableMixin(PackageMixin, ModuleMixin, ClassMixin):
     """Base class for mixins applied to L{model.Class}, L{model.Module} and L{model.Package} objects."""
-class InheritableMixin(FunctionMixin, AttributeMixin):
+class InheritableMixin(FunctionMixin, AttributeMixin, PropertyMixin):
     """Base class for mixins applied to L{model.Function} and L{model.Attribute} objects."""
 
 MixinT = Union[ClassMixin, ModuleMixin, PackageMixin, FunctionMixin, AttributeMixin]
@@ -85,6 +87,7 @@ _mixin_to_class_name: Dict[Any, str] = {
         PackageMixin: 'Package',
         FunctionMixin: 'Function',
         AttributeMixin: 'Attribute',
+        PropertyMixin: 'Property',
     }
 
 def _get_mixins(*mixins: Type[MixinT]) -> Dict[str, List[Type[MixinT]]]:
