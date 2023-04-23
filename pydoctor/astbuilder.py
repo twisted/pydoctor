@@ -1006,10 +1006,7 @@ class _AnnotationValueFormatter(_ValueFormatter):
     """
     def __init__(self, value: Any, ctx: model.Function):
         super().__init__(value, ctx)
-        # Annotations should always be resolved in the context of the module scope,
-        # but we fall back to 
         self._linker = linker._AnnotationLinker(ctx)
-        self._ctx = ctx
     
     def __repr__(self) -> str:
         """
