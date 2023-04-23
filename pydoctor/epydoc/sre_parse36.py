@@ -74,7 +74,7 @@
 
 # XXX: show string offset and offending character for all errors
 
-from sre_constants import *
+from .sre_constants36 import *
 
 SPECIAL_CHARS = ".\\[{()*+?^$|"
 REPEAT_CHARS = "*+?{"

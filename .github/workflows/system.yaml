@@ -12,20 +12,22 @@ jobs:
 
     strategy:
       matrix:
-        tox_target: [twisted-apidoc,
-                     cpython-summary, 
-                     python-igraph-apidocs, 
-                     cpython-apidocs,
-                     numpy-apidocs,
-                     git-buildpackage-apidocs,]
+        tox_target: [twisted-apidoc, cpython-summary, python-igraph-apidocs, cpython-apidocs, numpy-apidocs, git-buildpackage-apidocs, pytype-apidocs]
 
     steps:
     - uses: actions/checkout@v2
 
-    - name: Set up Python
+    - name: Set up CPython
+      if: ${{ matrix.tox_target == 'python-igraph-apidocs' }}
       uses: actions/setup-python@v2
       with:
         python-version: '3.8'
+    
+    - name: Set up PyPy
+      if: ${{ matrix.tox_target != 'python-igraph-apidocs' }}
+      uses: actions/setup-python@v2
+      with:
+        python-version: 'pypy-3.6'
 
     - name: Install tox
       run: |
@@ -41,3 +43,4 @@ jobs:
     - name: Generate API docs
       run: |
         tox -e ${{ matrix.tox_target }}
+

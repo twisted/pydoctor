@@ -41,7 +41,7 @@ the list.
 """
 __docformat__ = 'epytext en'
 
-from typing import Callable, Iterable, List, Optional, Sequence, Set, cast
+from typing import Iterable, List, Optional, Sequence, Set, cast
 import re
 from docutils import nodes
 
@@ -49,13 +49,13 @@ from docutils.core import publish_string
 from docutils.writers import Writer
 from docutils.parsers.rst.directives.admonitions import BaseAdmonition # type: ignore[import]
 from docutils.readers.standalone import Reader as StandaloneReader
-from docutils.utils import Reporter, new_document
+from docutils.utils import Reporter
 from docutils.parsers.rst import Directive, directives
 from docutils.transforms import Transform, frontmatter
 
-from pydoctor.epydoc.markup import Field, ParseError, ParsedDocstring, append_warnings
+from pydoctor.epydoc.markup import Field, ParseError, ParsedDocstring, ParserFunction
 from pydoctor.epydoc.markup.plaintext import ParsedPlaintextDocstring
-from pydoctor.epydoc.markup._types import ParsedTypeDocstring
+from pydoctor.epydoc.docutils import new_document
 from pydoctor.model import Documentable
 
 #: A dictionary whose keys are the "consolidated fields" that are
@@ -81,7 +81,6 @@ CONSOLIDATED_DEFLIST_FIELDS = ['param', 'arg', 'var', 'ivar', 'cvar', 'keyword']
 
 def parse_docstring(docstring: str, 
                     errors: List[ParseError], 
-                    processtypes: bool = False,
                     ) -> ParsedDocstring:
     """
     Parse the given docstring, which is formatted using
@@ -91,7 +90,6 @@ def parse_docstring(docstring: str,
     @param docstring: The docstring to parse
     @param errors: A list where any errors generated during parsing
         will be stored.
-    @param processtypes: Use L{ParsedTypeDocstring} to parsed 'type' fields.
     """
     writer = _DocumentPseudoWriter()
     reader = _EpydocReader(errors) # Outputs errors to the list.
@@ -108,12 +106,12 @@ def parse_docstring(docstring: str,
                                        'warning_stream':None})
 
     document = writer.document
-    visitor = _SplitFieldsTranslator(document, errors, processtypes=processtypes)
+    visitor = _SplitFieldsTranslator(document, errors)
     document.walk(visitor)
 
     return ParsedRstDocstring(document, visitor.fields)
 
-def get_parser(obj:Documentable) -> Callable[[str, List[ParseError], bool], ParsedDocstring]:
+def get_parser(obj:Documentable) -> ParserFunction:
     """
     Get the L{parse_docstring} function. 
     """
@@ -223,12 +221,11 @@ class _SplitFieldsTranslator(nodes.NodeVisitor):
     consolidated fields expressed as unordered lists still require
     backticks for now."""
 
-    def __init__(self, document: nodes.document, errors: List[ParseError], processtypes: bool = False):
+    def __init__(self, document: nodes.document, errors: List[ParseError]):
         nodes.NodeVisitor.__init__(self, document)
         self._errors = errors
         self.fields: List[Field] = []
         self._newfields: Set[str] = set()
-        self._processtypes = processtypes
 
     def visit_document(self, node: nodes.Node) -> None:
         self.fields = []
@@ -281,14 +278,7 @@ class _SplitFieldsTranslator(nodes.NodeVisitor):
         field_doc = self.document.copy()
         for child in fbody: 
             field_doc.append(child)
-
-        # This allows restructuredtext markup to use TypeDocstring as well with a CLI option: --process-types
-        field_parsed_doc: ParsedDocstring
-        if self._processtypes and tagname in ParsedTypeDocstring.FIELDS:
-            field_parsed_doc = ParsedTypeDocstring(field_doc)
-            append_warnings(field_parsed_doc.warnings, self._errors, lineno=lineno)
-        else:
-            field_parsed_doc = ParsedRstDocstring(field_doc, ())
+        field_parsed_doc = ParsedRstDocstring(field_doc, ())
         self.fields.append(Field(tagname, arg, field_parsed_doc, lineno - 1))
 
     def visit_field_list(self, node: nodes.Node) -> None:

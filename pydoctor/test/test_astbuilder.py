@@ -5,6 +5,7 @@ import astor
 
 
 from pydoctor import astbuilder, astutils, model
+from pydoctor import epydoc2stan
 from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring
 from pydoctor.options import Options
 from pydoctor.stanutils import flatten, html2stan, flatten_text
@@ -1618,6 +1619,43 @@ def test_ignore_function_contents(systemcls: Type[model.System]) -> None:
     assert not outer.contents
 
 @systemcls_param
+def test_overload(systemcls: Type[model.System], capsys: CapSys) -> None:
+    # Confirm decorators retained on overloads, docstring ignored for overloads,
+    # and that overloads after the primary function are skipped
+    mod = fromText("""
+        from typing import overload, Union
+        def dec(fn):
+            pass
+        @dec
+        @overload
+        def parse(s:str)->str:
+            ...
+        @overload
+        def parse(s:bytes)->bytes:
+            '''Ignored docstring'''
+            ...
+        def parse(s:Union[str, bytes])->Union[str, bytes]:
+            pass
+        @overload
+        def parse(s:str)->bytes:
+            ...
+        """, systemcls=systemcls)
+    func = mod.contents['parse']
+    assert isinstance(func, model.Function)
+    # Work around different space arrangements in Signature.__str__ between python versions
+    assert flatten_text(html2stan(str(func.signature).replace(' ', ''))) == '(s:Union[str,bytes])->Union[str,bytes]'
+    assert [astbuilder.node2dottedname(d) for d in (func.decorators or ())] == []
+    assert len(func.overloads) == 2
+    assert [astbuilder.node2dottedname(d) for d in func.overloads[0].decorators] == [['dec'], ['overload']]
+    assert [astbuilder.node2dottedname(d) for d in func.overloads[1].decorators] == [['overload']]
+    assert flatten_text(html2stan(str(func.overloads[0].signature).replace(' ', ''))) == '(s:str)->str'
+    assert flatten_text(html2stan(str(func.overloads[1].signature).replace(' ', ''))) == '(s:bytes)->bytes'
+    assert capsys.readouterr().out.splitlines() == [
+        '<test>:11: <test>.parse overload has docstring, unsupported',
+        '<test>:15: <test>.parse overload appeared after primary function',
+    ]
+
+@systemcls_param
 def test_constant_module(systemcls: Type[model.System]) -> None:
     """
     Module variables with all-uppercase names are recognized as constants.
@@ -2115,3 +2153,230 @@ def test_prepend_package_real_path(systemcls: Type[model.System]) -> None:
     finally:
         systemcls.systemBuilder = _builderT_init
 
+def getConstructorsText(cls: model.Documentable) -> str:
+    assert isinstance(cls, model.Class)
+    return '\n'.join(
+        epydoc2stan.format_constructor_short_text(c, cls) for c in cls.public_constructors)
+
+@systemcls_param
+def test_crash_type_inference_unhashable_type(systemcls: Type[model.System], capsys:CapSys) -> None:
+    """
+    This test is about not crashing.
+
+    A TypeError is raised by ast.literal_eval() in some cases, when we're trying to do a set of lists or a dict with list keys.
+    We do not bother reporting it because pydoctor is not a checker.
+    """
+
+    src = '''
+    # Unhashable type, will raise an error in ast.literal_eval()
+    x = {[1, 2]}
+    class C:
+        v = {[1,2]:1}
+        def __init__(self):
+            self.y = [{'str':2}, {[1,2]:1}]
+    Y = [{'str':2}, {{[1, 2]}:1}]
+    '''
+
+    mod = fromText(src, systemcls=systemcls, modname='m')
+    for obj in ['m.x', 'm.C.v', 'm.C.y', 'm.Y']:
+        o = mod.system.allobjects[obj]
+        assert isinstance(o, model.Attribute)
+        assert o.annotation is None
+    assert not capsys.readouterr().out
+
+
+@systemcls_param
+def test_constructor_signature_init(systemcls: Type[model.System]) -> None:
+    
+    src = '''\
+    class Person(object):
+        # pydoctor can infer the constructor to be: "Person(name, age)"
+        def __init__(self, name, age):
+            self.name = name
+            self.age = age
+
+    class Citizen(Person):
+        # pydoctor can infer the constructor to be: "Citizen(nationality, *args, **kwargs)"
+        def __init__(self, nationality, *args, **kwargs):
+            self.nationality = nationality
+            super(Citizen, self).__init__(*args, **kwargs)
+        '''
+    mod = fromText(src, systemcls=systemcls)
+
+    # Like "Available constructor: ``Person(name, age)``" that links to Person.__init__ documentation.
+    assert getConstructorsText(mod.contents['Person']) == "Person(name, age)"
+    
+    # Like "Available constructor: ``Citizen(nationality, *args, **kwargs)``" that links to Citizen.__init__ documentation.
+    assert getConstructorsText(mod.contents['Citizen']) == "Citizen(nationality, *args, **kwargs)"
+
+@systemcls_param
+def test_constructor_signature_new(systemcls: Type[model.System]) -> None:
+    src = '''\
+    class Animal(object):
+        # pydoctor can infer the constructor to be: "Animal(name)"
+        def __new__(cls, name):
+            obj = super().__new__(cls)
+            # assignation not recognized by pydoctor, attribute 'name' will not be documented
+            obj.name = name 
+            return obj
+    '''
+
+    mod = fromText(src, systemcls=systemcls)
+
+    assert getConstructorsText(mod.contents['Animal']) == "Animal(name)"
+
+@systemcls_param
+def test_constructor_signature_init_and_new(systemcls: Type[model.System]) -> None:
+    """
+    Pydoctor can't infer the constructor signature when both __new__ and __init__ are defined. 
+    __new__ takes the precedence over __init__ because it's called first. Trying to infer what are the complete 
+    constructor signature when __new__ is defined might be very hard because the method can return an instance of 
+    another class, calling another __init__ method. We're not there yet in term of static analysis.
+    """
+
+    src = '''\
+    class Animal(object):
+        # both __init__ and __new__ are defined, pydoctor only looks at the __new__ method
+        # pydoctor infers the constructor to be: "Animal(*args, **kw)"
+        def __new__(cls, *args, **kw):
+            print('__new__() called.')
+            print('args: ', args, ', kw: ', kw)
+            return super().__new__(cls)
+
+        def __init__(self, name):
+            print('__init__() called.')
+            self.name = name
+            
+    class Cat(Animal):
+        # Idem, but __new__ is inherited.
+        # pydoctor infers the constructor to be: "Cat(*args, **kw)"
+        # This is why it's important to still document __init__ as a regular method.
+        def __init__(self, name, owner):
+            super().__init__(name)
+            self.owner = owner
+    '''
+
+    mod = fromText(src, systemcls=systemcls)
+
+    assert getConstructorsText(mod.contents['Animal']) == "Animal(*args, **kw)"
+    assert getConstructorsText(mod.contents['Cat']) == "Cat(*args, **kw)"
+
+@systemcls_param
+def test_constructor_signature_classmethod(systemcls: Type[model.System]) -> None:
+
+    src = '''\
+    
+    def get_default_options() -> 'Options':
+        """
+        This is another constructor for class 'Options'. 
+        But it's not recognized by pydoctor because it's not defined in the locals of Options.
+        """
+        return Options()
+
+    class Options:
+        a,b,c = None, None, None
+
+        @classmethod
+        def create_no_hints(cls):
+            """
+            Pydoctor can't deduce that this method is a constructor as well,
+            because there is no type annotation.
+            """
+            return cls()
+        
+        # thanks to type hints, 
+        # pydoctor can infer the constructor to be: "Options.create()"
+        @staticmethod
+        def create(important_arg) -> 'Options':
+            # the fictional constructor is not detected by pydoctor, because it doesn't exists actually.
+            return Options(1,2,3)
+        
+        # thanks to type hints, 
+        # pydoctor can infer the constructor to be: "Options.create_from_num(num)"
+        @classmethod
+        def create_from_num(cls, num) -> 'Options':
+            c = cls.create()
+            c.a = num
+            return c
+        '''
+
+    mod = fromText(src, systemcls=systemcls)
+
+    assert getConstructorsText(mod.contents['Options']) == "Options.create(important_arg)\nOptions.create_from_num(num)"
+
+@systemcls_param
+def test_constructor_inner_class(systemcls: Type[model.System]) -> None:
+    src = '''\
+    from typing import Self
+    class Animal(object):
+        class Bar(object):
+            # pydoctor can infer the constructor to be: "Animal.Bar(name)"
+            def __new__(cls, name):
+                ...
+            class Foo(object):
+                # pydoctor can infer the constructor to be: "Animal.Bar.Foo.create(name)"
+                @classmethod
+                def create(cls, name) -> 'Self':
+                    c = cls.create()
+                    c.a = num
+                    return c
+    '''
+    mod = fromText(src, systemcls=systemcls)
+    assert getConstructorsText(mod.contents['Animal'].contents['Bar']) == "Animal.Bar(name)"
+    assert getConstructorsText(mod.contents['Animal'].contents['Bar'].contents['Foo']) == "Animal.Bar.Foo.create(name)"
+
+@systemcls_param
+def test_constructor_many_parameters(systemcls: Type[model.System]) -> None:
+    src = '''\
+    class Animal(object):
+        def __new__(cls, name, lastname, age, spec, extinct, group, friends):
+            ...
+    '''
+    mod = fromText(src, systemcls=systemcls)
+
+    assert getConstructorsText(mod.contents['Animal']) == "Animal(name, lastname, age, spec, ...)"
+
+@systemcls_param
+def test_constructor_five_paramters(systemcls: Type[model.System]) -> None:
+    src = '''\
+    class Animal(object):
+        def __new__(cls, name, lastname, age, spec, extinct):
+            ...
+    '''
+    mod = fromText(src, systemcls=systemcls)
+
+    assert getConstructorsText(mod.contents['Animal']) == "Animal(name, lastname, age, spec, extinct)"
+
+@systemcls_param
+def test_default_constructors(systemcls: Type[model.System]) -> None:
+    src = '''\
+    class Animal(object):
+        def __init__(self):
+            ...
+        def __new__(cls):
+            ...
+        @classmethod
+        def new(cls) -> 'Animal':
+            ...
+        '''
+
+    mod = fromText(src, systemcls=systemcls)
+    assert getConstructorsText(mod.contents['Animal']) == "Animal.new()"
+
+    src = '''\
+    class Animal(object):
+        def __init__(self):
+            ...
+        '''
+
+    mod = fromText(src, systemcls=systemcls)
+    assert getConstructorsText(mod.contents['Animal']) == ""
+
+    src = '''\
+    class Animal(object):
+        def __init__(self):
+            "thing"
+        '''
+
+    mod = fromText(src, systemcls=systemcls)
+    assert getConstructorsText(mod.contents['Animal']) == "Animal()"
