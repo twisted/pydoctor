@@ -1532,8 +1532,6 @@ def test_property_setter(systemcls: Type[model.System], capsys: CapSys) -> None:
 
     getter = C.contents['prop']
     assert isinstance(getter, model.Property)
-    assert getter.__class__ is model.Attribute # type:ignore
-
     assert getter.docstring == """Getter."""
 
     setter = getter.setter

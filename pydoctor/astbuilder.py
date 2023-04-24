@@ -794,9 +794,10 @@ class ModuleVistor(NodeVisitor):
 
     def _addProperty(self, node:Union[ast.AsyncFunctionDef, ast.FunctionDef], 
                      parent:model.Documentable, lineno:int,) -> model.Property:
-        attribute = self.builder.addProperty(node.name, parent=parent)
+        attribute = self.builder.addAttribute(node.name, 
+                                 model.DocumentableKind.PROPERTY, 
+                                 parent)
         attribute.setLineNumber(lineno)
-        attribute.decorators = node.decorator_list
         assert isinstance(attribute, model.Property)
         return attribute
 
@@ -1233,20 +1234,14 @@ class ASTBuilder:
         parentMod = self.currentMod
         if kind is model.DocumentableKind.PROPERTY:
             attr:model.Attribute = system.Property(system, name, parent)
+            assert attr.kind is model.DocumentableKind.PROPERTY
         else:
             attr = system.Attribute(system, name, parent)
-        attr.kind = kind
+            attr.kind = kind
         attr.parentMod = parentMod
         system.addObject(attr)
         self.currentAttr = attr
         return attr
-
-    def addProperty(self,
-            name: str, parent: model.Documentable
-            ) -> model.Property:
-        return cast(model.Property, self.addAttribute(name, 
-                                 model.DocumentableKind.PROPERTY, 
-                                 parent))
 
     def processModuleAST(self, mod_ast: ast.Module, mod: model.Module) -> None:
 

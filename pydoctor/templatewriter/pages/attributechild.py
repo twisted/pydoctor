@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING, List
 from twisted.web.iweb import ITemplateLoader
 from twisted.web.template import Tag, renderer, tags
 
-from pydoctor.model import Attribute, Property, DocumentableKind
+from pydoctor.model import Attribute, Property
 from pydoctor import epydoc2stan
 from pydoctor.templatewriter import TemplateElement, util
 from pydoctor.templatewriter.pages import format_decorators
@@ -21,13 +21,11 @@ class AttributeChild(TemplateElement):
             ob: Attribute,
             extras: List["Flattenable"],
             loader: ITemplateLoader,
-            funcLoader: ITemplateLoader,
             ):
         super().__init__(loader)
         self.docgetter = docgetter
         self.ob = ob
         self._functionExtras = extras
-        self._funcLoader = funcLoader
 
     @renderer
     def class_(self, request: object, tag: Tag) -> "Flattenable":
@@ -49,10 +47,6 @@ class AttributeChild(TemplateElement):
         name = self.shortFunctionAnchor(request, tag)
         return f'#{name}'
     
-    @renderer
-    def decorator(self, request: object, tag: Tag) -> "Flattenable":
-        return list(format_decorators(self.ob))
-
     @renderer
     def attribute(self, request: object, tag: Tag) -> "Flattenable":
         attr: List["Flattenable"] = [tags.span(self.ob.name, class_='py-defname')]
@@ -84,13 +78,35 @@ class AttributeChild(TemplateElement):
         return epydoc2stan.format_constant_value(self.ob)
 
     @renderer
+    def decorator(self, request: object, tag: Tag) -> "Flattenable":
+        return ()
+    
+    @renderer
+    def propertyInfo(self, request: object, tag: Tag) -> "Flattenable":
+        return ()
+
+class PropertyChild(AttributeChild):
+    ob: Property
+
+    def __init__(self, docgetter: util.DocGetter, 
+                 ob: Property, 
+                 extras: List['Flattenable'], 
+                 loader: ITemplateLoader, 
+                 funcLoader: ITemplateLoader):
+        super().__init__(docgetter, ob, extras, loader)
+        self._funcLoader = funcLoader
+
+    @renderer
+    def decorator(self, request: object, tag: Tag) -> "Flattenable":
+        return list(format_decorators(self.ob))
+
+    @renderer
     def propertyInfo(self, request: object, tag: Tag) -> "Flattenable":
         # Property info consist in nested function child elements that 
         # formats the setter and deleter docs of the property.
         r = []
-        if isinstance(self.ob, Property):
-            from pydoctor.templatewriter.pages.functionchild import FunctionChild
-            for func in [f for f in (self.ob.setter, self.ob.deleter) if f]:
-                r.append(FunctionChild(self.docgetter, func, extras=[], 
-                            loader=self._funcLoader, silent_undoc=True))
+        from pydoctor.templatewriter.pages.functionchild import FunctionChild
+        for func in [f for f in (self.ob.setter, self.ob.deleter) if f]:
+            r.append(FunctionChild(self.docgetter, func, extras=[], 
+                        loader=self._funcLoader, silent_undoc=True))
         return r

@@ -846,7 +846,6 @@ def init_property(attrib:'Property') -> Iterator['Function']:
     # Setup Attribute object for the property    
     attrib.docstring = getter.docstring
     attrib.annotation = getter.annotations.get('return')
-    attrib.decorators = getter.decorators
     
     attrib.extra_info.extend(getter.extra_info)
 
@@ -887,7 +886,6 @@ def init_property(attrib:'Property') -> Iterator['Function']:
 class Attribute(Inheritable):
     kind: Optional[DocumentableKind] = DocumentableKind.ATTRIBUTE
     annotation: Optional[ast.expr]
-    decorators: Optional[Sequence[ast.expr]] = None # decorators are used only if the attribute is a property
     value: Optional[ast.expr] = None
     """
     The value of the assignment expression. 
@@ -898,13 +896,18 @@ class Attribute(Inheritable):
     """
 
 class Property(Attribute):
-    # for the templatewriter, property are just like attributes
-    __class__ = Attribute #type:ignore
+    kind: DocumentableKind = DocumentableKind.PROPERTY
     
     class Kind(Enum):
         GETTER = 1
         SETTER = 2
         DELETER = 3
+    
+    @property
+    def decorators(self) -> Optional[Sequence[ast.expr]]:
+        if self.getter:
+            return self.getter.decorators
+        return None
 
     def setup(self) -> None:
         super().setup()

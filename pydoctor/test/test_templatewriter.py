@@ -14,7 +14,7 @@ from pydoctor.templatewriter import (FailedToCreateTemplate, StaticTemplate, pag
                                      HtmlTemplate, UnsupportedTemplateVersion, 
                                      OverrideTemplateNotAllowed)
 from pydoctor.templatewriter.pages.table import ChildTable
-from pydoctor.templatewriter.pages.attributechild import AttributeChild
+from pydoctor.templatewriter.pages.attributechild import AttributeChild, PropertyChild
 from pydoctor.templatewriter.pages.functionchild import FunctionChild
 from pydoctor.templatewriter.summary import isClassNodePrivate, isPrivate, moduleSummary
 from pydoctor.test.test_astbuilder import fromText, systemcls_param
@@ -60,9 +60,13 @@ def getHTMLOf(ob: model.Documentable) -> str:
 def getHTMLOfAttribute(ob: model.Documentable) -> str:
     assert isinstance(ob, model.Attribute)
     tlookup = TemplateLookup(template_dir)
-    stan = AttributeChild(util.DocGetter(), ob, [], 
-        AttributeChild.lookup_loader(tlookup), 
-        FunctionChild.lookup_loader(tlookup))
+    if isinstance(ob, model.Property):
+        stan = PropertyChild(util.DocGetter(), ob, [], 
+            PropertyChild.lookup_loader(tlookup), 
+            FunctionChild.lookup_loader(tlookup))
+    else:
+        stan = AttributeChild(util.DocGetter(), ob, [], 
+            AttributeChild.lookup_loader(tlookup))
     return flatten(stan)
 
 def test_sidebar() -> None:

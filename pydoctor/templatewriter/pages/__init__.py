@@ -22,7 +22,7 @@ from pydoctor.epydoc.markup._pyval_repr import colorize_inline_pyval
 if TYPE_CHECKING:
     from typing_extensions import Final
     from twisted.web.template import Flattenable
-    from pydoctor.templatewriter.pages.attributechild import AttributeChild
+    from pydoctor.templatewriter.pages.attributechild import AttributeChild, PropertyChild
     from pydoctor.templatewriter.pages.functionchild import FunctionChild
 
 
@@ -45,7 +45,7 @@ def objects_order(o: model.Documentable) -> Tuple[int, int, str]:
 
     return (-o.privacyClass.value, -map_kind(o.kind).value if o.kind else 0, o.fullName().lower())
 
-def format_decorators(obj: Union[model.Function, model.Attribute, model.FunctionOverload]) -> Iterator["Flattenable"]:
+def format_decorators(obj: Union[model.Function, model.Property, model.FunctionOverload]) -> Iterator["Flattenable"]:
     # Since we use this function to colorize the FunctionOverload decorators and it's not an actual Documentable subclass, we use the overload's 
     # primary function for parts that requires an interface to Documentable methods or attributes
     documentable_obj = obj if not isinstance(obj, model.FunctionOverload) else obj.primary
@@ -287,19 +287,22 @@ class CommonPage(Page):
                       key=util.objects_order)
 
     def childlist(self) -> List[Union["AttributeChild", "FunctionChild"]]:
-        from pydoctor.templatewriter.pages.attributechild import AttributeChild
+        from pydoctor.templatewriter.pages.attributechild import AttributeChild, PropertyChild
         from pydoctor.templatewriter.pages.functionchild import FunctionChild
 
-        r: List[Union["AttributeChild", "FunctionChild"]] = []
+        r: List[Union["PropertyChild", "AttributeChild", "FunctionChild"]] = []
 
         func_loader = FunctionChild.lookup_loader(self.template_lookup)
         attr_loader = AttributeChild.lookup_loader(self.template_lookup)
+        property_loader = PropertyChild.lookup_loader(self.template_lookup)
 
         for c in self.methods():
-            if isinstance(c, model.Function):
+            if isinstance(c, model.Property):
+                r.append(PropertyChild(self.docgetter, c, self.objectExtras(c), property_loader, func_loader))
+            elif isinstance(c, model.Function):
                 r.append(FunctionChild(self.docgetter, c, self.objectExtras(c), func_loader))
             elif isinstance(c, model.Attribute):
-                r.append(AttributeChild(self.docgetter, c, self.objectExtras(c), attr_loader, func_loader))
+                r.append(AttributeChild(self.docgetter, c, self.objectExtras(c), attr_loader))
             else:
                 assert False, type(c)
         return r
