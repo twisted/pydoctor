@@ -120,6 +120,14 @@ Epytext defines four types of inline markup that specify how text should be disp
     - C{Source code}
     - M{Math}
 
+In the raw source file this list looks like this::
+
+    - I{Italicized text}
+    - B{Bold-faced text}
+    - C{Source code}
+    - M{Math}
+
+
 Without the capital letter, matching
 braces are not interpreted as markup:
 C{my_dict={1:2, 3:4}}.
@@ -162,14 +170,15 @@ S{rarr}, S{uarr}, and S{darr}.
 Escaping
 ========
 
-Escaping is used to write text that would otherwise be interpreted as epytext markup.
+Escaping is used to write text that would otherwise be interpreted as epytext
+markup. Escaped text has the form C{EE{lb}textE{rb}}, where C{text} specifies
+the character that should be produced.
 
-Escaped text has the form EE{lb}codeE{rb},
-where code is an escape code that specifies what character should be produced.
-
-If the escape code is a single character (other than '{' or '}'), then that character is produced.
-For example, to begin a paragraph with a dash (which would normally signal a list item), write 'E{-}'.
-In addition, two special escape codes are defined: 'E{lb}' produces a left curly brace ('{'); and 'E{rb}' produces a right curly brace ('}').
+For example, to begin a paragraph with a dash (which would normally signal
+a list item), write C{EE{lb}-E{rb}} in the source file. As an
+exception, special escape codes are defined for opening and closing curly
+braces: C{EE{lb}lbE{rb}} produces a left curly brace (E{lb});
+and C{EE{lb}rbE{rb}} produces a right curly brace (E{rb}).
 
 This paragraph ends with two
 colons, but does not introduce
