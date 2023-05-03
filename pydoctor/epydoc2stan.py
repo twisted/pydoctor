@@ -579,6 +579,9 @@ def parse_docstring(
     try:
         # parse docstring
         parsed_doc = parser(doc, errs)
+    except ParseError:
+        # this error should already by stored in the errs list
+        parsed_doc = pydoctor.epydoc.markup.plaintext.parse_docstring(doc, errs)
     except Exception as e:
         errs.append(ParseError(f'{e.__class__.__name__}: {e}', 1))
         parsed_doc = pydoctor.epydoc.markup.plaintext.parse_docstring(doc, errs)
