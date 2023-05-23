@@ -697,7 +697,7 @@ def test_func_starargs_more(capsys: CapSys) -> None:
 
 def test_func_starargs_hidden_when_keywords_documented(capsys: CapSys) -> None:
     # tests for issue https://github.com/twisted/pydoctor/issues/697
-    
+
     keywords_documented = fromText('''
     def f(args, kwargs, **kwa) -> None:
         """
@@ -738,8 +738,9 @@ def test_func_starargs_hidden_when_keywords_documented(capsys: CapSys) -> None:
     keywords_undoc_fmt = docstring2html(keywords_undoc.contents['f'], docformat='restructuredtext')
 
     assert '<span class="fieldArg">**kwa</span>' not in keywords_documented_fmt
-    assert '<span class="fieldArg">**kwa</span>' in keywords_and_kwargs_documented_fmt
-    assert '<span class="fieldArg">**kwa</span>' in keywords_undoc_fmt
+    # **kwa should be presented AFTER all other parameters
+    assert re.match(r'<span class="fieldArg">something<\/span>.*<span class="fieldArg">\*\*kwa<\/span>', keywords_and_kwargs_documented_fmt)
+    assert re.match(r'<span class="fieldArg">something<\/span>.*<span class="fieldArg">\*\*kwa<\/span>', keywords_undoc_fmt)
 
 def test_summary() -> None:
     mod = fromText('''
