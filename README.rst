@@ -73,8 +73,8 @@ You can select a different format using the ``--docformat`` option or the ``__do
 What's New?
 ~~~~~~~~~~~
 
-in development
-^^^^^^^^^^^^^^
+pydoctor 23.4.1
+^^^^^^^^^^^^^^^
 
 * Pin ``urllib3`` version to keep compatibility with ``cachecontrol`` and python3.6.
 
