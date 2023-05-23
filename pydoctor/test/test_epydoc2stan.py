@@ -1939,3 +1939,40 @@ def test_returns_undocumented_still_show_up_if_params_documented() -> None:
     assert 'Returns</td>' not in html_h
     assert 'Returns</td>' not in html_i
 
+def test_invalid_epytext_renders_as_plaintext(capsys: CapSys) -> None:
+    """
+    An invalid epytext docstring will be rederered as plaintext.
+    """
+
+    mod = fromText(''' 
+    def func():
+        """
+            Title
+            ~~~~~
+            
+
+            Hello
+            ~~~~~
+        """
+        pass
+    
+    ''', modname='invalid')
+
+    expected = """<div>
+<p class="pre">Title
+~~~~~
+
+
+Hello
+~~~~~</p>
+</div>"""
+    
+    actual = docstring2html(mod.contents['func'])
+    captured = capsys.readouterr().out
+    assert captured == ('invalid:4: bad docstring: Wrong underline character for heading.\n'
+                        'invalid:8: bad docstring: Wrong underline character for heading.\n')
+    assert actual  == expected
+
+    assert docstring2html(mod.contents['func'], docformat='plaintext') == expected
+    captured = capsys.readouterr().out
+    assert captured == ''

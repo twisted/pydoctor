@@ -77,6 +77,10 @@ in development
 ^^^^^^^^^^^^^^
 
 * Fix some name resolution edge cases.
+
+pydoctor 23.4.0
+^^^^^^^^^^^^^^^
+
 * Add support for Python 3.11
 * Add support for the ``@overload`` decorator.
 * Show type annotations in function's signatures.
@@ -94,6 +98,7 @@ in development
 * Improve the search bar user experience by automatically appending wildcard to each query terms
   when no terms already contain a wildcard. 
 * Link recognized constructors in class page.
+* An invalid epytext docstring will be rederered as plaintext, just like invalid restructuredtext docstrings (finally).
 
 pydoctor 22.9.1
 ^^^^^^^^^^^^^^^
