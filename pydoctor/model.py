@@ -267,10 +267,17 @@ class Documentable:
         self.system.allobjects[self.fullName()] = self
         for o in self.contents.values():
             o._handle_reparenting_post()
+    
     def _localNameToFullName(self, name: str) -> str:
         raise NotImplementedError(self._localNameToFullName)
     
     def isNameDefined(self, name:str) -> bool:
+        """
+        Is the given name defined in the globals/locals of self-context?
+        Only the first name of a dotted name is checked.
+
+        Returns True iff the given name can be loaded without raising `NameError`.
+        """
         raise NotImplementedError(self.isNameDefined)
 
     def expandName(self, name: str) -> str:
@@ -405,10 +412,6 @@ class CanContainImportsDocumentable(Documentable):
         self._localNameToFullName_map: Dict[str, str] = {}
     
     def isNameDefined(self, name: str) -> bool:
-        """
-        Is the given name defined in this scope context?
-        Only the first name of a dotted name is checked.
-        """
         name = name.split('.')[0]
         if name in self.contents:
             return True
@@ -808,8 +811,9 @@ class Inheritable(Documentable):
 
     def _localNameToFullName(self, name: str) -> str:
         return self.parent._localNameToFullName(name)
+    
     def isNameDefined(self, name: str) -> bool:
-        return self.module.isNameDefined(name)
+        return self.parent.isNameDefined(name)
 
 class Function(Inheritable):
     kind = DocumentableKind.FUNCTION
