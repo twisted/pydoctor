@@ -739,8 +739,8 @@ def test_func_starargs_hidden_when_keywords_documented(capsys: CapSys) -> None:
 
     assert '<span class="fieldArg">**kwa</span>' not in keywords_documented_fmt
     # **kwa should be presented AFTER all other parameters
-    assert re.match(r'<span class="fieldArg">something<\/span>.*<span class="fieldArg">\*\*kwa<\/span>', keywords_and_kwargs_documented_fmt)
-    assert re.match(r'<span class="fieldArg">something<\/span>.*<span class="fieldArg">\*\*kwa<\/span>', keywords_undoc_fmt)
+    assert re.match('.+args.+kwargs.+something.+another.+kwa', keywords_and_kwargs_documented_fmt, flags=re.DOTALL)
+    assert re.match('.+args.+kwargs.+kwa', keywords_undoc_fmt, flags=re.DOTALL)
 
 def test_summary() -> None:
     mod = fromText('''

@@ -514,8 +514,11 @@ class FieldHandler:
                 continue
             if isinstance(p, KeywordDesc):
                 has_keywords = True
-        if kwargs and has_keywords and not kwargs.is_documented():
+        if kwargs:
             self.parameter_descs.remove(kwargs)
+            if not has_keywords or kwargs.is_documented():
+                # make sure **kwargs row is presented last in the parameter table
+                self.parameter_descs.append(kwargs)
 
     def format(self) -> Tag:
         r: List[Tag] = []
