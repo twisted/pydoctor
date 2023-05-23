@@ -57,6 +57,9 @@ else:
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable
     from pydoctor.model import Documentable
+    from typing import Protocol
+else:
+    Protocol = object
 
 ##################################################
 ## Contents
@@ -276,14 +279,13 @@ class Field:
 ##################################################
 ## Docstring Linker (resolves crossreferences)
 ##################################################
-class DocstringLinker(abc.ABC):
+class DocstringLinker(Protocol):
     """
     A resolver for crossreference links out of a C{ParsedDocstring}.
     C{DocstringLinker} is used by C{ParsedDocstring} to look up the
     target URL for crossreference links.
     """
 
-    @abc.abstractmethod
     def link_to(self, target: str, label: "Flattenable") -> Tag:
         """
         Format a link to a Python identifier.
@@ -295,7 +297,6 @@ class DocstringLinker(abc.ABC):
         @return: The link, or just the label if the target was not found.
         """
 
-    @abc.abstractmethod
     def link_xref(self, target: str, label: "Flattenable", lineno: int) -> Tag:
         """
         Format a cross-reference link to a Python identifier.
@@ -311,7 +312,6 @@ class DocstringLinker(abc.ABC):
             In either case, the returned top-level tag will be C{<code>}.
         """
 
-    @abc.abstractmethod
     def switch_context(self, ob:Optional['Documentable']) -> ContextManager[None]:
         """
         Switch the context of the linker, keeping the same underlying lookup rules.
