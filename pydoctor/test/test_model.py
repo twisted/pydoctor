@@ -498,10 +498,16 @@ def test_name_defined() -> None:
     import twisted.web
 
     class c:
-        var = True
+        class F:
+            def f():...
+
+        var:F = True
     '''
 
     mod = fromText(src, modname='m')
+
+    # builtins are not considered by isNameDefined()
+    assert not mod.isNameDefined('bool')
 
     assert mod.isNameDefined('pydoctor')
     assert mod.isNameDefined('twisted.web')
@@ -520,3 +526,25 @@ def test_name_defined() -> None:
     assert cls.isNameDefined('c')
     assert cls.isNameDefined('c.anything')
     assert cls.isNameDefined('var')
+
+    var = cls.contents['var']
+    assert isinstance(var, model.Attribute)
+
+    assert var.isNameDefined('c')
+    assert var.isNameDefined('var')
+    assert var.isNameDefined('F')
+    assert not var.isNameDefined('m')
+    assert var.isNameDefined('pydoctor')
+    assert var.isNameDefined('twisted.web')
+
+    innerCls = cls.contents['F']
+    assert isinstance(innerCls, model.Class)
+    assert not innerCls.isNameDefined('F')
+    assert not innerCls.isNameDefined('var')
+    assert innerCls.isNameDefined('f')
+
+    innerFn = innerCls.contents['f']
+    assert isinstance(innerFn, model.Function)
+    assert not innerFn.isNameDefined('F')
+    assert not innerFn.isNameDefined('var')
+    assert innerFn.isNameDefined('f')
