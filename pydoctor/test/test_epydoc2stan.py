@@ -695,6 +695,52 @@ def test_func_starargs_more(capsys: CapSys) -> None:
     captured = capsys.readouterr().out
     assert not captured
 
+def test_func_starargs_hidden_when_keywords_documented(capsys: CapSys) -> None:
+    # tests for issue https://github.com/twisted/pydoctor/issues/697
+    
+    keywords_documented = fromText('''
+    def f(args, kwargs, **kwa) -> None:
+        """
+        var-keyword arguments are specifically documented. 
+
+        :param args: some regular argument
+        :param kwargs: some regular argument
+        :keyword something: An argument
+        :keyword another: Another
+        """
+    ''', modname='keywords_documented')
+
+    keywords_and_kwargs_documented = fromText('''
+    def f(args, kwargs, **kwa) -> None:
+        """
+       var-keyword arguments are specifically documented as well as other extra keywords.
+
+        :param args: some regular argument
+        :param kwargs: some regular argument
+        :param kwa: Other keywords are passed to ``parse`` function.
+        :keyword something: An argument
+        :keyword another: Another
+        """
+    ''', modname='keywords_and_kwargs_documented')
+
+    keywords_undoc = fromText('''
+    def f(args, kwargs, **kwa) -> None:
+        """
+        var-keyword arguments are not specifically documented
+
+        :param args: some regular argument
+        :param kwargs: some regular argument
+        """
+    ''', modname='keywords_undoc')
+
+    keywords_documented_fmt = docstring2html(keywords_documented.contents['f'], docformat='restructuredtext')
+    keywords_and_kwargs_documented_fmt = docstring2html(keywords_and_kwargs_documented.contents['f'], docformat='restructuredtext')
+    keywords_undoc_fmt = docstring2html(keywords_undoc.contents['f'], docformat='restructuredtext')
+
+    assert '<span class="fieldArg">**kwa</span>' not in keywords_documented_fmt
+    assert '<span class="fieldArg">**kwa</span>' in keywords_and_kwargs_documented_fmt
+    assert '<span class="fieldArg">**kwa</span>' in keywords_undoc_fmt
+
 def test_summary() -> None:
     mod = fromText('''
     def single_line_summary():
