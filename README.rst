@@ -76,6 +76,8 @@ What's New?
 in development
 ^^^^^^^^^^^^^^
 
+* Pin ``urllib3`` version to keep compatibility with ``cachecontrol`` and python3.6.
+
 pydoctor 23.4.0
 ^^^^^^^^^^^^^^^
 
