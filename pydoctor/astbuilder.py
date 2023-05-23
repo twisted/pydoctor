@@ -855,7 +855,8 @@ class ModuleVistor(NodeVisitor):
         parameters: List[Parameter] = []
         def add_arg(name: str, kind: Any, default: Optional[ast.expr]) -> None:
             default_val = Parameter.empty if default is None else _ValueFormatter(default, ctx=func)
-            annotation = Parameter.empty if annotations.get(name) is None else _AnnotationValueFormatter(annotations[name], ctx=func)
+                                                                               # this cast() is safe since we're checking if annotations.get(name) is None first
+            annotation = Parameter.empty if annotations.get(name) is None else _AnnotationValueFormatter(cast(ast.expr, annotations[name]), ctx=func)
             parameters.append(Parameter(name, kind, default=default_val, annotation=annotation))
 
         for index, arg in enumerate(posonlyargs):
@@ -979,7 +980,7 @@ class _ValueFormatter:
     Used for presenting default values of parameters.
     """
 
-    def __init__(self, value: Any, ctx: model.Documentable):
+    def __init__(self, value: ast.expr, ctx: model.Documentable):
         self._colorized = colorize_inline_pyval(value)
         """
         The colorized value as L{ParsedDocstring}.
@@ -1002,9 +1003,9 @@ class _ValueFormatter:
 
 class _AnnotationValueFormatter(_ValueFormatter):
     """
-    Special L{_ValueFormatter} for annotations.
+    Special L{_ValueFormatter} for function annotations.
     """
-    def __init__(self, value: Any, ctx: model.Function):
+    def __init__(self, value: ast.expr, ctx: model.Function):
         super().__init__(value, ctx)
         self._linker = linker._AnnotationLinker(ctx)
     
