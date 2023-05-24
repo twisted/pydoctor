@@ -325,7 +325,7 @@ class FieldHandler:
     def _handle_param_name(self, field: Field) -> Optional[str]:
         """
         Returns the Field name and trigger a few warnings for a few scenarios.
-        Note that the return type could be L{VariableArgument} or L{KeyowrdArgument} or L{str}.
+        Note that the return type could be L{VariableArgument} or L{KeywordArgument} or L{str}.
         """
         name = field.arg
         if name is None:
@@ -340,7 +340,7 @@ class FieldHandler:
             # Constructor parameters can be documented on the class.
             annotations = field.source.constructor_params
         # This might look useless, but it's needed in order to keep the
-        # right str type: str, VariableArgument or KeyowrdArgument. And then add the stars accordingly.
+        # right return type and then add the stars accordingly.
         if annotations is not None:
             for param_name, _ in annotations.items():
                 if param_name == name:
