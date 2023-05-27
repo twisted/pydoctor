@@ -368,8 +368,7 @@ class FieldHandler:
         msg = f'Documented parameter "{name}" does not exist'
         if any(isinstance(n, KeywordArgument) for n in self.types):
             msg += ', variable keywords should be documented with the '
-            docformat = _get_docformat(self.obj)
-            if docformat in ('google', 'numpy'):
+            if _get_docformat(self.obj) in ('google', 'numpy'):
                 msg += '"Keyword Arguments" section'
             else:
                 msg += '"keyword" field'
