@@ -695,10 +695,11 @@ def test_func_starargs_more(capsys: CapSys) -> None:
     captured = capsys.readouterr().out
     assert not captured
 
-def test_func_starargs_hidden_when_keywords_documented(capsys: CapSys) -> None:
+def test_func_starargs_hidden_when_keywords_documented() -> None:
     # tests for issue https://github.com/twisted/pydoctor/issues/697
 
     keywords_documented = fromText('''
+    __docformat__='restructuredtext'
     def f(args, kwargs, **kwa) -> None:
         """
         var-keyword arguments are specifically documented. 
@@ -711,6 +712,7 @@ def test_func_starargs_hidden_when_keywords_documented(capsys: CapSys) -> None:
     ''', modname='keywords_documented')
 
     keywords_and_kwargs_documented = fromText('''
+    __docformat__='restructuredtext'
     def f(args, kwargs, **kwa) -> None:
         """
        var-keyword arguments are specifically documented as well as other extra keywords.
@@ -724,6 +726,7 @@ def test_func_starargs_hidden_when_keywords_documented(capsys: CapSys) -> None:
     ''', modname='keywords_and_kwargs_documented')
 
     keywords_undoc = fromText('''
+    __docformat__='restructuredtext'
     def f(args, kwargs, **kwa) -> None:
         """
         var-keyword arguments are not specifically documented
@@ -733,14 +736,47 @@ def test_func_starargs_hidden_when_keywords_documented(capsys: CapSys) -> None:
         """
     ''', modname='keywords_undoc')
 
-    keywords_documented_fmt = docstring2html(keywords_documented.contents['f'], docformat='restructuredtext')
-    keywords_and_kwargs_documented_fmt = docstring2html(keywords_and_kwargs_documented.contents['f'], docformat='restructuredtext')
-    keywords_undoc_fmt = docstring2html(keywords_undoc.contents['f'], docformat='restructuredtext')
+    keywords_documented_fmt = docstring2html(keywords_documented.contents['f'])
+    keywords_and_kwargs_documented_fmt = docstring2html(keywords_and_kwargs_documented.contents['f'])
+    keywords_undoc_fmt = docstring2html(keywords_undoc.contents['f'])
 
-    assert '<span class="fieldArg">**kwa</span>' not in keywords_documented_fmt
+    assert '**kwa' not in keywords_documented_fmt
     # **kwa should be presented AFTER all other parameters
     assert re.match('.+args.+kwargs.+something.+another.+kwa', keywords_and_kwargs_documented_fmt, flags=re.DOTALL)
     assert re.match('.+args.+kwargs.+kwa', keywords_undoc_fmt, flags=re.DOTALL)
+
+def test_func_starargs_wrongly_documented(capsys: CapSys) -> None:
+    numpy_wrong = fromText('''
+    __docformat__='numpy'
+    def f(one, **kwargs):
+        """
+        var-keyword arguments are wrongly documented with the "Arguments" section.
+
+        Arguments
+        ---------
+        kwargs:
+            var-keyword arguments
+        stuff:
+            a var-keyword argument
+        """
+    ''', modname='numpy_wrong')
+
+    rst_wrong = fromText('''
+    __docformat__='restructuredtext'
+    def f(one, **kwargs):
+        """
+        var-keyword arguments are wrongly documented with the "param" field.
+
+        :param kwargs: var-keyword arguments
+        :param stuff: a var-keyword argument
+        """
+    ''', modname='rst_wrong')
+
+    docstring2html(numpy_wrong.contents['f'])
+    assert 'Documented parameter "stuff" does not exist, variable keywords should be documented with the "Keyword Arguments" section' in capsys.readouterr().out
+    
+    docstring2html(rst_wrong.contents['f'])
+    assert 'Documented parameter "stuff" does not exist, variable keywords should be documented with the "keyword" field' in capsys.readouterr().out
 
 def test_summary() -> None:
     mod = fromText('''

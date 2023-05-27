@@ -365,7 +365,15 @@ class FieldHandler:
             if name in source.constructor_params:
                 # Constructor parameters can be documented on the class.
                 return
-        field.report('Documented parameter "%s" does not exist' % (name,))
+        msg = f'Documented parameter "{name}" does not exist'
+        if any(isinstance(n, KeywordArgument) for n in self.types):
+            msg += ', variable keywords should be documented with the '
+            docformat = _get_docformat(self.obj)
+            if docformat in ('google', 'numpy'):
+                msg += '"Keyword Arguments" section'
+            else:
+                msg += '"keyword" field'
+        field.report(msg)
 
     def handle_type(self, field: Field) -> None:
         if isinstance(self.obj, model.Attribute):
