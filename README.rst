@@ -78,6 +78,10 @@ in development
 
 * Do not show `**kwargs` when keywords are specifically documented with the `keyword` field
   and no specific documentation is given for the `**kwargs` entry.
+
+pydoctor 23.4.1
+^^^^^^^^^^^^^^^
+
 * Pin ``urllib3`` version to keep compatibility with ``cachecontrol`` and python3.6.
 
 pydoctor 23.4.0
