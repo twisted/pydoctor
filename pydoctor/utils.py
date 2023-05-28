@@ -1,7 +1,10 @@
 """General purpose utility functions."""
+import contextlib
+import os
 from pathlib import Path
 import sys
 import functools
+import tempfile
 from typing import Any, Type, TypeVar, Tuple, Union, cast, TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -101,3 +104,19 @@ def partialclass(cls: Type[Any], *args: Any, **kwds: Any) -> Type[Any]:
         __class__ = cls
     assert isinstance(NewPartialCls, type)
     return NewPartialCls
+
+@contextlib.contextmanager
+def temporary_filename(suffix=None):
+  """
+  Context that introduces a temporary file.
+
+  Yields:
+    The name of the temporary file.
+  """
+  try:
+    f = tempfile.NamedTemporaryFile(suffix=suffix, delete=False)
+    tmp_name = f.name
+    f.close()
+    yield tmp_name
+  finally:
+    os.unlink(tmp_name)
