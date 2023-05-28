@@ -5,7 +5,7 @@ This module provides implementations of epydoc's L{DocstringLinker} class.
 import contextlib
 from twisted.web.template import Tag, tags
 from typing import  (
-     ContextManager, TYPE_CHECKING, Iterable, 
+     ContextManager, TYPE_CHECKING, Iterable, Iterator, 
      Optional, Union
 )
 
@@ -78,8 +78,8 @@ class _EpydocLinker(DocstringLinker):
             return pageob.url
         return ''
 
-    @contextlib.contextmanager #type:ignore[arg-type]
-    def switch_context(self, ob:Optional['model.Documentable']) -> ContextManager[None]: # type:ignore[misc]
+    @contextlib.contextmanager
+    def switch_context(self, ob:Optional['model.Documentable']) -> Iterator[None]:
         
         old_page_object = self._page_object
         old_reporting_object = self.reporting_obj
@@ -281,8 +281,8 @@ class _AnnotationLinker(DocstringLinker):
     def link_xref(self, target: str, label: "Flattenable", lineno: int) -> Tag:
         return self._module_linker.link_xref(target, label, lineno)
 
-    @contextlib.contextmanager #type:ignore[arg-type]
-    def switch_context(self, ob:Optional['model.Documentable']) -> ContextManager[None]: # type:ignore[misc]
+    @contextlib.contextmanager
+    def switch_context(self, ob:Optional['model.Documentable']) -> Iterator[None]:
         with self._module_linker.switch_context(ob):
             with self._scope_linker.switch_context(ob):
                 yield
