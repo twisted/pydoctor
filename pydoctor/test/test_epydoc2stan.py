@@ -1195,6 +1195,28 @@ def test_EpydocLinker_warnings(capsys: CapSys) -> None:
     # No warnings are logged when generating the summary.
     assert captured == ''
 
+def test_AnnotationLinker_xref(capsys: CapSys) -> None:
+    """
+    Even if the annotation linker is not designed to resolve xref,
+    it will still do the right thing by forwarding any xref requests to
+    the initial object's linker.
+    """
+
+    mod = fromText('''
+    class C:
+        var="don't use annotation linker for xref!"
+    ''')
+    mod.system.intersphinx = cast(SphinxInventory, InMemoryInventory())
+    _linker = linker._AnnotationLinker(mod.contents['C'])
+    
+    url = flatten(_linker.link_xref('socket.socket', 'socket', 0))
+    assert 'https://docs.python.org/3/library/socket.html#socket.socket' in url
+    assert not capsys.readouterr().out
+
+    url = flatten(_linker.link_xref('var', 'var', 0))
+    assert 'href="#var"' in url
+    assert not capsys.readouterr().out
+
 def test_xref_not_found_epytext(capsys: CapSys) -> None:
     """
     When a link in an epytext docstring cannot be resolved, the reference

@@ -279,7 +279,7 @@ class _AnnotationLinker(DocstringLinker):
             return self._module_linker.link_to(target, label)
     
     def link_xref(self, target: str, label: "Flattenable", lineno: int) -> Tag:
-        return self._module_linker.link_xref(target, label, lineno)
+        return self.obj.docstring_linker.link_xref(target, label, lineno)
 
     @contextlib.contextmanager
     def switch_context(self, ob:Optional['model.Documentable']) -> Iterator[None]:
