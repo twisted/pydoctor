@@ -218,7 +218,7 @@ Type variables and type aliases will be recognized as such and their value will 
     Parser = Callable[[str], Tuple[int, bytes, bytes]] # a type alias
 
 .. note:: About name resolving in annotations: 
-    ``pydoctor`` check for top-level names first before checking for other names, 
+    ``pydoctor`` checks for top-level names first before checking for other names, 
     this is true only for annotations.
     
     This behaviour matches pyright's when PEP-563 is enabled 
