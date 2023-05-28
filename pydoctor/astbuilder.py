@@ -420,14 +420,11 @@ class ModuleVistor(NodeVisitor):
             return
         _localNameToFullName = self.builder.current._localNameToFullName_map
         for al in node.names:
-            fullname, asname = al.name, al.asname
-            if asname is not None:
-                _localNameToFullName[asname] = fullname
-            else:
-                # we're keeping track of the locally defined names
-                localname = fullname.split('.')[0]
-                _localNameToFullName[localname] = localname
-
+            targetname, asname = al.name, al.asname
+            if asname is None:
+                # we're keeping track of all defined names
+                asname = targetname = targetname.split('.')[0]
+            _localNameToFullName[asname] = targetname
 
     def _handleOldSchoolMethodDecoration(self, target: str, expr: Optional[ast.expr]) -> bool:
         if not isinstance(expr, ast.Call):
