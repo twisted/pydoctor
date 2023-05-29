@@ -174,7 +174,7 @@ class ClassIndexPage(Page):
             else:
                 url = self.system.intersphinx.getLink(b)
                 if url:
-                    link = linker.intersphinx_link(b, url)
+                    link:"Flattenable" = linker.intersphinx_link(b, url)
                 else:
                     # TODO: we should find a way to use the pyval colorizer instead
                     # of manually creating the intersphinx link, this would allow to support
