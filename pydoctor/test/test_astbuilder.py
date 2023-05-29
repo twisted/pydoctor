@@ -2383,3 +2383,20 @@ def test_default_constructors(systemcls: Type[model.System]) -> None:
 
     mod = fromText(src, systemcls=systemcls)
     assert getConstructorsText(mod.contents['Animal']) == "Animal()"
+
+def test_typealias_unstring() -> None:
+    """
+    The type aliases are unstringed by the astbuilder
+    """
+    
+    mod = fromText('''
+    from typing import Callable
+    ParserFunction = Callable[[str, List['ParseError']], 'ParsedDocstring']
+    ''', modname='pydoctor.epydoc.markup')
+
+    typealias = mod.contents['ParserFunction']
+    assert isinstance(typealias, model.Attribute)
+    assert typealias.value
+    with pytest.raises(StopIteration):
+        # there is not Constant nodes in the type alias anymore
+        next(n for n in ast.walk(typealias.value) if isinstance(n, ast.Constant))

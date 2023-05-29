@@ -15,6 +15,7 @@ from pydoctor.templatewriter import (FailedToCreateTemplate, StaticTemplate, pag
                                      OverrideTemplateNotAllowed)
 from pydoctor.templatewriter.pages.table import ChildTable
 from pydoctor.templatewriter.summary import isClassNodePrivate, isPrivate, moduleSummary
+from pydoctor.templatewriter.pages.attributechild import AttributeChild
 from pydoctor.test.test_astbuilder import fromText, systemcls_param
 from pydoctor.test.test_packages import processPackage, testpackages
 from pydoctor.test import CapSys
@@ -55,6 +56,12 @@ def getHTMLOf(ob: model.Documentable) -> str:
     wr._writeDocsForOne(ob, f)
     return f.getvalue().decode()
 
+def getHTMLOfAttribute(ob: model.Attribute) -> str:
+    assert isinstance(ob, model.Attribute)
+    tlookup = TemplateLookup(template_dir)
+    stan = AttributeChild(util.DocGetter(), ob, [], 
+        AttributeChild.lookup_loader(tlookup),)
+    return flatten(stan)
 
 def test_sidebar() -> None:
     src = '''
@@ -773,3 +780,26 @@ def test_constructor_renders(capsys:CapSys) -> None:
     html = getHTMLOf(mod.contents['Animal'])
     assert 'Constructor: ' in html
     assert 'Animal(name)' in html
+
+def test_typealias_string_form_linked() -> None:
+    """
+    The type aliases should be unstring before beeing presented to reader, such that
+    all elements can be linked. 
+    
+    Test for issue https://github.com/twisted/pydoctor/issues/704
+    """
+    
+    mod = fromText('''
+    from typing import Callable
+    ParserFunction = Callable[[str, List['ParseError']], 'ParsedDocstring']
+    class ParseError:
+        ...
+    class ParsedDocstring:
+        ...
+    ''', modname='pydoctor.epydoc.markup')
+
+    typealias = mod.contents['ParserFunction']
+    assert isinstance(typealias, model.Attribute)
+    html = getHTMLOfAttribute(typealias)
+    assert 'href="pydoctor.epydoc.markup.ParseError.html"' in html
+    assert 'href="pydoctor.epydoc.markup.ParsedDocstring.html"' in html
