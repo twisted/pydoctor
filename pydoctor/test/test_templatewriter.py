@@ -776,7 +776,7 @@ def test_constructor_renders(capsys:CapSys) -> None:
 
 def test_class_hierarchy_links_top_level_names() -> None:
     system = model.System()
-    system.intersphinx = InMemoryInventory()
+    system.intersphinx = InMemoryInventory() # type:ignore
     src = '''\
     from socket import socket
     class Stuff(socket):
