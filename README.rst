@@ -80,6 +80,7 @@ in development
   scope when possible, when impossible, the theoretical runtime scopes are used. A warning can
   be reported when an annotation name is ambiguous (can be resolved to different names 
   depending on the scope context) with option ``-v``.
+* Fix presentation of type aliases in string form.
 
 pydoctor 23.4.1
 ^^^^^^^^^^^^^^^
