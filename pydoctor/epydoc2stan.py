@@ -257,15 +257,17 @@ class FieldHandler:
     def set_param_types_from_annotations(
             self, annotations: Mapping[str, Optional[ast.expr]]
             ) -> None:
+        _linker = linker._AnnotationLinker(self.obj)
         formatted_annotations = {
             name: None if value is None
-                       else ParamType(safe_to_stan(colorize_inline_pyval(value), self.obj.docstring_linker,
+                       else ParamType(safe_to_stan(colorize_inline_pyval(value), _linker,
                                 self.obj, fallback=colorized_pyval_fallback, section='annotation', report=False),
                                 # don't spam the log, invalid annotation are going to be reported when the signature gets colorized
                                 origin=FieldOrigin.FROM_AST)
 
             for name, value in annotations.items()
             }
+
         ret_type = formatted_annotations.pop('return', None)
         self.types.update(formatted_annotations)
         if ret_type is not None:
@@ -821,18 +823,27 @@ def format_undocumented(obj: model.Documentable) -> Tag:
 
 
 def type2stan(obj: model.Documentable) -> Optional[Tag]:
+    """
+    Get the formatted type of this attribute.
+    """
+    # Currently only used for Attribute childs.
     parsed_type = get_parsed_type(obj)
     if parsed_type is None:
         return None
     else:
-        return safe_to_stan(parsed_type, obj.docstring_linker, obj,
+        _linker = linker._AnnotationLinker(obj)
+        return safe_to_stan(parsed_type, _linker, obj,
             fallback=colorized_pyval_fallback, section='annotation')
 
 def get_parsed_type(obj: model.Documentable) -> Optional[ParsedDocstring]:
+    """
+    Get the type of this attribute as parsed docstring.
+    """
     parsed_type = obj.parsed_type
     if parsed_type is not None:
         return parsed_type
 
+    # Only Attribute instances have the 'annotation' attribute.
     annotation: Optional[ast.expr] = getattr(obj, 'annotation', None)
     if annotation is not None:
         return colorize_inline_pyval(annotation)
@@ -859,7 +870,7 @@ field_name_to_kind = {
     }
 
 
-def extract_fields(obj: model.Documentable) -> None:
+def extract_fields(obj: model.CanContainImportsDocumentable) -> None:
     """Populate Attributes for module/class variables using fields from
     that module/class's docstring.
     Must only be called for objects that have a docstring.

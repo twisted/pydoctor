@@ -490,3 +490,61 @@ def test_privacy_reparented() -> None:
     assert mod_export.resolveName("MyClass") == base
 
     assert base.privacyClass == model.PrivacyClass.PUBLIC
+
+def test_name_defined() -> None:
+    src = '''
+    # module 'm'
+    import pydoctor
+    import twisted.web
+
+    class c:
+        class F:
+            def f():...
+
+        var:F = True
+    '''
+
+    mod = fromText(src, modname='m')
+
+    # builtins are not considered by isNameDefined()
+    assert not mod.isNameDefined('bool')
+
+    assert mod.isNameDefined('pydoctor')
+    assert mod.isNameDefined('twisted.web')
+    assert mod.isNameDefined('twisted')
+    assert not mod.isNameDefined('m')
+    assert mod.isNameDefined('c')
+    assert mod.isNameDefined('c.anything')
+
+    cls = mod.contents['c']
+    assert isinstance(cls, model.Class)
+
+    assert cls.isNameDefined('pydoctor')
+    assert cls.isNameDefined('twisted.web')
+    assert cls.isNameDefined('twisted')
+    assert not mod.isNameDefined('m')
+    assert cls.isNameDefined('c')
+    assert cls.isNameDefined('c.anything')
+    assert cls.isNameDefined('var')
+
+    var = cls.contents['var']
+    assert isinstance(var, model.Attribute)
+
+    assert var.isNameDefined('c')
+    assert var.isNameDefined('var')
+    assert var.isNameDefined('F')
+    assert not var.isNameDefined('m')
+    assert var.isNameDefined('pydoctor')
+    assert var.isNameDefined('twisted.web')
+
+    innerCls = cls.contents['F']
+    assert isinstance(innerCls, model.Class)
+    assert not innerCls.isNameDefined('F')
+    assert not innerCls.isNameDefined('var')
+    assert innerCls.isNameDefined('f')
+
+    innerFn = innerCls.contents['f']
+    assert isinstance(innerFn, model.Function)
+    assert not innerFn.isNameDefined('F')
+    assert not innerFn.isNameDefined('var')
+    assert innerFn.isNameDefined('f')
