@@ -12,7 +12,7 @@ from twisted.web.template import Element, Tag, renderer, tags
 from pydoctor.extensions import zopeinterface
 
 from pydoctor.stanutils import html2stan
-from pydoctor import epydoc2stan, model, __version__
+from pydoctor import epydoc2stan, model, linker, __version__
 from pydoctor.astbuilder import node2fullname
 from pydoctor.templatewriter import util, TemplateLookup, TemplateElement
 from pydoctor.templatewriter.pages.table import ChildTable
@@ -64,6 +64,42 @@ def format_signature(func: Union[model.Function, model.FunctionOverload]) -> "Fl
             [epydoc2stan.get_to_stan_error(e)], section='signature')
         return broken
 
+def format_class_signature(cls: model.Class) -> "Flattenable":
+    """
+    The class signature is the formatted list of bases this class extends. 
+    It's not the class constructor.
+    """
+    r: List["Flattenable"] = []
+    # the linker will only be used to resolve the generic arguments of the base classes, 
+    # it won't actually resolve the base classes (see comment few lines below).
+    # this is why we're using the annotation linker.
+    _linker = linker._AnnotationLinker(cls)
+    if cls.rawbases:
+        r.append('(')
+        
+        for idx, ((str_base, base_node), base_obj) in enumerate(zip(cls.rawbases, cls.baseobjects)):
+            if idx != 0:
+                r.append(', ')
+
+            # Make sure we bypass the linker’s resolver process for base object, 
+            # because it has been resolved already (with two passes).
+            # Otherwise, since the class declaration wins over the imported names,
+            # a class with the same name as a base class confused pydoctor and it would link 
+            # to it self: https://github.com/twisted/pydoctor/issues/662
+
+            refmap = None
+            if base_obj is not None:
+                refmap = {str_base:base_obj.fullName()}
+                
+            # link to external class, using the colorizer here
+            # to link to classes with generics (subscripts and other AST expr).
+            stan = epydoc2stan.safe_to_stan(colorize_inline_pyval(base_node, refmap=refmap), _linker, cls, 
+                fallback=epydoc2stan.colorized_pyval_fallback, 
+                section='rendering of class signature')
+            r.extend(stan.children)
+                
+        r.append(')')
+    return r
 
 def format_overloads(func: model.Function) -> Iterator["Flattenable"]:
     """
@@ -436,28 +472,7 @@ class ClassPage(CommonPage):
         return r
 
     def classSignature(self) -> "Flattenable":
-
-        r: List["Flattenable"] = []
-        # Here, we should use the parent's linker because a base name
-        # can't be define in the class itself.
-        _linker = self.ob.parent.docstring_linker
-        if self.ob.rawbases:
-            r.append('(')
-            with _linker.switch_context(None):
-            
-                for idx, (_, base_node) in enumerate(self.ob.rawbases):
-                    if idx != 0:
-                        r.append(', ')
-
-                    # link to external class or internal class, using the colorizer here
-                    # to link to classes with generics (subscripts and other AST expr).
-                    stan = epydoc2stan.safe_to_stan(colorize_inline_pyval(base_node), _linker, self.ob, 
-                        fallback=epydoc2stan.colorized_pyval_fallback, 
-                        section='rendering of class signature')
-                    r.extend(stan.children)
-                    
-            r.append(')')
-        return r
+        return format_class_signature(self.ob)
 
     @renderer
     def inhierarchy(self, request: object, tag: Tag) -> Tag:

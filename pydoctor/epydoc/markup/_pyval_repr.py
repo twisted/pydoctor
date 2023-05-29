@@ -190,19 +190,25 @@ class ColorizedPyvalRepr(ParsedRstDocstring):
     
     def to_stan(self, docstring_linker: DocstringLinker) -> Tag:
         return Tag('code')(super().to_stan(docstring_linker))
-    
-def colorize_pyval(pyval: Any, linelen:Optional[int], maxlines:int, linebreakok:bool=True) -> ColorizedPyvalRepr:
+
+def colorize_pyval(pyval: Any, linelen:Optional[int], maxlines:int, linebreakok:bool=True, refmap:Optional[Dict[str, str]]=None) -> ColorizedPyvalRepr:
     """
+    Get a L{ColorizedPyvalRepr} instance for this piece of ast. 
+
+    @param refmap: A mapping that maps local names to full names. 
+        This can be used to explicitely links some objects by assigning an 
+        explicit 'refuri' value on the L{obj_reference} node.
+        This can be used for cases the where the linker might be wrong, obviously this is just a workaround.
     @return: A L{ColorizedPyvalRepr} describing the given pyval.
     """
-    return PyvalColorizer(linelen=linelen, maxlines=maxlines, linebreakok=linebreakok).colorize(pyval)
+    return PyvalColorizer(linelen=linelen, maxlines=maxlines, linebreakok=linebreakok, refmap=refmap).colorize(pyval)
 
-def colorize_inline_pyval(pyval: Any) -> ColorizedPyvalRepr:
+def colorize_inline_pyval(pyval: Any, refmap:Optional[Dict[str, str]]=None) -> ColorizedPyvalRepr:
     """
     Used to colorize type annotations and parameters default values.
     @returns: C{L{colorize_pyval}(pyval, linelen=None, linebreakok=False)}
     """
-    return colorize_pyval(pyval, linelen=None, maxlines=1, linebreakok=False)
+    return colorize_pyval(pyval, linelen=None, maxlines=1, linebreakok=False, refmap=refmap)
 
 def _get_str_func(pyval:  AnyStr) -> Callable[[str], AnyStr]:
     func = cast(Callable[[str], AnyStr], str if isinstance(pyval, str) else \
@@ -250,10 +256,11 @@ class PyvalColorizer:
     Syntax highlighter for Python values.
     """
 
-    def __init__(self, linelen:Optional[int], maxlines:int, linebreakok:bool=True):
+    def __init__(self, linelen:Optional[int], maxlines:int, linebreakok:bool=True, refmap:Optional[Dict[str, str]]=None):
         self.linelen: Optional[int] = linelen if linelen!=0 else None
         self.maxlines: Union[int, float] = maxlines if maxlines!=0 else float('inf')
         self.linebreakok = linebreakok
+        self.refmap = refmap if refmap is not None else {}
 
     #////////////////////////////////////////////////////////////
     # Colorization Tags & other constants
@@ -997,7 +1004,11 @@ class PyvalColorizer:
                 state.charpos += segment_len
 
                 if link is True:
-                    element = obj_reference('', segment, refuid=segment)
+                    # Here, we bypass the linker if refmap contains the segment we're linking to. 
+                    # The linker can be problematic because it has some design blind spots when the same name is declared in the imports and in the module body.
+                    
+                    # Note that the argument name is 'refuri', not 'refuid. 
+                    element = obj_reference('', segment, refuri=self.refmap.get(segment, segment))
                 elif css_class is not None:
                     element = nodes.inline('', segment, classes=[css_class])
                 else:

@@ -5,7 +5,7 @@ This module provides implementations of epydoc's L{DocstringLinker} class.
 import contextlib
 from twisted.web.template import Tag, tags
 from typing import  (
-     ContextManager, TYPE_CHECKING, Iterable, 
+     TYPE_CHECKING, Iterable, Iterator, 
      Optional, Union
 )
 
@@ -78,8 +78,8 @@ class _EpydocLinker(DocstringLinker):
             return pageob.url
         return ''
 
-    @contextlib.contextmanager #type:ignore[arg-type]
-    def switch_context(self, ob:Optional['model.Documentable']) -> ContextManager[None]: # type:ignore[misc]
+    @contextlib.contextmanager
+    def switch_context(self, ob:Optional['model.Documentable']) -> Iterator[None]:
         
         old_page_object = self._page_object
         old_reporting_object = self.reporting_obj
@@ -157,15 +157,6 @@ class _EpydocLinker(DocstringLinker):
                 xref = taglink(resolved, self.page_url, label)
                 
         return tags.code(xref)
-
-    def resolve_identifier(self, identifier: str) -> Optional[str]:
-        fullID = self.obj.expandName(identifier)
-
-        target = self.obj.system.objForFullName(fullID)
-        if target is not None:
-            return target.url
-
-        return self.look_for_intersphinx(fullID)
 
     def _resolve_identifier_xref(self,
             identifier: str,
@@ -246,4 +237,52 @@ class _EpydocLinker(DocstringLinker):
         if self.reporting_obj:
             self.reporting_obj.report(message, 'resolve_identifier_xref', lineno)
         raise LookupError(identifier)
+
+class _AnnotationLinker(DocstringLinker):
+    """
+    Specialized linker to resolve annotations attached to the given L{Documentable}. 
+
+    Links will be created in the context of C{obj} but 
+    generated with the C{obj.module}'s linker when possible.
+    """
+    def __init__(self, obj:'model.Documentable') -> None:
+        self._obj = obj
+        self._module = obj.module
+        self._scope = obj.parent or obj
+        self._module_linker = self._module.docstring_linker
+        self._scope_linker = self._scope.docstring_linker
+
+        self.switch_context(obj).__enter__()
     
+    @property
+    def obj(self) -> 'model.Documentable':
+        return self._obj
+
+    def warn_ambiguous_annotation(self, target:str) -> None:
+        # report a low-level message about ambiguous annotation
+        mod_ann = self._module.expandName(target)
+        obj_ann = self._scope.expandName(target)
+        if mod_ann != obj_ann:
+            self.obj.report(
+                f'ambiguous annotation {target!r}, could be interpreted as '
+                f'{obj_ann!r} instead of {mod_ann!r}', section='annotation',
+                thresh=1
+            )
+    
+    def link_to(self, target: str, label: "Flattenable") -> Tag:
+        if self._module.isNameDefined(target):
+            self.warn_ambiguous_annotation(target)
+            return self._module_linker.link_to(target, label)
+        elif self._scope.isNameDefined(target):
+            return self._scope_linker.link_to(target, label)
+        else:
+            return self._module_linker.link_to(target, label)
+    
+    def link_xref(self, target: str, label: "Flattenable", lineno: int) -> Tag:
+        return self.obj.docstring_linker.link_xref(target, label, lineno)
+
+    @contextlib.contextmanager
+    def switch_context(self, ob:Optional['model.Documentable']) -> Iterator[None]:
+        with self._module_linker.switch_context(ob):
+            with self._scope_linker.switch_context(ob):
+                yield
