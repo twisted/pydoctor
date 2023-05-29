@@ -81,6 +81,7 @@ in development
   be reported when an annotation name is ambiguous (can be resolved to different names 
   depending on the scope context) with option ``-v``.
 * Improve the class hierarchy such that it links top level names with intersphinx when possible.
+* Add highlighting when clicking on "View In Hierarchy" link from class page.
 
 pydoctor 23.4.1
 ^^^^^^^^^^^^^^^

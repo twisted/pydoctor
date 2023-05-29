@@ -139,8 +139,8 @@ def subclassesFrom(
     if name not in anchors:
         r(tags.a(name=name))
         anchors.add(name)
-    r(tags.code(linker.taglink(cls, page_url)), ' - ',
-      epydoc2stan.format_summary(cls))
+    r(tags.div(tags.code(linker.taglink(cls, page_url)), ' - ',
+      epydoc2stan.format_summary(cls)))
     scs = [sc for sc in cls.subclasses if sc.system is hostsystem and ' ' not in sc.fullName()
            and sc.isVisible]
     if len(scs) > 0:
