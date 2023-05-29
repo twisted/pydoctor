@@ -8,7 +8,7 @@ import tempfile
 import os
 from pathlib import Path, PurePath
 
-from pydoctor import model, templatewriter, stanutils, __version__, epydoc2stan, options
+from pydoctor import model, templatewriter, stanutils, __version__, epydoc2stan
 from pydoctor.templatewriter import (FailedToCreateTemplate, StaticTemplate, pages, writer, util,
                                      TemplateLookup, Template, 
                                      HtmlTemplate, UnsupportedTemplateVersion, 
