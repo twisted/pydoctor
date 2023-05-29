@@ -57,6 +57,9 @@ else:
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable
     from pydoctor.model import Documentable
+    from typing import Protocol
+else:
+    Protocol = object
 
 ##################################################
 ## Contents
@@ -276,7 +279,7 @@ class Field:
 ##################################################
 ## Docstring Linker (resolves crossreferences)
 ##################################################
-class DocstringLinker:
+class DocstringLinker(Protocol):
     """
     A resolver for crossreference links out of a C{ParsedDocstring}.
     C{DocstringLinker} is used by C{ParsedDocstring} to look up the
@@ -293,7 +296,6 @@ class DocstringLinker:
         @param label: The label to show for the link.
         @return: The link, or just the label if the target was not found.
         """
-        raise NotImplementedError()
 
     def link_xref(self, target: str, label: "Flattenable", lineno: int) -> Tag:
         """
@@ -309,18 +311,6 @@ class DocstringLinker:
         @return: The link, or just the label if the target was not found.
             In either case, the returned top-level tag will be C{<code>}.
         """
-        raise NotImplementedError()
-
-    def resolve_identifier(self, identifier: str) -> Optional[str]:
-        """
-        Resolve a Python identifier.
-        This will resolve the identifier like Python itself would.
-
-        @param identifier: The name of the Python identifier that
-            should be linked to.
-        @return: The URL of the target, or L{None} if not found.
-        """
-        raise NotImplementedError()
 
     def switch_context(self, ob:Optional['Documentable']) -> ContextManager[None]:
         """
@@ -334,7 +324,6 @@ class DocstringLinker:
         Pass C{None} to always generate full URLs (for summaries for example), 
         in this case error will NOT be reported at all.
         """
-        raise NotImplementedError()
 
 ##################################################
 ## ParseError exceptions
