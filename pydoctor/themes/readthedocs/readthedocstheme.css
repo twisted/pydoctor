@@ -88,30 +88,24 @@ code, .literal {
 
 /* special cases where pydoctor's default theme renders ok with the background,
 but doesn't render nicely with this theme. */
-.class-signature > code, .page-header code, pre code{
+.class-signature > code, h1 > code, pre code{
     background-color: transparent;
     border: none !important;
 }
 
 /* Header */ 
 
-.page-header > h1 {
+h1 {
     margin-top: 15px;
     font-size: 28px;
 }
 
-.page-header > h1 code {
-    padding: 0;
-    font-size: 16px;
-}
-
-.page-header > h1 > code {
-    display: block;
-    line-height: 1.6;
-}
-
-.page-header > h1 code > a {
+h1 code {
     font-size: 20px;
+}
+
+h1 > code {
+    line-height: 1.6;
 }
 
 /* Titles */

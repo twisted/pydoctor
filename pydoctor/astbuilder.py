@@ -13,7 +13,7 @@ from typing import (
 )
 
 import astor
-from pydoctor import epydoc2stan, model, node2stan, extensions
+from pydoctor import epydoc2stan, model, node2stan, extensions, linker
 from pydoctor.epydoc.markup._pyval_repr import colorize_inline_pyval
 from pydoctor.astutils import (is_none_literal, is_typing_annotation, is_using_annotations, is_using_typing_final, node2dottedname, node2fullname, 
                                is__name__equals__main__, unstring_annotation, iterassign, extract_docstring_linenum,  
@@ -420,10 +420,11 @@ class ModuleVistor(NodeVisitor):
             return
         _localNameToFullName = self.builder.current._localNameToFullName_map
         for al in node.names:
-            fullname, asname = al.name, al.asname
-            if asname is not None:
-                _localNameToFullName[asname] = fullname
-
+            targetname, asname = al.name, al.asname
+            if asname is None:
+                # we're keeping track of all defined names
+                asname = targetname = targetname.split('.')[0]
+            _localNameToFullName[asname] = targetname
 
     def _handleOldSchoolMethodDecoration(self, target: str, expr: Optional[ast.expr]) -> bool:
         if not isinstance(expr, ast.Call):
@@ -851,7 +852,8 @@ class ModuleVistor(NodeVisitor):
         parameters: List[Parameter] = []
         def add_arg(name: str, kind: Any, default: Optional[ast.expr]) -> None:
             default_val = Parameter.empty if default is None else _ValueFormatter(default, ctx=func)
-            annotation = Parameter.empty if annotations.get(name) is None else _AnnotationValueFormatter(annotations[name], ctx=func)
+                                                                               # this cast() is safe since we're checking if annotations.get(name) is None first
+            annotation = Parameter.empty if annotations.get(name) is None else _AnnotationValueFormatter(cast(ast.expr, annotations[name]), ctx=func)
             parameters.append(Parameter(name, kind, default=default_val, annotation=annotation))
 
         for index, arg in enumerate(posonlyargs):
@@ -975,7 +977,7 @@ class _ValueFormatter:
     Used for presenting default values of parameters.
     """
 
-    def __init__(self, value: Any, ctx: model.Documentable):
+    def __init__(self, value: ast.expr, ctx: model.Documentable):
         self._colorized = colorize_inline_pyval(value)
         """
         The colorized value as L{ParsedDocstring}.
@@ -998,8 +1000,12 @@ class _ValueFormatter:
 
 class _AnnotationValueFormatter(_ValueFormatter):
     """
-    Special L{_ValueFormatter} for annotations.
+    Special L{_ValueFormatter} for function annotations.
     """
+    def __init__(self, value: ast.expr, ctx: model.Function):
+        super().__init__(value, ctx)
+        self._linker = linker._AnnotationLinker(ctx)
+    
     def __repr__(self) -> str:
         """
         Present the annotation wrapped inside <code> tags.

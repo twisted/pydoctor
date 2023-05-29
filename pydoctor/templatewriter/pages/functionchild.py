@@ -18,7 +18,7 @@ class FunctionChild(TemplateElement):
     def __init__(self,
             docgetter: util.DocGetter,
             ob: Function,
-            extras: List[Tag],
+            extras: List["Flattenable"],
             loader: ITemplateLoader
             ):
         super().__init__(loader)
@@ -66,7 +66,7 @@ class FunctionChild(TemplateElement):
             return ()
 
     @renderer
-    def objectExtras(self, request: object, tag: Tag) -> List[Tag]:
+    def objectExtras(self, request: object, tag: Tag) -> List["Flattenable"]:
         return self._functionExtras
 
     @renderer
