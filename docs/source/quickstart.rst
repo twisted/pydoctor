@@ -54,3 +54,11 @@ Output files are static HTML pages which require no extra server-side support.
 
 Here is a `GitHub Action example <publish-github-action.html>`_ to automatically
 publish your API documentation to your default GitHub Pages website.
+
+Return codes
+------------
+
+- ``0``: All docstrings are well formatted (warnings may be printed).
+- ``1``: Pydoctor crashed with traceback (default Python behaviour).
+- ``2``: Some docstrings are mal formatted.
+- ``3``: Pydoctor detects some warnings and ``--warnings-as-errors`` is enabled.
