@@ -174,7 +174,7 @@ class ClassIndexPage(Page):
             else:
                 url = self.system.intersphinx.getLink(b)
                 if url:
-                    item = linker.intersphinx_link(b, url)
+                    link = linker.intersphinx_link(b, url)
                 else:
                     # TODO: we should find a way to use the pyval colorizer instead
                     # of manually creating the intersphinx link, this would allow to support
@@ -183,7 +183,8 @@ class ClassIndexPage(Page):
                     # to compare and aggregate them, as a consequence we can't directly use the colorizer.
                     # Another side effect is that sunclasses of collection.namedtuple() and namedtuple() 
                     # (depending on how the name is imported) will not be aggregated under the same list item :/
-                    item = tags.li(tags.code(b))
+                    link = b
+                item = tags.li(tags.code(link))
                 
                 if all(isClassNodePrivate(sc) for sc in o):
                     # This is an external class used only by private API;
