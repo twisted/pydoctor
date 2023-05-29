@@ -695,55 +695,80 @@ def test_func_starargs_more(capsys: CapSys) -> None:
     captured = capsys.readouterr().out
     assert not captured
 
-def test_func_starargs_hidden_when_keywords_documented() -> None:
+def test_func_starargs_hidden_when_keywords_documented(capsys:CapSys) -> None:
+    """
+    When a function accept variable keywords (**kwargs) and keywords are specifically
+    documented and the **kwargs IS NOT documented: entry for **kwargs IS NOT presented at all.
+
+    In other words: They variable keywords argument documentation is optional when specific documentation
+    is given for each keyword, and when missing, no warning is raised.
+    """
     # tests for issue https://github.com/twisted/pydoctor/issues/697
 
-    keywords_documented = fromText('''
+    mod = fromText('''
     __docformat__='restructuredtext'
-    def f(args, kwargs, **kwa) -> None:
+    def f(one, two, **kwa) -> None:
         """
         var-keyword arguments are specifically documented. 
 
-        :param args: some regular argument
-        :param kwargs: some regular argument
+        :param one: some regular argument
+        :param two: some regular argument
         :keyword something: An argument
         :keyword another: Another
         """
-    ''', modname='keywords_documented')
+    ''')
 
-    keywords_and_kwargs_documented = fromText('''
+    html = docstring2html(mod.contents['f'])
+    assert '**kwa' not in html
+    assert not capsys.readouterr().out
+
+def test_func_starargs_shown_when_documented(capsys:CapSys) -> None:
+    """
+    When a function accept variable keywords (**kwargs) and keywords are specifically
+    documented and the **kwargs IS documented: entry for **kwargs IS presented AFTER all keywords.
+
+    In other words: When a function has the keywords arguments, the keywords can have dedicated 
+    docstring, besides the separate documentation for each keyword.
+    """
+
+    mod = fromText('''
     __docformat__='restructuredtext'
-    def f(args, kwargs, **kwa) -> None:
+    def f(one, two, **kwa) -> None:
         """
        var-keyword arguments are specifically documented as well as other extra keywords.
 
-        :param args: some regular argument
-        :param kwargs: some regular argument
+        :param one: some regular argument
+        :param two: some regular argument
         :param kwa: Other keywords are passed to ``parse`` function.
         :keyword something: An argument
         :keyword another: Another
         """
-    ''', modname='keywords_and_kwargs_documented')
+    ''')
+    html = docstring2html(mod.contents['f'])
+    # **kwa should be presented AFTER all other parameters
+    assert re.match('.+one.+two.+something.+another.+kwa', html, flags=re.DOTALL)
+    assert not capsys.readouterr().out
 
-    keywords_undoc = fromText('''
+def test_func_starargs_shown_when_undocumented(capsys:CapSys) -> None:
+    """
+    When a function accept variable keywords (**kwargs) and NO keywords are specifically
+    documented and the **kwargs IS NOT documented: entry for **kwargs IS presented as undocumented.
+    """
+
+    mod = fromText('''
     __docformat__='restructuredtext'
-    def f(args, kwargs, **kwa) -> None:
+    def f(one, two, **kwa) -> None:
         """
         var-keyword arguments are not specifically documented
 
-        :param args: some regular argument
-        :param kwargs: some regular argument
+        :param one: some regular argument
+        :param two: some regular argument
         """
-    ''', modname='keywords_undoc')
+    ''')
 
-    keywords_documented_fmt = docstring2html(keywords_documented.contents['f'])
-    keywords_and_kwargs_documented_fmt = docstring2html(keywords_and_kwargs_documented.contents['f'])
-    keywords_undoc_fmt = docstring2html(keywords_undoc.contents['f'])
-
-    assert '**kwa' not in keywords_documented_fmt
-    # **kwa should be presented AFTER all other parameters
-    assert re.match('.+args.+kwargs.+something.+another.+kwa', keywords_and_kwargs_documented_fmt, flags=re.DOTALL)
-    assert re.match('.+args.+kwargs.+kwa', keywords_undoc_fmt, flags=re.DOTALL)
+    html = docstring2html(mod.contents['f'])
+    assert re.match('.+one.+two.+kwa', html, flags=re.DOTALL)
+    assert not capsys.readouterr().out
 
 def test_func_starargs_wrongly_documented(capsys: CapSys) -> None:
     numpy_wrong = fromText('''
