@@ -508,7 +508,7 @@ class ModuleVistor(NodeVisitor):
         if new_value:
             if augassign: 
                 if obj.value:
-                    # We're storing the value of augmented assignemnt value for the sake 
+                    # We're storing the value of augmented assignemnt value as binop for the sake 
                     # of correctness, but we're not doing anything special with it at the
                     # moment, nonethless this could be useful for future developments.
                     # We don't bother reporting warnings, pydoctor is not a checker.
