@@ -504,7 +504,7 @@ class ModuleVistor(NodeVisitor):
 
     @staticmethod
     def _storeAttrValue(obj:model.Attribute, new_value:Optional[ast.expr], 
-                        augassign:Optional[ast.operator]) -> None:
+                        augassign:Optional[ast.operator]=None) -> None:
         if new_value:
             if augassign: 
                 if obj.value:
@@ -516,7 +516,8 @@ class ModuleVistor(NodeVisitor):
             else:
                 obj.value = new_value
     
-    def _storeCurrentAttr(self, obj:model.Attribute, augassign:Optional[object]) -> None:
+    def _storeCurrentAttr(self, obj:model.Attribute, 
+                          augassign:Optional[object]=None) -> None:
         if not augassign:
             self.builder.currentAttr = obj
         else:
@@ -632,7 +633,6 @@ class ModuleVistor(NodeVisitor):
         # Class variables can only be Attribute, so it's OK to cast because we used _maybeAttribute() above.
         obj = cast(Optional[model.Attribute], cls.contents.get(name))
         if obj is None:
-
             obj = self.builder.addAttribute(name=name, kind=None, parent=cls)
 
         if annotation is None and expr is not None:
@@ -640,10 +640,10 @@ class ModuleVistor(NodeVisitor):
         
         obj.annotation = annotation
         obj.setLineNumber(lineno)
-
+        # undonditionnaly set the kind to ivar
         obj.kind = model.DocumentableKind.INSTANCE_VARIABLE
-        self._storeAttrValue(obj, expr, None)
-        self.builder.currentAttr = obj
+        self._storeAttrValue(obj, expr)
+        self._storeCurrentAttr(obj)
 
     def _handleAssignmentInClass(self,
             target: str,
@@ -929,7 +929,9 @@ class ModuleVistor(NodeVisitor):
             lineno: int
             ) -> model.Attribute:
 
-        attr = self.builder.addAttribute(name=node.name, kind=model.DocumentableKind.PROPERTY, parent=self.builder.current)
+        attr = self.builder.addAttribute(name=node.name, 
+                                         kind=model.DocumentableKind.PROPERTY, 
+                                         parent=self.builder.current)
         attr.setLineNumber(lineno)
 
         if docstring is not None:
