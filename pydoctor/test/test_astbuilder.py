@@ -2384,7 +2384,8 @@ def test_default_constructors(systemcls: Type[model.System]) -> None:
     mod = fromText(src, systemcls=systemcls)
     assert getConstructorsText(mod.contents['Animal']) == "Animal()"
 
-def test_typealias_unstring() -> None:
+@systemcls_param
+def test_typealias_unstring(systemcls: Type[model.System]) -> None:
     """
     The type aliases are unstringed by the astbuilder
     """
@@ -2392,7 +2393,7 @@ def test_typealias_unstring() -> None:
     mod = fromText('''
     from typing import Callable
     ParserFunction = Callable[[str, List['ParseError']], 'ParsedDocstring']
-    ''', modname='pydoctor.epydoc.markup')
+    ''', modname='pydoctor.epydoc.markup', systemcls=systemcls)
 
     typealias = mod.contents['ParserFunction']
     assert isinstance(typealias, model.Attribute)
