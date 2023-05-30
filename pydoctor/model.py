@@ -819,7 +819,6 @@ class FunctionOverload:
 class Attribute(Inheritable):
     kind: Optional[DocumentableKind] = DocumentableKind.ATTRIBUTE
     annotation: Optional[ast.expr] = None
-    explicit_annotation = False
     decorators: Optional[Sequence[ast.expr]] = None
     value: Optional[ast.expr] = None
     """
@@ -827,35 +826,6 @@ class Attribute(Inheritable):
 
     None value means the value is not initialized at the current point of the the process. 
     """
-
-    def _init_annotation(self) -> None:
-        """
-        If this attribute has not explicit annotation, try to look
-        int super classes/interface declarations or infer the type from it's ast expression.
-        """
-        if self.annotation is not None:
-            # do not override annotation
-            return
-        
-        # lookup inherited annotations, use docsources()
-        docsources = self.docsources()
-        # discard self
-        next(docsources)
-
-        for inherited in docsources:
-            if isinstance(inherited, Attribute) and inherited.explicit_annotation:
-                # parse the type of inherited annotation early with the inherited context 
-                # to ensure validity of generated links.
-                from pydoctor.epydoc2stan import type2stan, ParsedStanOnly
-                stan = type2stan(inherited)
-                if stan: self.parsed_type = ParsedStanOnly(stan)
-                return
-        
-        # if no inherited annotation is found, try to infer the type from 
-        # it's ast expression, the result will not be propated to 
-        # subclass members that override this symbol.
-        if self.value is not None:
-            self.annotation = astutils.infer_type(self.value)
 
 # Work around the attributes of the same name within the System class.
 _ModuleT = Module
@@ -1441,26 +1411,30 @@ class System:
         without the risk of drawing incorrect conclusions because modules
         were not fully processed yet.
         """
-
-        # default post-processing includes:
-        # - Processing of subclasses
-        # - MRO computing.
-        # - Lookup of constructors
-        # - Checking whether the class is an exception
         for cls in self.objectsOfType(Class):
             
+            # Initiate the MROs
             cls._init_mro()
+            # Lookup of constructors
             cls._init_constructors()
             
+            # Compute subclasses
             for b in cls.baseobjects:
                 if b is not None:
                     b.subclasses.append(cls)
             
+            # Checking whether the class is an exception
             if is_exception(cls):
                 cls.kind = DocumentableKind.EXCEPTION
         
+        # Infer annotation in post-processing so
+        # to explicit annotation take precedence.
         for attrib in self.objectsOfType(Attribute):
-            attrib._init_annotation()
+            # If this attribute has not explicit annotation, 
+            # infer its type from it's ast expression.
+            if attrib.annotation is None and attrib.value is not None:
+                # do not override explicit annotation
+                attrib.annotation = astutils.infer_type(attrib.value)
 
         for post_processor in self._post_processors:
             post_processor(self)

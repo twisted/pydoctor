@@ -495,13 +495,13 @@ class ModuleVistor(NodeVisitor):
                 # Simply ignore it because it's duplication of information.
                 obj.annotation = infer_type(value) if value else None
 
-    @classmethod
-    def _setAttributeAnnotation(cls, obj: model.Attribute, 
+    @staticmethod
+    def _setAttributeAnnotation(obj: model.Attribute, 
                                 annotation: Optional[ast.expr],) -> None:
         if annotation is not None:
-            # What to do when an attribute has several explicit annotations?
+            # TODO: What to do when an attribute has several explicit annotations?
+            # (mypy reports a warning in these kind of cases)
             obj.annotation = annotation
-            obj.explicit_annotation = True
 
     def _handleModuleVar(self,
             target: str,
