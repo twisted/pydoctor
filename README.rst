@@ -76,6 +76,20 @@ What's New?
 in development
 ^^^^^^^^^^^^^^
 
+* Fix annotation resolution edge cases: names are resolved in the context of the module 
+  scope when possible, when impossible, the theoretical runtime scopes are used. A warning can
+  be reported when an annotation name is ambiguous (can be resolved to different names 
+  depending on the scope context) with option ``-v``.
+* Ensure that explicit annotation are honored when there are multiple declarations of the same name.
+
+pydoctor 23.4.1
+^^^^^^^^^^^^^^^
+
+* Pin ``urllib3`` version to keep compatibility with ``cachecontrol`` and python3.6.
+
+pydoctor 23.4.0
+^^^^^^^^^^^^^^^
+
 * Add support for Python 3.11
 * Add support for the ``@overload`` decorator.
 * Show type annotations in function's signatures.
@@ -93,7 +107,7 @@ in development
 * Improve the search bar user experience by automatically appending wildcard to each query terms
   when no terms already contain a wildcard. 
 * Link recognized constructors in class page.
-* Ensure that explicit annotation are honored when there are multiple declarations of the same name.
+* An invalid epytext docstring will be rederered as plaintext, just like invalid restructuredtext docstrings (finally).
 
 pydoctor 22.9.1
 ^^^^^^^^^^^^^^^

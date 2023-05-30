@@ -122,6 +122,9 @@ def type2str(type_expr: Optional[ast.expr]) -> Optional[str]:
         return src.strip()
 
 def type2html(obj: model.Documentable) -> str:
+    """
+    Uses the NotFoundLinker. 
+    """
     parsed_type = get_parsed_type(obj)
     assert parsed_type is not None
     return to_html(parsed_type).replace('<wbr></wbr>', '').replace('<wbr>\n</wbr>', '')

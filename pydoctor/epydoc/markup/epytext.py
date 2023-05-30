@@ -132,7 +132,7 @@ __docformat__ = 'epytext en'
 #   4. helpers
 #   5. testing
 
-from typing import Any, Iterable, List, Optional, Sequence, Set, Union, cast, overload
+from typing import Any, Iterable, List, Optional, Sequence, Set, Union, cast
 import re
 import unicodedata
 
@@ -282,13 +282,7 @@ _LINK_COLORIZING_TAGS = ['link', 'uri']
 ## Structuring (Top Level)
 ##################################################
 
-@overload
-def parse(text: str) -> Element: ...
-
-@overload
-def parse(text: str, errors: List[ParseError]) -> Optional[Element]: ...
-
-def parse(text: str, errors: Optional[List[ParseError]] = None) -> Optional[Element]:
+def parse(text: str, errors: List[ParseError]) -> Optional[Element]:
     """
     Return a DOM tree encoding the contents of an epytext string.  Any
     errors generated during parsing will be stored in C{errors}.
@@ -303,14 +297,7 @@ def parse(text: str, errors: Optional[List[ParseError]] = None) -> Optional[Elem
         accumulator was provided.
     @raise ParseError: If C{errors} is C{None} and an error is
         encountered while parsing.
-    """
-    # Initialize errors list.
-    if errors is None:
-        errors = []
-        raise_on_error = True
-    else:
-        raise_on_error = False
-    
+    """    
     # Preprocess the string.
     text = re.sub('\015\012', '\012', text)
     text = text.expandtabs()
@@ -379,11 +366,10 @@ def parse(text: str, errors: Optional[List[ParseError]] = None) -> Optional[Elem
                 errors.append(StructuringError(estr, token.startline))
 
     # If there was an error, then signal it!
-    if any(e.is_fatal() for e in errors):
-        if raise_on_error:
-            raise errors[0]
-        else:
-            return None
+    try:
+        raise next(e for e in errors if e.is_fatal())
+    except StopIteration:
+        pass
 
     # Return the top-level epytext DOM element.
     return doc
