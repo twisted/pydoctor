@@ -80,6 +80,8 @@ in development
   scope when possible, when impossible, the theoretical runtime scopes are used. A warning can
   be reported when an annotation name is ambiguous (can be resolved to different names 
   depending on the scope context) with option ``-v``.
+* Use stricter verifications before marking an attribute as constant. 
+* Do not trigger warnings when pydoctor cannot make sens of a potential constant attribute. 
 
 pydoctor 23.4.1
 ^^^^^^^^^^^^^^^

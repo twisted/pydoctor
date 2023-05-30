@@ -51,7 +51,7 @@ from pydoctor.epydoc import sre_parse36, sre_constants36 as sre_constants
 from pydoctor.epydoc.markup import DocstringLinker
 from pydoctor.epydoc.markup.restructuredtext import ParsedRstDocstring
 from pydoctor.epydoc.docutils import set_node_attributes, wbr, obj_reference, new_document
-from pydoctor.astutils import node2dottedname, bind_args
+from pydoctor.astutils import node2dottedname, bind_args, Parentage
 
 def decode_with_backslashreplace(s: bytes) -> str:
     r"""
@@ -111,21 +111,6 @@ class _ColorizerState:
         del self.result[mark.length:]
         return trimmed
 
-class _Parentage(ast.NodeTransformer):
-    """
-    Add C{parent} attribute to ast nodes instances.
-    """
-    # stolen from https://stackoverflow.com/a/68845448
-    parent: Optional[ast.AST] = None
-
-    def visit(self, node: ast.AST) -> ast.AST:
-        setattr(node, 'parent', self.parent)
-        self.parent = node
-        node = super().visit(node)
-        if isinstance(node, ast.AST):
-            self.parent = getattr(node, 'parent')
-        return node
-
 # TODO: add support for comparators when needed. 
 class _OperatorDelimiter:
     """
@@ -145,7 +130,7 @@ class _OperatorDelimiter:
         self.marked = state.mark()
 
         # We use a hack to populate a "parent" attribute on AST nodes.
-        # See _Parentage class, applied in PyvalColorizer._colorize_ast()
+        # See astutils.Parentage class, applied in PyvalColorizer._colorize_ast()
         parent_node: Optional[ast.AST] = getattr(node, 'parent', None)
 
         if isinstance(parent_node, (ast.UnaryOp, ast.BinOp, ast.BoolOp)):
@@ -528,7 +513,7 @@ class PyvalColorizer:
     def _colorize_ast(self, pyval: ast.AST, state: _ColorizerState) -> None:
         # Set nodes parent in order to check theirs precedences and add delimiters when needed.
         if not getattr(pyval, 'parent', None):
-            _Parentage().visit(pyval)
+            Parentage().visit(pyval)
 
         if self._is_ast_constant(pyval): 
             self._colorize_ast_constant(pyval, state)
