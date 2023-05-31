@@ -454,8 +454,11 @@ class PyvalColorizer:
             if i>=1:
                 self._insert_comma(indent, state)
             state.result.append(self.WORD_BREAK_OPPORTUNITY)
-            self._colorize(key, state)
-            self._output(': ', self.COLON_TAG, state)
+            if key:
+                self._colorize(key, state)
+                self._output(': ', self.COLON_TAG, state)
+            else:
+                self._output('**', None, state)
             self._colorize(val, state)
         self._output(suffix, self.GROUP_TAG, state)
     

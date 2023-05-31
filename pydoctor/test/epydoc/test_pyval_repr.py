@@ -1596,8 +1596,9 @@ def test_simple_expressions_parens(subtests:Any) -> None:
     check_src("(P * V if P and V else n * R * T)")
     check_src("(lambda P, V, n: P * V == n * R * T)")
     
+    check_src("f(**x)")
+    check_src("{**x}")
+
     # not supported 
-    # check_src("f(**x)")
-    # check_src("{**x}")
     # check_src("f(**([] or 5))")
     # check_src("{**([] or 5)}")
