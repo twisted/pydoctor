@@ -1585,8 +1585,10 @@ def test_simple_expressions_parens(subtests:Any) -> None:
     check_src("flag&(other|foo)")
     
     # with astor (which adds a lot of parenthesis :/)
-    check_src("(a := b)")
-    check_src("(await x)")
+    if sys.version_info>=(3,8):
+        check_src("(a := b)")
+    if sys.version_info>=(3,6):
+        check_src("(await x)")
     check_src("(x if x else y)")
     check_src("(lambda x: x)")
     check_src("not (x == y)")
