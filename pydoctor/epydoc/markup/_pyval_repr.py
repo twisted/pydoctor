@@ -40,7 +40,7 @@ import ast
 import functools
 import sys
 from inspect import signature
-from typing import Any, AnyStr, Mapping, Union, Callable, Dict, Iterable, Sequence, Optional, List, Tuple, cast
+from typing import Any, AnyStr, Union, Callable, Dict, Iterable, Sequence, Optional, List, Tuple, cast
 
 import attr
 import astor.op_util
@@ -142,8 +142,7 @@ class _OperatorDelimiter:
     """
 
     def __init__(self, colorizer: 'PyvalColorizer', state: _ColorizerState, 
-                 node: Union[ast.UnaryOp, ast.BinOp, ast.BoolOp], 
-                 explicit_precedence:Mapping[ast.AST, int]) -> None:
+                 node: Union[ast.UnaryOp, ast.BinOp, ast.BoolOp],) -> None:
 
         self.discard = True
         """No parenthesis by default."""
@@ -276,7 +275,7 @@ class PyvalColorizer:
         self.refmap = refmap if refmap is not None else {}
         # some edge cases require to compute the precedence ahead of time and can't be 
         # easily done with access only to the parent node of some operators.
-        self.explicit_precedence = {}
+        self.explicit_precedence:Dict[ast.AST, int] = {}
 
     #////////////////////////////////////////////////////////////
     # Colorization Tags & other constants
