@@ -181,7 +181,7 @@ class ClassIndexPage(Page):
                     # linking to namedtuple(), proxyForInterface() and all other ast constructs.
                     # But the issue is that we're using the string form of base objects in order
                     # to compare and aggregate them, as a consequence we can't directly use the colorizer.
-                    # Another side effect is that sunclasses of collections.namedtuple() and namedtuple() 
+                    # Another side effect is that subclasses of collections.namedtuple() and namedtuple() 
                     # (depending on how the name is imported) will not be aggregated under the same list item :/
                     link = b
                 item = tags.li(tags.code(link))
