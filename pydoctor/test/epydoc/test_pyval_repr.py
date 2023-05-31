@@ -1559,7 +1559,7 @@ def check_src_roundtrip(src:str, subtests:Any) -> None:
         code = color2(expr.value)
         assert code==src
 
-def test_simple_expressions_parens(subtests:Any) -> None:
+def test_expressions_parens(subtests:Any) -> None:
     check_src = partial(check_src_roundtrip, subtests=subtests)
     check_src("1<<(10|1)<<1")
     check_src("int|float|complex|None")
@@ -1598,6 +1598,14 @@ def test_simple_expressions_parens(subtests:Any) -> None:
     
     check_src("f(**x)")
     check_src("{**x}")
+
+    check_src("(-1)**7")
+    check_src("(-1.0)**8")
+    check_src("(-1j)**6")
+    check_src("not True or False")
+    check_src("True or not False")
+
+    check_src("(3).__abs__()")
 
     # not supported 
     # check_src("f(**([] or 5))")
