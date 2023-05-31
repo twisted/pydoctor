@@ -519,63 +519,6 @@ def test_tuples_one_value() -> None:
     ,)
 """
 
-def test_dictionaries() -> None:
-    """Dicts are treated just like lists, except that the ":" is also tagged as
-    "op"."""
-
-    assert color({'1':33, '2':[1,2,3,{7:'oo'*20}]}) == """<document source="pyval_repr">
-    {
-    <wbr>
-    <inline classes="variable-quote">
-        '
-    <inline classes="variable-string">
-        1
-    <inline classes="variable-quote">
-        '
-    : 
-    33
-    ,
-    
-     
-    <wbr>
-    <inline classes="variable-quote">
-        '
-    <inline classes="variable-string">
-        2
-    <inline classes="variable-quote">
-        '
-    : 
-    [
-    <wbr>
-    1
-    ,
-    
-           
-    <wbr>
-    2
-    ,
-    
-           
-    <wbr>
-    3
-    ,
-    
-           
-    <wbr>
-    {
-    <wbr>
-    7
-    : 
-    <inline classes="variable-quote">
-        '
-    <inline classes="variable-string">
-        oooooooooooooooooooooooooooo
-    <inline classes="variable-linewrap">
-        ↵
-    
-    <inline classes="variable-ellipsis">
-        ...\n"""
-
 def extract_expr(_ast: ast.Module) -> ast.AST:
     elem = _ast.body[0]
     assert isinstance(elem, ast.Expr)
@@ -899,6 +842,9 @@ def test_ast_list_tuple() -> None:
     )\n"""
 
 def test_ast_dict() -> None:
+    """
+    Dictionnaries are treated just like lists.
+    """
     assert color(extract_expr(ast.parse(dedent("""
     {'1':33, '2':[1,2,3,{7:'oo'*20}]}
     """)))) == """<document source="pyval_repr">
@@ -1591,6 +1537,7 @@ def test_expressions_parens(subtests:Any) -> None:
         check_src("(await x)")
     check_src("(x if x else y)")
     check_src("(lambda x: x)")
+    check_src("(lambda : int)()")
     check_src("not (x == y)")
     check_src("(x == (not y))")
     check_src("(P * V if P and V else n * R * T)")
@@ -1609,3 +1556,8 @@ def test_expressions_parens(subtests:Any) -> None:
 
     check_src("f(**([] or 5))")
     check_src("{**([] or 5)}")
+    check_src("{**(~{})}")
+    check_src("{**(not {})}")
+    check_src("{**({} == {})}")
+    check_src("{**{'y': 2}, 'x': 1, None: True}")
+    check_src("{**{'y': 2}, **{'x': 1}}")
