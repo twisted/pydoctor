@@ -1523,6 +1523,7 @@ def test_expressions_parens(subtests:Any) -> None:
     # but too much reasonning is needed to obtain this result,
     # because the power operator is reassociative...
     check_src("(x**y)**(z**q)")
+    check_src("((x**y)**)z**q")
     check_src("x>>y")
     check_src("x<<y")
     check_src("x>>y and x>>z")
