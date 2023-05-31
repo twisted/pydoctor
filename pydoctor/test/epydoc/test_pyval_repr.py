@@ -1607,6 +1607,5 @@ def test_expressions_parens(subtests:Any) -> None:
 
     check_src("(3).__abs__()")
 
-    # not supported 
-    # check_src("f(**([] or 5))")
-    # check_src("{**([] or 5)}")
+    check_src("f(**([] or 5))")
+    check_src("{**([] or 5)}")

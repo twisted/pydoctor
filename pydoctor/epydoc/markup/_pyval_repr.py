@@ -148,11 +148,15 @@ class _OperatorDelimiter:
         # See _Parentage class, applied in PyvalColorizer._colorize_ast()
         parent_node: Optional[ast.AST] = getattr(node, 'parent', None)
 
-        if isinstance(parent_node, (ast.UnaryOp, ast.BinOp, ast.BoolOp)):
+        if parent_node:
             precedence = astor.op_util.get_op_precedence(node.op)
-            parent_precedence = astor.op_util.get_op_precedence(parent_node.op)
-            if isinstance(parent_node.op, ast.Pow) or isinstance(parent_node, ast.BoolOp):
-                parent_precedence+=1
+            if isinstance(parent_node, (ast.UnaryOp, ast.BinOp, ast.BoolOp)):
+                parent_precedence = astor.op_util.get_op_precedence(parent_node.op)
+                if isinstance(parent_node.op, ast.Pow) or isinstance(parent_node, ast.BoolOp):
+                    parent_precedence+=1
+            else:   
+                parent_precedence = astor.op_util.Precedence.highest
+                
             if precedence < parent_precedence:
                 self.discard = False
 
