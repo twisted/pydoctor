@@ -151,9 +151,9 @@ class _OperatorDelimiter:
         if isinstance(parent_node, (ast.UnaryOp, ast.BinOp, ast.BoolOp)):
             precedence = astor.op_util.get_op_precedence(node.op)
             parent_precedence = astor.op_util.get_op_precedence(parent_node.op)
-            # Add parenthesis when precedences are equal to avoid confusions 
-            # and correctly handle the Pow special case without too much annoyance.
-            if precedence <= parent_precedence:
+            if isinstance(parent_node.op, ast.Pow) or isinstance(parent_node, ast.BoolOp):
+                parent_precedence+=1
+            if precedence < parent_precedence:
                 self.discard = False
 
     def __enter__(self) -> '_OperatorDelimiter':

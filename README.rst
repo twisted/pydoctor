@@ -80,6 +80,7 @@ in development
   scope when possible, when impossible, the theoretical runtime scopes are used. A warning can
   be reported when an annotation name is ambiguous (can be resolved to different names 
   depending on the scope context) with option ``-v``.
+* Improve the AST colorizer to output less parenthesis when it's not required.
 
 pydoctor 23.4.1
 ^^^^^^^^^^^^^^^
