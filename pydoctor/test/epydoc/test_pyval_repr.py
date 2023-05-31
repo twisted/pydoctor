@@ -1587,7 +1587,7 @@ def test_simple_expressions_parens(subtests:Any) -> None:
     # with astor (which adds a lot of parenthesis :/)
     if sys.version_info>=(3,8):
         check_src("(a := b)")
-    if sys.version_info>=(3,6):
+    if sys.version_info>=(3,7):
         check_src("(await x)")
     check_src("(x if x else y)")
     check_src("(lambda x: x)")
