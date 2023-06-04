@@ -110,23 +110,17 @@ class LunrIndexWriter:
         return epydoc2stan.format_kind(ob.kind) if ob.kind else ''
 
     def get_corpus(self) -> List[Tuple[Dict[str, Optional[str]], Dict[str, int]]]:
-
-        documents: List[Tuple[Dict[str, Optional[str]], Dict[str, int]]] = []
-
-        for ob in (o for o in self.system.allobjects.values() if o.isVisible):
-
-            documents.append(
-                        (
-                            {
-                                f:self.format(ob, f) for f in self.fields
-                            }, 
-                            {
-                                "boost": self.get_ob_boost(ob)
-                            }
-                        )
-            )   
-        
-        return documents
+        return [
+            (
+                {
+                    f:self.format(ob, f) for f in self.fields
+                }, 
+                {
+                    "boost": self.get_ob_boost(ob)
+                }
+            )
+            for ob in (o for o in self.system.allobjects.values() if o.isVisible)
+        ]
 
     def write(self) -> None:
 
