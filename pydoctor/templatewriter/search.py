@@ -21,18 +21,23 @@ def get_all_documents_flattenable(system: model.System) -> Iterator[Dict[str, "F
     """
     Get a generator for all data to be writen into ``all-documents.html`` file.
     """
-    documents: Iterator[Dict[str, "Flattenable"]] = ({
-                          'id':         ob.fullName(), 
-                          'name':       epydoc2stan.insert_break_points(ob.name), 
-                          'fullName':   epydoc2stan.insert_break_points(ob.fullName()), 
-                          'kind':       epydoc2stan.format_kind(ob.kind) if ob.kind else '', 
-                          'type':       str(ob.__class__.__name__),
-                          'summary':    epydoc2stan.format_summary(ob),
-                          'url':        ob.url, 
-                          'privacy':    str(ob.privacyClass.name)}   
+    # This function accounts for about 17% of pydoctor runtime. 
+    # So it's optimized.
+    insert_break_points = epydoc2stan.insert_break_points
+    format_kind = epydoc2stan.format_kind
+    format_summary = epydoc2stan.format_summary
 
-                          for ob in system.allobjects.values() if ob.isVisible)
-    return documents
+    return ({
+            'id':         ob.fullName(), 
+            'name':       ob.name, 
+            'fullName':   insert_break_points(ob.fullName()), 
+            'kind':       format_kind(ob.kind) if ob.kind else '', 
+            'type':       str(ob.__class__.__name__),
+            'summary':    format_summary(ob),
+            'url':        ob.url,
+            'privacy':    str(ob.privacyClass.name)}   
+
+            for ob in system.allobjects.values() if ob.isVisible)
 
 class AllDocuments(Page):
     
