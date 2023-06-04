@@ -130,13 +130,15 @@ Profiling pydoctor with austin and speedscope
 2. Install austin-python (https://pypi.org/project/austin-python/)
 3. Run program under austin 
 
-.. code::
-  $ sudo austin -i 1ms -C -o pydoctor.austin pydoctor <pydoctor args>
+   .. code::
+
+      $ sudo austin -i 1ms -C -o pydoctor.austin pydoctor <pydoctor args>
 
 4. Convert .austin to .speedscope (austin2speedscope comes from austin-python)
 
-.. code::
-  $ austin2speedscope pydoctor.austin pydoctor.speedscope
+   .. code::
+  
+    $ austin2speedscope pydoctor.austin pydoctor.speedscope
 
 
 5. Open https://speedscope.app and load pydoctor.speedscope into it.
