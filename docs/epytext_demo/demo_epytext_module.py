@@ -187,7 +187,7 @@ class DemoClass(ABC, SomeInterface, _PrivateClass):
     
     @property
     def undoc_prop(self) -> bytes:
-        """This property has a docstring only on the setter."""
+        """This property has a docstring only on the getter."""
         return b''
     @undoc_prop.setter
     def undoc_prop(self, p) -> None: # type:ignore
