@@ -288,9 +288,8 @@ class ContentList(TemplateElement):
     @renderer
     def items(self, request: IRequest, tag: Tag) -> Iterator['ContentItem']:
 
-        for child in self.children:
-
-            yield ContentItem(
+        return (
+            ContentItem(
                 loader=TagLoader(tag),
                 ob=self.ob,
                 child=child,
@@ -299,6 +298,7 @@ class ContentList(TemplateElement):
                 nested_content_loader=self.nested_content_loader,
                 template_lookup=self.template_lookup, 
                 level_depth=self._level_depth)
+            for child in self.children )
         
 
 class ContentItem(Element):
