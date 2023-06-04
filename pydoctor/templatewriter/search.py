@@ -17,21 +17,21 @@ from lunr import lunr, get_default_builder
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable
 
-def get_all_documents_flattenable(system: model.System) -> List[Dict[str, "Flattenable"]]:
+def get_all_documents_flattenable(system: model.System) -> Iterator[Dict[str, "Flattenable"]]:
     """
-    Get the all data to be writen into ``all-documents.html`` file.
+    Get a generator for all data to be writen into ``all-documents.html`` file.
     """
-    documents: List[Dict[str, "Flattenable"]] = [dict(
-                          id=ob.fullName(), 
-                          name=epydoc2stan.insert_break_points(ob.name), 
-                          fullName=epydoc2stan.insert_break_points(ob.fullName()), 
-                          kind=epydoc2stan.format_kind(ob.kind) if ob.kind else '', 
-                          type=str(ob.__class__.__name__),
-                          summary=epydoc2stan.format_summary(ob),
-                          url=ob.url, 
-                          privacy=str(ob.privacyClass.name))   
+    documents: Iterator[Dict[str, "Flattenable"]] = ({
+                          'id':         ob.fullName(), 
+                          'name':       epydoc2stan.insert_break_points(ob.name), 
+                          'fullName':   epydoc2stan.insert_break_points(ob.fullName()), 
+                          'kind':       epydoc2stan.format_kind(ob.kind) if ob.kind else '', 
+                          'type':       str(ob.__class__.__name__),
+                          'summary':    epydoc2stan.format_summary(ob),
+                          'url':        ob.url, 
+                          'privacy':    str(ob.privacyClass.name)}   
 
-                          for ob in system.allobjects.values() if ob.isVisible]
+                          for ob in system.allobjects.values() if ob.isVisible)
     return documents
 
 class AllDocuments(Page):
@@ -42,7 +42,7 @@ class AllDocuments(Page):
         return "All Documents"
 
     @renderer
-    def documents(self, request: None, tag: Tag) -> Iterable[Tag]:        
+    def documents(self, request: None, tag: Tag) -> Iterator[Tag]:        
         for doc in get_all_documents_flattenable(self.system):
             yield tag.clone().fillSlots(**doc)
 
