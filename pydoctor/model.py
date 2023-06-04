@@ -264,9 +264,18 @@ class Documentable:
         self.system.allobjects[self.fullName()] = self
         for o in self.contents.values():
             o._handle_reparenting_post()
-
+    
     def _localNameToFullName(self, name: str) -> str:
         raise NotImplementedError(self._localNameToFullName)
+    
+    def isNameDefined(self, name:str) -> bool:
+        """
+        Is the given name defined in the globals/locals of self-context?
+        Only the first name of a dotted name is checked.
+
+        Returns True iff the given name can be loaded without raising `NameError`.
+        """
+        raise NotImplementedError(self.isNameDefined)
 
     def expandName(self, name: str) -> str:
         """Return a fully qualified name for the possibly-dotted `name`.
@@ -386,11 +395,11 @@ class Documentable:
     def docstring_linker(self) -> 'linker.DocstringLinker':
         """
         Returns an instance of L{DocstringLinker} suitable for resolving names
-        in the context of the object scope. 
+        in the context of the object. 
         """
         if self._linker is not None:
             return self._linker
-        self._linker = linker._CachedEpydocLinker(self)
+        self._linker = linker._EpydocLinker(self)
         return self._linker
 
 
@@ -398,7 +407,18 @@ class CanContainImportsDocumentable(Documentable):
     def setup(self) -> None:
         super().setup()
         self._localNameToFullName_map: Dict[str, str] = {}
-
+    
+    def isNameDefined(self, name: str) -> bool:
+        name = name.split('.')[0]
+        if name in self.contents:
+            return True
+        if name in self._localNameToFullName_map:
+            return True
+        if not isinstance(self, Module):
+            return self.module.isNameDefined(name)
+        else:
+            return False
+    
 
 class Module(CanContainImportsDocumentable):
     kind = DocumentableKind.MODULE
@@ -788,6 +808,9 @@ class Inheritable(Documentable):
 
     def _localNameToFullName(self, name: str) -> str:
         return self.parent._localNameToFullName(name)
+    
+    def isNameDefined(self, name: str) -> bool:
+        return self.parent.isNameDefined(name)
 
 class Function(Inheritable):
     kind = DocumentableKind.FUNCTION
@@ -1341,7 +1364,7 @@ class System:
             self.unprocessed_modules.remove(first)
             self._addUnprocessedModule(dup)
 
-    def _introspectThing(self, thing: object, parent: Documentable, parentMod: _ModuleT) -> None:
+    def _introspectThing(self, thing: object, parent: CanContainImportsDocumentable, parentMod: _ModuleT) -> None:
         for k, v in thing.__dict__.items():
             if (isinstance(v, func_types)
                     # In PyPy 7.3.1, functions from extensions are not

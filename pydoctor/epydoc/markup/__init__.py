@@ -57,6 +57,9 @@ else:
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable
     from pydoctor.model import Documentable
+    from typing import Protocol
+else:
+    Protocol = object
 
 ##################################################
 ## Contents
@@ -276,7 +279,7 @@ class Field:
 ##################################################
 ## Docstring Linker (resolves crossreferences)
 ##################################################
-class DocstringLinker:
+class DocstringLinker(Protocol):
     """
     A resolver for crossreference links out of a C{ParsedDocstring}.
     C{DocstringLinker} is used by C{ParsedDocstring} to look up the
@@ -293,7 +296,6 @@ class DocstringLinker:
         @param label: The label to show for the link.
         @return: The link, or just the label if the target was not found.
         """
-        raise NotImplementedError()
 
     def link_xref(self, target: str, label: "Flattenable", lineno: int) -> Tag:
         """
@@ -309,28 +311,19 @@ class DocstringLinker:
         @return: The link, or just the label if the target was not found.
             In either case, the returned top-level tag will be C{<code>}.
         """
-        raise NotImplementedError()
 
-    def resolve_identifier(self, identifier: str) -> Optional[str]:
+    def switch_context(self, ob:Optional['Documentable']) -> ContextManager[None]:
         """
-        Resolve a Python identifier.
-        This will resolve the identifier like Python itself would.
+        Switch the context of the linker, keeping the same underlying lookup rules.
 
-        @param identifier: The name of the Python identifier that
-            should be linked to.
-        @return: The URL of the target, or L{None} if not found.
-        """
-        raise NotImplementedError()
-    
-    def disable_same_page_optimazation(self) -> ContextManager[None]:
-        """
-        By default, when linkng to an object on the same page, the linker will generate 
-        an URL that links to the anchor only, this will avoid reloading the page needlessly. But sometimes 
-        we're using a linker to present the content on another page. This context manager will 
-        make the linker always generate full URLs.
-        """
-        raise NotImplementedError()
+        Useful to resolve links with the right L{Documentable} context but
+        create correct - absolute or relative - links to be clicked on from another page 
+        rather than the initial page of the context. "Cannot find link target" errors will be reported
+        relatively to the new context object.
 
+        Pass C{None} to always generate full URLs (for summaries for example), 
+        in this case error will NOT be reported at all.
+        """
 
 ##################################################
 ## ParseError exceptions
