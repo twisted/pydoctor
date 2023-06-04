@@ -3,7 +3,7 @@ Code building ``all-documents.html``, ``searchindex.json`` and ``fullsearchindex
 """
 
 from pathlib import Path
-from typing import Iterable, Iterator, List, Optional, Tuple, Type, Dict, TYPE_CHECKING
+from typing import Iterator, List, Optional, Tuple, Type, Dict, TYPE_CHECKING
 import json
 
 import attr
