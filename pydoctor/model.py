@@ -1091,6 +1091,7 @@ class System:
 
     def objectsOfType(self, cls: Union[Type['DocumentableT'], str]) -> Iterator['DocumentableT']:
         """Iterate over all instances of C{cls} present in the system. """
+        isinstance = isinstance
         if isinstance(cls, str):
             cls = utils.findClassFromDottedName(cls, 'objectsOfType', 
                 base_class=cast(Type['DocumentableT'], Documentable))
