@@ -61,7 +61,7 @@ def getHTMLOfAttribute(ob: model.Documentable) -> str:
     assert isinstance(ob, model.Attribute)
     tlookup = TemplateLookup(template_dir)
     if isinstance(ob, model.Property):
-        stan = PropertyChild(util.DocGetter(), ob, [], 
+        stan: "Flattenable" = PropertyChild(util.DocGetter(), ob, [], 
             PropertyChild.lookup_loader(tlookup), 
             FunctionChild.lookup_loader(tlookup))
     else:

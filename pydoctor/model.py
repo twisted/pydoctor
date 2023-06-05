@@ -879,7 +879,9 @@ def init_property(attrib:'Property') -> Iterator['Function']:
     from pydoctor import epydoc2stan
     
     # Setup Attribute object for the property
-    attrib._setDocstringValue(getter.docstring, getter.docstring_lineno)
+    if getter.docstring:
+        attrib._setDocstringValue(getter.docstring, 
+                                  getter.docstring_lineno)
     if not attrib.annotation:
         attrib.annotation = getter.annotations.get('return')
     attrib.extra_info.extend(getter.extra_info)

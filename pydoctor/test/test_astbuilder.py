@@ -2170,6 +2170,37 @@ def test_property_old_school_keywords(systemcls:Type[model.System], capsys:CapSy
     assert isinstance(spam, model.Property)
     assert spam.docstring == "The radius property."
 
+
+@systemcls_param
+def test_property_call_alone(systemcls:Type[model.System], capsys:CapSys) -> None:
+    """
+    property() can be used whiout any getters or setters, or with lambda functions.
+    """
+    src = '''
+    class PropertyBase:
+        spam = property()
+    class PropertyDocBase:
+        spam = property(doc="spam spam spam")
+    class PropertyLambdaBase:
+        spam = property(fget=lambda self:self._spam)
+    '''
+    mod = fromText(src, modname='mod', systemcls=systemcls)
+    assert not capsys.readouterr().out
+    
+    spam1 = mod.contents['PropertyBase'].contents['spam']
+    spam2 = mod.contents['PropertyDocBase'].contents['spam']
+    spam3 = mod.contents['PropertyLambdaBase'].contents['spam']
+
+    assert isinstance(spam1, model.Property)
+    assert isinstance(spam2, model.Property)
+    assert isinstance(spam3, model.Property)
+
+    assert spam2.docstring == "spam spam spam"
+    
+    assert spam1.getter is None
+    assert spam2.getter is None
+    assert spam3.getter is None
+
 @systemcls_param
 def test_property_getter_override(systemcls: Type[model.System], capsys: CapSys) -> None:
     """
@@ -2212,6 +2243,7 @@ def test_mutilple_docstrings_on_property(systemcls: Type[model.System], capsys: 
     '''
     mod = fromText(src, systemcls=systemcls)
     spam = mod.resolveName('PropertyOld.spam')
+    assert isinstance(spam, model.Property)
     spam.docstring == "Second doc"
     assert capsys.readouterr().out == ('<test>:3: Existing docstring at line 4 is overriden by docstring at line 6\n'
                                        '<test>:6: Existing docstring at line 7 is overriden by docstring at line 6\n')

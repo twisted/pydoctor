@@ -492,25 +492,29 @@ class ModuleVistor(NodeVisitor):
         
         cls = self.builder.current
 
-        getter = node2dottedname(bound_args.arguments.get('fget'))
-        setter = node2dottedname(bound_args.arguments.get('fset'))
-        deleter = node2dottedname(bound_args.arguments.get('fdel'))
-        doc = bound_args.arguments.get('doc')
-
         attr = self._addProperty(target, cls, expr.lineno)
-        for definition, prop_kind in zip((getter, setter, deleter),
+        for arg, prop_kind in zip(('fget', 'fset', 'fdel'),
                              (model.Property.Kind.GETTER, 
                               model.Property.Kind.SETTER, 
-                              model.Property.Kind.DELETER)):
+                              model.Property.Kind.DELETER),
+                             ):
+            definition = node2dottedname(bound_args.arguments.get(arg))
             if not len(definition or ())==1:
-                continue 
-            fn = cls.contents.get(definition[0])
-            if fn is None:
+                continue
+            # the subscript indexing is safe since we've checked len(x)==1
+            fn = cls.contents.get(definition[0]) # type:ignore[index]
+            if not isinstance(fn, model.Function):
                 continue
             attr.store_function(prop_kind, fn)
         
+        doc = bound_args.arguments.get('doc')
         if doc:
-            attr.getter.setDocstring(doc)
+            if attr.getter:
+                # the warning message in case of overriden docstrings makes
+                # more sens when relative to the getter docstring. so use that when available.
+                attr.getter.setDocstring(doc)
+            else:
+                attr.setDocstring(doc)
         
         self.builder.currentAttr = attr
         return True
