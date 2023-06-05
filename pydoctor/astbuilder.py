@@ -4,19 +4,18 @@ import ast
 import sys
 
 from functools import partial
-from inspect import Parameter, Signature, _ParameterKind
+from inspect import Parameter, Signature
 from itertools import chain
 from pathlib import Path
 from typing import (
     Any, Callable, Collection, Dict, Iterable, Iterator, List, Mapping, Optional, Sequence, Tuple,
     Type, TypeVar, Union, cast, TYPE_CHECKING
 )
-import attr
 import astor
-from pydoctor import epydoc2stan, model, node2stan, extensions
+from pydoctor import epydoc2stan, model, node2stan, extensions, linker
 from pydoctor.epydoc.markup._pyval_repr import colorize_inline_pyval
-from pydoctor.astutils import (is_typing_annotation, is_using_annotations, is_using_typing_final, node2dottedname, node2fullname, 
-                               is__name__equals__main__, unstring_annotation, iterassign, 
+from pydoctor.astutils import (is_none_literal, is_typing_annotation, is_using_annotations, is_using_typing_final, node2dottedname, node2fullname, 
+                               is__name__equals__main__, unstring_annotation, iterassign, extract_docstring_linenum,  
                                NodeVisitor)
 
 
@@ -426,10 +425,11 @@ class ModuleVistor(NodeVisitor):
             return
         _localNameToFullName = self.builder.current._localNameToFullName_map
         for al in node.names:
-            fullname, asname = al.name, al.asname
-            if asname is not None:
-                _localNameToFullName[asname] = fullname
-
+            targetname, asname = al.name, al.asname
+            if asname is None:
+                # we're keeping track of all defined names
+                asname = targetname = targetname.split('.')[0]
+            _localNameToFullName[asname] = targetname
 
     def _handleOldSchoolMethodDecoration(self, target: str, expr: Optional[ast.expr]) -> bool:
         if not isinstance(expr, ast.Call):
@@ -775,7 +775,8 @@ class ModuleVistor(NodeVisitor):
         is_property = False
         is_classmethod = False
         is_staticmethod = False
-        if isinstance(parent, model.Class) and node.decorator_list:
+        is_overload_func = False
+        if node.decorator_list:
             for d in node.decorator_list:
                 if isinstance(d, ast.Call):
                     deco_name = node2dottedname(d.func)
@@ -783,16 +784,20 @@ class ModuleVistor(NodeVisitor):
                     deco_name = node2dottedname(d)
                 if deco_name is None:
                     continue
-                if deco_name[-1].endswith('property') or deco_name[-1].endswith('Property'):
-                    is_property = True
-                elif deco_name == ['classmethod']:
-                    is_classmethod = True
-                elif deco_name == ['staticmethod']:
-                    is_staticmethod = True
-                elif len(deco_name) >= 2 and deco_name[-1] in ('setter', 'deleter'):
-                    # Rename the setter/deleter, so it doesn't replace
-                    # the property object.
-                    func_name = '.'.join(deco_name[-2:])
+                if isinstance(parent, model.Class):
+                    if deco_name[-1].endswith('property') or deco_name[-1].endswith('Property'):
+                        is_property = True
+                    elif deco_name == ['classmethod']:
+                        is_classmethod = True
+                    elif deco_name == ['staticmethod']:
+                        is_staticmethod = True
+                    elif len(deco_name) >= 2 and deco_name[-1] in ('setter', 'deleter'):
+                        # Rename the setter/deleter, so it doesn't replace
+                        # the property object.
+                        func_name = '.'.join(deco_name[-2:])
+                # Determine if the function is decorated with overload
+                if parent.expandName('.'.join(deco_name)) in ('typing.overload', 'typing_extensions.overload'):
+                    is_overload_func = True
 
         if is_property:
             # handle property and skip child nodes.
@@ -803,10 +808,30 @@ class ModuleVistor(NodeVisitor):
                 attr.report(f'{attr.fullName()} is both property and staticmethod')
             raise self.SkipNode()
 
-        func = self.builder.pushFunction(func_name, lineno)
+        # Check if it's a new func or exists with an overload
+        existing_func = parent.contents.get(func_name)
+        if isinstance(existing_func, model.Function) and existing_func.overloads:
+            # If the existing function has a signature and this function is an
+            # overload, then the overload came _after_ the primary function
+            # which we do not allow. This also ensures that func will have
+            # properties set for the primary function and not overloads.
+            if existing_func.signature and is_overload_func:
+                existing_func.report(f'{existing_func.fullName()} overload appeared after primary function', lineno_offset=lineno-existing_func.linenumber)
+                raise self.SkipNode()
+            # Do not recreate function object, just re-push it
+            self.builder.push(existing_func, lineno)
+            func = existing_func
+        else:
+            func = self.builder.pushFunction(func_name, lineno)
+
         func.is_async = is_async
         if docstring is not None:
-            func.setDocstring(docstring)
+            # Docstring not allowed on overload
+            if is_overload_func:
+                docline = extract_docstring_linenum(docstring)
+                func.report(f'{func.fullName()} overload has docstring, unsupported', lineno_offset=docline-func.linenumber)
+            else:
+                func.setDocstring(docstring)
         func.decorators = node.decorator_list
         if is_staticmethod:
             if is_classmethod:
@@ -816,15 +841,17 @@ class ModuleVistor(NodeVisitor):
         elif is_classmethod:
             func.kind = model.DocumentableKind.CLASS_METHOD
 
-        try:
-            signature = signature_from_functiondef(node, func)
-        except ValueError as ex:
-            func.report(f'{func.fullName()} has invalid parameters: {ex}')
-            signature = Signature()
-        
+        annotations, signature = signature_from_functiondef(node, func)
+
         func.signature = signature
-        func.annotations = self._annotations_from_function(node)
-    
+        func.annotations = annotations
+
+        # Only set main function signature if it is a non-overload
+        if is_overload_func:
+            func.overloads.append(model.FunctionOverload(primary=func, signature=signature, decorators=node.decorator_list))
+        else:
+            func.signature = signature
+
     def depart_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:
         self.builder.popFunction()
 
@@ -866,49 +893,46 @@ class ModuleVistor(NodeVisitor):
 
         return attr
 
-    def _annotations_from_function(
-            self, func: Union[ast.AsyncFunctionDef, ast.FunctionDef]
-            ) -> Mapping[str, Optional[ast.expr]]:
-        """Get annotations from a function definition.
-        @param func: The function definition's AST.
-        @return: Mapping from argument name to annotation.
-            The name C{return} is used for the return type.
-            Unannotated arguments are omitted.
-        """
-        def _get_all_args() -> Iterator[ast.arg]:
-            base_args = func.args
-            # New on Python 3.8 -- handle absence gracefully
-            try:
-                yield from base_args.posonlyargs
-            except AttributeError:
-                pass
-            yield from base_args.args
-            varargs = base_args.vararg
-            if varargs:
-                varargs.arg = epydoc2stan.VariableArgument(varargs.arg)
-                yield varargs
-            yield from base_args.kwonlyargs
-            kwargs = base_args.kwarg
-            if kwargs:
-                kwargs.arg = epydoc2stan.KeywordArgument(kwargs.arg)
-                yield kwargs
-        def _get_all_ast_annotations() -> Iterator[Tuple[str, Optional[ast.expr]]]:
-            for arg in _get_all_args():
-                yield arg.arg, arg.annotation
-            returns = func.returns
-            if returns:
-                yield 'return', returns
-        return {
-            # Include parameter names even if they're not annotated, so that
-            # we can use the key set to know which parameters exist and warn
-            # when non-existing parameters are documented.
-            name: None if value is None else unstring_annotation(value, self.builder.current)
-            for name, value in _get_all_ast_annotations()
-            }
-
-class _ValueFormatterT(Protocol):
-    def __init__(self, value: Any, ctx: model.Documentable):...
-    def __repr__(self) -> str: ...
+def _annotations_from_function(
+        func: Union[ast.AsyncFunctionDef, ast.FunctionDef],
+        ctx: model.Documentable, 
+        ) -> Mapping[str, Optional[ast.expr]]:
+    """Get annotations from a function definition.
+    @param func: The function definition's AST.
+    @return: Mapping from argument name to annotation.
+        The name C{return} is used for the return type.
+        Unannotated arguments are omitted.
+    """
+    def _get_all_args() -> Iterator[ast.arg]:
+        base_args = func.args
+        # New on Python 3.8 -- handle absence gracefully
+        try:
+            yield from base_args.posonlyargs
+        except AttributeError:
+            pass
+        yield from base_args.args
+        varargs = base_args.vararg
+        if varargs:
+            varargs.arg = epydoc2stan.VariableArgument(varargs.arg)
+            yield varargs
+        yield from base_args.kwonlyargs
+        kwargs = base_args.kwarg
+        if kwargs:
+            kwargs.arg = epydoc2stan.KeywordArgument(kwargs.arg)
+            yield kwargs
+    def _get_all_ast_annotations() -> Iterator[Tuple[str, Optional[ast.expr]]]:
+        for arg in _get_all_args():
+            yield arg.arg, arg.annotation
+        returns = func.returns
+        if returns:
+            yield 'return', returns
+    return {
+        # Include parameter names even if they're not annotated, so that
+        # we can use the key set to know which parameters exist and warn
+        # when non-existing parameters are documented.
+        name: None if value is None else unstring_annotation(value, ctx)
+        for name, value in _get_all_ast_annotations()
+        }
 
 class _ValueFormatter:
     """
@@ -916,7 +940,7 @@ class _ValueFormatter:
     Used for presenting default values of parameters.
     """
 
-    def __init__(self, value: Any, ctx: model.Documentable):
+    def __init__(self, value: ast.expr, ctx: model.Documentable):
         self._colorized = colorize_inline_pyval(value)
         """
         The colorized value as L{ParsedDocstring}.
@@ -937,74 +961,70 @@ class _ValueFormatter:
         # but potential XML parser errors caused by XMLString needs to be handled later.
         return ''.join(node2stan.node2html(self._colorized.to_node(), self._linker))
 
-def signature_from_functiondef(node: Union[ast.AsyncFunctionDef, ast.FunctionDef], ctx: model.Documentable) -> Signature:
-    # Currently ignores type hints.
-    
+def signature_from_functiondef(node: Union[ast.AsyncFunctionDef, ast.FunctionDef], 
+                               ctx: model.Function) -> Signature:
     # Position-only arguments were introduced in Python 3.8.
     posonlyargs: Sequence[ast.arg] = getattr(node.args, 'posonlyargs', ())
 
     num_pos_args = len(posonlyargs) + len(node.args.args)
     defaults = node.args.defaults
     default_offset = num_pos_args - len(defaults)
-    
+    annotations = _annotations_from_function(node, ctx)
+
     def get_default(index: int) -> Optional[ast.expr]:
-        """
-        Get the default value of the parameter, by index.
-        """
         assert 0 <= index < num_pos_args, index
         index -= default_offset
         return None if index < 0 else defaults[index]
 
-    sigbuilder = SignatureBuilder(ctx=ctx)
+    parameters: List[Parameter] = []
+    def add_arg(name: str, kind: Any, default: Optional[ast.expr]) -> None:
+        default_val = Parameter.empty if default is None else _ValueFormatter(default, ctx=ctx)
+                                                                            # this cast() is safe since we're checking if annotations.get(name) is None first
+        annotation = Parameter.empty if annotations.get(name) is None else _AnnotationValueFormatter(cast(ast.expr, annotations[name]), ctx=ctx)
+        parameters.append(Parameter(name, kind, default=default_val, annotation=annotation))
 
     for index, arg in enumerate(posonlyargs):
-        sigbuilder.add_param(arg.arg, Parameter.POSITIONAL_ONLY, get_default(index))
+        add_arg(arg.arg, Parameter.POSITIONAL_ONLY, get_default(index))
 
     for index, arg in enumerate(node.args.args, start=len(posonlyargs)):
-        sigbuilder.add_param(arg.arg, Parameter.POSITIONAL_OR_KEYWORD, get_default(index))
+        add_arg(arg.arg, Parameter.POSITIONAL_OR_KEYWORD, get_default(index))
 
     vararg = node.args.vararg
     if vararg is not None:
-        sigbuilder.add_param(vararg.arg, Parameter.VAR_POSITIONAL)
+        add_arg(vararg.arg, Parameter.VAR_POSITIONAL, None)
 
     assert len(node.args.kwonlyargs) == len(node.args.kw_defaults)
     for arg, default in zip(node.args.kwonlyargs, node.args.kw_defaults):
-        sigbuilder.add_param(arg.arg, Parameter.KEYWORD_ONLY, default)
+        add_arg(arg.arg, Parameter.KEYWORD_ONLY, default)
 
     kwarg = node.args.kwarg
     if kwarg is not None:
-        sigbuilder.add_param(kwarg.arg, Parameter.VAR_KEYWORD)
+        add_arg(kwarg.arg, Parameter.VAR_KEYWORD, None)
 
-    return sigbuilder.get_signature()
+    return_type = annotations.get('return')
+    return_annotation = Parameter.empty if return_type is None or is_none_literal(return_type) else _AnnotationValueFormatter(return_type, ctx=ctx)
+    try:
+        signature = Signature(parameters, return_annotation=return_annotation)
+    except ValueError as ex:
+        ctx.report(f'{ctx.fullName()} has invalid parameters: {ex}')
+        signature = Signature()
+    
+    return annotations, signature
 
-@attr.s(auto_attribs=True)
-class SignatureBuilder:
+class _AnnotationValueFormatter(_ValueFormatter):
     """
-    Builds a signature, parameter by parameter, with customizable value formatter and signature classes.
+    Special L{_ValueFormatter} for function annotations.
     """
-    ctx: model.Documentable
-    signature_class: Type['Signature'] = attr.ib(default=Signature)
-    value_formatter_class: Type['_ValueFormatterT'] = attr.ib(default=_ValueFormatter)
-    _parameters: List[Parameter] = attr.ib(factory=list, init=False)
-    _return_annotation: Any = attr.ib(default=Signature.empty, init=False)
-
-    def add_param(self, name: str, 
-                  kind: _ParameterKind, 
-                  default: Optional[Any]=None,
-                  annotation: Optional[Any]=None) -> None:
-                    
-        default_val = Parameter.empty if default is None else self.value_formatter_class(default, self.ctx)
-        annotation_val = Parameter.empty if annotation is None else self.value_formatter_class(annotation, self.ctx)
-        self._parameters.append(Parameter(name, kind, default=default_val, annotation=annotation_val))
-
-    def set_return_annotation(self, annotation: Optional[Any]) -> None:
-        self._return_annotation = Signature.empty if annotation is None else self.value_formatter_class(annotation, self.ctx)
-
-    def get_signature(self) -> Signature:
+    def __init__(self, value: ast.expr, ctx: model.Function):
+        super().__init__(value, ctx)
+        self._linker = linker._AnnotationLinker(ctx)
+    
+    def __repr__(self) -> str:
         """
-        @raises ValueError: If Signature() call fails.
+        Present the annotation wrapped inside <code> tags.
         """
-        return self.signature_class(self._parameters, return_annotation=self._return_annotation)
+        return '<code>%s</code>' % super().__repr__()
+
 
 def _infer_type(expr: ast.expr) -> Optional[ast.expr]:
     """Infer an expression's type.
@@ -1013,7 +1033,7 @@ def _infer_type(expr: ast.expr) -> Optional[ast.expr]:
     """
     try:
         value: object = ast.literal_eval(expr)
-    except ValueError:
+    except (ValueError, TypeError):
         return None
     else:
         ann = _annotation_for_value(value)

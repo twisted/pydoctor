@@ -122,6 +122,9 @@ def type2str(type_expr: Optional[ast.expr]) -> Optional[str]:
         return src.strip()
 
 def type2html(obj: model.Documentable) -> str:
+    """
+    Uses the NotFoundLinker. 
+    """
     parsed_type = get_parsed_type(obj)
     assert parsed_type is not None
     return to_html(parsed_type).replace('<wbr></wbr>', '').replace('<wbr>\n</wbr>', '')
@@ -1619,6 +1622,43 @@ def test_ignore_function_contents(systemcls: Type[model.System]) -> None:
     assert not outer.contents
 
 @systemcls_param
+def test_overload(systemcls: Type[model.System], capsys: CapSys) -> None:
+    # Confirm decorators retained on overloads, docstring ignored for overloads,
+    # and that overloads after the primary function are skipped
+    mod = fromText("""
+        from typing import overload, Union
+        def dec(fn):
+            pass
+        @dec
+        @overload
+        def parse(s:str)->str:
+            ...
+        @overload
+        def parse(s:bytes)->bytes:
+            '''Ignored docstring'''
+            ...
+        def parse(s:Union[str, bytes])->Union[str, bytes]:
+            pass
+        @overload
+        def parse(s:str)->bytes:
+            ...
+        """, systemcls=systemcls)
+    func = mod.contents['parse']
+    assert isinstance(func, model.Function)
+    # Work around different space arrangements in Signature.__str__ between python versions
+    assert flatten_text(html2stan(str(func.signature).replace(' ', ''))) == '(s:Union[str,bytes])->Union[str,bytes]'
+    assert [astbuilder.node2dottedname(d) for d in (func.decorators or ())] == []
+    assert len(func.overloads) == 2
+    assert [astbuilder.node2dottedname(d) for d in func.overloads[0].decorators] == [['dec'], ['overload']]
+    assert [astbuilder.node2dottedname(d) for d in func.overloads[1].decorators] == [['overload']]
+    assert flatten_text(html2stan(str(func.overloads[0].signature).replace(' ', ''))) == '(s:str)->str'
+    assert flatten_text(html2stan(str(func.overloads[1].signature).replace(' ', ''))) == '(s:bytes)->bytes'
+    assert capsys.readouterr().out.splitlines() == [
+        '<test>:11: <test>.parse overload has docstring, unsupported',
+        '<test>:15: <test>.parse overload appeared after primary function',
+    ]
+
+@systemcls_param
 def test_constant_module(systemcls: Type[model.System]) -> None:
     """
     Module variables with all-uppercase names are recognized as constants.
@@ -2116,10 +2156,37 @@ def test_prepend_package_real_path(systemcls: Type[model.System]) -> None:
     finally:
         systemcls.systemBuilder = _builderT_init
 
-def getConstructorsText(cls:model.Documentable) -> str:
+def getConstructorsText(cls: model.Documentable) -> str:
     assert isinstance(cls, model.Class)
     return '\n'.join(
-        epydoc2stan.format_constructor_short_text(c, cls) for c in cls.constructors)
+        epydoc2stan.format_constructor_short_text(c, cls) for c in cls.public_constructors)
+
+@systemcls_param
+def test_crash_type_inference_unhashable_type(systemcls: Type[model.System], capsys:CapSys) -> None:
+    """
+    This test is about not crashing.
+
+    A TypeError is raised by ast.literal_eval() in some cases, when we're trying to do a set of lists or a dict with list keys.
+    We do not bother reporting it because pydoctor is not a checker.
+    """
+
+    src = '''
+    # Unhashable type, will raise an error in ast.literal_eval()
+    x = {[1, 2]}
+    class C:
+        v = {[1,2]:1}
+        def __init__(self):
+            self.y = [{'str':2}, {[1,2]:1}]
+    Y = [{'str':2}, {{[1, 2]}:1}]
+    '''
+
+    mod = fromText(src, systemcls=systemcls, modname='m')
+    for obj in ['m.x', 'm.C.v', 'm.C.y', 'm.Y']:
+        o = mod.system.allobjects[obj]
+        assert isinstance(o, model.Attribute)
+        assert o.annotation is None
+    assert not capsys.readouterr().out
+
 
 @systemcls_param
 def test_constructor_signature_init(systemcls: Type[model.System]) -> None:
@@ -2223,7 +2290,7 @@ def test_constructor_signature_classmethod(systemcls: Type[model.System]) -> Non
         # thanks to type hints, 
         # pydoctor can infer the constructor to be: "Options.create()"
         @staticmethod
-        def create() -> 'Options':
+        def create(important_arg) -> 'Options':
             # the fictional constructor is not detected by pydoctor, because it doesn't exists actually.
             return Options(1,2,3)
         
@@ -2238,7 +2305,7 @@ def test_constructor_signature_classmethod(systemcls: Type[model.System]) -> Non
 
     mod = fromText(src, systemcls=systemcls)
 
-    assert getConstructorsText(mod.contents['Options']) == "Options.create()\nOptions.create_from_num(num)"
+    assert getConstructorsText(mod.contents['Options']) == "Options.create(important_arg)\nOptions.create_from_num(num)"
 
 @systemcls_param
 def test_constructor_inner_class(systemcls: Type[model.System]) -> None:
@@ -2260,3 +2327,59 @@ def test_constructor_inner_class(systemcls: Type[model.System]) -> None:
     mod = fromText(src, systemcls=systemcls)
     assert getConstructorsText(mod.contents['Animal'].contents['Bar']) == "Animal.Bar(name)"
     assert getConstructorsText(mod.contents['Animal'].contents['Bar'].contents['Foo']) == "Animal.Bar.Foo.create(name)"
+
+@systemcls_param
+def test_constructor_many_parameters(systemcls: Type[model.System]) -> None:
+    src = '''\
+    class Animal(object):
+        def __new__(cls, name, lastname, age, spec, extinct, group, friends):
+            ...
+    '''
+    mod = fromText(src, systemcls=systemcls)
+
+    assert getConstructorsText(mod.contents['Animal']) == "Animal(name, lastname, age, spec, ...)"
+
+@systemcls_param
+def test_constructor_five_paramters(systemcls: Type[model.System]) -> None:
+    src = '''\
+    class Animal(object):
+        def __new__(cls, name, lastname, age, spec, extinct):
+            ...
+    '''
+    mod = fromText(src, systemcls=systemcls)
+
+    assert getConstructorsText(mod.contents['Animal']) == "Animal(name, lastname, age, spec, extinct)"
+
+@systemcls_param
+def test_default_constructors(systemcls: Type[model.System]) -> None:
+    src = '''\
+    class Animal(object):
+        def __init__(self):
+            ...
+        def __new__(cls):
+            ...
+        @classmethod
+        def new(cls) -> 'Animal':
+            ...
+        '''
+
+    mod = fromText(src, systemcls=systemcls)
+    assert getConstructorsText(mod.contents['Animal']) == "Animal.new()"
+
+    src = '''\
+    class Animal(object):
+        def __init__(self):
+            ...
+        '''
+
+    mod = fromText(src, systemcls=systemcls)
+    assert getConstructorsText(mod.contents['Animal']) == ""
+
+    src = '''\
+    class Animal(object):
+        def __init__(self):
+            "thing"
+        '''
+
+    mod = fromText(src, systemcls=systemcls)
+    assert getConstructorsText(mod.contents['Animal']) == "Animal()"

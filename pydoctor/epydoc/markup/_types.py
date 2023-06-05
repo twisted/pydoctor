@@ -49,7 +49,7 @@ class ParsedTypeDocstring(TypeDocstring, ParsedDocstring):
         """
         raise NotImplementedError()
 
-    def to_stan(self, docstring_linker: DocstringLinker, compact:bool=False) -> Tag:
+    def to_stan(self, docstring_linker: DocstringLinker) -> Tag:
         """
         Present the type as a stan tree. 
         """
@@ -165,8 +165,8 @@ class ParsedTypeDocstring(TypeDocstring, ParsedDocstring):
             # We don't use safe_to_stan() here, if these converter functions raise an exception, 
             # the whole type docstring will be rendered as plaintext.
             # it does not crash on invalid xml entities
-            TokenType.REFERENCE:    lambda _token: get_parser_by_name('restructuredtext')(_token, warnings, False).to_stan(docstring_linker) if isinstance(_token, str) else _token, 
-            TokenType.UNKNOWN:      lambda _token: get_parser_by_name('restructuredtext')(_token, warnings, False).to_stan(docstring_linker) if isinstance(_token, str) else _token, 
+            TokenType.REFERENCE:    lambda _token: get_parser_by_name('restructuredtext')(_token, warnings).to_stan(docstring_linker) if isinstance(_token, str) else _token, 
+            TokenType.UNKNOWN:      lambda _token: get_parser_by_name('restructuredtext')(_token, warnings).to_stan(docstring_linker) if isinstance(_token, str) else _token, 
             TokenType.OBJ:          lambda _token: _token, # These convertions (OBJ and DELIMITER) are done in _convert_obj_tokens_to_stan().
             TokenType.DELIMITER:    lambda _token: _token, 
             TokenType.ANY:          lambda _token: _token, 

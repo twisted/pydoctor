@@ -1,6 +1,6 @@
 
 """
-Support for L{attrs <attr>}.
+Support for L{attrs}.
 """
 
 import ast
@@ -9,7 +9,7 @@ import inspect
 
 from typing import Dict, Optional, Union
 
-from pydoctor import astbuilder, model, astutils, extensions, visitor
+from pydoctor import astbuilder, model, astutils, extensions
 
 import attr
 
@@ -185,9 +185,12 @@ class ModuleVisitor(extensions.ModuleVisitorExt):
                     # TODO: Check if attrs defines a converter, if it does not, it's OK
                     # to deduce that the type of the argument is the same as type of the parameter.
                     # But actually, this might be a wrong assumption.
-                    cls.attrs_constructor_signature_builder.add_param(
-                        _init_param_name, kind=kind, default=attrs_default, annotation=None
-                    )
+                    cls.attrs_constructor_parameters.append(
+                        inspect.Parameter(
+                        _init_param_name, kind=kind, 
+                        default=astbuilder._ValueFormatter(attrs_default, cls), 
+                        annotation=inspect.Parameter.empty))
+                    
                     if attrib_args is not None:
                         cls.attrs_constructor_annotations[_init_param_name] = \
                             annotation_from_attrib(attrib_args, cls, for_init_method=True) or annotation
@@ -215,7 +218,7 @@ class AttrsClass(extensions.ClassMixin, model.Class):
         
         self.attrs_auto_attribs: bool = False
         """
-        L{True} if this class uses the C{auto_attribs} feature of the L{attrs <attr>}
+        L{True} if this class uses the C{auto_attribs} feature of the L{attrs}
         library to automatically convert annotated fields into attributes.
         """
         
@@ -230,9 +233,9 @@ class AttrsClass(extensions.ClassMixin, model.Class):
         """
 
         # since the signatures doesnt include type annotations, we track them in a separate attribute.
-        self.attrs_constructor_signature_builder = astbuilder.SignatureBuilder(self)
-        self.attrs_constructor_signature_builder.add_param('self', inspect.Parameter.POSITIONAL_OR_KEYWORD,)
-        self.attrs_constructor_annotations: Dict[str, Optional[ast.expr]] = {'self':None}
+        self.attrs_constructor_parameters = []
+        self.attrs_constructor_parameters.append(inspect.Parameter('self', inspect.Parameter.POSITIONAL_OR_KEYWORD,))
+        self.attrs_constructor_annotations: Dict[str, Optional[ast.expr]] = {'self': None}
 
 def postProcess(system:model.System) -> None:
 
@@ -247,11 +250,11 @@ def postProcess(system:model.System) -> None:
             func.decorators = None
             func.is_async = False
 
+            func.annotations = cls.attrs_constructor_annotations
             try:
                 # TODO: collect arguments from super classes attributes definitions.
-                func.signature = cls.attrs_constructor_signature_builder.get_signature()
-                func.annotations = cls.attrs_constructor_annotations
-            except ValueError as e:
+                func.signature = inspect.Signature(cls.attrs_constructor_parameters)
+            except Exception as e:
                 func.report(f'could not deduce attrs class __init__ signature: {e}')
                 func.signature = inspect.Signature()
                 func.annotations = {}

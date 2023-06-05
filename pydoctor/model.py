@@ -8,10 +8,10 @@ being documented -- a System is a bad of Documentables, in some sense.
 
 import abc
 import ast
+import attr
 from collections import defaultdict
 import datetime
 import importlib
-import inspect
 import platform
 import sys
 import textwrap
@@ -159,24 +159,8 @@ class Documentable:
         self._linker: Optional['linker.DocstringLinker'] = None
 
     def setDocstring(self, node: ast.Str) -> None:
-        doc = node.s
-        lineno = node.lineno
-        if _string_lineno_is_end:
-            # In older CPython versions, the AST only tells us the end line
-            # number and we must approximate the start line number.
-            # This approximation is correct if the docstring does not contain
-            # explicit newlines ('\n') or joined lines ('\' at end of line).
-            lineno -= doc.count('\n')
-
-        # Leading blank lines are stripped by cleandoc(), so we must
-        # return the line number of the first non-blank line.
-        for ch in doc:
-            if ch == '\n':
-                lineno += 1
-            elif not ch.isspace():
-                break
-
-        self.docstring = inspect.cleandoc(doc)
+        lineno, doc = astutils.extract_docstring(node)
+        self.docstring = doc
         self.docstring_lineno = lineno
 
     def setLineNumber(self, lineno: int) -> None:
@@ -283,9 +267,18 @@ class Documentable:
         self.system.allobjects[self.fullName()] = self
         for o in self.contents.values():
             o._handle_reparenting_post()
-
+    
     def _localNameToFullName(self, name: str) -> str:
         raise NotImplementedError(self._localNameToFullName)
+    
+    def isNameDefined(self, name:str) -> bool:
+        """
+        Is the given name defined in the globals/locals of self-context?
+        Only the first name of a dotted name is checked.
+
+        Returns True iff the given name can be loaded without raising `NameError`.
+        """
+        raise NotImplementedError(self.isNameDefined)
 
     def expandName(self, name: str) -> str:
         """Return a fully qualified name for the possibly-dotted `name`.
@@ -405,11 +398,11 @@ class Documentable:
     def docstring_linker(self) -> 'linker.DocstringLinker':
         """
         Returns an instance of L{DocstringLinker} suitable for resolving names
-        in the context of the object scope. 
+        in the context of the object. 
         """
         if self._linker is not None:
             return self._linker
-        self._linker = linker._CachedEpydocLinker(self)
+        self._linker = linker._EpydocLinker(self)
         return self._linker
 
 
@@ -417,7 +410,18 @@ class CanContainImportsDocumentable(Documentable):
     def setup(self) -> None:
         super().setup()
         self._localNameToFullName_map: Dict[str, str] = {}
-
+    
+    def isNameDefined(self, name: str) -> bool:
+        name = name.split('.')[0]
+        if name in self.contents:
+            return True
+        if name in self._localNameToFullName_map:
+            return True
+        if not isinstance(self, Module):
+            return self.module.isNameDefined(name)
+        else:
+            return False
+    
 
 class Module(CanContainImportsDocumentable):
     kind = DocumentableKind.MODULE
@@ -585,20 +589,22 @@ def compute_mro(cls:'Class') -> List[Union['Class', str]]:
     init_finalbaseobjects(cls)
     return mro.mro(cls, getbases)
 
-class Constructor(Protocol):
+def _find_dunder_constructor(cls:'Class') -> Optional['Function']:
     """
-    Protocol implemented by L{Function} objects.
+    Find the a non-default python-powered dunder constructor.
+    Returns C{None} if neither C{__new__} or C{__init__} are defined.
 
-    Makes the assumption that the constructor name is available in the locals of the class
-    it's supposed to create. Typically with __init__ and __new__ it's always the case. But it also means that
-    no regular function (not classmethod or staticmethod) can be interpreted as a constructor for a given class.
+    @note: C{__new__} takes precedence orver C{__init__}. 
+        More infos: U{https://docs.python.org/3/reference/datamodel.html#object.__new__}
     """
-    name: str
-    annotations: Mapping[str, Optional[ast.expr]]
-    kind: DocumentableKind
-    parent: CanContainImportsDocumentable
-    isVisible: bool
-    def fullName(self) -> str:...
+    _new = cls.find('__new__')
+    if isinstance(_new, Function):
+        return _new
+    elif _new is None:
+        _init = cls.find('__init__')
+        if isinstance(_init, Function):
+            return _init
+    return None
 
 class Class(CanContainImportsDocumentable):
     kind = DocumentableKind.CLASS
@@ -615,7 +621,14 @@ class Class(CanContainImportsDocumentable):
         self.rawbases: Sequence[Tuple[str, ast.expr]] = []
         self.raw_decorators: Sequence[ast.expr] = []
         self.subclasses: List[Class] = []
-        self.constructors: List[Constructor] = []
+        self.constructors: List[Function] = []
+        """
+        List of constructors.
+
+        Makes the assumption that the constructor name is available in the locals of the class
+        it's supposed to create. Typically with C{__init__} and C{__new__} it's always the case. 
+        It means that no regular function can be interpreted as a constructor for a given class.
+        """
         self._initialbases: List[str] = []
         self._initialbaseobjects: List[Optional['Class']] = []
     
@@ -637,13 +650,9 @@ class Class(CanContainImportsDocumentable):
         # Look for python language powered constructors.
         # If __new__ is defined, then it takes precedence over __init__
         # Blind spot: we don't understand when a Class is using a metaclass that overrides __call__.
-        _new = self.find('__new__')
-        if isinstance(_new, Function):
-            self.constructors.append(_new)
-        elif _new is None:
-            _init = self.find('__init__')
-            if isinstance(_init, Function):
-                self.constructors.append(_init)
+        dunder_constructor = _find_dunder_constructor(self)
+        if dunder_constructor:
+            self.constructors.append(dunder_constructor)
         
         # Then look for staticmethod/classmethod constructors,
         # This only happens at the local scope level (i.e not looking in super-classes).
@@ -655,10 +664,15 @@ class Class(CanContainImportsDocumentable):
                 continue
             # get return annotation, if it returns the same type as self, it's a constructor method.
             if not 'return' in fun.annotations:
+                # we currently only support constructor detection trought explicit annotations.
                 continue 
+            
+            # annotation should be resolved at the module scope
+            return_ann = astutils.node2fullname(fun.annotations['return'], self.module)
+            
             # pydoctor understand explicit annotation as well as the Self-Type.
-            return_ann = astutils.node2fullname(fun.annotations['return'], self)
-            if return_ann == self.fullName() or return_ann in ('typing.Self', 'typing_extensions.Self'):
+            if return_ann == self.fullName() or \
+               return_ann in ('typing.Self', 'typing_extensions.Self'):
                 self.constructors.append(fun)
         
         from pydoctor import epydoc2stan
@@ -709,6 +723,32 @@ class Class(CanContainImportsDocumentable):
         return self._finalbaseobjects if \
             self._finalbaseobjects is not None else self._initialbaseobjects
     
+    @property
+    def public_constructors(self) -> Sequence['Function']:
+        """
+        Yields public constructors for this class.
+        A public constructor must not be hidden and have
+        arguments or have a docstring.
+        """
+        r = []
+        for c in self.constructors:
+            if not c.isVisible:
+                continue
+            args = list(c.annotations)
+            try: args.remove('return')
+            except ValueError: pass
+            if c.kind in (DocumentableKind.CLASS_METHOD, 
+                          DocumentableKind.METHOD):
+                try:
+                    args.pop(0)
+                except IndexError:
+                    pass
+            if (len(args)==0 and get_docstring(c)[0] is None and 
+                c.name in ('__init__', '__new__')):
+                continue
+            r.append(c)
+        return r
+
     def allbases(self, include_self: bool = False) -> Iterator['Class']:
         """
         Iterate on all base objects of this class and it's super classes. Doesn't comply with MRO.
@@ -746,11 +786,12 @@ class Class(CanContainImportsDocumentable):
         """
 
         # We assume that the constructor parameters are the same as the
-        # __init__() parameters. This is incorrect if __new__() or the class
-        # call have different parameters.
-        init = self.find('__init__')
-        if isinstance(init, Function):
-            return init.annotations
+        # __new__()/__init__() parameters. This is incorrect if the metaclass
+        # __call__() have different parameters or __init__/__new__ is using
+        # signature changing decorators.
+        constructor = _find_dunder_constructor(self)
+        if constructor is not None:
+            return constructor.annotations
         else:
             return {}
 
@@ -770,6 +811,9 @@ class Inheritable(Documentable):
 
     def _localNameToFullName(self, name: str) -> str:
         return self.parent._localNameToFullName(name)
+    
+    def isNameDefined(self, name: str) -> bool:
+        return self.parent.isNameDefined(name)
 
 class Function(Inheritable):
     kind = DocumentableKind.FUNCTION
@@ -778,11 +822,23 @@ class Function(Inheritable):
     decorators: Optional[Sequence[ast.expr]]
     signature: Optional[Signature]
     parent: CanContainImportsDocumentable
+    overloads: List['FunctionOverload']
 
     def setup(self) -> None:
         super().setup()
         if isinstance(self.parent, Class):
             self.kind = DocumentableKind.METHOD
+        self.signature = None
+        self.overloads = []
+
+@attr.s(auto_attribs=True)
+class FunctionOverload:
+    """
+    @note: This is not an actual documentable type. 
+    """
+    primary: Function
+    signature: Signature
+    decorators: Sequence[ast.expr]
 
 class Attribute(Inheritable):
     kind: Optional[DocumentableKind] = DocumentableKind.ATTRIBUTE
@@ -1115,10 +1171,18 @@ class System:
         if self.sourcebase is None:
             mod.sourceHref = None
         else:
+            # pydoctor supports generating documentation covering more than one package, 
+            # in which case it is not certain that all of the source is even viewable below a single URL.
+            # We ignore this limitation by not assigning sourceHref for now, but it would be good to add support for it.
             projBaseDir = mod.system.options.projectbasedirectory
             assert projBaseDir is not None
-            relative = source_path.relative_to(projBaseDir).as_posix()
-            mod.sourceHref = f'{self.sourcebase}/{relative}'
+            try:
+                relative = source_path.relative_to(projBaseDir).as_posix()
+            except ValueError:
+                # The links cannot be computed because the source path lies outside base directory.
+                pass
+            else:
+                mod.sourceHref = f'{self.sourcebase}/{relative}'
 
     @overload
     def analyzeModule(self,
@@ -1191,7 +1255,7 @@ class System:
             self.unprocessed_modules.remove(first)
             self._addUnprocessedModule(dup)
 
-    def _introspectThing(self, thing: object, parent: Documentable, parentMod: _ModuleT) -> None:
+    def _introspectThing(self, thing: object, parent: CanContainImportsDocumentable, parentMod: _ModuleT) -> None:
         for k, v in thing.__dict__.items():
             if (isinstance(v, func_types)
                     # In PyPy 7.3.1, functions from extensions are not
@@ -1400,6 +1464,27 @@ class System:
         for url in self.options.intersphinx:
             self.intersphinx.update(cache, url)
 
+def get_docstring(
+        obj: Documentable
+        ) -> Tuple[Optional[str], Optional[Documentable]]:
+    """
+    Fetch the docstring for a documentable.
+    Treat empty docstring as undocumented.
+
+    :returns:
+        - C{(docstring, source)} if the object is documented.
+        - C{(None, None)} if the object has no docstring (even inherited).
+        - C{(None, source)} if the object has an empty docstring.
+    """
+    for source in obj.docsources():
+        doc = source.docstring
+        if doc:
+            return doc, source
+        if doc is not None:
+            # Treat empty docstring as undocumented.
+            return None, source
+    return None, None
+
 class SystemBuildingError(Exception):
     """
     Raised when there is a (handled) fatal error while adding modules to the builder.
@@ -1447,13 +1532,19 @@ class SystemBuilder(ISystemBuilder):
         if path in self._added:
             return
         # Path validity check
-        if self.system.options.projectbasedirectory is not None:
+        projBaseDir = self.system.options.projectbasedirectory
+        if projBaseDir is not None:
             # Note: Path.is_relative_to() was only added in Python 3.9,
             #       so we have to use this workaround for now.
             try:
-                path.relative_to(self.system.options.projectbasedirectory)
-            except ValueError as ex:
-                raise SystemBuildingError(f"Source path lies outside base directory: {ex}")
+                path.relative_to(projBaseDir)
+            except ValueError:
+                if self.system.options.htmlsourcebase:  
+                    # We now support building documentation when the source path is outside of the build directory.
+                    # We simply leave a warning and skip the sourceHref attribute.
+                    # https://github.com/twisted/pydoctor/issues/658
+                    _warn_msg = f"No source links can be generated for module {path}: source path lies outside base directory {projBaseDir}"
+                    self.system.msg('addPackage', _warn_msg, once=True)
         parent: Optional[Package] = None
         if parent_name:
             _p = self.system.allobjects[parent_name]
