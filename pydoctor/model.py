@@ -157,6 +157,16 @@ class Documentable:
 
     def setDocstring(self, node: ast.Str) -> None:
         lineno, doc = astutils.extract_docstring(node)
+        self._setDocstringValue(doc, lineno)
+    
+    def _setDocstringValue(self, doc:str, lineno:int) -> None:
+        if self.docstring:
+            msg = 'Existing docstring'
+            if self.docstring_lineno:
+                msg += f' at line {self.docstring_lineno}'
+            msg += f' is overriden by docstring at line {lineno}'
+            self.report(msg)
+
         self.docstring = doc
         self.docstring_lineno = lineno
 
@@ -869,11 +879,9 @@ def init_property(attrib:'Property') -> Iterator['Function']:
     from pydoctor import epydoc2stan
     
     # Setup Attribute object for the property
-    if not attrib.docstring:
-        attrib.docstring = getter.docstring
-        attrib.docstring_lineno = getter.docstring_lineno
-    
-    attrib.annotation = getter.annotations.get('return')
+    attrib._setDocstringValue(getter.docstring, getter.docstring_lineno)
+    if not attrib.annotation:
+        attrib.annotation = getter.annotations.get('return')
     attrib.extra_info.extend(getter.extra_info)
 
     # Parse docstring now.
@@ -910,7 +918,7 @@ def init_property(attrib:'Property') -> Iterator['Function']:
 
 class Attribute(Inheritable):
     kind: Optional[DocumentableKind] = DocumentableKind.ATTRIBUTE
-    annotation: Optional[ast.expr]
+    annotation: Optional[ast.expr] = None
     value: Optional[ast.expr] = None
     """
     The value of the assignment expression.

@@ -2118,7 +2118,7 @@ def test_property_inherited_not_supported(systemcls: Type[model.System], capsys:
 @systemcls_param
 def test_property_old_school(systemcls: Type[model.System], capsys: CapSys) -> None:
     """
-    
+    Old school property() decorator is recognized.
     """
     src = '''
     class PropertyDocBase(object):
@@ -2190,11 +2190,31 @@ def test_property_getter_override(systemcls: Type[model.System], capsys: CapSys)
             return 8
     '''
     mod = fromText(src, modname='mod', systemcls=systemcls)
-    assert not capsys.readouterr().out
+    assert capsys.readouterr().out == 'mod:4: Existing docstring at line 6 is overriden by docstring at line 11\n'
     attr = mod.contents['PropertyNewGetter'].contents['spam']
     # the parsed_docstring attribute gets initiated in post-processing
     assert node2stan.gettext(attr.parsed_docstring.to_node()) == ['new docstring'] # type:ignore
     assert attr.linenumber == 4
+
+@systemcls_param
+def test_mutilple_docstrings_on_property(systemcls: Type[model.System], capsys: CapSys) -> None:
+    """
+    When pydoctor encounters multiple places where the docstring is defined, it reports a warning.
+    This can only happend for properties at the moment.
+    """
+    src = '''
+    class PropertyOld(object):
+        def _get_spam(self):
+            "First doc"
+        # Old school property
+        spam = property(_get_spam, doc="Second doc")
+        "Third doc"
+    '''
+    mod = fromText(src, systemcls=systemcls)
+    spam = mod.resolveName('PropertyOld.spam')
+    spam.docstring == "Second doc"
+    assert capsys.readouterr().out == ('<test>:3: Existing docstring at line 4 is overriden by docstring at line 6\n'
+                                       '<test>:6: Existing docstring at line 7 is overriden by docstring at line 6\n')
 
 @systemcls_param
 def test_property_not_supported_or_corner_cases(systemcls: Type[model.System], capsys: CapSys) -> None:

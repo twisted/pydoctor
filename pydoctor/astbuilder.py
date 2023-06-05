@@ -498,18 +498,21 @@ class ModuleVistor(NodeVisitor):
         doc = bound_args.arguments.get('doc')
 
         attr = self._addProperty(target, cls, expr.lineno)
-        if getter:
-            attr.getter = cls.contents.get(getter[0])
-        if setter:
-            attr.setter = cls.contents.get(setter[0])
-        if deleter:
-            attr.deleter = cls.contents.get(deleter[0])
+        for definition, prop_kind in zip((getter, setter, deleter),
+                             (model.Property.Kind.GETTER, 
+                              model.Property.Kind.SETTER, 
+                              model.Property.Kind.DELETER)):
+            if not len(definition or ())==1:
+                continue 
+            fn = cls.contents.get(definition[0])
+            if fn is None:
+                continue
+            attr.store_function(prop_kind, fn)
         
         if doc:
-            if attr.getter and attr.getter.docstring:
-                attr.report('Proerty docstring is overriden by property() call "doc" argument.')
-            attr.setDocstring(doc)
+            attr.getter.setDocstring(doc)
         
+        self.builder.currentAttr = attr
         return True
 
     def _warnsConstantAssigmentOverride(self, obj: model.Attribute, lineno_offset: int) -> None:
