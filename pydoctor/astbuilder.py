@@ -148,17 +148,6 @@ def extract_final_subscript(annotation: ast.Subscript) -> ast.expr:
         assert isinstance(ann_slice, ast.expr)
         return ann_slice
 
-def getframe(ob:'model.Documentable') -> model.CanContainImportsDocumentable:
-    """
-    Returns the first L{model.Class} or L{model.Module} starting 
-    at C{ob} and going upward in the tree.
-    """
-    if isinstance(ob, model.Inheritable):
-        return getframe(ob.parent)
-    else:
-        assert isinstance(ob, model.CanContainImportsDocumentable)
-        return ob
-
 class ModuleVistor(NodeVisitor):
 
     def __init__(self, builder: 'ASTBuilder', module: model.Module):
@@ -177,7 +166,9 @@ class ModuleVistor(NodeVisitor):
         @note: The list of existing names is generated at the moment of
             calling the function, such that new names defined inside these blocks follows the usual override rules.
         """
-        ctx = getframe(self.builder.current)
+        ctx = self.builder.current
+        while not isinstance(ctx, model.CanContainImportsDocumentable):
+            ctx = ctx.parent
         ignore_override_init = self._override_guard_state
         # we list names only once to ignore new names added inside the block,
         # they should be overriden as usual.
@@ -186,13 +177,13 @@ class ModuleVistor(NodeVisitor):
         self._override_guard_state = ignore_override_init
     
     @staticmethod
-    def _list_names(ob: model.Documentable) -> List[str]:
+    def _list_names(ob: model.Documentable) -> Tuple[str, ...]:
         """
         List the names currently defined in a class/module.
         """
-        names = list(ob.contents)
+        names = tuple(ob.contents)
         if isinstance(ob, model.CanContainImportsDocumentable):
-            names.extend(ob._localNameToFullName_map)
+            names += tuple(ob._localNameToFullName_map)
         return names
 
     def _ignore_name(self, ob: model.Documentable, name:str) -> bool:
