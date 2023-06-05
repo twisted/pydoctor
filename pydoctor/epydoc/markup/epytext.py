@@ -132,16 +132,15 @@ __docformat__ = 'epytext en'
 #   4. helpers
 #   5. testing
 
-from typing import Any, Callable, Iterable, List, Optional, Sequence, Set, Union, cast, overload
+from typing import Any, Iterable, List, Optional, Sequence, Set, Union, cast
 import re
 import unicodedata
 
-from docutils import utils, nodes
+from docutils import nodes
 from twisted.web.template import Tag
 
-from pydoctor.epydoc.markup import Field, ParseError, ParsedDocstring, append_warnings
-from pydoctor.epydoc.markup._types import ParsedTypeDocstring
-from pydoctor.epydoc.docutils import set_node_attributes
+from pydoctor.epydoc.markup import Field, ParseError, ParsedDocstring, ParserFunction
+from pydoctor.epydoc.docutils import set_node_attributes, new_document
 from pydoctor.model import Documentable
 
 ##################################################
@@ -283,13 +282,7 @@ _LINK_COLORIZING_TAGS = ['link', 'uri']
 ## Structuring (Top Level)
 ##################################################
 
-@overload
-def parse(text: str) -> Element: ...
-
-@overload
-def parse(text: str, errors: List[ParseError]) -> Optional[Element]: ...
-
-def parse(text: str, errors: Optional[List[ParseError]] = None) -> Optional[Element]:
+def parse(text: str, errors: List[ParseError]) -> Optional[Element]:
     """
     Return a DOM tree encoding the contents of an epytext string.  Any
     errors generated during parsing will be stored in C{errors}.
@@ -304,14 +297,7 @@ def parse(text: str, errors: Optional[List[ParseError]] = None) -> Optional[Elem
         accumulator was provided.
     @raise ParseError: If C{errors} is C{None} and an error is
         encountered while parsing.
-    """
-    # Initialize errors list.
-    if errors is None:
-        errors = []
-        raise_on_error = True
-    else:
-        raise_on_error = False
-    
+    """    
     # Preprocess the string.
     text = re.sub('\015\012', '\012', text)
     text = text.expandtabs()
@@ -380,11 +366,10 @@ def parse(text: str, errors: Optional[List[ParseError]] = None) -> Optional[Elem
                 errors.append(StructuringError(estr, token.startline))
 
     # If there was an error, then signal it!
-    if any(e.is_fatal() for e in errors):
-        if raise_on_error:
-            raise errors[0]
-        else:
-            return None
+    try:
+        raise next(e for e in errors if e.is_fatal())
+    except StopIteration:
+        pass
 
     # Return the top-level epytext DOM element.
     return doc
@@ -1268,7 +1253,7 @@ class ColorizingError(ParseError):
 ##                    SUPPORT FOR EPYDOC
 #################################################################
 
-def parse_docstring(docstring: str, errors: List[ParseError], processtypes: bool = False) -> ParsedDocstring:
+def parse_docstring(docstring: str, errors: List[ParseError]) -> ParsedDocstring:
     """
     Parse the given docstring, which is formatted using epytext; and
     return a L{ParsedDocstring} representation of its contents.
@@ -1276,7 +1261,6 @@ def parse_docstring(docstring: str, errors: List[ParseError], processtypes: bool
     @param docstring: The docstring to parse
     @param errors: A list where any errors generated during parsing
         will be stored.
-    @param processtypes: Use L{ParsedTypeDocstring} to parsed 'type' fields.
     """
     tree = parse(docstring, errors)
     if tree is None:
@@ -1303,16 +1287,8 @@ def parse_docstring(docstring: str, errors: List[ParseError], processtypes: bool
 
             # Process the field.
             field.tag = 'epytext'
-
             field_parsed_doc: ParsedDocstring = ParsedEpytextDocstring(field, ())
-
             lineno = int(field.attribs['lineno'])
-            
-            # This allows epytext markup to use TypeDocstring as well with a CLI option: --process-types
-            if processtypes and tag in ParsedTypeDocstring.FIELDS:
-                field_parsed_doc = ParsedTypeDocstring(field_parsed_doc.to_node(), lineno=lineno)
-                append_warnings(field_parsed_doc.warnings, errors, lineno=lineno)
-            
             fields.append(Field(tag, arg, field_parsed_doc, lineno))
 
     # Save the remaining docstring as the description.
@@ -1321,7 +1297,7 @@ def parse_docstring(docstring: str, errors: List[ParseError], processtypes: bool
     else:
         return ParsedEpytextDocstring(None, fields)
 
-def get_parser(obj: Optional[Documentable]) -> Callable[[str, List[ParseError], bool], ParsedDocstring]:
+def get_parser(obj: Optional[Documentable]) -> ParserFunction:
     """
     Get the L{parse_docstring} function. 
     """
@@ -1403,9 +1379,9 @@ class ParsedEpytextDocstring(ParsedDocstring):
 
         if self._document is not None:
             return self._document
-        
-        self._document = utils.new_document('epytext')
-        
+
+        self._document = new_document('epytext')
+
         if self._tree is not None:
             node, = self._to_node(self._tree)
             # The contents is encapsulated inside a section node. 

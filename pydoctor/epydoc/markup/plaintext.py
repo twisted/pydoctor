@@ -11,16 +11,16 @@ verbatim output, preserving all whitespace.
 """
 __docformat__ = 'epytext en'
 
-from typing import List, Callable, Optional
+from typing import List, Optional
 
-from docutils import nodes, utils
+from docutils import nodes
 from twisted.web.template import Tag, tags
 
-from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring, ParseError
+from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring, ParseError, ParserFunction
 from pydoctor.model import Documentable
-from pydoctor.epydoc.docutils import set_node_attributes
+from pydoctor.epydoc.docutils import set_node_attributes, new_document
 
-def parse_docstring(docstring: str, errors: List[ParseError], processtypes: bool = False) -> ParsedDocstring:
+def parse_docstring(docstring: str, errors: List[ParseError]) -> ParsedDocstring:
     """
     Parse the given docstring, which is formatted as plain text; and
     return a L{ParsedDocstring} representation of its contents.
@@ -31,7 +31,7 @@ def parse_docstring(docstring: str, errors: List[ParseError], processtypes: bool
     """
     return ParsedPlaintextDocstring(docstring)
 
-def get_parser(obj: Optional[Documentable]) -> Callable[[str, List[ParseError], bool], ParsedDocstring]:
+def get_parser(obj: Optional[Documentable]) -> ParserFunction:
     """
     Just return the L{parse_docstring} function. 
     """
@@ -53,7 +53,7 @@ class ParsedPlaintextDocstring(ParsedDocstring):
     # We don't want to use docutils to process the plaintext format because we won't 
     # actually use the document tree ,it does not contains any additionnalt information compared to the raw docstring. 
     # Also, the consolidated fields handling in restructuredtext.py relies on this "pre" class.
-    def to_stan(self, docstring_linker: DocstringLinker, compact:bool=False) -> Tag:
+    def to_stan(self, docstring_linker: DocstringLinker) -> Tag:
         return tags.p(self._text, class_='pre')
     
     def to_node(self) -> nodes.document:
@@ -63,7 +63,7 @@ class ParsedPlaintextDocstring(ParsedDocstring):
             return self._document
         else:
             # create document
-            _document = utils.new_document('plaintext')
+            _document = new_document('plaintext')
 
             # split text into paragraphs
             paragraphs = [set_node_attributes(nodes.paragraph('',''), children=[

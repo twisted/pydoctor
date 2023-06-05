@@ -1,4 +1,4 @@
-from typing import List, Optional, cast, TYPE_CHECKING
+from typing import List, Optional, Type, cast, TYPE_CHECKING
 import re
 
 from pytest import mark, raises
@@ -6,14 +6,14 @@ import pytest
 from twisted.web.template import Tag, tags
 
 from pydoctor import epydoc2stan, model, linker
-from pydoctor.epydoc.markup import DocstringLinker
+from pydoctor.epydoc.markup import get_supported_docformats
 from pydoctor.stanutils import flatten, flatten_text
 from pydoctor.epydoc.markup.epytext import ParsedEpytextDocstring
 from pydoctor.sphinx import SphinxInventory
 from pydoctor.test.test_astbuilder import fromText, unwrap
-from pydoctor.test import CapSys
+from pydoctor.test import CapSys, NotFoundLinker
 from pydoctor.templatewriter.search import stem_identifier
-from pydoctor.utils import partialclass
+from pydoctor.templatewriter.pages import format_signature, format_class_signature
 
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable
@@ -71,11 +71,37 @@ def summary2html(obj: model.Documentable) -> str:
 
 
 def test_html_empty_module() -> None:
+    # checks the presence of at least one paragraph on all docstrings
     mod = fromText('''
     """Empty module."""
     ''')
     assert docstring2html(mod) == "<div>\n<p>Empty module.</p>\n</div>"
 
+    mod = fromText('''
+    """
+    Empty module.
+    
+    Another paragraph.
+    """
+    ''')
+    assert docstring2html(mod) == "<div>\n<p>Empty module.</p>\n<p>Another paragraph.</p>\n</div>"
+
+    mod = fromText('''
+    """C{thing}"""
+    ''', modname='module')
+    assert docstring2html(mod) == '<div>\n<p>\n<tt class="rst-docutils literal">thing</tt>\n</p>\n</div>'
+
+    mod = fromText('''
+    """My C{thing}."""
+    ''', modname='module')
+    assert docstring2html(mod) == '<div>\n<p>My <tt class="rst-docutils literal">thing</tt>.</p>\n</div>'
+
+    mod = fromText('''
+    """
+    @note: There is no paragraph here. 
+    """
+    ''')
+    assert '<p>' not in docstring2html(mod)
 
 def test_xref_link_not_found() -> None:
     """A linked name that is not found is output as text."""
@@ -164,7 +190,8 @@ def test_func_undocumented_return_nothing() -> None:
 
 def test_func_undocumented_return_something() -> None:
     """When the returned value is undocumented (no 'return' field) and its type
-    annotation is not None, include the "Returns" entry in the output.
+    annotation is not None, do not include the "Returns" entry in the field
+    table. It will be shown in the signature.
     """
     mod = fromText('''
     def get_answer() -> int:
@@ -173,17 +200,59 @@ def test_func_undocumented_return_something() -> None:
     func = mod.contents['get_answer']
     lines = docstring2html(func).splitlines()
     expected_html = [
-        '<div>', '<p class="undocumented">Undocumented</p>',
-        '<table class="fieldTable">',
+        '<div>',
+        '<p class="undocumented">Undocumented</p>',
+        '</div>',
+    ]
+    assert lines == expected_html, str(lines)
+
+def test_func_only_single_param_doc() -> None:
+    """When only a single parameter is documented, all parameters show with
+    undocumented parameters marked as such.
+    """
+    mod = fromText('''
+    def f(x, y):
+        """
+        @param x: Actual documentation.
+        """
+    ''')
+    lines = docstring2html(mod.contents['f']).splitlines()
+    expected_html = [
+        '<div>', '<table class="fieldTable">',
+        '<tr class="fieldStart">',
+        '<td class="fieldName" colspan="2">Parameters</td>',
+        '</tr>', '<tr>',
+        '<td class="fieldArgContainer">',
+        '<span class="fieldArg">x</span>',
+        '</td>', '<td class="fieldArgDesc">Actual documentation.</td>',
+        '</tr>', '<tr>',
+        '<td class="fieldArgContainer">',
+        '<span class="fieldArg">y</span>',
+        '</td>', '<td class="fieldArgDesc">',
+        '<span class="undocumented">Undocumented</span>',
+        '</td>', '</tr>', '</table>', '</div>',
+    ]
+    assert lines == expected_html, str(lines)
+
+def test_func_only_return_doc() -> None:
+    """When only return is documented but not parameters, only the return
+    section is visible.
+    """
+    mod = fromText('''
+    def f(x: str):
+        """
+        @return: Actual documentation.
+        """
+    ''')
+    lines = docstring2html(mod.contents['f']).splitlines()
+    expected_html = [
+        '<div>', '<table class="fieldTable">',
         '<tr class="fieldStart">',
         '<td class="fieldName" colspan="2">Returns</td>',
-        '</tr>',
-        '<tr>', '<td class="fieldArgContainer">', '<code>int</code>',
-        '</td>',
-        '<td class="fieldArgDesc">',
-        '<span class="undocumented">Undocumented</span>',
-        '</td>', '</tr>', '</table>', '</div>'
-        ]
+        '</tr>', '<tr>',
+        '<td colspan="2">Actual documentation.</td>',
+        '</tr>', '</table>', '</div>',
+    ]
     assert lines == expected_html, str(lines)
 
 # These 3 tests fails because AnnotationDocstring is not using node2stan() yet.
@@ -239,26 +308,60 @@ def test_func_arg_and_ret_annotation_with_override() -> None:
     classic_fmt = docstring2html(classic_mod.contents['f'])
     assert annotation_fmt == classic_fmt
 
-@pytest.mark.xfail
-def test_func_arg_when_doc_missing() -> None:
+def test_func_arg_when_doc_missing_ast_types() -> None:
+    """
+    Type hints are now included in the signature, so no need to 
+    docucument them twice in the param table, only if non of them has documentation.
+    """
     annotation_mod = fromText('''
     def f(a: List[str], b: int) -> bool:
         """
         Today I will not document details
         """
     ''')
-    classic_mod = fromText('''
-    def f(a):
-        """
-        Today I will not document details
+    annotation_fmt = docstring2html(annotation_mod.contents['f'])
+    
+    assert 'fieldTable' not in annotation_fmt
+    assert 'b:' not in annotation_fmt
+
+def _get_test_func_arg_when_doc_missing_docstring_fields_types_cases() -> List[str]:
+    case1="""
         @type a: C{List[str]}
         @type b: C{int}
-        @rtype: C{bool}
+        @rtype: C{bool}"""
+    
+    case2="""
+        Args
+        ----
+        a: List[str]
+        b: int
+        
+        Returns
+        -------
+        bool:"""
+    return [case1,case2]
+
+@pytest.mark.parametrize('sig', ['(a)', '(a:List[str])', '(a) -> bool', '(a:List[str], b:int) -> bool'])
+@pytest.mark.parametrize('doc', _get_test_func_arg_when_doc_missing_docstring_fields_types_cases())
+def test_func_arg_when_doc_missing_docstring_fields_types(sig:str, doc:str) -> None:
+    """
+    When type fields are present (whether they are coming from napoleon extension or epytext), always show the param table.
+    """
+    
+    classic_mod = fromText(f'''
+    __docformat__ = "{'epytext' if '@type' in doc else 'numpy'}"
+    def f{sig}:
+        """
+        Today I will not document details
+        {doc}
         """
     ''')
-    annotation_fmt = docstring2html(annotation_mod.contents['f'])
+
     classic_fmt = docstring2html(classic_mod.contents['f'])
-    assert annotation_fmt == classic_fmt
+    assert 'fieldTable' in classic_fmt
+    assert '<span class="fieldArg' in classic_fmt
+    assert 'Parameters' in classic_fmt
+    assert 'Returns' in classic_fmt
 
 def test_func_param_duplicate(capsys: CapSys) -> None:
     """Warn when the same parameter is documented more than once."""
@@ -593,33 +696,6 @@ def test_func_starargs_more(capsys: CapSys) -> None:
     captured = capsys.readouterr().out
     assert not captured
 
-def test_func_starargs_no_docstring(capsys: CapSys) -> None:
-    """
-    Star arguments, even if there are not docstring attached, will be rendered with stars.
-
-    @note: This test might not pass anymore when we include the annotations inside the signatures.
-    """
-
-    mod = fromText('''
-    def f(args:str, kwargs:str, *a:Any, **kwa:Any) -> None:
-        """
-        Do something with var-positional and var-keyword arguments.
-        """
-    ''', modname='<great>')
-
-    mod_fmt = docstring2html(mod.contents['f'])
-    
-    expected_parts = ['<span class="fieldArg">args:</span>', 
-                      '<span class="fieldArg">kwargs:</span>',
-                      '<span class="fieldArg">*a:</span>',
-                      '<span class="fieldArg">**kwa:</span>',]
-    
-    for part in expected_parts:
-        assert part in mod_fmt, mod_fmt
-    
-    captured = capsys.readouterr().out
-    assert not captured
-
 def test_summary() -> None:
     mod = fromText('''
     def single_line_summary():
@@ -774,7 +850,107 @@ def test_inline_field_name(capsys: CapSys) -> None:
     captured = capsys.readouterr().out
     assert captured == "test:5: Field in variable docstring should not include a name\n"
 
+@pytest.mark.parametrize('linkercls', [linker._EpydocLinker])
+def test_EpydocLinker_switch_context(linkercls:Type[linker._EpydocLinker]) -> None:
+    """
+    Test for switching the page context of the EpydocLinker.
+    """
+    mod = fromText('''
+    v=0
+    class Klass:
+        class InnerKlass(Klass):
+            def f():...
+            Klass = 'not this one!'
+            class v: 
+                'not this one!'
+    ''', modname='test')
+    Klass = mod.contents['Klass']
+    assert isinstance(Klass, model.Class)
+    InnerKlass = Klass.contents['InnerKlass']
+    assert isinstance(InnerKlass, model.Class)
+    
+    # patch with the linkercls
+    mod._linker = linkercls(mod)
+    Klass._linker = linkercls(Klass)
+    InnerKlass._linker = linkercls(InnerKlass)
 
+    # Evaluating the name of the base classes must be done in the upper scope
+    # in order to avoid the following to happen:
+    assert 'href="#Klass"' in flatten(InnerKlass.docstring_linker.link_to('Klass', 'Klass'))
+    
+    with Klass.docstring_linker.switch_context(InnerKlass):
+        assert 'href="test.Klass.html"' in flatten(Klass.docstring_linker.link_to('Klass', 'Klass'))
+    
+    assert 'href="#v"' in flatten(mod.docstring_linker.link_to('v', 'v'))
+    
+    with mod.docstring_linker.switch_context(InnerKlass):
+        assert 'href="index.html#v"' in flatten(mod.docstring_linker.link_to('v', 'v'))
+
+@pytest.mark.parametrize('linkercls', [linker._EpydocLinker])
+def test_EpydocLinker_switch_context_is_reentrant(linkercls:Type[linker._EpydocLinker], capsys:CapSys) -> None:
+    """
+    We can nest several calls to switch_context(), and links will still be valid and warnings line will be correct.
+    """
+    
+    mod = fromText('''
+    "L{thing.notfound}"
+    v=0
+    class Klass:
+        "L{thing.notfound}"
+        ...
+    ''', modname='test')
+    
+    Klass = mod.contents['Klass']
+    assert isinstance(Klass, model.Class)
+    
+    for ob in mod.system.allobjects.values():
+        epydoc2stan.ensure_parsed_docstring(ob)
+    
+    # patch with the linkercls
+    mod._linker = linkercls(mod)
+    Klass._linker = linkercls(Klass)
+
+    with Klass.docstring_linker.switch_context(mod):
+        assert 'href="#v"' in flatten(Klass.docstring_linker.link_to('v', 'v'))
+        with Klass.docstring_linker.switch_context(Klass):
+            assert 'href="index.html#v"' in flatten(Klass.docstring_linker.link_to('v', 'v'))
+    
+    assert capsys.readouterr().out == ''
+
+    mod.parsed_docstring.to_stan(mod.docstring_linker) #type:ignore
+    mod.parsed_docstring.get_summary().to_stan(mod.docstring_linker) # type:ignore
+
+    warnings = ['test:2: Cannot find link target for "thing.notfound" (you can link to external docs with --intersphinx)']
+    if linkercls is linker._EpydocLinker:
+        warnings = warnings * 2
+    assert capsys.readouterr().out.strip().splitlines() == warnings
+
+    # This is wrong:
+    Klass.parsed_docstring.to_stan(mod.docstring_linker) # type:ignore
+    Klass.parsed_docstring.get_summary().to_stan(mod.docstring_linker) # type:ignore
+    
+    # Because the warnings will be reported on line 2
+    warnings = ['test:2: Cannot find link target for "thing.notfound" (you can link to external docs with --intersphinx)']
+    warnings = warnings * 2
+    
+    assert capsys.readouterr().out.strip().splitlines() == warnings
+
+    # assert capsys.readouterr().out == ''
+
+    # Reset stan and summary, because they are supposed to be cached.
+    Klass.parsed_docstring._stan = None # type:ignore
+    Klass.parsed_docstring._summary = None # type:ignore
+
+    # This is better:
+    with mod.docstring_linker.switch_context(Klass):
+        Klass.parsed_docstring.to_stan(mod.docstring_linker) # type:ignore
+        Klass.parsed_docstring.get_summary().to_stan(mod.docstring_linker) # type:ignore
+
+    warnings = ['test:5: Cannot find link target for "thing.notfound" (you can link to external docs with --intersphinx)']
+    warnings = warnings * 2
+    
+    assert capsys.readouterr().out.strip().splitlines() == warnings
+    
 def test_EpydocLinker_look_for_intersphinx_no_link() -> None:
     """
     Return None if inventory had no link for our markup.
@@ -782,7 +958,7 @@ def test_EpydocLinker_look_for_intersphinx_no_link() -> None:
     system = model.System()
     target = model.Module(system, 'ignore-name')
     sut = target.docstring_linker
-    assert isinstance(sut, linker._CachedEpydocLinker)
+    assert isinstance(sut, linker._EpydocLinker)
 
     result = sut.look_for_intersphinx('base.module')
 
@@ -799,7 +975,7 @@ def test_EpydocLinker_look_for_intersphinx_hit() -> None:
     system.intersphinx = inventory
     target = model.Module(system, 'ignore-name')
     sut = target.docstring_linker
-    assert isinstance(sut, linker._CachedEpydocLinker)
+    assert isinstance(sut, linker._EpydocLinker)
 
     result = sut.look_for_intersphinx('base.module.other')
 
@@ -815,7 +991,7 @@ def test_EpydocLinker_adds_intersphinx_link_css_class() -> None:
     system.intersphinx = inventory
     target = model.Module(system, 'ignore-name')
     sut = target.docstring_linker
-    assert isinstance(sut, linker._CachedEpydocLinker)
+    assert isinstance(sut, linker._EpydocLinker)
 
     result1 = sut.link_xref('base.module.other', 'base.module.other', 0).children[0] # wrapped in a code tag
     result2 = sut.link_to('base.module.other', 'base.module.other')
@@ -836,9 +1012,9 @@ def test_EpydocLinker_resolve_identifier_xref_intersphinx_absolute_id() -> None:
     system.intersphinx = inventory
     target = model.Module(system, 'ignore-name')
     sut = target.docstring_linker
-    assert isinstance(sut, linker._CachedEpydocLinker)
+    assert isinstance(sut, linker._EpydocLinker)
 
-    url = sut.resolve_identifier('base.module.other')
+    url = sut.link_to('base.module.other', 'o').attributes['href']
     url_xref = sut._resolve_identifier_xref('base.module.other', 0)
 
     assert "http://tm.tld/some.html" == url
@@ -862,10 +1038,10 @@ def test_EpydocLinker_resolve_identifier_xref_intersphinx_relative_id() -> None:
         system, 'ext_module', parent=ext_package)
 
     sut = target.docstring_linker
-    assert isinstance(sut, linker._CachedEpydocLinker)
+    assert isinstance(sut, linker._EpydocLinker)
 
     # This is called for the L{ext_module<Pretty Text>} markup.
-    url = sut.resolve_identifier('ext_module')
+    url = sut.link_to('ext_module', 'ext').attributes['href']
     url_xref = sut._resolve_identifier_xref('ext_module', 0)
 
     assert "http://tm.tld/some.html" == url
@@ -887,10 +1063,10 @@ def test_EpydocLinker_resolve_identifier_xref_intersphinx_link_not_found(capsys:
     target.contents['ext_module'] = model.Module(
         system, 'ext_module', parent=ext_package)
     sut = target.docstring_linker
-    assert isinstance(sut, linker._CachedEpydocLinker)
+    assert isinstance(sut, linker._EpydocLinker)
 
     # This is called for the L{ext_module} markup.
-    assert sut.resolve_identifier('ext_module') is None
+    assert sut.link_to('ext_module', 'ext').tagName == ''
     assert not capsys.readouterr().out
     with raises(LookupError):
         sut._resolve_identifier_xref('ext_module', 0)
@@ -927,9 +1103,9 @@ def test_EpydocLinker_resolve_identifier_xref_order(capsys: CapSys) -> None:
     ''')
     mod.system.intersphinx = cast(SphinxInventory, InMemoryInventory())
     _linker = mod.docstring_linker
-    assert isinstance(_linker, linker._CachedEpydocLinker)
+    assert isinstance(_linker, linker._EpydocLinker)
 
-    url = _linker.resolve_identifier('socket.socket')
+    url = _linker.link_to('socket.socket', 's').attributes['href']
     url_xref = _linker._resolve_identifier_xref('socket.socket', 0)
 
     assert 'https://docs.python.org/3/library/socket.html#socket.socket' == url
@@ -950,99 +1126,16 @@ def test_EpydocLinker_resolve_identifier_xref_internal_full_name() -> None:
     # Dummy module that we want to link from.
     target = model.Module(system, 'ignore-name')
     sut = target.docstring_linker
-    assert isinstance(sut, linker._CachedEpydocLinker)
-    url = sut.resolve_identifier('internal_module.C')
+    assert isinstance(sut, linker._EpydocLinker)
+    url = sut.link_to('internal_module.C','C').attributes['href']
     xref = sut._resolve_identifier_xref('internal_module.C', 0)
 
     assert "internal_module.C.html" == url
     assert int_mod.contents['C'] is xref
 
-def test_CachedEpydocLinker() -> None:
+def test_EpydocLinker_None_context() -> None:
     """
-    The CachedEpydocLinker returns the same Tag object without resolving the name and re-creating the link tag all the time.
-    """
-    system = model.System()
-    inventory = SphinxInventory(system.msg)
-    inventory._links['base.module.other'] = ('http://tm.tld', 'some.html')
-    system.intersphinx = inventory
-    target = model.Module(system, 'ignore-name')
-    
-    sut = _TestCachedEpydocLinker(target, max_lookups=1)
-
-    result2 = sut.link_to('base.module.other', 'base.module.other')
-    assert 'base.module.other' in sut._link_to_cache
-    assert len(sut._link_to_cache['base.module.other'][True])==1
-    result1 = sut.link_xref('base.module.other', 'base.module.other', 0).children[0] # wrapped in a code tag
-    assert len(sut._link_xref_cache['base.module.other'][True])==0
-    assert len(sut._link_to_cache['base.module.other'][True])==1
-    result3 = sut.link_to('base.module.other', 'other')
-    assert len(sut._link_to_cache['base.module.other'][True])==2
-    result4 = sut.link_xref('base.module.other', 'other', 0).children[0]
-    assert len(sut._link_to_cache['base.module.other'][True])==2
-    assert len(sut._link_xref_cache['base.module.other'][True])==0
-
-    res = flatten(result2)
-    assert flatten(result1) == res == '<a href="http://tm.tld/some.html" class="intersphinx-link">base.module.other</a>'
-    assert flatten(result3) == flatten(result4) == '<a href="http://tm.tld/some.html" class="intersphinx-link">other</a>'
-
-class _TestCachedEpydocLinker(linker._CachedEpydocLinker):
-    """
-    Docstring linker for testing the caching of results.
-    """
-    
-    def __init__(self, obj: model.Documentable, max_lookups:int, same_page_optimization:bool=True) -> None:
-        super().__init__(obj, same_page_optimization)
-        self.lookups = 0
-        self.max_lookups = max_lookups
-
-    def link_to(self, target: str, label: "Flattenable") -> Tag:
-        link = self._lookup_cached_link_to(target, label)
-        if link is None: 
-            if self.lookups<self.max_lookups:
-                self.lookups+=1
-                link = super().link_to(target, label)
-            else:
-                raise AssertionError(f"Should not lookup link to {target!r}. Max lookups reached ({self.max_lookups} lookups). ")
-        return link
-    
-    def link_xref(self, target: str, label: "Flattenable", lineno:int) -> Tag:
-        link = self._lookup_cached_link_xref(target, label, lineno)
-        if link is None: 
-            if self.lookups<self.max_lookups:
-                self.lookups+=1
-                link = super().link_xref(target, label, lineno)
-            else:
-                raise AssertionError(f"Should not lookup link to {target!r}. Max lookups reached ({self.max_lookups} lookups). ")
-        else:
-            link = tags.code(link)
-        return link
-
-def test_TestCachedEpydocLinker() -> None:
-    """
-    A test case for the testing linker L{_TestCachedEpydocLinker}. 
-    The test linker is initialized with a maximum number of non-cached requests it can make
-    and an AssertionError is raised if it makes too many requests.
-    """
-    system = model.System()
-    inventory = SphinxInventory(system.msg)
-    inventory._links['base.module.other'] = ('http://tm.tld', 'some.html')
-    system.intersphinx = inventory
-    target = model.Module(system, 'ignore-name')
-    
-    sut = _TestCachedEpydocLinker(target, 2)
-    sut.link_xref('base.module.other', 'other', 1)
-    assert sut.lookups==1
-    assert len(sut._link_xref_cache['base.module.other'][True])==1
-    sut.link_xref('notfound', 'notfound', 1)
-    assert sut.lookups==2
-    assert len(sut._link_xref_cache['notfound'][True])==1
-
-    with pytest.raises(AssertionError):
-        sut.link_xref('anothername', 'again notfound', 1)
-
-def test_CachedEpydocLinker_same_page_optimization() -> None:
-    """
-    When _CachedEpydocLinker.same_page_optimization is True, the linker will create URLs with only the anchor
+    The linker will create URLs with only the anchor
     if we're lnking to an object on the same page. 
     
     Otherwise it will always use return a URL with a filename, this is used to generate the summaries.
@@ -1051,95 +1144,78 @@ def test_CachedEpydocLinker_same_page_optimization() -> None:
     base=1
     class someclass: ...
     ''', modname='module')
-    sut = _TestCachedEpydocLinker(mod, 3) # Raise if it makes more than 3 lookups.
-    assert isinstance(sut, linker._CachedEpydocLinker)
+    sut = mod.docstring_linker
+    assert isinstance(sut, linker._EpydocLinker)
     
-    sut.same_page_optimization=False
-    assert sut.link_to('base','module.base').attributes['href']=='index.html#base'
-    assert len(sut._link_to_cache['base'][False])==1, repr(sut._link_to_cache['base'][False])
-    assert sut.link_to('base','base').attributes['href']=='index.html#base'
-    assert len(sut._link_to_cache['base'][False])==2, sut._link_to_cache['base'][False]
-    assert sut.link_to('someclass','some random name').attributes['href']=='module.someclass.html'
+    assert sut.page_url == mod.url == cast(linker._EpydocLinker,mod.contents['base'].docstring_linker).page_url
+    
+    with sut.switch_context(None):
+        assert sut.page_url ==''
+        
+        assert sut.link_to('base','module.base').attributes['href']=='index.html#base'
+        assert sut.link_to('base','module.base').children[0]=='module.base'
+        
+        assert sut.link_to('base','base').attributes['href']=='index.html#base'
+        assert sut.link_to('base','base').children[0]=='base'
+        
+        assert sut.link_to('someclass','some random name').attributes['href']=='module.someclass.html'
+        assert sut.link_to('someclass','some random name').children[0]=='some random name'
 
-    sut.same_page_optimization=True
-    assert sut.link_to('base','base').attributes['href']=='#base'
-    assert sut.link_to('base','base').attributes['href']=='#base'
-    assert len(sut._link_to_cache['base'][True])==1
-    assert sut.link_to('base', tags.transparent('module.base')).attributes['href']=='#base'
-    assert sut.link_to('base', tags.transparent('module.base')).attributes['href']=='#base' 
-    # Tags are not properly understood right now but that's ok since these are only used
-    # when inserting a link with nested markup like L{B{driver} <pydoctor.driver>}
-    assert len(sut._link_to_cache['base'][False])==2
-    assert len(sut._link_to_cache['base'][True])==3
-
-    assert sut.link_to('someclass','some other name').attributes['href']=='module.someclass.html'
-    assert sut.link_to('someclass','a third name').attributes['href']=='module.someclass.html'
-    assert len(sut._link_to_cache['someclass'][False])==1
-    assert len(sut._link_to_cache['someclass'][True])==2
-
-    assert sut.link_to('notfound', 'notfound').children[0] == 'notfound'
-    assert sut.link_to('notfound', 'notfound.notfound').children[0] == 'notfound.notfound'
-    assert len(sut._link_to_cache['notfound'][True])==2
-
-def test_CachedEpydocLinker_warnings(capsys: CapSys) -> None:
+def test_EpydocLinker_warnings(capsys: CapSys) -> None:
     """
     Warnings should be reported only once per invalid name per line, 
     no matter the number of times we call summary2html() or docstring2html() or the order we call these functions.
     """
-    _default_class = linker._CachedEpydocLinker
-    try:
-        linker._CachedEpydocLinker = partialclass(_TestCachedEpydocLinker, max_lookups=2) # type:ignore
-        src = '''
-        """
-        L{base} L{regular text <notfound>} L{notfound} 
+    src = '''
+    """
+    L{base} L{regular text <notfound>} L{notfound} 
 
-        L{regular text <base>} L{B{look at the base} <base>} L{I{Important class} <notfound>}  L{notfound} 
-        """
-        base=1
-        '''
+    L{regular text <base>} L{B{look at the base} <base>} L{I{Important class} <notfound>}  L{notfound} 
+    """
+    base=1
+    '''
 
-        mod = fromText(src, modname='module')
-        assert isinstance(mod.docstring_linker, _TestCachedEpydocLinker)
-        assert mod.docstring_linker.max_lookups==2
-        assert 'href="#base"' in docstring2html(mod)
-        captured = capsys.readouterr().out
+    mod = fromText(src, modname='module')
 
-        # Here, we can see that the warning got reported only 2 times but 
-        # the error is present 4 times in the docstring. This is because 
-        # links are on the same line.
+    assert 'href="#base"' in docstring2html(mod)
+    captured = capsys.readouterr().out
 
-        # The rationale about xref warnings is now the following: 
-        # - Warns only once per unresolved identifier per line. 
+    # The rationale about xref warnings is to warn when the target cannot be found.
 
-        assert captured == 'module:3: Cannot find link target for "notfound"\nmodule:5: Cannot find link target for "notfound"\n'
+    assert captured == ('module:3: Cannot find link target for "notfound"'
+                        '\nmodule:3: Cannot find link target for "notfound"'
+                        '\nmodule:5: Cannot find link target for "notfound"'
+                        '\nmodule:5: Cannot find link target for "notfound"\n')
 
-        assert 'href="index.html#base"' in summary2html(mod)
-        summary2html(mod); docstring2html(mod)
-        
-        captured = capsys.readouterr().out
-
-        # Other warnings are not logged if running summary2html and docstring2html multiple times.
-        assert captured == ''
-
-        mod = fromText(src, modname='module')
-        assert isinstance(mod.docstring_linker, _TestCachedEpydocLinker)
-        assert mod.docstring_linker.max_lookups==2
-        assert 'href="index.html#base"' in summary2html(mod)
-        captured = capsys.readouterr().out
-
-        assert captured == 'module:3: Cannot find link target for "notfound"\n'
-        
-        html = docstring2html(mod)
-        captured = capsys.readouterr().out
-        assert captured == 'module:5: Cannot find link target for "notfound"\n'
-        assert 'href="#base"' in html
-        
-        docstring2html(mod); summary2html(mod)
-        captured = capsys.readouterr().out
-        assert captured == ''
+    assert 'href="index.html#base"' in summary2html(mod)
+    summary2html(mod)
     
-    finally:
-        linker._CachedEpydocLinker = _default_class # type:ignore
+    captured = capsys.readouterr().out
+
+    # No warnings are logged when generating the summary.
+    assert captured == ''
+
+def test_AnnotationLinker_xref(capsys: CapSys) -> None:
+    """
+    Even if the annotation linker is not designed to resolve xref,
+    it will still do the right thing by forwarding any xref requests to
+    the initial object's linker.
+    """
+
+    mod = fromText('''
+    class C:
+        var="don't use annotation linker for xref!"
+    ''')
+    mod.system.intersphinx = cast(SphinxInventory, InMemoryInventory())
+    _linker = linker._AnnotationLinker(mod.contents['C'])
+    
+    url = flatten(_linker.link_xref('socket.socket', 'socket', 0))
+    assert 'https://docs.python.org/3/library/socket.html#socket.socket' in url
+    assert not capsys.readouterr().out
+
+    url = flatten(_linker.link_xref('var', 'var', 0))
+    assert 'href="#var"' in url
+    assert not capsys.readouterr().out
 
 def test_xref_not_found_epytext(capsys: CapSys) -> None:
     """
@@ -1222,7 +1298,7 @@ def test_xref_not_found_restructured_in_para(capsys: CapSys) -> None:
     captured = capsys.readouterr().out
     assert captured == 'test:8: Cannot find link target for "NoSuchName"\n'
 
-class RecordingAnnotationLinker(DocstringLinker):
+class RecordingAnnotationLinker(NotFoundLinker):
     """A DocstringLinker implementation that cannot find any links,
     but does record which identifiers it was asked to link.
     """
@@ -1231,15 +1307,11 @@ class RecordingAnnotationLinker(DocstringLinker):
         self.requests: List[str] = []
 
     def link_to(self, target: str, label: "Flattenable") -> Tag:
-        self.resolve_identifier(target)
+        self.requests.append(target)
         return tags.transparent(label)
 
     def link_xref(self, target: str, label: "Flattenable", lineno: int) -> Tag:
         assert False
-
-    def resolve_identifier(self, identifier: str) -> Optional[str]:
-        self.requests.append(identifier)
-        return None
 
 @mark.parametrize('annotation', (
     '<bool>',
@@ -1533,12 +1605,18 @@ def test_insert_break_points_dotted_name() -> None:
     assert insert_break_points('pack._mod_.__einÜberlangerName__') == 'pack<wbr></wbr>._mod_<wbr></wbr>.__ein<wbr></wbr>Überlanger<wbr></wbr>Name__'
 
 def test_stem_identifier() -> None:
-    assert list(stem_identifier('__some_very_long_name__')) == [
-        'very', 'long', 'name'  # 'some' has been filtered out because it's part of the stop words.
-    ] 
+    assert list(stem_identifier('__some_very_long_name__')) == list(stem_identifier('__some_very_very_long_name__')) == [
+        'some', 'very', 'long', 'name',]
+    
+    assert list(stem_identifier('transitivity_maximum')) == [
+        'transitivity', 'maximum',]
+    
+    assert list(stem_identifier('ForEach')) == [
+        'For', 'Each',]
+
     assert list(stem_identifier('__someVeryLongName__')) == [
-        'Very', 'Long', 'Name'
-    ]
+        'some', 'Very', 'Long', 'Name', ]
+    
     assert list(stem_identifier('_name')) == ['name']
     assert list(stem_identifier('name')) == ['name']
     assert list(stem_identifier('processModuleAST')) == ['process', 'Module', 'AST']
@@ -1636,3 +1714,287 @@ def test_self_cls_in_function_params(capsys: CapSys) -> None:
     assert '<span class="fieldArg">cls</span>' not in html_which
     assert '<span class="fieldArg">self</span>' not in html_init
     assert '<span class="fieldArg">self</span>' in html_bool
+
+
+# tests for issue https://github.com/twisted/pydoctor/issues/661
+def test_dup_names_resolves_function_signature() -> None:
+    """
+    Annotations should always be resolved in the context of the module scope.
+    
+    For function signature, it's handled by having a special value formatter class for annotations. 
+    For the parameter table it's handled by the field handler.
+
+    Annotation are currently rendered twice, which is suboptimal and can cause inconsistencies.
+    """
+
+    src = '''\
+    class System:
+        dup = Union[str, bytes]
+        default = 3
+        def Attribute(self, t:'dup'=default) -> Type['Attribute']:
+            """
+            @param t: do not confuse with L{the class level one <dup>}.
+            @returns: stuff
+            """
+        
+    Attribute = 'thing'
+    dup = Union[str, bytes] # yes this one
+    default = 'not this one'
+    '''
+
+    mod = fromText(src, modname='model')
+
+    def_Attribute = mod.contents['System'].contents['Attribute']
+    assert isinstance(def_Attribute, model.Function)
+
+    sig = flatten(format_signature(def_Attribute))
+    assert 'href="index.html#Attribute"' in sig
+    assert 'href="index.html#dup"' in sig
+    assert 'href="#default"' in sig
+    
+    docstr = docstring2html(def_Attribute)
+    assert '<a href="index.html#dup" class="internal-link" title="model.dup">dup</a>' in docstr
+    assert '<a href="#dup" class="internal-link" title="model.System.dup">the class level one</a>' in docstr
+    assert 'href="index.html#Attribute"' in docstr
+
+def test_dup_names_resolves_annotation() -> None:
+    """
+    Annotations should always be resolved in the context of the module scope.
+
+    PEP-563 says: Annotations can only use names present in the module scope as 
+        postponed evaluation using local names is not reliable.
+
+    For Attributes, this is handled by the type2stan() function, because name linking is 
+        done at the stan tree generation step.
+    """
+
+    src = '''\
+    class System:
+        Attribute: typing.TypeAlias = 'str'
+        class Inner:
+            @property
+            def Attribute(self) -> Type['Attribute']:...
+        
+    Attribute = Union[str, int]
+    '''
+
+    mod = fromText(src, modname='model')
+
+    property_Attribute = mod.contents['System'].contents['Inner'].contents['Attribute']
+    assert isinstance(property_Attribute, model.Attribute)
+    stan = epydoc2stan.type2stan(property_Attribute)
+    assert stan is not None
+    assert 'href="index.html#Attribute"' in flatten(stan)
+
+    src = '''\
+    class System:
+        Attribute: Type['Attribute']
+        
+    Attribute = Union[str, int]
+    '''
+
+    mod = fromText(src, modname='model')
+
+    property_Attribute = mod.contents['System'].contents['Attribute']
+    assert isinstance(property_Attribute, model.Attribute)
+    stan = epydoc2stan.type2stan(property_Attribute)
+    assert stan is not None
+    assert 'href="index.html#Attribute"' in flatten(stan)
+
+# tests for issue https://github.com/twisted/pydoctor/issues/662
+def test_dup_names_resolves_base_class() -> None:
+    """
+    The class signature does not get confused when duplicate names are used.
+    """
+
+    src1 = '''\
+    from model import System, Generic
+    class System(System):
+        ...
+    class Generic(Generic[object]):
+        ...
+    '''
+    src2 = '''\
+
+    class System:
+        ...
+    class Generic:
+        ...    
+    '''
+    system = model.System()
+    builder = system.systemBuilder(system)
+    builder.addModuleString(src1, modname='custom')
+    builder.addModuleString(src2, modname='model')
+    builder.buildModules()
+
+    custommod,_ = system.rootobjects
+
+    systemClass = custommod.contents['System']
+    genericClass = custommod.contents['Generic']
+
+    assert isinstance(systemClass, model.Class) and isinstance(genericClass, model.Class)
+
+    assert 'href="model.System.html"' in flatten(format_class_signature(systemClass))
+    assert 'href="model.Generic.html"' in flatten(format_class_signature(genericClass))
+
+def test_class_level_type_alias() -> None:
+    src = '''
+    class C:
+        typ = int|str
+        def f(self, x:typ) -> typ:
+            ...
+        var: typ
+    '''
+    mod = fromText(src, modname='m')
+    C = mod.system.allobjects['m.C']
+    f = mod.system.allobjects['m.C.f']
+    var = mod.system.allobjects['m.C.var']
+
+    assert C.isNameDefined('typ')
+
+    assert isinstance(f, model.Function)
+    assert f.signature
+    assert "href" in repr(f.signature.parameters['x'].annotation)
+    assert "href" in repr(f.signature.return_annotation)
+
+    assert isinstance(var, model.Attribute)
+    assert "href" in flatten(epydoc2stan.type2stan(var) or '')
+
+def test_top_level_type_alias_wins_over_class_level(capsys:CapSys) -> None:
+    """
+    Pydoctor resolves annotations like pyright when 
+    "from __future__ import annotations" is enable, even if 
+    it's not actually enabled.
+    """
+    
+    src = '''
+    typ = str|bytes # <- this IS the one
+    class C:
+        typ = int|str # <- This is NOT the one.
+        def f(self, x:typ) -> typ:
+            ...
+        var: typ
+    '''
+    system = model.System()
+    system.options.verbosity = 1
+    mod = fromText(src, modname='m', system=system)
+    f = mod.system.allobjects['m.C.f']
+    var = mod.system.allobjects['m.C.var']
+
+    assert isinstance(f, model.Function)
+    assert f.signature
+    assert 'href="index.html#typ"' in repr(f.signature.parameters['x'].annotation)
+    assert 'href="index.html#typ"' in repr(f.signature.return_annotation)
+
+    assert isinstance(var, model.Attribute)
+    assert 'href="index.html#typ"' in flatten(epydoc2stan.type2stan(var) or '')
+
+    assert capsys.readouterr().out == """\
+m:5: ambiguous annotation 'typ', could be interpreted as 'm.C.typ' instead of 'm.typ'
+m:5: ambiguous annotation 'typ', could be interpreted as 'm.C.typ' instead of 'm.typ'
+m:7: ambiguous annotation 'typ', could be interpreted as 'm.C.typ' instead of 'm.typ'
+"""
+
+def test_not_found_annotation_does_not_create_link() -> None:
+    """
+    The docstring linker cache does not create empty <a> tags.
+    """
+
+    
+    from pydoctor.test.test_templatewriter import getHTMLOf
+
+    src = '''\
+    __docformat__ = 'numpy'
+
+    def link_to(identifier, label: NotFound):
+        """
+        :param label: the lable of the link.
+        :type identifier: Union[str, NotFound]
+        """
+
+    '''
+
+    mod = fromText(src)
+
+    html = getHTMLOf(mod)
+
+    assert '<a>NotFound</a>' not in html
+
+
+def test_docformat_skip_processtypes() -> None:
+    assert all([d in get_supported_docformats() for d in epydoc2stan._docformat_skip_processtypes])
+
+def test_returns_undocumented_still_show_up_if_params_documented() -> None:
+    """
+    The returns section will show up if any of the 
+    parameter are documented and the fucntion has a return annotation.
+    """
+    src = '''
+    def f(c:int) -> bool:
+        """
+        @param c: stuff
+        """
+    def g(c) -> bool:
+        """
+        @type c: int
+        """
+    def h(c):
+        """
+        @param c: stuff
+        """
+    def i(c) -> None:
+        """
+        @param c: stuff
+        """
+    '''
+
+    mod = fromText(src)
+
+    html_f = docstring2html(mod.contents['f'])
+    html_g = docstring2html(mod.contents['g'])
+    html_h = docstring2html(mod.contents['h'])
+    html_i = docstring2html(mod.contents['i'])
+
+    assert 'Returns</td>' in html_f
+    assert 'Returns</td>' in html_g
+
+    assert 'Returns</td>' not in html_h
+    assert 'Returns</td>' not in html_i
+
+def test_invalid_epytext_renders_as_plaintext(capsys: CapSys) -> None:
+    """
+    An invalid epytext docstring will be rederered as plaintext.
+    """
+
+    mod = fromText(''' 
+    def func():
+        """
+            Title
+            ~~~~~
+            
+
+            Hello
+            ~~~~~
+        """
+        pass
+    
+    ''', modname='invalid')
+
+    expected = """<div>
+<p class="pre">Title
+~~~~~
+
+
+Hello
+~~~~~</p>
+</div>"""
+    
+    actual = docstring2html(mod.contents['func'])
+    captured = capsys.readouterr().out
+    assert captured == ('invalid:4: bad docstring: Wrong underline character for heading.\n'
+                        'invalid:8: bad docstring: Wrong underline character for heading.\n')
+    assert actual  == expected
+
+    assert docstring2html(mod.contents['func'], docformat='plaintext') == expected
+    captured = capsys.readouterr().out
+    assert captured == ''

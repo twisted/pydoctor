@@ -4,8 +4,8 @@ pydoctor
 .. image:: https://img.shields.io/pypi/pyversions/pydoctor.svg
   :target: https://pypi.python.org/pypi/pydoctor
 
-.. image:: https://travis-ci.org/twisted/pydoctor.svg?branch=tox-travis-2
-  :target: https://travis-ci.org/twisted/pydoctor
+.. image:: https://github.com/twisted/pydoctor/actions/workflows/unit.yaml/badge.svg
+  :target: https://github.com/twisted/pydoctor/actions/workflows/unit.yaml
 
 .. image:: https://codecov.io/gh/twisted/pydoctor/branch/master/graph/badge.svg
   :target: https://codecov.io/gh/twisted/pydoctor
@@ -75,6 +75,38 @@ What's New?
 
 in development
 ^^^^^^^^^^^^^^
+
+* Fix annotation resolution edge cases: names are resolved in the context of the module 
+  scope when possible, when impossible, the theoretical runtime scopes are used. A warning can
+  be reported when an annotation name is ambiguous (can be resolved to different names 
+  depending on the scope context) with option ``-v``.
+
+pydoctor 23.4.1
+^^^^^^^^^^^^^^^
+
+* Pin ``urllib3`` version to keep compatibility with ``cachecontrol`` and python3.6.
+
+pydoctor 23.4.0
+^^^^^^^^^^^^^^^
+
+* Add support for Python 3.11
+* Add support for the ``@overload`` decorator.
+* Show type annotations in function's signatures.
+* If none of a function's parameters have documentation, do not render the parameter table.
+* Themes have been adjusted to render annotations more concisely.
+* Fix a rare crash in the type inference. 
+  Invalid python code like a set of lists would raise a uncaught TypeError in the evaluation.
+* Support when source path lies outside base directory (``--project-base-dir``).
+  Since pydoctor support generating docs for multiple packages, 
+  it is not certain that all of the source is even viewable below a single URL. 
+  We now allow to add arbitrary paths to the system, 
+  but only the objects inside a module wich path is relative to
+  the base directory can have a source control link generated.
+* Cache the default docutils settings on docutils>=0.19 to improve performance.
+* Improve the search bar user experience by automatically appending wildcard to each query terms
+  when no terms already contain a wildcard. 
+* Link recognized constructors in class page.
+* An invalid epytext docstring will be rederered as plaintext, just like invalid restructuredtext docstrings (finally).
 
 pydoctor 22.9.1
 ^^^^^^^^^^^^^^^
