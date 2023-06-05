@@ -296,7 +296,7 @@ class VisitorExt(_BaseVisitor[T]):
     Meaning:
       - If the main module visitor raises `SkipNode`, the extension visitor set to run ``AFTER`` will still visit this node, but not it's children.
       - If your extension visitor is set to run ``BEFORE`` the main visitor and it raises `SkipNode`, the main visitor will not visit this node.
-      - If a `SkipNode` or `SkipDeparture` exception is raised inside the main visitor `visit()` method,
+      - If a `SkipNode` or `SkipDeparture` exception is raised inside the main visitor `Visitor.visit()` method,
         the ``depart_*`` method on the extensions will still be called.
     
     See: `When` 
