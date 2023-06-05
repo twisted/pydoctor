@@ -4,7 +4,7 @@ import ast
 import sys
 
 from functools import partial
-from inspect import Parameter, Signature, signature
+from inspect import Parameter, Signature
 from itertools import chain
 from pathlib import Path
 from typing import (
@@ -30,7 +30,10 @@ if sys.version_info >= (3,8):
 else:
     _parse = ast.parse
 
-_property_signature = signature(property)
+_property_signature = Signature((Parameter('fget', Parameter.POSITIONAL_OR_KEYWORD, default=None),
+                                 Parameter('fset', Parameter.POSITIONAL_OR_KEYWORD, default=None),
+                                 Parameter('fdel', Parameter.POSITIONAL_OR_KEYWORD, default=None),
+                                 Parameter('doc', Parameter.POSITIONAL_OR_KEYWORD, default=None)))
 
 def _maybeAttribute(cls: model.Class, name: str) -> bool:
     """Check whether a name is a potential attribute of the given class.
