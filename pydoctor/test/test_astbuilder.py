@@ -2174,7 +2174,7 @@ def test_property_old_school_keywords(systemcls:Type[model.System], capsys:CapSy
 @systemcls_param
 def test_property_call_alone(systemcls:Type[model.System], capsys:CapSys) -> None:
     """
-    property() can be used whiout any getters or setters, or with lambda functions.
+    property() can be used without any getters or setters, or with lambda functions.
     """
     src = '''
     class PropertyBase:
