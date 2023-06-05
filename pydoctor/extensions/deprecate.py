@@ -54,12 +54,15 @@ class ModuleVisitor(extensions.ModuleVisitorExt):
         """
         Called after a class definition is visited.
         """
+        current = self.visitor.builder.current
         try:
-            cls = self.visitor.builder.current.contents[node.name]
+            cls = current.contents[node.name]
         except KeyError:
             # Classes inside functions are ignored.
             return
         if not isinstance(cls, model.Class):
+            return
+        if self.visitor._ignore_name(current, cls.name):
             return
         getDeprecated(cls, node.decorator_list)
 
@@ -67,13 +70,16 @@ class ModuleVisitor(extensions.ModuleVisitorExt):
         """
         Called after a function definition is visited.
         """
+        current = self.visitor.builder.current
         try:
             # Property or Function
-            func = self.visitor.builder.current.contents[node.name]
+            func = current.contents[node.name]
         except KeyError:
             # Inner functions are ignored.
             return
         if not isinstance(func, (model.Function, model.Attribute)):
+            return
+        if self.visitor._ignore_name(current, func.name):
             return
         getDeprecated(func, node.decorator_list)
 
