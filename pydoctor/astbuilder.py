@@ -166,13 +166,12 @@ class ModuleVistor(NodeVisitor):
         self.builder = builder
         self.system = builder.system
         self.module = module
-        self._override_guard_state: Tuple[bool, model.Documentable, Sequence[str]] = \
-                                    (False, cast(model.Documentable, None), [])
+        self._override_guard_state: Tuple[bool, Optional[model.Documentable], Sequence[str]] = (False, None, ())
     
     @contextlib.contextmanager
     def override_guard(self) -> Iterator[None]:
         """
-        Returns a context manager that will make the builder ignore any extraneous 
+        Returns a context manager that will make the builder ignore any new 
         assigments to existing names within the same context.  Currently used to visit C{If.orelse} and C{Try.handlers}.
         
         @note: The list of existing names is generated at the moment of
@@ -186,7 +185,8 @@ class ModuleVistor(NodeVisitor):
         yield
         self._override_guard_state = ignore_override_init
     
-    def _list_names(self, ob: model.Documentable) -> List[str]:
+    @staticmethod
+    def _list_names(ob: model.Documentable) -> List[str]:
         """
         List the names currently defined in a class/module.
         """
@@ -195,8 +195,11 @@ class ModuleVistor(NodeVisitor):
             names.extend(ob._localNameToFullName_map)
         return names
 
-    def _name_in_override_guard(self, ob: model.Documentable, name:str) -> bool:
-        """Should this name be ignored because it matches the override guard in the context of C{ob}?"""
+    def _ignore_name(self, ob: model.Documentable, name:str) -> bool:
+        """
+        Should this C{name} be ignored because it matches 
+        the override guard in the context of C{ob}?
+        """
         return self._override_guard_state[0] is True \
             and self._override_guard_state[1] is ob \
                 and name in self._override_guard_state[2]
@@ -248,7 +251,7 @@ class ModuleVistor(NodeVisitor):
         if isinstance(parent, model.Function):
             raise self.SkipNode()
         # Ignore in override guard
-        if self._name_in_override_guard(parent, node.name):
+        if self._ignore_name(parent, node.name):
             raise self.SkipNode()
 
         rawbases = []
@@ -468,7 +471,7 @@ class ModuleVistor(NodeVisitor):
                 asname = orgname
             
             # Ignore in override guard
-            if self._name_in_override_guard(current, asname):
+            if self._ignore_name(current, asname):
                 continue
             
             if mod is not None and self._handleReExport(exports, orgname, asname, mod) is True:
@@ -505,7 +508,7 @@ class ModuleVistor(NodeVisitor):
                 # we're keeping track of all defined names
                 asname = targetname = targetname.split('.')[0]
             # Ignore in override guard
-            if self._name_in_override_guard(current, asname):
+            if self._ignore_name(current, asname):
                 continue
             _localNameToFullName[asname] = targetname
 
@@ -684,7 +687,7 @@ class ModuleVistor(NodeVisitor):
             return
         if not _maybeAttribute(cls, name):
             return
-        if self._name_in_override_guard(cls, name):
+        if self._ignore_name(cls, name):
             return
 
         # Class variables can only be Attribute, so it's OK to cast because we used _maybeAttribute() above.
@@ -777,7 +780,7 @@ class ModuleVistor(NodeVisitor):
         if isinstance(targetNode, ast.Name):
             target = targetNode.id
             scope = self.builder.current
-            if self._name_in_override_guard(scope, target):
+            if self._ignore_name(scope, target):
                 return
             if isinstance(scope, model.Module):
                 self._handleAssignmentInModule(target, annotation, expr, lineno)
@@ -839,7 +842,7 @@ class ModuleVistor(NodeVisitor):
         if isinstance(parent, model.Function):
             raise self.SkipNode()
         # Ignore in override guard
-        if self._name_in_override_guard(parent, node.name):
+        if self._ignore_name(parent, node.name):
             raise self.SkipNode()
 
         lineno = node.lineno
