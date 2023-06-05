@@ -837,13 +837,13 @@ class FunctionOverload:
     decorators: Sequence[ast.expr]
 
 def init_properties(system:'System') -> None:
-    # Machup property functions into an Attribute that already exist.
-    # We are transforming the tree at the end only.
-    to_prune: List[Documentable] = []
+    # Machup property Functons into the Property object,
+    # and remove them from the tree.
+    to_prune: Set[Documentable] = set()
     for attrib in system.objectsOfType(Property):
-        to_prune.extend(init_property(attrib))
+        to_prune.update(init_property(attrib))
     
-    for obj in set(to_prune):
+    for obj in to_prune:
         system._remove(obj)
         assert obj.parent is not None
         if obj.name in obj.parent.contents:
@@ -851,54 +851,56 @@ def init_properties(system:'System') -> None:
 
 def init_property(attrib:'Property') -> Iterator['Function']:
     """
-    Initiates the L{Attribute} that represent the property in the tree.
+    Initiates the L{Property} that represent the property in the tree.
 
-    Returns the functions to remove from the tree. If the property matchup fails
+    Returns the functions to remove from the tree.
     """
     getter = attrib.getter
     setter = attrib.setter
     deleter = attrib.deleter
 
     if getter is None:
-        # The getter should never be None
+        # The getter should never be None, 
+        # but it can execpitinally happend when
+        # one uses the property() call alone.
         return ()
 
     # avoid cyclic import
     from pydoctor import epydoc2stan
     
-    # Setup Attribute object for the property    
-    attrib.docstring = getter.docstring
-    attrib.annotation = getter.annotations.get('return')
+    # Setup Attribute object for the property
+    if not attrib.docstring:
+        attrib.docstring = getter.docstring
+        attrib.docstring_lineno = getter.docstring_lineno
     
+    attrib.annotation = getter.annotations.get('return')
     attrib.extra_info.extend(getter.extra_info)
 
     # Parse docstring now.
     if epydoc2stan.ensure_parsed_docstring(getter):
     
-        pdoc = getter.parsed_docstring
-        assert pdoc is not None
+        parsed_doc = getter.parsed_docstring
+        assert parsed_doc is not None
 
         other_fields = []
         # process fields such that :returns: clause docs takes the whole docs 
         # if no global description is written.
-        for field in pdoc.fields:
+        for field in parsed_doc.fields:
             tag = field.tag()
             if tag == 'return':
-                if not pdoc.has_body:
-                    pdoc = field.body()
+                if not parsed_doc.has_body:
+                    parsed_doc = field.body()
             elif tag == 'rtype':
                 attrib.parsed_type = field.body()
             else:
                 other_fields.append(field)
         
-        pdoc.fields = other_fields
+        parsed_doc.fields = other_fields
         
         # Set the new attribute parsed docstring
-        attrib.parsed_docstring = pdoc
+        attrib.parsed_docstring = parsed_doc
 
-    # maybe TODO: Add inheritence info to getter/setter/deleters
-
-    # Yield the objects to remove from the Documentable tree
+    # Yields the objects to remove from the Documentable tree
     yield getter
     if setter:
         yield setter
@@ -911,16 +913,25 @@ class Attribute(Inheritable):
     annotation: Optional[ast.expr]
     value: Optional[ast.expr] = None
     """
-    The value of the assignment expression. 
-
-    None value means the value is not initialized 
-    at the current point of the the process. 
-    Or maybe it can be that the attribute is a property.
+    The value of the assignment expression.
     """
 
 class Property(Attribute):
     kind: DocumentableKind = DocumentableKind.PROPERTY
-    
+
+    getter:Optional['Function'] = None
+    """
+    The getter.
+    """
+    setter: Optional['Function'] = None
+    """
+    None if it has not been set with C{@<name>.setter} decorator.
+    """
+    deleter: Optional['Function'] = None
+    """
+    None if it has not been set with C{@<name>.deleter} decorator.
+    """
+
     class Kind(Enum):
         GETTER = 1
         SETTER = 2
@@ -932,21 +943,6 @@ class Property(Attribute):
             return self.getter.decorators
         return None
 
-    def setup(self) -> None:
-        super().setup()
-        self.getter:Optional['Function'] = None
-        """
-        The getter.
-        """
-        self.setter: Optional['Function'] = None
-        """
-        None if it has not been set with C{@<name>.setter} decorator.
-        """
-        self.deleter: Optional['Function'] = None
-        """
-        None if it has not been set with C{@<name>.deleter} decorator.
-        """
-    
     def store_function(self, kind: 'Property.Kind', func:'Function') -> None:
         if kind is Property.Kind.GETTER:
             self.getter = func

@@ -2055,9 +2055,10 @@ def test_instance_var_override_in_property(systemcls: Type[model.System]) -> Non
     assert mod.contents['A'].contents['_data'].kind is model.DocumentableKind.INSTANCE_VARIABLE
 
 @systemcls_param
-def test_property_inherited(systemcls: Type[model.System], capsys: CapSys) -> None:
+def test_property_inherited_not_supported(systemcls: Type[model.System], capsys: CapSys) -> None:
     """
-    Properties can be inherited.
+    Properties can be inherited, but we don't support it for now :/
+    Nevertheless, the test case exist for future developments.
     """
     # source from cpython test_property.py
     src = '''
@@ -2088,84 +2089,86 @@ def test_property_inherited(systemcls: Type[model.System], capsys: CapSys) -> No
         def spam(self):
             """SubClass.setter"""
             pass
-    
-    class SubClass3(BaseClass):
-        # inherited property
-        @BaseClass.spam.deleter
-        def spam(self):
-            """SubClass.deleter"""
-            pass
     '''
     mod = fromText(src, modname='mod', systemcls=systemcls)
     assert not capsys.readouterr().out
 
     spam0 = mod.contents['BaseClass'].contents['spam']
-    spam1 = mod.contents['SubClass'].contents['spam']
-    spam2 = mod.contents['SubClass2'].contents['spam']
-    spam3 = mod.contents['SubClass3'].contents['spam']
+    spam1 = mod.contents['SubClass'].contents['spam.getter']
+    spam2 = mod.contents['SubClass2'].contents['spam.setter']
 
-    assert list(mod.contents['BaseClass'].contents) == \
-        list(mod.contents['SubClass'].contents) == \
-        list(mod.contents['SubClass2'].contents) == \
-        list(mod.contents['SubClass3'].contents) == ['spam']
+    assert list(mod.contents['BaseClass'].contents) == ['spam']
+    assert list(mod.contents['SubClass'].contents) == ['spam.getter']
+    assert list(mod.contents['SubClass2'].contents) == ['spam.setter']
 
     assert isinstance(spam0, model.Property)
-    assert isinstance(spam1, model.Property)
-    assert isinstance(spam2, model.Property)
-    assert isinstance(spam3, model.Property)
+    assert isinstance(spam1, model.Function)
+    assert isinstance(spam2, model.Function)
 
     assert spam0.kind is model.DocumentableKind.PROPERTY
-    assert spam1.kind is model.DocumentableKind.PROPERTY
-    assert spam2.kind is model.DocumentableKind.PROPERTY
-    assert spam3.kind is model.DocumentableKind.PROPERTY
+    assert spam1.kind is model.DocumentableKind.METHOD
+    assert spam2.kind is model.DocumentableKind.METHOD
 
     assert isinstance(spam0.setter, model.Function)
-    assert isinstance(spam1.setter, model.Function)
-    assert isinstance(spam2.setter, model.Function)
-    assert isinstance(spam3.setter, model.Function)
 
     assert isinstance(spam0.deleter, model.Function)
-    assert isinstance(spam1.deleter, model.Function)
-    assert isinstance(spam2.deleter, model.Function)
-    assert isinstance(spam3.deleter, model.Function)
 
     assert spam0.getter.fullName() == 'mod.BaseClass.spam.getter' #type:ignore[union-attr]
-    assert spam0.setter.fullName() == 'mod.BaseClass.spam.setter'
-    assert spam0.deleter.fullName() == 'mod.BaseClass.spam.deleter'
-
-    assert spam1.getter.fullName() == 'mod.SubClass.spam.getter' #type:ignore[union-attr]
-    assert spam1.setter.fullName() == 'mod.BaseClass.spam.setter'
-    assert spam1.deleter.fullName() == 'mod.BaseClass.spam.deleter'
-
-    assert spam2.getter.fullName() == 'mod.BaseClass.spam.getter' #type:ignore[union-attr]
-    assert spam2.setter.fullName() == 'mod.SubClass2.spam.setter'
-    assert spam2.deleter.fullName() == 'mod.BaseClass.spam.deleter'
-
-    assert spam3.getter.fullName() == 'mod.BaseClass.spam.getter' #type:ignore[union-attr]
-    assert spam3.setter.fullName() == 'mod.BaseClass.spam.setter'
-    assert spam3.deleter.fullName() == 'mod.SubClass3.spam.deleter'
-
-    assert spam1.getter is not spam0.getter
 
 @systemcls_param
 def test_property_old_school(systemcls: Type[model.System], capsys: CapSys) -> None:
     """
-    We don't support it for now.
+    
     """
-    '''
+    src = '''
     class PropertyDocBase(object):
         _spam = 1
         def _get_spam(self):
             return self._spam
         # Old school property
         spam = property(_get_spam, doc="spam spam spam")
-    class PropertyDocSub(PropertyDocBase):
-        @PropertyDocBase.spam.getter
-        def spam(self):
-            # The docstring is ignored since the property is defined with old school manner
-            """The decorator does not use this doc string"""
-            return self._spam
+
     '''
+    mod = fromText(src, modname='mod', systemcls=systemcls)
+    assert not capsys.readouterr().out
+
+    spam = mod.resolveName('PropertyDocBase.spam')
+    assert isinstance(spam, model.Property)
+    assert spam.docstring == "spam spam spam"
+
+@systemcls_param
+def test_property_old_school_keywords(systemcls:Type[model.System], capsys:CapSys) -> None:
+    src = '''
+    class Circle:
+        def __init__(self, radius):
+            self._radius = radius
+
+        def _get_radius(self):
+            # should not have docs here,
+            # since there is doc parameter to the property() call.
+            return self._radius
+
+        def _set_radius(self, value):
+            "setter docs"
+            self._radius = value
+
+        def _del_radius(self):
+            "deleter docs"
+            del self._radius
+
+        radius = property(
+            fget=_get_radius,
+            fset=_set_radius,
+            fdel=_del_radius,
+            doc="The radius property."
+        )
+    '''
+    mod = fromText(src, modname='mod', systemcls=systemcls)
+    assert not capsys.readouterr().out
+
+    spam = mod.resolveName('Circle.radius')
+    assert isinstance(spam, model.Property)
+    assert spam.docstring == "The radius property."
 
 @systemcls_param
 def test_property_getter_override(systemcls: Type[model.System], capsys: CapSys) -> None:
@@ -2194,9 +2197,11 @@ def test_property_getter_override(systemcls: Type[model.System], capsys: CapSys)
     assert attr.linenumber == 4
 
 @systemcls_param
-def test_property_corner_cases(systemcls: Type[model.System], capsys: CapSys) -> None:
+def test_property_not_supported_or_corner_cases(systemcls: Type[model.System], capsys: CapSys) -> None:
     """
     Property handling can be quite complex, there are many corner cases.
+    But the general rule is that when a function ressemble a property function, 
+    it's renamed such that it ends with .setter or .deleter.
     """
 
     base_mod = '''
@@ -2299,21 +2304,21 @@ def test_property_corner_cases(systemcls: Type[model.System], capsys: CapSys) ->
     mod = system.allobjects['mod']
     src = system.allobjects['src']
 
-    # Pydoctor doesn't understand this property because it's using an 
-    # import cycle. So the older behaviour applies: 
-    # only renaming the method
+    # Pydoctor doesn't understand this property because it's inherited.
+    # And plus it belong in a import cycle. So the older behaviour applies: 
+    # only renaming the methods
     assert list(mod.contents['SubClass'].contents) == ['spam.getter']
     assert mod.contents['SubClass'].contents['spam.getter'].kind is model.DocumentableKind.METHOD
 
-    assert list(src.contents['SubClass'].contents) == ['spam']
-    assert list(src.contents['NotSubClass'].contents) == ['spam']
+    assert list(src.contents['SubClass'].contents) == ['spam.getter']
+    assert list(src.contents['NotSubClass'].contents) == ['spam.setter','spam.getter']
 
-    spam0 = src.contents['SubClass'].contents['spam']
-    spam1 = src.contents['NotSubClass'].contents['spam']
+    spam0 = src.contents['SubClass'].contents['spam.getter']
+    spam1 = src.contents['NotSubClass'].contents['spam.getter']
 
-    assert list(src.contents['InvalidClass'].contents) == ['spam', 'spam.getter']
+    assert list(src.contents['InvalidClass'].contents) == ['spam.setter', 'spam.getter']
 
-    spam2 = src.contents['InvalidClass'].contents['spam']
+    spam2 = src.contents['InvalidClass'].contents['spam.setter']
     spam2_bogus = src.contents['InvalidClass'].contents['spam.getter']
 
     notfound = src.contents['InvalidClass2'].contents['notfound.getter']
@@ -2322,9 +2327,9 @@ def test_property_corner_cases(systemcls: Type[model.System], capsys: CapSys) ->
     notfound_alt = src.contents['InvalidClass4'].contents['notfound']
     not_a_property = src.contents['InvalidClass5'].contents['notfound.getter']
 
-    assert spam0.kind is model.DocumentableKind.PROPERTY
-    assert spam1.kind is model.DocumentableKind.PROPERTY
-    assert spam2.kind is model.DocumentableKind.PROPERTY
+    assert spam0.kind is model.DocumentableKind.METHOD
+    assert spam1.kind is model.DocumentableKind.METHOD
+    assert spam2.kind is model.DocumentableKind.METHOD
     assert spam2_bogus.kind is model.DocumentableKind.METHOD
     assert notfound.kind is model.DocumentableKind.METHOD
     assert notfound_both.kind is model.DocumentableKind.METHOD

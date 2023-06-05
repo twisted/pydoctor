@@ -4,7 +4,7 @@ import ast
 import sys
 
 from functools import partial
-from inspect import Parameter, Signature
+from inspect import Parameter, Signature, signature
 from itertools import chain
 from pathlib import Path
 from typing import (
@@ -30,6 +30,7 @@ if sys.version_info >= (3,8):
 else:
     _parse = ast.parse
 
+_property_signature = signature(property)
 
 def _maybeAttribute(cls: model.Class, name: str) -> bool:
     """Check whether a name is a potential attribute of the given class.
@@ -155,31 +156,6 @@ def _is_property_decorator(dottedname:Sequence[str], ctx:model.Documentable) -> 
         # TODO: Support property subclasses.
         return True
     return False
-
-
-def _get_inherited_property(dottedname:Sequence[str], parent: model.Documentable) -> Optional[model.Property]:
-    """
-    Fetch the inherited property that this new decorator overrides.
-    Returns C{None} if it doesn't exist in the inherited members or if it's already definied in the locals.
-    The dottedname must have at least three elements, else return C{None}.
-    """
-    # TODO: It would be best if this job was done in post-processing...
-
-    property_name = dottedname[:-1]
-    
-    if len(property_name) <= 1 or property_name[-1] in parent.contents:
-        # the property already exist
-        return None
-
-    # attr can be a getter/setter/deleter
-    # note: the class on which the property is defined does not have
-    # to be in the MRO of the parent
-    attr_def = parent.resolveName('.'.join(property_name))
-    
-    if not isinstance(attr_def, model.Property):
-        return None
-    
-    return attr_def
 
 def _get_property_function_kind(dottedname:Sequence[str]) -> Optional[model.Property.Kind]:
     """
@@ -483,6 +459,8 @@ class ModuleVistor(NodeVisitor):
         if not isinstance(func, ast.Name):
             return False
         func_name = func.id
+        if func_name == 'property':
+            return self._handleOldSchoolPropertyDecoration(target, expr)
         args = expr.args
         if len(args) != 1:
             return False
@@ -503,6 +481,34 @@ class ModuleVistor(NodeVisitor):
                 return True
         return False
     
+    def _handleOldSchoolPropertyDecoration(self, target: str, expr: ast.Call) -> bool:
+        try:
+            bound_args = astutils.bind_args(_property_signature, expr)
+        except:
+            return False
+        
+        cls = self.builder.current
+
+        getter = node2dottedname(bound_args.arguments.get('fget'))
+        setter = node2dottedname(bound_args.arguments.get('fset'))
+        deleter = node2dottedname(bound_args.arguments.get('fdel'))
+        doc = bound_args.arguments.get('doc')
+
+        attr = self._addProperty(target, cls, expr.lineno)
+        if getter:
+            attr.getter = cls.contents.get(getter[0])
+        if setter:
+            attr.setter = cls.contents.get(setter[0])
+        if deleter:
+            attr.deleter = cls.contents.get(deleter[0])
+        
+        if doc:
+            if attr.getter and attr.getter.docstring:
+                attr.report('Proerty docstring is overriden by property() call "doc" argument.')
+            attr.setDocstring(doc)
+        
+        return True
+
     def _warnsConstantAssigmentOverride(self, obj: model.Attribute, lineno_offset: int) -> None:
         obj.report(f'Assignment to constant "{obj.name}" overrides previous assignment '
                     f'at line {obj.linenumber}, the original value will not be part of the docs.', 
@@ -793,9 +799,8 @@ class ModuleVistor(NodeVisitor):
     def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
         self._handleFunctionDef(node, is_async=False)
 
-    def _addProperty(self, node:Union[ast.AsyncFunctionDef, ast.FunctionDef], 
-                     parent:model.Documentable, lineno:int,) -> model.Property:
-        attribute = self.builder.addAttribute(node.name, 
+    def _addProperty(self, name:str, parent:model.Documentable, lineno:int,) -> model.Property:
+        attribute = self.builder.addAttribute(name, 
                                  model.DocumentableKind.PROPERTY, 
                                  parent)
         attribute.setLineNumber(lineno)
@@ -846,8 +851,8 @@ class ModuleVistor(NodeVisitor):
                         is_classmethod = True
                     elif deco_name == ['staticmethod']:
                         is_staticmethod = True
-                        # Pre-handle property elements
                     else:
+                        # Pre-handle property elements
                         property_function_kind = _get_property_function_kind(deco_name)
                         if property_function_kind:
                             # Setters and deleters should have the same name as the property function,
@@ -872,27 +877,22 @@ class ModuleVistor(NodeVisitor):
         property_model: Optional[model.Property] = None
         is_new_property: bool = is_property
         
-        if property_deco is not None:
-            # Looks like inherited property
-            if len(property_deco)>2:
-                _inherited_property = _get_inherited_property(property_deco, parent)
-                if _inherited_property:
-                    property_model = self._addProperty(node, parent, lineno)
-                    # copy property defs info
-                    property_model.getter = _inherited_property.getter
-                    property_model.setter = _inherited_property.setter
-                    property_model.deleter = _inherited_property.deleter
-                    is_new_property = True
-            else:
-                # fetch property info to add this info to it
+        if property_deco:
+            if len(property_deco)==2:
+                # This is a property getter or deleter
+                # We don't support non local properties definitions (when len(property_deco)>2)
+                # I've only saw this in cpython test cases.
                 _maybe_prop = self.builder.current.contents.get(node.name)
                 if isinstance(_maybe_prop, model.Property):
                     property_model = _maybe_prop
+                # We don't report warnings if we can't figure out the property model.
         
         elif is_property:
-            property_model = self._addProperty(node, parent, lineno)
+            # This is a new property definition
+            property_model = self._addProperty(node.name, parent, lineno)
             property_function_kind = model.Property.Kind.GETTER
-            # Rename the getter as well
+            # Rename the getter function as well, since both the Property and the Function will
+            # live side by side until properties are post-processed.
             func_name = node.name + '.getter'
         
         # Push and analyse function 
