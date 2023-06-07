@@ -595,6 +595,7 @@ class TestIntersphinxCache:
             def send(
                     self: requests.adapters.HTTPAdapter,
                     request: requests.PreparedRequest,
+                    *args:object,
                     **kwargs: object
                     ) -> requests.Response:
                 response: requests.Response
