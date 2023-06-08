@@ -2120,6 +2120,19 @@ def test_type_alias(systemcls: Type[model.System]) -> None:
     assert mod.contents['F'].contents['Q'].kind == model.DocumentableKind.INSTANCE_VARIABLE
 
 @systemcls_param
+def test_typevartuple(systemcls: Type[model.System]) -> None:
+    """
+    Variadic type variables are recognized.
+    """
+
+    mod = fromText('''
+    from typing import TypeVarTuple
+    Shape = TypeVarTuple('Shape')
+    ''', systemcls=systemcls)
+
+    assert mod.contents['Shape'].kind == model.DocumentableKind.TYPE_VARIABLE
+
+@systemcls_param
 def test_prepend_package(systemcls: Type[model.System]) -> None:
     """
    Option --prepend-package option relies simply on the L{ISystemBuilder} interface, 
