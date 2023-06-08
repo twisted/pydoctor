@@ -58,6 +58,10 @@ publish your API documentation to your default GitHub Pages website.
 Return codes
 ------------
 
+Pydoctor is a pretty verbose tool by default. It’s quite unlikely that you get a zero exit code on the first run. 
+But don’t worry, pydoctor should have produced useful HTML pages no matter your project design or docstrings. 
+
+Exit codes includes:
 - ``0``: All docstrings are well formatted (warnings may be printed).
 - ``1``: Pydoctor crashed with traceback (default Python behaviour).
 - ``2``: Some docstrings are mal formatted.
