@@ -21,7 +21,7 @@ def get_all_documents_flattenable(system: model.System) -> Iterator[Dict[str, "F
     """
     Get a generator for all data to be writen into ``all-documents.html`` file.
     """
-    # This function accounts for about 17% of pydoctor runtime. 
+    # This function accounts for a substantial proportion of pydoctor runtime. 
     # So it's optimized.
     insert_break_points = epydoc2stan.insert_break_points
     format_kind = epydoc2stan.format_kind
