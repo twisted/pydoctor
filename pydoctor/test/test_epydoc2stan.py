@@ -696,6 +696,114 @@ def test_func_starargs_more(capsys: CapSys) -> None:
     captured = capsys.readouterr().out
     assert not captured
 
+def test_func_starargs_hidden_when_keywords_documented(capsys:CapSys) -> None:
+    """
+    When a function accept variable keywords (**kwargs) and keywords are specifically
+    documented and the **kwargs IS NOT documented: entry for **kwargs IS NOT presented at all.
+
+    In other words: They variable keywords argument documentation is optional when specific documentation
+    is given for each keyword, and when missing, no warning is raised.
+    """
+    # tests for issue https://github.com/twisted/pydoctor/issues/697
+
+    mod = fromText('''
+    __docformat__='restructuredtext'
+    def f(one, two, **kwa) -> None:
+        """
+        var-keyword arguments are specifically documented. 
+
+        :param one: some regular argument
+        :param two: some regular argument
+        :keyword something: An argument
+        :keyword another: Another
+        """
+    ''')
+
+    html = docstring2html(mod.contents['f'])
+    assert '**kwa' not in html
+    assert not capsys.readouterr().out
+
+def test_func_starargs_shown_when_documented(capsys:CapSys) -> None:
+    """
+    When a function accept variable keywords (**kwargs) and keywords are specifically
+    documented and the **kwargs IS documented: entry for **kwargs IS presented AFTER all keywords.
+
+    In other words: When a function has the keywords arguments, the keywords can have dedicated 
+    docstring, besides the separate documentation for each keyword.
+    """
+
+    mod = fromText('''
+    __docformat__='restructuredtext'
+    def f(one, two, **kwa) -> None:
+        """
+       var-keyword arguments are specifically documented as well as other extra keywords.
+
+        :param one: some regular argument
+        :param two: some regular argument
+        :param kwa: Other keywords are passed to ``parse`` function.
+        :keyword something: An argument
+        :keyword another: Another
+        """
+    ''')
+    html = docstring2html(mod.contents['f'])
+    # **kwa should be presented AFTER all other parameters
+    assert re.match('.+one.+two.+something.+another.+kwa', html, flags=re.DOTALL)
+    assert not capsys.readouterr().out
+
+def test_func_starargs_shown_when_undocumented(capsys:CapSys) -> None:
+    """
+    When a function accept variable keywords (**kwargs) and NO keywords are specifically
+    documented and the **kwargs IS NOT documented: entry for **kwargs IS presented as undocumented.
+    """
+
+    mod = fromText('''
+    __docformat__='restructuredtext'
+    def f(one, two, **kwa) -> None:
+        """
+        var-keyword arguments are not specifically documented
+
+        :param one: some regular argument
+        :param two: some regular argument
+        """
+    ''')
+
+    html = docstring2html(mod.contents['f'])
+    assert re.match('.+one.+two.+kwa', html, flags=re.DOTALL)
+    assert not capsys.readouterr().out
+
+def test_func_starargs_wrongly_documented(capsys: CapSys) -> None:
+    numpy_wrong = fromText('''
+    __docformat__='numpy'
+    def f(one, **kwargs):
+        """
+        var-keyword arguments are wrongly documented with the "Arguments" section.
+
+        Arguments
+        ---------
+        kwargs:
+            var-keyword arguments
+        stuff:
+            a var-keyword argument
+        """
+    ''', modname='numpy_wrong')
+
+    rst_wrong = fromText('''
+    __docformat__='restructuredtext'
+    def f(one, **kwargs):
+        """
+        var-keyword arguments are wrongly documented with the "param" field.
+
+        :param kwargs: var-keyword arguments
+        :param stuff: a var-keyword argument
+        """
+    ''', modname='rst_wrong')
+
+    docstring2html(numpy_wrong.contents['f'])
+    assert 'Documented parameter "stuff" does not exist, variable keywords should be documented with the "Keyword Arguments" section' in capsys.readouterr().out
+    
+    docstring2html(rst_wrong.contents['f'])
+    assert 'Documented parameter "stuff" does not exist, variable keywords should be documented with the "keyword" field' in capsys.readouterr().out
+
 def test_summary() -> None:
     mod = fromText('''
     def single_line_summary():
