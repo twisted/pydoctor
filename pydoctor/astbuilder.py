@@ -182,8 +182,8 @@ class ModuleVistor(NodeVisitor):
         Should this C{name} be ignored because it matches 
         the override guard in the context of C{ob}?
         """
-        return self._override_guard_state[1] is ob \
-                and name in self._override_guard_state[2]
+        ctx, names = self._override_guard_state
+        return ctx is ob and name in names
 
     def visit_If(self, node: ast.If) -> None:
         if isinstance(node.test, ast.Compare):
