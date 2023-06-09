@@ -4,6 +4,7 @@ General purpose visitor pattern implementation, with extensions.
 from collections import defaultdict
 import enum
 import abc
+from itertools import chain
 from typing import Dict, Generic, Iterable, List, Optional, Type, TypeVar
 
 T = TypeVar("T")
@@ -76,9 +77,10 @@ class Visitor(_BaseVisitor[T], abc.ABC):
     Base class for `Visitor`-related tree pruning exceptions.
 
     Raise subclasses from within ``visit_...`` or ``depart_...`` methods
-    called from `Visitor.walk()` and `Visitor.walkabout()` tree traversals to prune
+    called from `Visitor.walkabout()` tree traversals to prune
     the tree traversed.
     """
+    skip_extensions = False
   class SkipChildren(_TreePruningException):
     """
     Do not visit any children of the current node.  The current node's
@@ -89,10 +91,12 @@ class Visitor(_BaseVisitor[T], abc.ABC):
     Do not visit the current node's children, and do not call the current
     node's ``depart_...`` method.
     """
-  class SkipExtensions(_TreePruningException):
-    """
-    Like `SkipNode`, but also applies to extentions.
-    """
+    def __init__(self, skip_extensions:bool=False) -> None:
+       """
+       :param skip_extensions: Whether to skip visitor extentions as well.
+       """
+       super().__init__()
+       self.skip_extensions = skip_extensions
     
   def visit(self, ob: T) -> None:
     """Extend the base visit with extensions.
@@ -100,39 +104,41 @@ class Visitor(_BaseVisitor[T], abc.ABC):
     Parameters:
         node: The node to visit.
     """
-    for v in self.extensions.before_visit + self.extensions.outter_visit:
+    for v in chain(self.extensions.before_visit, self.extensions.outter_visit):
       v.visit(ob)
     
     pruning = None
     try:
       super().visit(ob)
-    except self.SkipExtensions:
-      raise
     except self._TreePruningException as ex:
+      if ex.skip_extensions:
+        # this exception should be raised right away since it means
+        # not visiting the extension visitors.
+        raise
       pruning = ex
 
-    for v in self.extensions.after_visit + self.extensions.inner_visit:
+    for v in chain(self.extensions.after_visit, self.extensions.inner_visit):
       v.visit(ob)
     
     if pruning:
       raise pruning
   
-  def depart(self, ob: T, call_depart:bool=True) -> None:
+  def depart(self, ob: T, call_depart:bool) -> None:
     """Extend the base depart with extensions."""
     
-    for v in self.extensions.before_visit + self.extensions.inner_visit:
+    for v in chain(self.extensions.before_visit, self.extensions.inner_visit):
       v.depart(ob)
     
     if call_depart:
       super().depart(ob)
 
-    for v in self.extensions.after_visit + self.extensions.outter_visit:
+    for v in chain(self.extensions.after_visit, self.extensions.outter_visit):
       v.depart(ob)
 
   def walkabout(self, ob: T) -> None:
     """
-    Perform a tree traversal similarly to `walk()` (which
-    see), except also call the `depart()` method before exiting each node.
+    Perform a tree traversal, calling `visit()` method when entering a 
+    node and the `depart()` method before exiting each node.
 
     Takes special care to handle  L{_TreePruningException} the following way:
 
@@ -141,22 +147,21 @@ class Visitor(_BaseVisitor[T], abc.ABC):
 
     :param ob: An object to walk.
     """
-    call_extensions = True
     call_depart = True
     try:
       try:
         self.visit(ob)
-      except self.SkipNode:
-        call_depart = False
-      except self.SkipExtensions:
-        call_extensions = call_depart = False
+      except self.SkipNode as e:
+        if e.skip_extensions:
+          return
+        else:
+          call_depart = False
       else:
         for child in self.get_children(ob):
-            self.walkabout(child)
+          self.walkabout(child)
     except self.SkipChildren:
       pass
-    if call_extensions:
-      self.depart(ob, call_depart)
+    self.depart(ob, call_depart)
 
 # Adapted from https://github.com/pawamoy/griffe
 # Copyright (c) 2021, Timothée Mazzucotelli

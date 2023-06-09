@@ -60,10 +60,6 @@ class ModuleVisitor(extensions.ModuleVisitorExt):
         except KeyError:
             # Classes inside functions are ignored.
             return
-        if not isinstance(cls, model.Class):
-            return
-        if self.visitor._ignore_name(current, cls.name):
-            return
         getDeprecated(cls, node.decorator_list)
 
     def depart_FunctionDef(self, node:ast.FunctionDef) -> None:
@@ -76,10 +72,6 @@ class ModuleVisitor(extensions.ModuleVisitorExt):
             func = current.contents[node.name]
         except KeyError:
             # Inner functions are ignored.
-            return
-        if not isinstance(func, (model.Function, model.Attribute)):
-            return
-        if self.visitor._ignore_name(current, func.name):
             return
         getDeprecated(func, node.decorator_list)
 

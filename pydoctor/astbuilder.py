@@ -243,7 +243,7 @@ class ModuleVistor(NodeVisitor):
             raise self.SkipNode()
         # Ignore in override guard
         if self._ignore_name(parent, node.name):
-            raise self.SkipNode()
+            raise self.SkipNode(skip_extensions=True)
 
         rawbases = []
         initialbases = []
@@ -834,7 +834,7 @@ class ModuleVistor(NodeVisitor):
             raise self.SkipNode()
         # Ignore in override guard
         if self._ignore_name(parent, node.name):
-            raise self.SkipNode()
+            raise self.SkipNode(skip_extensions=True)
 
         lineno = node.lineno
 

@@ -125,3 +125,24 @@ def test_attrs_args(systemcls: Type[model.System], capsys: CapSys) -> None:
         'test:13: Unable to figure out value for "auto_attribs" argument to attr.s(), maybe too complex\n'
         'test:16: Value for "auto_attribs" argument to attr.s() has type "int", expected "bool"\n'
         )
+
+@attrs_systemcls_param
+def test_attrs_class_else_branch(systemcls: Type[model.System]) -> None:
+    
+    mod = fromText('''
+    import attr
+    foo = bar = lambda:False
+    
+    if foo():
+        pass
+    else:
+        @attr.s
+        class C:
+            if bar():
+                pass
+            else:
+                var = attr.ib()
+    ''', systemcls=systemcls)
+
+    var = mod.contents['C'].contents['var']
+    assert var.kind is model.DocumentableKind.INSTANCE_VARIABLE
