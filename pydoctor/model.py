@@ -693,7 +693,7 @@ class Class(CanContainImportsDocumentable):
             return list(self.allbases(include_self))
         _mro: Sequence[Union[str, Class]]
         if include_external is False:
-            _mro = list(o for o in self._mro if not isinstance(o, str))
+            _mro = [o for o in self._mro if not isinstance(o, str)]
         else:
             _mro = self._mro
         if include_self is False:
