@@ -10,7 +10,7 @@ from itertools import chain
 from pathlib import Path
 from typing import (
     Any, Callable, Collection, Dict, Iterable, Iterator, List, Mapping, Optional, Sequence, Tuple,
-    Type, TypeVar, Union, cast
+    Type, TypeVar, Union, Set, cast
 )
 
 import astor
@@ -155,7 +155,7 @@ class ModuleVistor(NodeVisitor):
         self.builder = builder
         self.system = builder.system
         self.module = module
-        self._override_guard_state: Tuple[bool, Optional[model.Documentable], Sequence[str]] = (False, None, ())
+        self._override_guard_state: Tuple[Optional[model.Documentable], Set[str]] = (None, set())
     
     @contextlib.contextmanager
     def override_guard(self) -> Iterator[None]:
@@ -172,27 +172,17 @@ class ModuleVistor(NodeVisitor):
         ignore_override_init = self._override_guard_state
         # we list names only once to ignore new names added inside the block,
         # they should be overriden as usual.
-        self._override_guard_state = (True, ctx, self._list_names(ctx))
+        self._override_guard_state = (ctx, set(chain(ctx.contents, 
+                                                     ctx._localNameToFullName_map)))
         yield
         self._override_guard_state = ignore_override_init
     
-    @staticmethod
-    def _list_names(ob: model.Documentable) -> Tuple[str, ...]:
-        """
-        List the names currently defined in a class/module.
-        """
-        names = tuple(ob.contents)
-        if isinstance(ob, model.CanContainImportsDocumentable):
-            names += tuple(ob._localNameToFullName_map)
-        return names
-
     def _ignore_name(self, ob: model.Documentable, name:str) -> bool:
         """
         Should this C{name} be ignored because it matches 
         the override guard in the context of C{ob}?
         """
-        return self._override_guard_state[0] is True \
-            and self._override_guard_state[1] is ob \
+        return self._override_guard_state[1] is ob \
                 and name in self._override_guard_state[2]
 
     def visit_If(self, node: ast.If) -> None:
