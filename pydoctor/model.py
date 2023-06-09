@@ -531,7 +531,7 @@ def is_exception(cls: 'Class') -> bool:
             return True
     return False
 
-def compute_mro(cls:'Class') -> Tuple[Union['Class', str],...]:
+def compute_mro(cls:'Class') -> Sequence[Union['Class', str]]:
     """
     Compute the method resolution order for this class.
     This function will also set the 
@@ -587,7 +587,7 @@ def compute_mro(cls:'Class') -> Tuple[Union['Class', str],...]:
         return list(localbases(o))
 
     init_finalbaseobjects(cls)
-    return tuple(mro.mro(cls, getbases))
+    return mro.mro(cls, getbases)
 
 def _find_dunder_constructor(cls:'Class') -> Optional['Function']:
     """
@@ -614,7 +614,7 @@ class Class(CanContainImportsDocumentable):
     # set in post-processing:
     _finalbaseobjects: Optional[List[Optional['Class']]] = None 
     _finalbases: Optional[List[str]] = None
-    _mro: Optional[Tuple[Union['Class', str],...]] = None
+    _mro: Optional[Sequence[Union['Class', str]]] = None
 
     def setup(self) -> None:
         super().setup()
@@ -640,7 +640,7 @@ class Class(CanContainImportsDocumentable):
             self._mro = compute_mro(self)
         except ValueError as e:
             self.report(str(e), 'mro')
-            self._mro = tuple(self.allbases(True))
+            self._mro = list(self.allbases(True))
     
     def _init_constructors(self) -> None:
         """
@@ -690,10 +690,10 @@ class Class(CanContainImportsDocumentable):
             in the AST visitors, it will return the same as C{list(self.allbases(include_self))}.
         """
         if self._mro is None:
-            return tuple(self.allbases(include_self))
-        _mro: Tuple[Union[str, Class],...]
+            return list(self.allbases(include_self))
+        _mro: Sequence[Union[str, Class]]
         if include_external is False:
-            _mro = tuple(o for o in self._mro if not isinstance(o, str))
+            _mro = list(o for o in self._mro if not isinstance(o, str))
         else:
             _mro = self._mro
         if include_self is False:
