@@ -76,10 +76,13 @@ What's New?
 in development
 ^^^^^^^^^^^^^^
 
+* Do not show `**kwargs` when keywords are specifically documented with the `keyword` field
+  and no specific documentation is given for the `**kwargs` entry.
 * Fix annotation resolution edge cases: names are resolved in the context of the module 
   scope when possible, when impossible, the theoretical runtime scopes are used. A warning can
   be reported when an annotation name is ambiguous (can be resolved to different names 
   depending on the scope context) with option ``-v``.
+* Recognize variadic generics type variables (PEP 646).
 
 pydoctor 23.4.1
 ^^^^^^^^^^^^^^^
