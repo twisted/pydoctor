@@ -6,7 +6,7 @@ from collections import defaultdict
 import enum
 from typing import (
     TYPE_CHECKING, Any, Callable, ClassVar, DefaultDict, Dict, Generator,
-    Iterator, List, Mapping, Optional, Sequence, Tuple,
+    Iterator, List, Mapping, Optional, Sequence, Tuple, Union,
 )
 import ast
 import re
@@ -99,9 +99,20 @@ class FieldDesc:
             yield tags.td(formatted, colspan="2")
 
 @attr.s(auto_attribs=True)
-class SignatureDesc(FieldDesc):
+class _SignatureDesc(FieldDesc):
     type_origin: Optional['FieldOrigin'] = None
 
+    def is_documented(self) -> bool:
+        return bool(self.body or self.type_origin is FieldOrigin.FROM_DOCSTRING)
+
+@attr.s(auto_attribs=True)
+class ReturnDesc(_SignatureDesc):...
+
+@attr.s(auto_attribs=True)
+class ParamDesc(_SignatureDesc):...
+
+@attr.s(auto_attribs=True)
+class KeywordDesc(_SignatureDesc):...
 
 class RaisesDesc(FieldDesc):
     """Description of an exception that can be raised by function/method."""
@@ -243,8 +254,8 @@ class FieldHandler:
 
         self.types: Dict[str, Optional[ParamType]] = {}
 
-        self.parameter_descs: List[SignatureDesc] = []
-        self.return_desc: Optional[SignatureDesc] = None
+        self.parameter_descs: List[Union[ParamDesc, KeywordDesc]] = []
+        self.return_desc: Optional[ReturnDesc] = None
         self.yields_desc: Optional[FieldDesc] = None
         self.raise_descs: List[RaisesDesc] = []
         self.warns_desc: List[FieldDesc] = []
@@ -277,7 +288,7 @@ class FieldHandler:
             ann_ret = annotations['return']
             assert ann_ret is not None  # ret_type would be None otherwise
             if not is_none_literal(ann_ret):
-                self.return_desc = SignatureDesc(type=ret_type.stan, type_origin=ret_type.origin)
+                self.return_desc = ReturnDesc(type=ret_type.stan, type_origin=ret_type.origin)
 
     @staticmethod
     def _report_unexpected_argument(field:Field) -> None:
@@ -287,7 +298,7 @@ class FieldHandler:
     def handle_return(self, field: Field) -> None:
         self._report_unexpected_argument(field)
         if not self.return_desc:
-            self.return_desc = SignatureDesc()
+            self.return_desc = ReturnDesc()
         self.return_desc.body = field.format()
     handle_returns = handle_return
 
@@ -301,7 +312,7 @@ class FieldHandler:
     def handle_returntype(self, field: Field) -> None:
         self._report_unexpected_argument(field)
         if not self.return_desc:
-            self.return_desc = SignatureDesc()
+            self.return_desc = ReturnDesc()
         self.return_desc.type = field.format()
         self.return_desc.type_origin = FieldOrigin.FROM_DOCSTRING
     handle_rtype = handle_returntype
@@ -314,6 +325,10 @@ class FieldHandler:
     handle_ytype = handle_yieldtype
 
     def _handle_param_name(self, field: Field) -> Optional[str]:
+        """
+        Returns the Field name and trigger a few warnings for a few scenarios.
+        Note that the return type could be L{VariableArgument} or L{KeywordArgument} or L{str}.
+        """
         name = field.arg
         if name is None:
             field.report('Parameter name missing')
@@ -327,7 +342,7 @@ class FieldHandler:
             # Constructor parameters can be documented on the class.
             annotations = field.source.constructor_params
         # This might look useless, but it's needed in order to keep the
-        # right str type: str, VariableArgument or KeyowrdArgument. And then add the stars accordingly.
+        # right return type and then add the stars accordingly.
         if annotations is not None:
             for param_name, _ in annotations.items():
                 if param_name == name:
@@ -352,7 +367,14 @@ class FieldHandler:
             if name in source.constructor_params:
                 # Constructor parameters can be documented on the class.
                 return
-        field.report('Documented parameter "%s" does not exist' % (name,))
+        msg = f'Documented parameter "{name}" does not exist'
+        if any(isinstance(n, KeywordArgument) for n in self.types):
+            msg += ', variable keywords should be documented with the '
+            if _get_docformat(self.obj) in ('google', 'numpy'):
+                msg += '"Keyword Arguments" section'
+            else:
+                msg += '"keyword" field'
+        field.report(msg)
 
     def handle_type(self, field: Field) -> None:
         if isinstance(self.obj, model.Attribute):
@@ -383,7 +405,7 @@ class FieldHandler:
         if name is not None:
             if any(desc.name == name for desc in self.parameter_descs):
                 field.report('Parameter "%s" was already documented' % (name,))
-            self.parameter_descs.append(SignatureDesc(name=name, body=field.format()))
+            self.parameter_descs.append(ParamDesc(name=name, body=field.format()))
             if name not in self.types:
                 self._handle_param_not_found(name, field)
 
@@ -393,7 +415,7 @@ class FieldHandler:
         name = self._handle_param_name(field)
         if name is not None:
             # TODO: How should this be matched to the type annotation?
-            self.parameter_descs.append(SignatureDesc(name=name, body=field.format()))
+            self.parameter_descs.append(KeywordDesc(name=name, body=field.format()))
             if name in self.types:
                 field.report('Parameter "%s" is documented as keyword' % (name,))
 
@@ -450,14 +472,14 @@ class FieldHandler:
         m(field)
 
     def resolve_types(self) -> None:
-        """Merge information from 'param' fields and AST analysis."""
+        """Merge information from 'param'/'keyword' fields and AST analysis."""
 
         params = {param.name: param for param in self.parameter_descs}
         any_info = bool(params)
 
         # We create a new parameter_descs list to ensure the parameter order
         # matches the AST order.
-        new_parameter_descs: List[SignatureDesc] = []
+        new_parameter_descs: List[Union[ParamDesc, KeywordDesc]] = []
         for index, (name, param_type) in enumerate(self.types.items()):
             try:
                 param = params.pop(name)
@@ -471,7 +493,7 @@ class FieldHandler:
                     if name=='cls' and self.obj.kind is model.DocumentableKind.CLASS_METHOD:
                         continue
 
-                param = SignatureDesc(name=name,
+                param = ParamDesc(name=name,
                     type=param_type.stan if param_type else None,
                     type_origin=param_type.origin if param_type else None,)
 
@@ -491,16 +513,32 @@ class FieldHandler:
         if any_info:
             self.parameter_descs = new_parameter_descs
 
+        # loops thought the parameters and remove eventual **kwargs 
+        # entry if keywords are specifically documented.
+        kwargs = None
+        has_keywords = False
+        for p in self.parameter_descs:
+            if isinstance(p.name, KeywordArgument):
+                kwargs = p
+                continue
+            if isinstance(p, KeywordDesc):
+                has_keywords = True
+        if kwargs:
+            self.parameter_descs.remove(kwargs)
+            if not has_keywords or kwargs.is_documented():
+                # make sure **kwargs row is presented last in the parameter table
+                self.parameter_descs.append(kwargs)
+
     def format(self) -> Tag:
         r: List[Tag] = []
 
         # Only include parameter or return sections if any are documented or any type are documented from @type fields.
         include_params = False
-        if any((p.body or p.type_origin is FieldOrigin.FROM_DOCSTRING) for p in self.parameter_descs):
+        if any(p.is_documented() for p in self.parameter_descs):
             r += format_desc_list('Parameters', self.parameter_descs)
             include_params = True
 
-        if self.return_desc and (include_params or self.return_desc.body or self.return_desc.type_origin is FieldOrigin.FROM_DOCSTRING):
+        if self.return_desc and (include_params or self.return_desc.is_documented()):
             r += format_desc_list('Returns', [self.return_desc])
 
         if self.yields_desc:
