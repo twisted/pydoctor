@@ -6,9 +6,10 @@ Support for L{attrs}.
 import ast
 import inspect
 
-from typing import Optional, Union
+from typing import Optional
 
 from pydoctor import astbuilder, model, astutils, extensions
+from pydoctor.extensions._dataclass_like import DataclasLikeClass, DataclassLikeVisitor
 
 import attr
 
@@ -17,6 +18,12 @@ attrs_decorator_signature = inspect.signature(attr.s)
 
 attrib_signature = inspect.signature(attr.ib)
 """Signature of the L{attr.ib} function for defining class attributes."""
+
+def is_attrs_deco(deco: ast.AST, module: model.Module) -> bool:
+    if isinstance(deco, ast.Call):
+        deco = deco.func
+    return astutils.node2fullname(deco, module) in (
+        'attr.s', 'attr.attrs', 'attr.attributes')
 
 def uses_auto_attribs(call: ast.AST, module: model.Module) -> bool:
     """Does the given L{attr.s()} decoration contain C{auto_attribs=True}?
@@ -28,9 +35,9 @@ def uses_auto_attribs(call: ast.AST, module: model.Module) -> bool:
         L{False} in all other cases: if C{auto_attribs} is not passed,
         if an explicit L{False} is passed or if an error was reported.
     """
-    if not isinstance(call, ast.Call):
+    if not is_attrs_deco(call, module):
         return False
-    if not astutils.node2fullname(call.func, module) in ('attr.s', 'attr.attrs', 'attr.attributes'):
+    if not isinstance(call, ast.Call):
         return False
     try:
         args = astutils.bind_args(attrs_decorator_signature, call)
@@ -77,9 +84,8 @@ def attrib_args(expr: ast.expr, ctx: model.Documentable) -> Optional[inspect.Bou
     @return: The arguments, or L{None} if C{expr} does not look like
         an C{attr.ib} definition or the arguments passed to it are invalid.
     """
-    if isinstance(expr, ast.Call) and astutils.node2fullname(expr.func, ctx) in (
-            'attr.ib', 'attr.attrib', 'attr.attr'
-            ):
+    if is_attrib(expr, ctx):
+        assert isinstance(expr, ast.Call)
         try:
             return astutils.bind_args(attrib_signature, expr)
         except TypeError as ex:
@@ -91,7 +97,6 @@ def attrib_args(expr: ast.expr, ctx: model.Documentable) -> Optional[inspect.Bou
     return None
 
 def annotation_from_attrib(
-        self: astbuilder.ModuleVistor,
         expr: ast.expr,
         ctx: model.Documentable
         ) -> Optional[ast.expr]:
@@ -111,63 +116,40 @@ def annotation_from_attrib(
             return astbuilder._infer_type(default)
     return None
 
-class ModuleVisitor(extensions.ModuleVisitorExt):
+class ModuleVisitor(DataclassLikeVisitor):
     
     def visit_ClassDef(self, node:ast.ClassDef) -> None:
         """
         Called when a class definition is visited.
         """
-        cls = self.visitor.builder.current
-        if not isinstance(cls, model.Class) or cls.name!=node.name:
+        super().visit_ClassDef(node)
+
+        cls = self.visitor.builder._stack[-1].contents.get(node.name)
+        if not isinstance(cls, AttrsClass):
             return
 
-        assert isinstance(cls, AttrsClass)
         cls.auto_attribs = any(uses_auto_attribs(decnode, cls.module) for decnode in node.decorator_list)
-
-    def _handleAttrsAssignmentInClass(self, target:str, node: Union[ast.Assign, ast.AnnAssign]) -> None:
-        cls = self.visitor.builder.current
-        assert isinstance(cls, AttrsClass)
-
-        attr: Optional[model.Documentable] = cls.contents.get(target)
-        if attr is None:
-            return
-        if not isinstance(attr, model.Attribute):
-            return
-
-        annotation = node.annotation if isinstance(node, ast.AnnAssign) else None
-        
-        if is_attrib(node.value, cls) or (
-               cls.auto_attribs and \
-               annotation is not None and \
-               not astutils.is_using_typing_classvar(annotation, cls)):
-            
-            attr.kind = model.DocumentableKind.INSTANCE_VARIABLE
-            if annotation is None and node.value is not None:
-                attr.annotation = annotation_from_attrib(self.visitor, node.value, cls)
-
-    def _handleAttrsAssignment(self, node: Union[ast.Assign, ast.AnnAssign]) -> None:
-        for dottedname in astutils.iterassign(node):
-            if dottedname and len(dottedname)==1:
-                # Here, we consider single name assignment only
-                current = self.visitor.builder.current
-                if isinstance(current, model.Class):
-                    self._handleAttrsAssignmentInClass(
-                        dottedname[0], node
-                    )
-        
-    def visit_Assign(self, node: Union[ast.Assign, ast.AnnAssign]) -> None:
-        self._handleAttrsAssignment(node)
-    visit_AnnAssign = visit_Assign
-
-class AttrsClass(extensions.ClassMixin, model.Class):
     
-    def setup(self) -> None:
-        super().setup()
-        self.auto_attribs: bool = False
-        """
-        L{True} if this class uses the C{auto_attribs} feature of the L{attrs}
-        library to automatically convert annotated fields into attributes.
-        """
+    def transformClassVar(self, cls: model.Class, 
+                          attr: model.Attribute, 
+                          annotation:Optional[ast.expr],
+                          value:Optional[ast.expr]) -> None:
+        assert isinstance(cls, AttrsClass)
+        if is_attrib(value, cls) or (cls.auto_attribs and annotation is not None):
+            attr.kind = model.DocumentableKind.INSTANCE_VARIABLE
+            if annotation is None and value is not None:
+                attr.annotation = annotation_from_attrib(value, cls)
+    
+    def isDataclassLike(self, cls:ast.ClassDef, mod:model.Module) -> bool:
+        return any(is_attrs_deco(dec, mod) for dec in cls.decorator_list)
+
+class AttrsClass(DataclasLikeClass, model.Class):
+    
+    auto_attribs: bool = False
+    """
+    L{True} if this class uses the C{auto_attribs} feature of the L{attrs}
+    library to automatically convert annotated fields into attributes.
+    """
 
 def setup_pydoctor_extension(r:extensions.ExtRegistrar) -> None:
     r.register_astbuilder_visitor(ModuleVisitor)
