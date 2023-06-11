@@ -52,17 +52,6 @@ def annotation_from_attrib(
     @return: A type annotation, or None if the expression is not
                 an C{attr.ib} definition or contains no type information.
     """
-    # if not is_attrib(expr, ctx):
-    #     return None
-    # args = astutils.safe_bind_args(attrib_signature, expr, ctx.module)
-    # if args is not None:
-    #     typ = args.arguments.get('type')
-    #     if typ is not None:
-    #         return astutils.unstring_annotation(typ, ctx)
-    #     default = args.arguments.get('default')
-    #     if default is not None:
-    #         return astbuilder._infer_type(default)
-    # return None
     typ = args.arguments.get('type')
     if typ is not None:
         return astutils.unstring_annotation(typ, ctx)
