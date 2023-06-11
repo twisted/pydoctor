@@ -966,7 +966,7 @@ class _ValueFormatter:
         return ''.join(node2stan.node2html(self._colorized.to_node(), self._linker))
 
 def signature_from_functiondef(node: Union[ast.AsyncFunctionDef, ast.FunctionDef], 
-                               ctx: model.Function) -> Signature:
+                               ctx: model.Function) -> Tuple[Mapping[str, Optional[ast.expr]], Signature]:
     # Position-only arguments were introduced in Python 3.8.
     posonlyargs: Sequence[ast.arg] = getattr(node.args, 'posonlyargs', ())
 
