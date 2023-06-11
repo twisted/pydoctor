@@ -1,9 +1,7 @@
 """
 Dataclass-like libraries are all alike: 
 - They transform class variables into instance variable un certain conditions.
-- They autoamtically provides a constructor method without having to define __init__.
-
-More specifically
+- They automatically provides a constructor method without having to define __init__.
 """
 import ast
 from abc import abstractmethod, ABC
