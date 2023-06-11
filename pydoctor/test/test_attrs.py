@@ -122,6 +122,6 @@ def test_attrs_args(systemcls: Type[model.System], capsys: CapSys) -> None:
     captured = capsys.readouterr().out
     assert captured == (
         'test:10: Invalid arguments for attr.s(): got an unexpected keyword argument "auto_attribzzz"\n'
-        'test:13: Unable to figure out value for "auto_attribs" argument to attr.s(), maybe too complex\n'
-        'test:16: Value for "auto_attribs" argument to attr.s() has type "int", expected "bool"\n'
+        'test:13: Unable to figure out value for "auto_attribs" argument, maybe too complex\n'
+        'test:16: Value for "auto_attribs" argument has type "int", expected "bool"\n'
         )

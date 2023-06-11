@@ -2,11 +2,12 @@
 Various bits of reusable code related to L{ast.AST} node processing.
 """
 
+import enum
 import inspect
 import platform
 import sys
 from numbers import Number
-from typing import Iterator, Optional, List, Iterable, Sequence, TYPE_CHECKING, Tuple, Union
+from typing import Iterator, Optional, List, Iterable, Sequence, TYPE_CHECKING, Tuple, Type, TypeVar, Union
 from inspect import BoundArguments, Signature
 import ast
 
@@ -14,6 +15,9 @@ from pydoctor import visitor
 
 if TYPE_CHECKING:
     from pydoctor import model
+    from typing import Protocol, Literal
+else:
+    Protocol = Literal = object
 
 # AST visitors
 
@@ -403,3 +407,94 @@ def extract_docstring(node: ast.Str) -> Tuple[int, str]:
     """
     lineno = extract_docstring_linenum(node)
     return lineno, inspect.cleandoc(node.s)
+
+def safe_bind_args(sig:Signature, call: ast.AST, ctx: 'model.Module') -> Optional[inspect.BoundArguments]:
+    """
+    Get the arguments passed to a call based on it's known signature.
+
+    Report warning when L{bind_args} raises a L{TypeError}. 
+    """
+    if not isinstance(call, ast.Call):
+        return None
+    try:
+        return bind_args(sig, call)
+    except TypeError as ex:
+        message = str(ex).replace("'", '"')
+        call_dottedname = node2dottedname(call.func)
+        callable_name = f"{'.'.join(call_dottedname)}()" if call_dottedname else 'callable'
+        ctx.report(
+            f"Invalid arguments for {callable_name}: {message}",
+            lineno_offset=call.lineno
+            )
+        return None
+    
+class _V(enum.Enum): 
+    NoValue = enum.auto()
+_T =  TypeVar('_T', bound=object)
+def _get_literal_arg(args:BoundArguments, name:str, typecheck:Type[_T]) -> Union['Literal[_V.NoValue]', _T]:
+    """
+    Retreive the literal value of an argument from the L{BoundArguments}. 
+    Only works with purely literal values (no C{Name} or C{Attribute}).
+    If the value is not present in the arguments, returns L{_V.NoValue}.
+    @raises ValueError: If the passed value is not a literal or if it's not the right type.
+    """
+    expr = args.arguments.get(name)
+    if expr is None:
+        return _V.NoValue
+
+    try:
+        value = ast.literal_eval(expr)
+    except ValueError:
+        message = (
+            f'Unable to figure out value for {name!r} argument, maybe too complex'
+            ).replace("'", '"')
+        raise ValueError(message)
+
+    if not isinstance(value, typecheck):
+        message = (f'Value for {name!r} argument '
+            f'has type "{type(value).__name__}", expected {typecheck.__name__!r}'
+            ).replace("'", '"')
+        raise ValueError(message)
+
+    return value
+
+def get_literal_arg(args:BoundArguments, name:str, default:_T, 
+                          typecheck:Type[_T], lineno:int, module: 'model.Module') -> _T:
+    """
+    Get the value of the C{auto_attribs} argument passed to this L{attr.s()} call.
+    
+    @param args: The L{BoundArguments} instance.
+    @param name: The name of the argument
+    @param default: The default value of the argument, this value is returned 
+        if the argument could not be found.
+    @param typecheck: The type of the literal value this argument is expected to have.
+    @param lineno: The lineumber of the callsite, usd for error reporting.
+    @param module: Module that contains the call, used for error reporting.
+    @return: The value of the argument if we can infer it, otherwise returns
+        the default value.
+    """
+    try:
+        value = _get_literal_arg(args, name, typecheck)
+    except ValueError as e:
+        module.report(str(e), lineno_offset=lineno)
+        return default
+    if value is _V.NoValue:
+        # default value
+        return default
+    else:
+        return value
+
+class _HasDecoratorList(Protocol):
+    decorator_list:List[ast.expr]
+
+def iter_decorators(node:_HasDecoratorList, ctx: 'model.Documentable') -> Iterator[Tuple[Optional[str], ast.AST]]:
+    """
+    Utility function to iterate decorators.
+    """
+
+    for decnode in node.decorator_list:
+        namenode = decnode
+        if isinstance(namenode, ast.Call):
+            namenode = namenode.func
+        dottedname = node2fullname(namenode, ctx)
+        yield dottedname, decnode

@@ -25,76 +25,11 @@ def is_attrs_deco(deco: ast.AST, module: model.Module) -> bool:
     return astutils.node2fullname(deco, module) in (
         'attr.s', 'attr.attrs', 'attr.attributes')
 
-def uses_auto_attribs(call: ast.AST, module: model.Module) -> bool:
-    """Does the given L{attr.s()} decoration contain C{auto_attribs=True}?
-    @param call: AST of the call to L{attr.s()}.
-        This function will assume that L{attr.s()} is called without
-        verifying that.
-    @param module: Module that contains the call, used for error reporting.
-    @return: L{True} if L{True} is passed for C{auto_attribs},
-        L{False} in all other cases: if C{auto_attribs} is not passed,
-        if an explicit L{False} is passed or if an error was reported.
-    """
-    if not is_attrs_deco(call, module):
-        return False
-    if not isinstance(call, ast.Call):
-        return False
-    try:
-        args = astutils.bind_args(attrs_decorator_signature, call)
-    except TypeError as ex:
-        message = str(ex).replace("'", '"')
-        module.report(
-            f"Invalid arguments for attr.s(): {message}",
-            lineno_offset=call.lineno
-            )
-        return False
-
-    auto_attribs_expr = args.arguments.get('auto_attribs')
-    if auto_attribs_expr is None:
-        return False
-
-    try:
-        value = ast.literal_eval(auto_attribs_expr)
-    except ValueError:
-        module.report(
-            'Unable to figure out value for "auto_attribs" argument '
-            'to attr.s(), maybe too complex',
-            lineno_offset=call.lineno
-            )
-        return False
-
-    if not isinstance(value, bool):
-        module.report(
-            f'Value for "auto_attribs" argument to attr.s() '
-            f'has type "{type(value).__name__}", expected "bool"',
-            lineno_offset=call.lineno
-            )
-        return False
-
-    return value
-
 def is_attrib(expr: Optional[ast.expr], ctx: model.Documentable) -> bool:
     """Does this expression return an C{attr.ib}?"""
     return isinstance(expr, ast.Call) and astutils.node2fullname(expr.func, ctx) in (
         'attr.ib', 'attr.attrib', 'attr.attr'
         )
-
-def attrib_args(expr: ast.expr, ctx: model.Documentable) -> Optional[inspect.BoundArguments]:
-    """Get the arguments passed to an C{attr.ib} definition.
-    @return: The arguments, or L{None} if C{expr} does not look like
-        an C{attr.ib} definition or the arguments passed to it are invalid.
-    """
-    if is_attrib(expr, ctx):
-        assert isinstance(expr, ast.Call)
-        try:
-            return astutils.bind_args(attrib_signature, expr)
-        except TypeError as ex:
-            message = str(ex).replace("'", '"')
-            ctx.module.report(
-                f"Invalid arguments for attr.ib(): {message}",
-                lineno_offset=expr.lineno
-                )
-    return None
 
 def annotation_from_attrib(
         expr: ast.expr,
@@ -106,7 +41,9 @@ def annotation_from_attrib(
     @return: A type annotation, or None if the expression is not
                 an C{attr.ib} definition or contains no type information.
     """
-    args = attrib_args(expr, ctx)
+    args = None
+    if is_attrib(expr, ctx):
+        args = astutils.safe_bind_args(attrib_signature, expr, ctx.module)
     if args is not None:
         typ = args.arguments.get('type')
         if typ is not None:
@@ -125,10 +62,21 @@ class ModuleVisitor(DataclassLikeVisitor):
         super().visit_ClassDef(node)
 
         cls = self.visitor.builder._stack[-1].contents.get(node.name)
-        if not isinstance(cls, AttrsClass):
+        if not isinstance(cls, AttrsClass) or not cls.isDataclassLike:
             return
 
-        cls.auto_attribs = any(uses_auto_attribs(decnode, cls.module) for decnode in node.decorator_list)
+        for name, decnode in astutils.iter_decorators(node, cls):
+            if not name in ('attr.s', 'attr.attrs', 'attr.attributes'):
+                continue
+
+            attrs_args = astutils.safe_bind_args(attrs_decorator_signature, decnode, cls.module)
+            if attrs_args:
+
+                cls.auto_attribs = astutils.get_literal_arg(
+                    name='auto_attribs', default=False, typecheck=bool,
+                    args=attrs_args, lineno=decnode.lineno, module=cls.module)
+                
+            break
     
     def transformClassVar(self, cls: model.Class, 
                           attr: model.Attribute, 
