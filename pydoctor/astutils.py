@@ -410,9 +410,9 @@ def extract_docstring(node: ast.Str) -> Tuple[int, str]:
 
 def safe_bind_args(sig:Signature, call: ast.AST, ctx: 'model.Module') -> Optional[inspect.BoundArguments]:
     """
-    Get the arguments passed to a call based on it's known signature.
+    Binds the arguments of a function call to that function's signature.
 
-    Report warning when L{bind_args} raises a L{TypeError}. 
+    When L{bind_args} raises a L{TypeError}, it reports a warning and returns C{None}. 
     """
     if not isinstance(call, ast.Call):
         return None
@@ -433,8 +433,8 @@ class _V(enum.Enum):
 _T =  TypeVar('_T', bound=object)
 def _get_literal_arg(args:BoundArguments, name:str, typecheck:Type[_T]) -> Union['Literal[_V.NoValue]', _T]:
     """
-    Retreive the literal value of an argument from the L{BoundArguments}. 
-    Only works with purely literal values (no C{Name} or C{Attribute}).
+    Helper function for L{get_literal_arg}. 
+
     If the value is not present in the arguments, returns L{_V.NoValue}.
     @raises ValueError: If the passed value is not a literal or if it's not the right type.
     """
@@ -461,12 +461,13 @@ def _get_literal_arg(args:BoundArguments, name:str, typecheck:Type[_T]) -> Union
 def get_literal_arg(args:BoundArguments, name:str, default:_T, 
                           typecheck:Type[_T], lineno:int, module: 'model.Module') -> _T:
     """
-    Get the value of the C{auto_attribs} argument passed to this L{attr.s()} call.
+    Retreive the literal value of an argument from the L{BoundArguments}. 
+    Only works with purely literal values (no C{Name} or C{Attribute}).
     
     @param args: The L{BoundArguments} instance.
     @param name: The name of the argument
     @param default: The default value of the argument, this value is returned 
-        if the argument could not be found.
+        if the argument is not found.
     @param typecheck: The type of the literal value this argument is expected to have.
     @param lineno: The lineumber of the callsite, usd for error reporting.
     @param module: Module that contains the call, used for error reporting.
