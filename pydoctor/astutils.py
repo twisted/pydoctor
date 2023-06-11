@@ -484,18 +484,3 @@ def get_literal_arg(args:BoundArguments, name:str, default:_T,
         return default
     else:
         return value
-
-class _HasDecoratorList(Protocol):
-    decorator_list:List[ast.expr]
-
-def iter_decorators(node:_HasDecoratorList, ctx: 'model.Documentable') -> Iterator[Tuple[Optional[str], ast.AST]]:
-    """
-    Utility function to iterate decorators.
-    """
-
-    for decnode in node.decorator_list:
-        namenode = decnode
-        if isinstance(namenode, ast.Call):
-            namenode = namenode.func
-        dottedname = node2fullname(namenode, ctx)
-        yield dottedname, decnode

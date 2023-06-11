@@ -55,9 +55,8 @@ class DataclassLikeVisitor(ModuleVisitorExt, ABC):
                     continue
                 target, = dottedname
                 attr: Optional[Documentable] = current.contents.get(target)
-                if not isinstance(attr, Attribute):
-                    continue
-                if astutils.is_using_typing_classvar(attr.annotation, current):
+                if not isinstance(attr, Attribute) or \
+                    astutils.is_using_typing_classvar(attr.annotation, current):
                     continue
                 annotation = node.annotation if isinstance(node, ast.AnnAssign) else None
                 self.transformClassVar(current, attr, annotation, node.value)

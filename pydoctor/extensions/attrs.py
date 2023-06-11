@@ -41,9 +41,9 @@ def annotation_from_attrib(
     @return: A type annotation, or None if the expression is not
                 an C{attr.ib} definition or contains no type information.
     """
-    args = None
-    if is_attrib(expr, ctx):
-        args = astutils.safe_bind_args(attrib_signature, expr, ctx.module)
+    if not is_attrib(expr, ctx):
+        return None
+    args = astutils.safe_bind_args(attrib_signature, expr, ctx.module)
     if args is not None:
         typ = args.arguments.get('type')
         if typ is not None:
@@ -64,19 +64,18 @@ class ModuleVisitor(DataclassLikeVisitor):
         cls = self.visitor.builder._stack[-1].contents.get(node.name)
         if not isinstance(cls, AttrsClass) or not cls.isDataclassLike:
             return
+        mod = cls.module
+        try:
+            attrs_deco = next(decnode for decnode in node.decorator_list 
+                              if is_attrs_deco(decnode, mod))
+        except StopIteration:
+            return
 
-        for name, decnode in astutils.iter_decorators(node, cls):
-            if not name in ('attr.s', 'attr.attrs', 'attr.attributes'):
-                continue
-
-            attrs_args = astutils.safe_bind_args(attrs_decorator_signature, decnode, cls.module)
-            if attrs_args:
-
-                cls.auto_attribs = astutils.get_literal_arg(
-                    name='auto_attribs', default=False, typecheck=bool,
-                    args=attrs_args, lineno=decnode.lineno, module=cls.module)
-                
-            break
+        attrs_args = astutils.safe_bind_args(attrs_decorator_signature, attrs_deco, mod)
+        if attrs_args:
+            cls.auto_attribs = astutils.get_literal_arg(
+                name='auto_attribs', default=False, typecheck=bool,
+                args=attrs_args, lineno=attrs_deco.lineno, module=mod)
     
     def transformClassVar(self, cls: model.Class, 
                           attr: model.Attribute, 
@@ -92,7 +91,6 @@ class ModuleVisitor(DataclassLikeVisitor):
         return any(is_attrs_deco(dec, mod) for dec in cls.decorator_list)
 
 class AttrsClass(DataclasLikeClass, model.Class):
-    
     auto_attribs: bool = False
     """
     L{True} if this class uses the C{auto_attribs} feature of the L{attrs}
