@@ -7,9 +7,10 @@ import ast
 import functools
 import inspect
 
-from typing import Dict, Optional, Union
+from typing import Dict, Optional, Union, cast
 
 from pydoctor import astbuilder, model, astutils, extensions
+from pydoctor.extensions._dataclass_like import DataclasLikeClass, DataclassLikeVisitor
 
 import attr
 
@@ -19,19 +20,11 @@ attrs_decorator_signature = inspect.signature(attr.s)
 attrib_signature = inspect.signature(attr.ib)
 """Signature of the L{attr.ib} function for defining class attributes."""
 
-def get_attrs_args(call: ast.AST, ctx: model.Module) -> Optional[inspect.BoundArguments]:
-    """Get the arguments passed to an C{attr.s} class definition."""
-    if not isinstance(call, ast.Call):
-        return None
-    try:
-        return astutils.bind_args(attrs_decorator_signature, call)
-    except TypeError as ex:
-        message = str(ex).replace("'", '"')
-        ctx.report(
-            f"Invalid arguments for attr.s(): {message}",
-            lineno_offset=call.lineno
-            )
-        return None
+def is_attrs_deco(deco: ast.AST, module: model.Module) -> bool:
+    if isinstance(deco, ast.Call):
+        deco = deco.func
+    return astutils.node2fullname(deco, module) in (
+        'attr.s', 'attr.attrs', 'attr.attributes')
 
 def is_attrib(expr: Optional[ast.expr], ctx: model.Documentable) -> bool:
     """Does this expression return an C{attr.ib}?"""
@@ -46,27 +39,6 @@ def is_factory_call(expr: ast.expr, ctx: model.Documentable) -> bool:
     return isinstance(expr, ast.Call) and \
         astutils.node2fullname(expr.func, ctx) in ('attrs.Factory', 'attr.Factory')
 
-def get_attrib_args(expr: Optional[ast.expr], ctx: model.Documentable) -> Optional[inspect.BoundArguments]:
-    """Get the arguments passed to an C{attr.ib} definition.
-    @return: The arguments, or L{None} if C{expr} does not look like
-        an C{attr.ib} definition or the arguments passed to it are invalid.
-    """
-    if is_attrib(expr, ctx):
-        assert expr is not None
-        try:
-            return astutils.bind_args(attrib_signature, expr)
-        except TypeError as ex:
-            message = str(ex).replace("'", '"')
-            ctx.module.report(
-                f"Invalid arguments for attr.ib(): {message}",
-                lineno_offset=expr.lineno
-                )
-    return None
-
-uses_init = functools.partial(astutils.get_literal_arg, name='init', default=True, typecheck=bool)
-uses_kw_only = functools.partial(astutils.get_literal_arg, name='kw_only', default=False, typecheck=bool)
-uses_auto_attribs = functools.partial(astutils.get_literal_arg, name='auto_attribs', default=False, typecheck=bool)
-
 def annotation_from_attrib(
         args:inspect.BoundArguments,
         ctx: model.Documentable,
@@ -80,6 +52,17 @@ def annotation_from_attrib(
     @return: A type annotation, or None if the expression is not
                 an C{attr.ib} definition or contains no type information.
     """
+    # if not is_attrib(expr, ctx):
+    #     return None
+    # args = astutils.safe_bind_args(attrib_signature, expr, ctx.module)
+    # if args is not None:
+    #     typ = args.arguments.get('type')
+    #     if typ is not None:
+    #         return astutils.unstring_annotation(typ, ctx)
+    #     default = args.arguments.get('default')
+    #     if default is not None:
+    #         return astbuilder._infer_type(default)
+    # return None
     typ = args.arguments.get('type')
     if typ is not None:
         return astutils.unstring_annotation(typ, ctx)
@@ -94,81 +77,79 @@ def annotation_from_attrib(
             return ast.Constant(value=...)
     return None
 
-def default_from_attrib(args:inspect.BoundArguments, ctx: model.Documentable) -> Optional[ast.AST]:
+def default_from_attrib(args:inspect.BoundArguments, ctx: model.Documentable) -> Optional[ast.expr]:
     d = args.arguments.get('default')
     f = args.arguments.get('factory')
     if d is not None:
         if is_factory_call(d, ctx):
             return ast.Constant(value=...)
-        return d # type:ignore
+        return cast(ast.expr, d)
     elif f: # If a factory is defined, the default value is not obvious.
         return ast.Constant(value=...)
     else:
         return None
 
-class ModuleVisitor(extensions.ModuleVisitorExt):
+class ModuleVisitor(DataclassLikeVisitor):
     
     def visit_ClassDef(self, node:ast.ClassDef) -> None:
         """
         Called when a class definition is visited.
         """
-        cls = self.visitor.builder.current
-        if not isinstance(cls, model.Class) or cls.name!=node.name:
-            return
-        assert isinstance(cls, AttrsClass)
-        
-        for name, decnode in astutils.iter_decorators(node, cls):
-            if not name in ('attr.s', 'attr.attrs', 'attr.attributes'):
-                continue
-            
-            # True by default
-            cls.attrs_init = True
+        super().visit_ClassDef(node)
 
-            attrs_args = get_attrs_args(decnode, cls.module)
-            if attrs_args:
-                cls.attrs_auto_attribs = uses_auto_attribs(args=attrs_args, lineno=decnode.lineno, module=cls.module)
-                cls.attrs_init = uses_init(args=attrs_args, lineno=decnode.lineno, module=cls.module)
-                cls.attrs_kw_only = uses_kw_only(args=attrs_args, lineno=decnode.lineno, module=cls.module)
-            break
+        cls = self.visitor.builder._stack[-1].contents.get(node.name)
+        if not isinstance(cls, AttrsClass) or not cls.isDataclassLike:
+            return
+        mod = cls.module
+        try:
+            attrs_deco = next(decnode for decnode in node.decorator_list 
+                              if is_attrs_deco(decnode, mod))
+        except StopIteration:
+            return
+
+        attrs_args = astutils.safe_bind_args(attrs_decorator_signature, attrs_deco, mod)
+        if attrs_args:
+            cls.attrs_auto_attribs = astutils.get_literal_arg(name='auto_attribs', default=False, typecheck=bool,
+                                                              args=attrs_args, lineno=attrs_deco.lineno, module=mod)
+            cls.attrs_init = astutils.get_literal_arg(name='init', default=True, typecheck=bool,
+                                                      args=attrs_args, lineno=attrs_deco.lineno, module=mod)
+            cls.attrs_kw_only = astutils.get_literal_arg(name='kw_only', default=False, typecheck=bool,
+                                                         args=attrs_args, lineno=attrs_deco.lineno, module=mod)
     
-    def _handleAttrsAssignmentInClass(self, target:str, node: Union[ast.Assign, ast.AnnAssign]) -> None:
-        cls = self.visitor.builder.current
+    def transformClassVar(self, cls: model.Class, 
+                          attr: model.Attribute, 
+                          annotation:Optional[ast.expr],
+                          value:Optional[ast.expr]) -> None:
         assert isinstance(cls, AttrsClass)
-
-        attr: Optional[model.Documentable] = cls.contents.get(target)
-        if attr is None:
-            return
-        if not isinstance(attr, model.Attribute):
-            return
-
-        annotation = node.annotation if isinstance(node, ast.AnnAssign) else None
-        
-        is_attrs_attrib = is_attrib(node.value, cls)
-        is_attrs_auto_attrib = cls.attrs_auto_attribs and \
-               annotation is not None and \
-               not astutils.is_using_typing_classvar(annotation, cls)
+        is_attrs_attrib = is_attrib(value, cls)
+        is_attrs_auto_attrib = cls.attrs_auto_attribs and annotation is not None
         
         if is_attrs_attrib or is_attrs_auto_attrib:
-            
             attr.kind = model.DocumentableKind.INSTANCE_VARIABLE
-            attrib_args = get_attrib_args(node.value, cls)
-            
-            if annotation is None and attrib_args is not None:
-                attr.annotation = annotation_from_attrib(attrib_args, cls)
-            
+            if annotation is None and value is not None:
+                attrib_args = astutils.safe_bind_args(attrib_signature, value, cls.module)
+                if attrib_args:
+                    attr.annotation = annotation_from_attrib(attrib_args, cls)
+            else:
+                attrib_args = None
+        
             # Handle the auto-creation of the __init__ method.
             if cls.attrs_init:
-
-                if is_attrs_auto_attrib or (attrib_args and uses_init(args=attrib_args, module=cls.module, lineno=node.lineno)):
-                    kind = inspect.Parameter.POSITIONAL_OR_KEYWORD
+                
+                if is_attrs_auto_attrib or (attrib_args and 
+                                            astutils.get_literal_arg(name='init', default=True, typecheck=bool,
+                                                                     args=attrib_args, module=cls.module, lineno=attr.linenumber)):
+                    kind:inspect._ParameterKind = inspect.Parameter.POSITIONAL_OR_KEYWORD
                     
-                    if cls.attrs_kw_only or (attrib_args and uses_kw_only(args=attrib_args, module=cls.module, lineno=node.lineno)):
+                    if cls.attrs_kw_only or (attrib_args and 
+                                             astutils.get_literal_arg(name='kw_only', default=False, typecheck=bool,
+                                                                      args=attrib_args, module=cls.module, lineno=attr.linenumber)):
                         kind = inspect.Parameter.KEYWORD_ONLY
 
-                    attrs_default:Optional[ast.AST] = ast.Constant(value=...)
+                    attrs_default:Optional[ast.expr] = ast.Constant(value=...)
                     
                     if is_attrs_auto_attrib:
-                        attrs_default = node.value
+                        attrs_default = value
                         
                         if attrs_default and is_factory_call(attrs_default, cls):
                             # Factory is not a default value stricly speaking, 
@@ -180,39 +161,27 @@ class ModuleVisitor(extensions.ModuleVisitorExt):
                     
                     # attrs strips the leading underscores from the parameter names,
                     # since there is not such thing as a private parameter.
-                    _init_param_name = attr.name.lstrip('_')
+                    init_param_name = attr.name.lstrip('_')
 
                     # TODO: Check if attrs defines a converter, if it does not, it's OK
                     # to deduce that the type of the argument is the same as type of the parameter.
                     # But actually, this might be a wrong assumption.
                     cls.attrs_constructor_parameters.append(
                         inspect.Parameter(
-                        _init_param_name, kind=kind, 
-                        default=astbuilder._ValueFormatter(attrs_default, cls), 
-                        annotation=inspect.Parameter.empty))
+                            init_param_name, kind=kind, 
+                            default=astbuilder._ValueFormatter(attrs_default, cls) if attrs_default else inspect.Parameter.empty, 
+                            annotation=inspect.Parameter.empty))
                     
                     if attrib_args is not None:
-                        cls.attrs_constructor_annotations[_init_param_name] = \
+                        cls.attrs_constructor_annotations[init_param_name] = \
                             annotation_from_attrib(attrib_args, cls, for_init_method=True) or annotation
                     else:
-                        cls.attrs_constructor_annotations[_init_param_name] = annotation
-
-    def _handleAttrsAssignment(self, node: Union[ast.Assign, ast.AnnAssign]) -> None:
-        for dottedname in astutils.iterassign(node):
-            if dottedname and len(dottedname)==1:
-                # Here, we consider single name assignment only
-                current = self.visitor.builder.current
-                if isinstance(current, model.Class):
-                    self._handleAttrsAssignmentInClass(
-                        dottedname[0], node
-                    )
-        
-    def visit_Assign(self, node: Union[ast.Assign, ast.AnnAssign]) -> None:
-        self._handleAttrsAssignment(node)
-    visit_AnnAssign = visit_Assign
-
-class AttrsClass(extensions.ClassMixin, model.Class):
+                        cls.attrs_constructor_annotations[init_param_name] = annotation
     
+    def isDataclassLike(self, cls:ast.ClassDef, mod:model.Module) -> bool:
+        return any(is_attrs_deco(dec, mod) for dec in cls.decorator_list)
+
+class AttrsClass(DataclasLikeClass, model.Class):
     def setup(self) -> None:
         super().setup()
         
@@ -227,7 +196,7 @@ class AttrsClass(extensions.ClassMixin, model.Class):
         C{True} is this class uses C{kw_only} feature of L{attrs <attr>} library.
         """
 
-        self.attrs_init: bool = False
+        self.attrs_init: bool = True
         """
         False if L{attrs <attr>} is not generating an __init__ method for this class.
         """

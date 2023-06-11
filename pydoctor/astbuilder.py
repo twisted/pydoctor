@@ -84,7 +84,11 @@ class TypeAliasVisitorExt(extensions.ModuleVisitorExt):
     """
     def _isTypeVariable(self, ob: model.Attribute) -> bool:
         if ob.value is not None:
-            if isinstance(ob.value, ast.Call) and node2fullname(ob.value.func, ob) in ('typing.TypeVar', 'typing_extensions.TypeVar'):
+            if isinstance(ob.value, ast.Call) and \
+                node2fullname(ob.value.func, ob) in ('typing.TypeVar', 
+                                                     'typing_extensions.TypeVar',
+                                                     'typing.TypeVarTuple', 
+                                                     'typing_extensions.TypeVarTuple'):
                 return True
         return False
     

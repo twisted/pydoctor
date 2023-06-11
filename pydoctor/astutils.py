@@ -2,6 +2,7 @@
 Various bits of reusable code related to L{ast.AST} node processing.
 """
 
+import enum
 import inspect
 import platform
 import sys
@@ -14,9 +15,9 @@ from pydoctor import visitor
 
 if TYPE_CHECKING:
     from pydoctor import model
-    from typing import Protocol
+    from typing import Protocol, Literal
 else:
-    Protocol = object
+    Protocol = Literal = object
 
 # AST visitors
 
@@ -138,61 +139,6 @@ def bind_args(sig: Signature, call: ast.Call) -> BoundArguments:
         if kw.arg is not None
         }
     return sig.bind(*call.args, **kwargs)
-
-_T =  TypeVar('_T', bound=object)
-def _get_literal_arg(args:BoundArguments, name:str, typecheck:Type[_T]=object) -> Union[object, _T]:
-    """
-    Retreive the literal value of an argument from the L{BoundArguments}. 
-    Only works with purely literal values (no C{Name} or C{Attribute}).
-
-    If the value is not present in the arguments, returns L{Parameter.empty}.
-
-    @raises ValueError: If the passed value is not a literal or if it's not the right type.
-    """
-    auto_attribs_expr = args.arguments.get(name)
-    if auto_attribs_expr is None:
-        return Parameter.empty
-
-    try:
-        value = ast.literal_eval(auto_attribs_expr)
-    except ValueError:
-        message = (
-            f'Unable to figure out value for {name!r} argument, maybe too complex'
-            ).replace("'", '"')
-        raise ValueError(message)
-
-    if not isinstance(value, typecheck):
-        message = (f'Value for {name!r} argument '
-            f'has type "{type(value).__name__}", expected {typecheck.__name__!r}'
-            ).replace("'", '"')
-        raise ValueError(message)
-
-    return value
-
-def get_literal_arg(args:BoundArguments, name:str, default:_T, 
-                          typecheck:Type[_T], lineno:int, module: 'model.Module') -> _T:
-    """
-    Get the value of the C{auto_attribs} argument passed to this L{attr.s()} call.
-    
-    @param args: The L{BoundArguments} instance.
-    @param name: The name of the argument
-    @param default: The default value of the argument, this value is returned 
-        if the argument could not be found.
-    @param typecheck: The type of the literal value this argument is expected to have.
-    @param lineno: The lineumber of the callsite, usd for error reporting.
-    @param module: Module that contains the call, used for error reporting.
-    @return: The value of the argument if we can infer it, otherwise returns
-        the default value.
-    """
-    try:
-        value = _get_literal_arg(args, name, typecheck)
-    except ValueError as e:
-        module.report(str(e), lineno_offset=lineno)
-        return default
-    if value is Parameter.empty:
-        # default value
-        return default
-    return value
 
 if sys.version_info[:2] >= (3, 8):
     # Since Python 3.8 "foo" is parsed as ast.Constant.
@@ -474,3 +420,80 @@ def extract_docstring(node: ast.Str) -> Tuple[int, str]:
     """
     lineno = extract_docstring_linenum(node)
     return lineno, inspect.cleandoc(node.s)
+
+def safe_bind_args(sig:Signature, call: ast.AST, ctx: 'model.Module') -> Optional[inspect.BoundArguments]:
+    """
+    Binds the arguments of a function call to that function's signature.
+
+    When L{bind_args} raises a L{TypeError}, it reports a warning and returns C{None}. 
+    """
+    if not isinstance(call, ast.Call):
+        return None
+    try:
+        return bind_args(sig, call)
+    except TypeError as ex:
+        message = str(ex).replace("'", '"')
+        call_dottedname = node2dottedname(call.func)
+        callable_name = f"{'.'.join(call_dottedname)}()" if call_dottedname else 'callable'
+        ctx.report(
+            f"Invalid arguments for {callable_name}: {message}",
+            lineno_offset=call.lineno
+            )
+        return None
+    
+class _V(enum.Enum): 
+    NoValue = enum.auto()
+_T =  TypeVar('_T', bound=object)
+def _get_literal_arg(args:BoundArguments, name:str, typecheck:Type[_T]) -> Union['Literal[_V.NoValue]', _T]:
+    """
+    Helper function for L{get_literal_arg}. 
+
+    If the value is not present in the arguments, returns L{_V.NoValue}.
+    @raises ValueError: If the passed value is not a literal or if it's not the right type.
+    """
+    expr = args.arguments.get(name)
+    if expr is None:
+        return _V.NoValue
+
+    try:
+        value = ast.literal_eval(expr)
+    except ValueError:
+        message = (
+            f'Unable to figure out value for {name!r} argument, maybe too complex'
+            ).replace("'", '"')
+        raise ValueError(message)
+
+    if not isinstance(value, typecheck):
+        message = (f'Value for {name!r} argument '
+            f'has type "{type(value).__name__}", expected {typecheck.__name__!r}'
+            ).replace("'", '"')
+        raise ValueError(message)
+
+    return value
+
+def get_literal_arg(args:BoundArguments, name:str, default:_T, 
+                          typecheck:Type[_T], lineno:int, module: 'model.Module') -> _T:
+    """
+    Retreive the literal value of an argument from the L{BoundArguments}. 
+    Only works with purely literal values (no C{Name} or C{Attribute}).
+    
+    @param args: The L{BoundArguments} instance.
+    @param name: The name of the argument
+    @param default: The default value of the argument, this value is returned 
+        if the argument is not found.
+    @param typecheck: The type of the literal value this argument is expected to have.
+    @param lineno: The lineumber of the callsite, used for error reporting.
+    @param module: Module that contains the call, used for error reporting.
+    @return: The value of the argument if we can infer it, otherwise returns
+        the default value.
+    """
+    try:
+        value = _get_literal_arg(args, name, typecheck)
+    except ValueError as e:
+        module.report(str(e), lineno_offset=lineno)
+        return default
+    if value is _V.NoValue:
+        # default value
+        return default
+    else:
+        return value
