@@ -146,8 +146,10 @@ def test_attrs_init_method(systemcls: Type[model.System], capsys: CapSys) -> Non
     mod = fromText(src, systemcls=systemcls)
     assert capsys.readouterr().out == ''
     C = mod.contents['C']
+    assert isinstance(C, attrs.AttrsClass)
     assert C.attrs_init == True
     D = mod.contents['D']
+    assert isinstance(D, attrs.AttrsClass)
     assert D.attrs_init == False
 
     assert isinstance(C, model.Class)

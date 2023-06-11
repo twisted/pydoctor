@@ -4,10 +4,9 @@ Support for L{attrs}.
 """
 
 import ast
-import functools
 import inspect
 
-from typing import Dict, Optional, Union, cast
+from typing import Dict, Optional, cast
 
 from pydoctor import astbuilder, model, astutils, extensions
 from pydoctor.extensions._dataclass_like import DataclasLikeClass, DataclassLikeVisitor
