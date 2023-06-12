@@ -70,7 +70,7 @@ class SideBarSection(Element):
         self.template_lookup = template_lookup
         
         # Does this sidebar section represents the object itself ?
-        self._represents_documented_ob = self.ob == self.documented_ob
+        self._represents_documented_ob = self.ob is self.documented_ob
 
     @renderer
     def kind(self, request: IRequest, tag: Tag) -> str:
@@ -195,7 +195,7 @@ class ObjContent(Element):
 
         # Only show the TOC if visiting the object page itself, in other words, the TOC do dot show up
         # in the object's parent section or any other subsections except the main one.
-        if toc and self.documented_ob == self.ob:
+        if toc and self.documented_ob is self.ob:
             return tag.fillSlots(titles=toc)
         else:
             return ""
@@ -288,9 +288,8 @@ class ContentList(TemplateElement):
     @renderer
     def items(self, request: IRequest, tag: Tag) -> Iterator['ContentItem']:
 
-        for child in self.children:
-
-            yield ContentItem(
+        return (
+            ContentItem(
                 loader=TagLoader(tag),
                 ob=self.ob,
                 child=child,
@@ -299,6 +298,7 @@ class ContentList(TemplateElement):
                 nested_content_loader=self.nested_content_loader,
                 template_lookup=self.template_lookup, 
                 level_depth=self._level_depth)
+            for child in self.children )
         
 
 class ContentItem(Element):
@@ -329,7 +329,7 @@ class ContentItem(Element):
         # But I found it a little bit too colorful.
         if self.child.isPrivate:
             class_ += "private"
-        if self.child == self.documented_ob:
+        if self.child is self.documented_ob:
             class_ += " thisobject"
         return class_
 
@@ -350,7 +350,7 @@ class ContentItem(Element):
             # pass do_not_expand=True also when an object do not have any members, 
             # instead of expanding on an empty div. 
             return ExpandableItem(TagLoader(tag), self.child, self.documented_ob, nested_contents, 
-                    do_not_expand=self.child == self.documented_ob or not nested_contents.has_contents)
+                    do_not_expand=self.child is self.documented_ob or not nested_contents.has_contents)
         else:
             return ""
 
