@@ -14,9 +14,10 @@ from pydoctor.templatewriter import (FailedToCreateTemplate, StaticTemplate, pag
                                      HtmlTemplate, UnsupportedTemplateVersion, 
                                      OverrideTemplateNotAllowed)
 from pydoctor.templatewriter.pages.table import ChildTable
-from pydoctor.templatewriter.summary import isClassNodePrivate, isPrivate, moduleSummary
+from pydoctor.templatewriter.summary import isClassNodePrivate, isPrivate, moduleSummary, ClassIndexPage
 from pydoctor.test.test_astbuilder import fromText, systemcls_param
 from pydoctor.test.test_packages import processPackage, testpackages
+from pydoctor.test.test_epydoc2stan import InMemoryInventory
 from pydoctor.test import CapSys
 from pydoctor.themes import get_themes
 
@@ -761,7 +762,6 @@ test:36: bad rendering of class signature: SAXParseException: <unknown>.+ undefi
     assert re.match('\n'.join(warnings), out)
 
 def test_constructor_renders(capsys:CapSys) -> None:
-    ...
     src = '''\
     class Animal(object):
         # pydoctor can infer the constructor to be: "Animal(name)"
@@ -773,3 +773,15 @@ def test_constructor_renders(capsys:CapSys) -> None:
     html = getHTMLOf(mod.contents['Animal'])
     assert 'Constructor: ' in html
     assert 'Animal(name)' in html
+
+def test_class_hierarchy_links_top_level_names() -> None:
+    system = model.System()
+    system.intersphinx = InMemoryInventory() # type:ignore
+    src = '''\
+    from socket import socket
+    class Stuff(socket):
+        ...
+    '''
+    mod = fromText(src, system=system)
+    index = flatten(ClassIndexPage(mod.system, TemplateLookup(template_dir)))
+    assert 'href="https://docs.python.org/3/library/socket.html#socket.socket"' in index

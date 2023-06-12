@@ -8,7 +8,7 @@ from typing import (
 
 from twisted.web.template import Element, Tag, TagLoader, renderer, tags
 
-from pydoctor import epydoc2stan, model
+from pydoctor import epydoc2stan, model, linker
 from pydoctor.templatewriter import TemplateLookup
 from pydoctor.templatewriter.pages import Page, objects_order
 
@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 
 def moduleSummary(module: model.Module, page_url: str) -> Tag:
     r: Tag = tags.li(
-        tags.code(epydoc2stan.taglink(module, page_url, label=module.name)), ' - ',
+        tags.code(linker.taglink(module, page_url, label=module.name)), ' - ',
         epydoc2stan.format_summary(module)
         )
     if module.isPrivate:
@@ -37,7 +37,7 @@ def moduleSummary(module: model.Module, page_url: str) -> Tag:
         li = tags.li(class_='compact-modules')
         for m in sorted(contents, key=objects_order):
             span = tags.span()
-            span(tags.code(epydoc2stan.taglink(m, m.url, label=m.name)))
+            span(tags.code(linker.taglink(m, m.url, label=m.name)))
             span(', ')
             if m.isPrivate:
                 span(class_='private')
@@ -91,7 +91,7 @@ def findRootClasses(
             for name, base in zip(cls.bases, cls.baseobjects):
                 if base is None or not base.isVisible:
                     # The base object is in an external library or filtered out (not visible)
-                    # Take special care to avoid AttributeError: 'ZopeInterfaceClass' object has no attribute 'append'.
+                    # Take special care to avoid AttributeError: 'Class' object has no attribute 'append'.
                     if isinstance(roots.get(name), model.Class):
                         roots[name] = [cast(model.Class, roots[name])]
                     cast(List[model.Class], roots.setdefault(name, [])).append(cls)
@@ -139,8 +139,8 @@ def subclassesFrom(
     if name not in anchors:
         r(tags.a(name=name))
         anchors.add(name)
-    r(tags.code(epydoc2stan.taglink(cls, page_url)), ' - ',
-      epydoc2stan.format_summary(cls))
+    r(tags.div(tags.code(linker.taglink(cls, page_url)), ' - ',
+      epydoc2stan.format_summary(cls)))
     scs = [sc for sc in cls.subclasses if sc.system is hostsystem and ' ' not in sc.fullName()
            and sc.isVisible]
     if len(scs) > 0:
@@ -172,7 +172,20 @@ class ClassIndexPage(Page):
             if isinstance(o, model.Class):
                 t(subclassesFrom(self.system, o, anchors, self.filename))
             else:
-                item = tags.li(tags.code(b))
+                url = self.system.intersphinx.getLink(b)
+                if url:
+                    link:"Flattenable" = linker.intersphinx_link(b, url)
+                else:
+                    # TODO: we should find a way to use the pyval colorizer instead
+                    # of manually creating the intersphinx link, this would allow to support
+                    # linking to namedtuple(), proxyForInterface() and all other ast constructs.
+                    # But the issue is that we're using the string form of base objects in order
+                    # to compare and aggregate them, as a consequence we can't directly use the colorizer.
+                    # Another side effect is that subclasses of collections.namedtuple() and namedtuple() 
+                    # (depending on how the name is imported) will not be aggregated under the same list item :/
+                    link = b
+                item = tags.li(tags.code(link))
+                
                 if all(isClassNodePrivate(sc) for sc in o):
                     # This is an external class used only by private API;
                     # mark the whole node private.
@@ -231,7 +244,7 @@ class LetterElement(Element):
             if obj.kind:
                 attributes["data-type"] = epydoc2stan.format_kind(obj.kind)
             return tags.code(
-                epydoc2stan.taglink(obj, NameIndexPage.filename), **attributes
+                linker.taglink(obj, NameIndexPage.filename), **attributes
                 )
         name2obs: DefaultDict[str, List[model.Documentable]] = defaultdict(list)
         for obj in self.initials[self.my_letter]:
@@ -295,7 +308,7 @@ class IndexPage(Page):
         r = []
         for o in self.system.rootobjects:
             r.append(tag.clone().fillSlots(root=tags.code(
-                epydoc2stan.taglink(o, self.filename)
+                linker.taglink(o, self.filename)
                 )))
         return r
 
@@ -340,7 +353,7 @@ class UndocumentedSummaryPage(Page):
             assert kind is not None  # 'kind is None' makes the object invisible
             tag(tags.li(
                 epydoc2stan.format_kind(kind), " - ",
-                tags.code(epydoc2stan.taglink(o, self.filename))
+                tags.code(linker.taglink(o, self.filename))
                 ))
         return tag
 
