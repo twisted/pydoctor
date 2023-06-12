@@ -82,6 +82,8 @@ in development
   scope when possible, when impossible, the theoretical runtime scopes are used. A warning can
   be reported when an annotation name is ambiguous (can be resolved to different names 
   depending on the scope context) with option ``-v``.
+* Improve the AST colorizer to output less parenthesis when it's not required.
+* Fix colorization of dictionary unpacking.
 * Improve the class hierarchy such that it links top level names with intersphinx when possible.
 * Add highlighting when clicking on "View In Hierarchy" link from class page.
 * Recognize variadic generics type variables (PEP 646).
