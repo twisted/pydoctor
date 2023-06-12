@@ -84,6 +84,8 @@ in development
   depending on the scope context) with option ``-v``.
 * Improve the AST colorizer to output less parenthesis when it's not required.
 * Fix colorization of dictionary unpacking.
+* Improve the class hierarchy such that it links top level names with intersphinx when possible.
+* Add highlighting when clicking on "View In Hierarchy" link from class page.
 * Recognize variadic generics type variables (PEP 646).
 
 pydoctor 23.4.1
