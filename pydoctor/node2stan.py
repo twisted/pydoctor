@@ -156,7 +156,7 @@ class HTMLTranslator(html4css1.HTMLTranslator):
         # iterate through attributes one at a time because some
         # versions of docutils don't case-normalize attributes.
         for attr_dict in attr_dicts:
-            for key, val in list(attr_dict.items()):
+            for key, val in tuple(attr_dict.items()):
                 # Prefix all CSS classes with "rst-"; and prefix all
                 # names with "rst-" to avoid conflicts.
                 if key.lower() in ('class', 'id', 'name'):

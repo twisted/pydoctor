@@ -1,4 +1,5 @@
 import ast
+from functools import partial
 import sys
 from textwrap import dedent
 from typing import Any, Union
@@ -518,63 +519,6 @@ def test_tuples_one_value() -> None:
     ,)
 """
 
-def test_dictionaries() -> None:
-    """Dicts are treated just like lists, except that the ":" is also tagged as
-    "op"."""
-
-    assert color({'1':33, '2':[1,2,3,{7:'oo'*20}]}) == """<document source="pyval_repr">
-    {
-    <wbr>
-    <inline classes="variable-quote">
-        '
-    <inline classes="variable-string">
-        1
-    <inline classes="variable-quote">
-        '
-    : 
-    33
-    ,
-    
-     
-    <wbr>
-    <inline classes="variable-quote">
-        '
-    <inline classes="variable-string">
-        2
-    <inline classes="variable-quote">
-        '
-    : 
-    [
-    <wbr>
-    1
-    ,
-    
-           
-    <wbr>
-    2
-    ,
-    
-           
-    <wbr>
-    3
-    ,
-    
-           
-    <wbr>
-    {
-    <wbr>
-    7
-    : 
-    <inline classes="variable-quote">
-        '
-    <inline classes="variable-string">
-        oooooooooooooooooooooooooooo
-    <inline classes="variable-linewrap">
-        ↵
-    
-    <inline classes="variable-ellipsis">
-        ...\n"""
-
 def extract_expr(_ast: ast.Module) -> ast.AST:
     elem = _ast.body[0]
     assert isinstance(elem, ast.Expr)
@@ -719,14 +663,12 @@ def test_operator_precedences() -> None:
     (1 + 2) * 3 / 4
     """)))) == """<document source="pyval_repr">
     (
-    (
     1
     +
     2
     )
     *
     3
-    )
     /
     4\n"""
 
@@ -734,19 +676,17 @@ def test_operator_precedences() -> None:
     ((1 + 2) * 3) / 4
     """)))) == """<document source="pyval_repr">
     (
-    (
     1
     +
     2
     )
     *
     3
-    )
     /
     4\n"""
 
     assert color(extract_expr(ast.parse(dedent("""
-    (1 + 2) * (3 / 4)
+    (1 + 2) * 3 / 4
     """)))) == """<document source="pyval_repr">
     (
     1
@@ -754,26 +694,20 @@ def test_operator_precedences() -> None:
     2
     )
     *
-    (
     3
     /
-    4
-    )\n"""
+    4\n"""
 
     assert color(extract_expr(ast.parse(dedent("""
-    (1 + (2 * 3) / 4) - 1
+    1 + 2 * 3 / 4 - 1
     """)))) == """<document source="pyval_repr">
-    (
     1
     +
-    (
     2
     *
     3
-    )
     /
     4
-    )
     -
     1\n"""
 
@@ -908,6 +842,9 @@ def test_ast_list_tuple() -> None:
     )\n"""
 
 def test_ast_dict() -> None:
+    """
+    Dictionnaries are treated just like lists.
+    """
     assert color(extract_expr(ast.parse(dedent("""
     {'1':33, '2':[1,2,3,{7:'oo'*20}]}
     """)))) == """<document source="pyval_repr">
@@ -1557,3 +1494,71 @@ def test_refmap_explicit() -> None:
     assert '<obj_reference refuri="typing.Type">' in dump
     assert '<obj_reference refuri="<mymod>.MyInt">' in dump
     assert '<obj_reference refuri="str">' in dump
+
+def check_src_roundtrip(src:str, subtests:Any) -> None:
+    # from cpython/Lib/test/test_unparse.py
+    with subtests.test(msg="round trip", src=src):
+        mod = ast.parse(src)
+        assert len(mod.body)==1
+        expr = mod.body[0]
+        assert isinstance(expr, ast.Expr)
+        code = color2(expr.value)
+        assert code==src
+
+def test_expressions_parens(subtests:Any) -> None:
+    check_src = partial(check_src_roundtrip, subtests=subtests)
+    check_src("1<<(10|1)<<1")
+    check_src("int|float|complex|None")
+    check_src("1+1")
+    check_src("1+2/3")
+    check_src("(1+2)/3")
+    check_src("(1+2)*3+4*(5+2)")
+    check_src("(1+2)*3+4*(5+2)**2")
+    check_src("~x")
+    check_src("x and y")
+    check_src("x and y and z")
+    check_src("x and (y and x)")
+    check_src("(x and y) and z")
+    # cpython tests expected '(x**y)**z**q', 
+    # but too much reasonning is needed to obtain this result,
+    # because the power operator is reassociative...
+    check_src("(x**y)**(z**q)")
+    check_src("((x**y)**z)**q")
+    check_src("x>>y")
+    check_src("x<<y")
+    check_src("x>>y and x>>z")
+    check_src("x+y-z*q^t**k")
+    
+    check_src("flag&(other|foo)")
+    
+    # with astor (which adds a lot of parenthesis :/)
+    if sys.version_info>=(3,8):
+        check_src("(a := b)")
+    if sys.version_info>=(3,7):
+        check_src("(await x)")
+    check_src("(x if x else y)")
+    check_src("(lambda x: x)")
+    check_src("(lambda : int)()")
+    check_src("not (x == y)")
+    check_src("(x == (not y))")
+    check_src("(P * V if P and V else n * R * T)")
+    check_src("(lambda P, V, n: P * V == n * R * T)")
+    
+    check_src("f(**x)")
+    check_src("{**x}")
+
+    check_src("(-1)**7")
+    check_src("(-1.0)**8")
+    check_src("(-1j)**6")
+    check_src("not True or False")
+    check_src("True or not False")
+
+    check_src("(3).__abs__()")
+
+    check_src("f(**([] or 5))")
+    check_src("{**([] or 5)}")
+    check_src("{**(~{})}")
+    check_src("{**(not {})}")
+    check_src("{**({} == {})}")
+    check_src("{**{'y': 2}, 'x': 1, None: True}")
+    check_src("{**{'y': 2}, **{'x': 1}}")
