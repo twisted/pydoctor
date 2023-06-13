@@ -195,7 +195,7 @@ def is_none_literal(node: ast.expr) -> bool:
     """Does this AST node represent the literal constant None?"""
     return isinstance(node, (ast.Constant, ast.NameConstant)) and node.value is None
     
-def unstring_annotation(node: ast.expr, ctx:'model.Documentable') -> ast.expr:
+def unstring_annotation(node: ast.expr, ctx:'model.Documentable', section:str='annotation') -> ast.expr:
     """Replace all strings in the given expression by parsed versions.
     @return: The unstringed node. If parsing fails, an error is logged
         and the original node is returned.
@@ -205,7 +205,7 @@ def unstring_annotation(node: ast.expr, ctx:'model.Documentable') -> ast.expr:
     except SyntaxError as ex:
         module = ctx.module
         assert module is not None
-        module.report(f'syntax error in annotation: {ex}', lineno_offset=node.lineno)
+        module.report(f'syntax error in {section}: {ex}', lineno_offset=node.lineno, section=section)
         return node
     else:
         assert isinstance(expr, ast.expr), expr

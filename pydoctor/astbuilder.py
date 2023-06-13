@@ -92,18 +92,11 @@ class TypeAliasVisitorExt(extensions.ModuleVisitorExt):
         Return C{True} if the Attribute is a type alias.
         """
         if ob.value is not None:
-
-            if is_using_annotations(ob.annotation, ('typing.TypeAlias', 'typing_extensions.TypeAlias'), ob):
-                try:
-                    ob.value = unstring_annotation(ob.value, ob)
-                except SyntaxError as e:
-                    ob.report(f"invalid type alias: {e}")
-                    return False
+            if is_using_annotations(ob.annotation, ('typing.TypeAlias', 
+                                                    'typing_extensions.TypeAlias'), ob):
                 return True
-            
             if is_typing_annotation(ob.value, ob.parent):
                 return True
-        
         return False
 
     def visit_Assign(self, node: Union[ast.Assign, ast.AnnAssign]) -> None:
@@ -117,7 +110,12 @@ class TypeAliasVisitorExt(extensions.ModuleVisitorExt):
                     return
                 if self._isTypeAlias(attr) is True:
                     attr.kind = model.DocumentableKind.TYPE_ALIAS
+                    # unstring type aliases
+                    attr.value = unstring_annotation(
+                        # this cast() is safe because _isTypeAlias() return True only if value is not None
+                        cast(ast.expr, attr.value), attr, section='type alias')
                 elif self._isTypeVariable(attr) is True:
+                    # TODO: unstring bound argument of type variables
                     attr.kind = model.DocumentableKind.TYPE_VARIABLE
     
     visit_AnnAssign = visit_Assign
