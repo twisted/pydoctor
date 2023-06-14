@@ -6,7 +6,7 @@ Support for L{attrs}.
 import ast
 import inspect
 
-from typing import Dict, Optional, cast
+from typing import Dict, List, Optional, cast
 
 from pydoctor import astbuilder, model, astutils, extensions
 from pydoctor.extensions._dataclass_like import DataclasLikeClass, DataclassLikeVisitor
@@ -97,12 +97,24 @@ class ModuleVisitor(DataclassLikeVisitor):
 
         attrs_args = astutils.safe_bind_args(attrs_decorator_signature, attrs_deco, mod)
         if attrs_args:
-            cls.attrs_auto_attribs = astutils.get_literal_arg(name='auto_attribs', default=False, typecheck=bool,
-                                                              args=attrs_args, lineno=attrs_deco.lineno, module=mod)
-            cls.attrs_init = astutils.get_literal_arg(name='init', default=True, typecheck=bool,
-                                                      args=attrs_args, lineno=attrs_deco.lineno, module=mod)
-            cls.attrs_kw_only = astutils.get_literal_arg(name='kw_only', default=False, typecheck=bool,
-                                                         args=attrs_args, lineno=attrs_deco.lineno, module=mod)
+            cls.attrs_auto_attribs = astutils.get_literal_arg(name='auto_attribs', 
+                                                              default=False, 
+                                                              typecheck=bool,
+                                                              args=attrs_args, 
+                                                              lineno=attrs_deco.lineno, 
+                                                              module=mod)
+            cls.attrs_init = astutils.get_literal_arg(name='init', 
+                                                      default=True, 
+                                                      typecheck=bool,
+                                                      args=attrs_args, 
+                                                      lineno=attrs_deco.lineno, 
+                                                      module=mod)
+            cls.attrs_kw_only = astutils.get_literal_arg(name='kw_only', 
+                                                         default=False, 
+                                                         typecheck=bool,
+                                                         args=attrs_args, 
+                                                         lineno=attrs_deco.lineno, 
+                                                         module=mod)
     
     def transformClassVar(self, cls: model.Class, 
                           attr: model.Attribute, 
@@ -110,13 +122,14 @@ class ModuleVisitor(DataclassLikeVisitor):
                           value:Optional[ast.expr]) -> None:
         assert isinstance(cls, AttrsClass)
         is_attrs_attrib = is_attrib(value, cls)
-        is_attrs_auto_attrib = cls.attrs_auto_attribs and annotation is not None
+        is_attrs_auto_attrib = cls.attrs_auto_attribs and not is_attrs_attrib and annotation is not None
         
         if is_attrs_attrib or is_attrs_auto_attrib:
+            
             attr.kind = model.DocumentableKind.INSTANCE_VARIABLE
-            if annotation is None and value is not None:
+            if value is not None:
                 attrib_args = astutils.safe_bind_args(attrib_signature, value, cls.module)
-                if attrib_args:
+                if attrib_args and annotation is None:
                     attr.annotation = annotation_from_attrib(attrib_args, cls)
             else:
                 attrib_args = None
@@ -125,13 +138,22 @@ class ModuleVisitor(DataclassLikeVisitor):
             if cls.attrs_init:
                 
                 if is_attrs_auto_attrib or (attrib_args and 
-                                            astutils.get_literal_arg(name='init', default=True, typecheck=bool,
-                                                                     args=attrib_args, module=cls.module, lineno=attr.linenumber)):
+                                            astutils.get_literal_arg(name='init', 
+                                                                     default=True, 
+                                                                     typecheck=bool,
+                                                                     args=attrib_args, 
+                                                                     module=cls.module, 
+                                                                     lineno=attr.linenumber)):
+                    
                     kind:inspect._ParameterKind = inspect.Parameter.POSITIONAL_OR_KEYWORD
                     
                     if cls.attrs_kw_only or (attrib_args and 
-                                             astutils.get_literal_arg(name='kw_only', default=False, typecheck=bool,
-                                                                      args=attrib_args, module=cls.module, lineno=attr.linenumber)):
+                                             astutils.get_literal_arg(name='kw_only', 
+                                                                      default=False, 
+                                                                      typecheck=bool,
+                                                                      args=attrib_args,
+                                                                      module=cls.module, 
+                                                                      lineno=attr.linenumber)):
                         kind = inspect.Parameter.KEYWORD_ONLY
 
                     attrs_default:Optional[ast.expr] = ast.Constant(value=...)
@@ -151,20 +173,22 @@ class ModuleVisitor(DataclassLikeVisitor):
                     # since there is not such thing as a private parameter.
                     init_param_name = attr.name.lstrip('_')
 
+                    if attrib_args is not None:
+                        constructor_annotation = cls.attrs_constructor_annotations[init_param_name] = \
+                            annotation_from_attrib(attrib_args, cls, for_init_method=True) or annotation
+                    else:
+                        constructor_annotation = cls.attrs_constructor_annotations[init_param_name] = annotation
+                    
                     # TODO: Check if attrs defines a converter, if it does not, it's OK
                     # to deduce that the type of the argument is the same as type of the parameter.
                     # But actually, this might be a wrong assumption.
                     cls.attrs_constructor_parameters.append(
                         inspect.Parameter(
                             init_param_name, kind=kind, 
-                            default=astbuilder._ValueFormatter(attrs_default, cls) if attrs_default else inspect.Parameter.empty, 
-                            annotation=inspect.Parameter.empty))
-                    
-                    if attrib_args is not None:
-                        cls.attrs_constructor_annotations[init_param_name] = \
-                            annotation_from_attrib(attrib_args, cls, for_init_method=True) or annotation
-                    else:
-                        cls.attrs_constructor_annotations[init_param_name] = annotation
+                            default=astbuilder._ValueFormatter(attrs_default, cls) 
+                                if attrs_default else inspect.Parameter.empty, 
+                            annotation=astbuilder._AnnotationValueFormatter(constructor_annotation, cls) 
+                                if constructor_annotation else inspect.Parameter.empty))
     
     def isDataclassLike(self, cls:ast.ClassDef, mod:model.Module) -> bool:
         return any(is_attrs_deco(dec, mod) for dec in cls.decorator_list)
@@ -190,7 +214,7 @@ class AttrsClass(DataclasLikeClass, model.Class):
         """
 
         # since the signatures doesnt include type annotations, we track them in a separate attribute.
-        self.attrs_constructor_parameters = []
+        self.attrs_constructor_parameters:List[inspect.Parameter] = []
         self.attrs_constructor_parameters.append(inspect.Parameter('self', inspect.Parameter.POSITIONAL_OR_KEYWORD,))
         self.attrs_constructor_annotations: Dict[str, Optional[ast.expr]] = {'self': None}
 
@@ -206,15 +230,31 @@ def postProcess(system:model.System) -> None:
             # init Function attributes that otherwise would be undefined :/
             func.decorators = None
             func.is_async = False
+            func.parentMod = cls.parentMod
+            func.setLineNumber(cls.linenumber)
 
-            func.annotations = cls.attrs_constructor_annotations
+            parameters = cls.attrs_constructor_parameters
+            annotations = cls.attrs_constructor_annotations
+            
+            # Re-ordering kw_only arguments at the end of the list
+            for param in tuple(parameters):
+                if param.kind is inspect.Parameter.KEYWORD_ONLY:
+                    parameters.remove(param)
+                    parameters.append(param)
+                    ann = annotations[param.name]
+                    del annotations[param.name]
+                    annotations[param.name] = ann
+
+            func.annotations = annotations
             try:
                 # TODO: collect arguments from super classes attributes definitions.
-                func.signature = inspect.Signature(cls.attrs_constructor_parameters)
+                func.signature = inspect.Signature(parameters)
             except Exception as e:
                 func.report(f'could not deduce attrs class __init__ signature: {e}')
                 func.signature = inspect.Signature()
                 func.annotations = {}
+            else:
+                cls.constructors.append(func)
 
 def setup_pydoctor_extension(r:extensions.ExtRegistrar) -> None:
     r.register_astbuilder_visitor(ModuleVisitor)

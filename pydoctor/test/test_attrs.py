@@ -129,7 +129,7 @@ def test_attrs_args(systemcls: Type[model.System], capsys: CapSys) -> None:
         )
 
 @attrs_systemcls_param
-def test_attrs_init_method(systemcls: Type[model.System], capsys: CapSys) -> None:
+def test_attrs_constructor_method_infer_arg_types(systemcls: Type[model.System], capsys: CapSys) -> None:
     src = '''\
     @attr.s
     class C(object):
@@ -156,4 +156,173 @@ def test_attrs_init_method(systemcls: Type[model.System], capsys: CapSys) -> Non
     constructor = C.contents['__init__']
     assert isinstance(constructor, model.Function)
     assert epydoc2stan.format_constructor_short_text(constructor, forclass=C) == 'C(c, x, b)'
-    assert flatten_text(pages.format_signature(constructor)) == '(self, c=100, x=1, b=23)'
+    assert flatten_text(pages.format_signature(constructor)) == '(self, c: int = 100, x: int = 1, b: int = 23)'
+
+# Test case for auto_attribs with defaults
+@attrs_systemcls_param
+def test_attrs_constructor_auto_attribs(systemcls: Type[model.System]) -> None:
+    src = '''\
+    import attr
+    @attr.s(auto_attribs=True)
+    class C:
+        a: int
+        b: str = "default"
+    '''
+    mod = fromText(src, systemcls=systemcls)
+    C = mod.contents['C']
+    assert isinstance(C, model.Class)
+    constructor = C.contents['__init__']
+    assert isinstance(constructor, model.Function)
+    assert flatten_text(pages.format_signature(constructor)) == '(self, a: int, b: str = \'default\')'
+
+# Test case for kw_only
+@attrs_systemcls_param
+def test_attrs_constructor_kw_only(systemcls: Type[model.System]) -> None:
+    src = '''\
+    import attr
+    @attr.s(kw_only=True)
+    class C:
+        a = attr.ib()
+        b: str = attr.ib()
+    '''
+    mod = fromText(src, systemcls=systemcls)
+    C = mod.contents['C']
+    assert isinstance(C, attrs.AttrsClass)
+    assert C.attrs_kw_only==True
+    assert C.attrs_init==True
+    constructor = C.contents['__init__']
+    assert isinstance(constructor, model.Function)
+    assert flatten_text(pages.format_signature(constructor)) == '(self, *, a, b: str)'
+
+# Test case for default factory
+@attrs_systemcls_param
+def test_attrs_constructor_factory_optional(systemcls: Type[model.System]) -> None:
+    src = '''\
+    import attr
+    @attr.s
+    class C:
+        a: int = attr.ib(factory=list)
+        b: str = attr.ib(factory=str)
+    '''
+    mod = fromText(src, systemcls=systemcls)
+    C = mod.contents['C']
+    assert isinstance(C, model.Class)
+    constructor = C.contents['__init__']
+    assert isinstance(constructor, model.Function)
+    assert flatten_text(pages.format_signature(constructor)) == '(self, a: int = list(), b: str = str())'
+
+# Test case for init=False:
+@attrs_systemcls_param
+def test_attrs_no_constructor(systemcls: Type[model.System]) -> None:
+    src = '''\
+    import attr
+    @attr.s(init=False)
+    class C:
+        a: int = attr.ib()
+        b: str = attr.ib()
+    '''
+    mod = fromText(src, systemcls=systemcls)
+    C = mod.contents['C']
+    assert C.contents.get('__init__') is None
+
+# Test case for single inheritance:
+@attrs_systemcls_param
+def test_attrs_constructor_single_inheritance(systemcls: Type[model.System]) -> None:
+    src = '''\
+    import attr
+    @attr.s(auto_attribs=True)
+    class Base:
+        a: int
+
+    @attr.s(auto_attribs=True)
+    class Derived(Base):
+        b: str
+    '''
+    mod = fromText(src, systemcls=systemcls)
+    Derived = mod.contents['Derived']
+    assert isinstance(Derived, model.Class)
+    constructor = Derived.contents['__init__']
+    assert isinstance(constructor, model.Function)
+    assert flatten_text(pages.format_signature(constructor)) == '(self, a: int, b: str)'
+
+# Test case for multiple inheritance:
+@attrs_systemcls_param
+def test_attrs_constructor_multiple_inheritance(systemcls: Type[model.System]) -> None:
+    src = '''\
+    import attr
+    @attr.s(auto_attribs=True)
+    class Base1:
+        a: int
+
+    @attr.s(auto_attribs=True)
+    class Base2:
+        b: str
+
+    @attr.s(auto_attribs=True)
+    class Derived(Base1, Base2):
+        c: float
+    '''
+    mod = fromText(src, systemcls=systemcls)
+    Derived = mod.contents['Derived']
+    assert isinstance(Derived, model.Class)
+    constructor = Derived.contents['__init__']
+    assert isinstance(constructor, model.Function)
+    assert flatten_text(pages.format_signature(constructor)) == '(self, a: int, b: str, c: float)'
+
+# Test case for inheritance with overridden attributes:
+@attrs_systemcls_param
+def test_attrs_constructor_single_inheritance_overridden_attribute(systemcls: Type[model.System]) -> None:
+    src = '''\
+    import attr
+    @attr.s(auto_attribs=True)
+    class Base:
+        a: int
+        b: str = "default"
+
+    @attr.s(auto_attribs=True)
+    class Derived(Base):
+        b: str = "overridden"
+        c: float = 3.14
+    '''
+    mod = fromText(src, systemcls=systemcls)
+    Derived = mod.contents['Derived']
+    assert isinstance(Derived, model.Class)
+    constructor = Derived.contents['__init__']
+    assert isinstance(constructor, model.Function)
+    assert flatten_text(pages.format_signature(constructor)) == '(self, a: int, b: str = "overridden", c: float = 3.14)'
+
+# Test case with attr.ib(init=False):
+@attrs_systemcls_param
+def test_attrs_constructor_attribute_init_False(systemcls: Type[model.System]) -> None:
+    src = '''\
+    import attr
+    @attr.s(auto_attribs=True)
+    class MyClass:
+        a: int
+        b: str = attr.ib(init=False)
+    '''
+    mod = fromText(src, systemcls=systemcls)
+    MyClass = mod.contents['MyClass']
+    assert isinstance(MyClass, model.Class)
+    constructor = MyClass.contents['__init__']
+    assert isinstance(constructor, model.Function)
+    assert flatten_text(pages.format_signature(constructor)) == '(self, a: int)'
+
+# Test case with attr.ib(kw_only=True):
+@attrs_systemcls_param
+def test_attrs_constructor_attribute_kw_only_reorder(systemcls: Type[model.System], capsys:CapSys) -> None:
+    src = '''\
+    import attr
+    @attr.s(auto_attribs=True)
+    class MyClass:
+        a: int
+        b: str = attr.ib(kw_only=True)
+        c: float
+    '''
+    mod = fromText(src, systemcls=systemcls)
+    assert not capsys.readouterr().out
+    MyClass = mod.contents['MyClass']
+    assert isinstance(MyClass, model.Class)
+    constructor = MyClass.contents['__init__']
+    assert isinstance(constructor, model.Function)
+    assert flatten_text(pages.format_signature(constructor)) == '(self, a: int, c: float, *, b: str)'
