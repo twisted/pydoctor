@@ -139,11 +139,14 @@ def test_basic_package(tmp_path: Path) -> None:
     root, = system.rootobjects
     w._writeDocsFor(root)
     w.writeSummaryPages(system)
+
     for ob in system.allobjects.values():
         url = ob.url
         if '#' in url:
             url = url[:url.find('#')]
+
         assert (tmp_path / url).is_file()
+
     with open(tmp_path / 'basic.html', encoding='utf-8') as f:
         assert 'Package docstring' in f.read()
 
