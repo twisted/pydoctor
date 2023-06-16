@@ -31,12 +31,20 @@ def is_attrib(expr: Optional[ast.expr], ctx: model.Documentable) -> bool:
         'attr.ib', 'attr.attrib', 'attr.attr'
         )
     
-def is_factory_call(expr: ast.expr, ctx: model.Documentable) -> bool:
+def get_factory(expr: Optional[ast.expr], ctx: model.Documentable) -> Optional[ast.expr]:
     """
-    Does this AST represent a call to L{attr.Factory}?
+    If this AST represent a call to L{attr.Factory}, returns the expression inside the factory call
     """
-    return isinstance(expr, ast.Call) and \
-        astutils.node2fullname(expr.func, ctx) in ('attrs.Factory', 'attr.Factory')
+    if isinstance(expr, ast.Call) and \
+        astutils.node2fullname(expr.func, ctx) in ('attrs.Factory', 'attr.Factory'):
+        try:
+            factory, = expr.args
+        except Exception:
+            return None
+        else:
+            return factory
+    else:
+        return None
 
 def annotation_from_attrib(
         args:inspect.BoundArguments,
@@ -68,12 +76,21 @@ def annotation_from_attrib(
 def default_from_attrib(args:inspect.BoundArguments, ctx: model.Documentable) -> Optional[ast.expr]:
     d = args.arguments.get('default')
     f = args.arguments.get('factory')
-    if d is not None:
-        if is_factory_call(d, ctx):
-            return ast.Constant(value=...)
-        return cast(ast.expr, d)
-    elif f: # If a factory is defined, the default value is not obvious.
-        return ast.Constant(value=...)
+    if isinstance(d, ast.expr):
+        factory = get_factory(d, ctx)
+        if factory:
+            if astutils.node2dottedname(factory):
+                return ast.Call(func=factory, args=[], keywords=[], lineno=d.lineno, col_offset=d.col_offset)
+            else:
+                return ast.Constant(value=..., lineno=d.lineno, col_offset=d.col_offset)
+        return d
+    elif isinstance(f, ast.expr):
+        if astutils.node2dottedname(f):
+            # If a simple factory is defined, the default value is a call to this function
+            return ast.Call(func=f, args=[], keywords=[], lineno=f.lineno, col_offset=f.col_offset)
+        else:
+            # Else we can't figure it out
+            return ast.Constant(value=..., lineno=f.lineno, col_offset=f.col_offset)
     else:
         return None
 
@@ -97,24 +114,15 @@ class ModuleVisitor(DataclassLikeVisitor):
 
         attrs_args = astutils.safe_bind_args(attrs_decorator_signature, attrs_deco, mod)
         if attrs_args:
-            cls.attrs_auto_attribs = astutils.get_literal_arg(name='auto_attribs', 
-                                                              default=False, 
-                                                              typecheck=bool,
-                                                              args=attrs_args, 
-                                                              lineno=attrs_deco.lineno, 
-                                                              module=mod)
-            cls.attrs_init = astutils.get_literal_arg(name='init', 
-                                                      default=True, 
-                                                      typecheck=bool,
-                                                      args=attrs_args, 
-                                                      lineno=attrs_deco.lineno, 
-                                                      module=mod)
-            cls.attrs_kw_only = astutils.get_literal_arg(name='kw_only', 
-                                                         default=False, 
-                                                         typecheck=bool,
-                                                         args=attrs_args, 
-                                                         lineno=attrs_deco.lineno, 
-                                                         module=mod)
+            attrs_args_value = {name: astutils.get_literal_arg(attrs_args, name, default, 
+                                    typecheck, attrs_deco.lineno, mod
+                                    ) for name, default, typecheck in 
+                                    (('auto_attribs', False, bool),
+                                     ('init', True, bool),
+                                     ('kw_only', False, bool),)}
+            cls.attrs_auto_attribs = attrs_args_value['auto_attribs']
+            cls.attrs_init = attrs_args_value['init']
+            cls.attrs_kw_only = attrs_args_value['kw_only']
     
     def transformClassVar(self, cls: model.Class, 
                           attr: model.Attribute, 
@@ -124,47 +132,43 @@ class ModuleVisitor(DataclassLikeVisitor):
         is_attrs_attrib = is_attrib(value, cls)
         is_attrs_auto_attrib = cls.attrs_auto_attribs and not is_attrs_attrib and annotation is not None
         
+        attrib_args = None
+        attrib_args_value = {}
         if is_attrs_attrib or is_attrs_auto_attrib:
             
             attr.kind = model.DocumentableKind.INSTANCE_VARIABLE
             if value is not None:
                 attrib_args = astutils.safe_bind_args(attrib_signature, value, cls.module)
-                if attrib_args and annotation is None:
-                    attr.annotation = annotation_from_attrib(attrib_args, cls)
-            else:
-                attrib_args = None
+                if attrib_args:
+                    if annotation is None:
+                        attr.annotation = annotation_from_attrib(attrib_args, cls)
+                
+                    attrib_args_value = {name: astutils.get_literal_arg(attrib_args, name, default, 
+                                            typecheck, attr.linenumber, cls.module
+                                            ) for name, default, typecheck in 
+                                            (('init', True, bool),
+                                            ('kw_only', False, bool),)}
         
             # Handle the auto-creation of the __init__ method.
             if cls.attrs_init:
-                
-                if is_attrs_auto_attrib or (attrib_args and 
-                                            astutils.get_literal_arg(name='init', 
-                                                                     default=True, 
-                                                                     typecheck=bool,
-                                                                     args=attrib_args, 
-                                                                     module=cls.module, 
-                                                                     lineno=attr.linenumber)):
-                    
+                if is_attrs_auto_attrib or (attrib_args and attrib_args_value['init']):    
                     kind:inspect._ParameterKind = inspect.Parameter.POSITIONAL_OR_KEYWORD
-                    
-                    if cls.attrs_kw_only or (attrib_args and 
-                                             astutils.get_literal_arg(name='kw_only', 
-                                                                      default=False, 
-                                                                      typecheck=bool,
-                                                                      args=attrib_args,
-                                                                      module=cls.module, 
-                                                                      lineno=attr.linenumber)):
+                
+                    if cls.attrs_kw_only or (attrib_args and attrib_args_value['kw_only']):
                         kind = inspect.Parameter.KEYWORD_ONLY
 
                     attrs_default:Optional[ast.expr] = ast.Constant(value=...)
                     
                     if is_attrs_auto_attrib:
                         attrs_default = value
-                        
-                        if attrs_default and is_factory_call(attrs_default, cls):
-                            # Factory is not a default value stricly speaking, 
-                            # so we give up on trying to figure it out.
-                            attrs_default = ast.Constant(value=...)
+                        factory = get_factory(attrs_default, cls)
+                        if factory:
+                            if astutils.node2dottedname(factory):
+                                attrs_default = ast.Call(func=factory, args=[], keywords=[], lineno=factory.lineno, col_offset=factory.col_offset)
+                            else:
+                                # Factory is not a default value stricly speaking, 
+                                # so we give up on trying to figure it out.
+                                attrs_default = ast.Constant(value=..., lineno=factory.lineno, col_offset=factory.col_offset)
                     
                     elif attrib_args is not None:
                         attrs_default = default_from_attrib(attrib_args, cls)
