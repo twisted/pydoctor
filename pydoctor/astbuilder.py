@@ -846,8 +846,6 @@ class ModuleVistor(NodeVisitor):
             func.kind = model.DocumentableKind.CLASS_METHOD
 
         annotations, signature = signature_from_functiondef(node, func)
-
-        func.signature = signature
         func.annotations = annotations
 
         # Only set main function signature if it is a non-overload
@@ -1019,7 +1017,7 @@ class _AnnotationValueFormatter(_ValueFormatter):
     """
     Special L{_ValueFormatter} for function annotations.
     """
-    def __init__(self, value: ast.expr, ctx: model.Function):
+    def __init__(self, value: ast.expr, ctx: model.Documentable):
         super().__init__(value, ctx)
         self._linker = linker._AnnotationLinker(ctx)
     
