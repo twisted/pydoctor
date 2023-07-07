@@ -294,7 +294,7 @@ def postProcess(system:model.System) -> None:
         # by default attr.s() overrides any defined __init__ mehtod, whereas dataclasses.
         # TODO: but if auto_detect=True, we need to check if __init__ already exists, otherwise it does not replace it.
         # NOTE: But attr.define() use auto_detect=True by default! this is getting complicated...
-        if cls.isDataclassLike and cls.attrs_init:
+        if cls.dataclassLike == ModuleVisitor.DATACLASS_LIKE_KIND and cls.attrs_init:
             func = system.Function(system, '__init__', cls)
             system.addObject(func)
             # init Function attributes that otherwise would be undefined :/
