@@ -1127,9 +1127,9 @@ def format_constructor_short_text(constructor: model.Function, forclass: model.C
 
     return f"{callable_name}({args})"
 
-def populate_constructors_extra_info(cls:model.Class) -> None:
+def get_constructors_extra(cls:model.Class) -> Optional[ParsedDocstring]:
     """
-    Adds an extra information to be rendered based on Class constructors.
+    Get an extra docstring to represent Class constructors.
     """
     from pydoctor.templatewriter import util
     constructors = cls.public_constructors
@@ -1142,4 +1142,5 @@ def populate_constructors_extra_info(cls:model.Class) -> None:
             short_text = format_constructor_short_text(c, cls)
             extra_epytext += '`%s <%s>`' % (short_text, c.fullName())
         
-        cls.extra_info.append(parse_docstring(cls, extra_epytext, cls, 'restructuredtext', section='constructor extra'))
+        return parse_docstring(cls, extra_epytext, cls, 'restructuredtext', section='constructor extra')
+    return None

@@ -343,8 +343,8 @@ def postProcess(system:model.System) -> None:
             func.decorators = None
             func.is_async = False
             func.parentMod = cls.parentMod
-            system.addObject(func)
             func.setLineNumber(cls.linenumber)
+            system.addObject(func)
 
             # collect arguments from super classes attributes definitions.
             inherited_params, inherited_annotations = collect_inherited_constructor_params(cls)

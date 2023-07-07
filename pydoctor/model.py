@@ -674,9 +674,6 @@ class Class(CanContainImportsDocumentable):
             if return_ann == self.fullName() or \
                return_ann in ('typing.Self', 'typing_extensions.Self'):
                 self.constructors.append(fun)
-        
-        from pydoctor import epydoc2stan
-        epydoc2stan.populate_constructors_extra_info(self)
 
     @overload
     def mro(self, include_external:'Literal[True]', include_self:bool=True) -> Sequence[Union['Class', str]]:...

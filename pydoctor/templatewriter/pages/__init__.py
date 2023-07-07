@@ -486,6 +486,12 @@ class ClassPage(CommonPage):
             if p is not None:
                 r.append(tags.p(p))
 
+        constructor = epydoc2stan.get_constructors_extra(self.ob)
+        if constructor:
+            r.append(epydoc2stan.unwrap_docstring_stan(
+                epydoc2stan.safe_to_stan(constructor, self.ob.docstring_linker, self.ob,
+                fallback = lambda _,__,___:epydoc2stan.BROKEN, section='extra')))
+
         r.extend(super().extras())
         return r
 
