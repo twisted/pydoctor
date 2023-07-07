@@ -54,6 +54,8 @@ def annotation_from_attrib(
     return None
 
 class ModuleVisitor(DataclassLikeVisitor):
+
+    DATACLASS_LIKE_KIND = 'attrs class'
     
     def visit_ClassDef(self, node:ast.ClassDef) -> None:
         """
@@ -62,7 +64,7 @@ class ModuleVisitor(DataclassLikeVisitor):
         super().visit_ClassDef(node)
 
         cls = self.visitor.builder._stack[-1].contents.get(node.name)
-        if not isinstance(cls, AttrsClass) or not cls.isDataclassLike:
+        if not isinstance(cls, AttrsClass) or not cls.dataclassLike:
             return
         mod = cls.module
         try:
@@ -87,8 +89,10 @@ class ModuleVisitor(DataclassLikeVisitor):
             if annotation is None and value is not None:
                 attr.annotation = annotation_from_attrib(value, cls)
     
-    def isDataclassLike(self, cls:ast.ClassDef, mod:model.Module) -> bool:
-        return any(is_attrs_deco(dec, mod) for dec in cls.decorator_list)
+    def isDataclassLike(self, cls:ast.ClassDef, mod:model.Module) -> Optional[object]:
+        if any(is_attrs_deco(dec, mod) for dec in cls.decorator_list):
+            return self.DATACLASS_LIKE_KIND
+        return None
 
 class AttrsClass(DataclasLikeClass, model.Class):
     auto_attribs: bool = False
