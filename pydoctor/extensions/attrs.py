@@ -158,6 +158,8 @@ def default_from_attrib(args:inspect.BoundArguments, ctx: model.Documentable) ->
         return None
 
 class ModuleVisitor(DataclassLikeVisitor):
+
+    DATACLASS_LIKE_KIND = 'attrs class'
     
     def visit_ClassDef(self, node:ast.ClassDef) -> None:
         """
@@ -166,7 +168,7 @@ class ModuleVisitor(DataclassLikeVisitor):
         super().visit_ClassDef(node)
 
         cls = self.visitor.builder._stack[-1].contents.get(node.name)
-        if not isinstance(cls, AttrsClass) or not cls.isDataclassLike:
+        if not isinstance(cls, AttrsClass) or not cls.dataclassLike:
             return
         mod = cls.module
         try:
@@ -256,8 +258,10 @@ class ModuleVisitor(DataclassLikeVisitor):
                             annotation=astbuilder._AnnotationValueFormatter(constructor_annotation, cls) 
                                 if constructor_annotation else inspect.Parameter.empty))
     
-    def isDataclassLike(self, cls:ast.ClassDef, mod:model.Module) -> bool:
-        return any(is_attrs_deco(dec, mod) for dec in cls.decorator_list)
+    def isDataclassLike(self, cls:ast.ClassDef, mod:model.Module) -> Optional[object]:
+        if any(is_attrs_deco(dec, mod) for dec in cls.decorator_list):
+            return self.DATACLASS_LIKE_KIND
+        return None
 
 class AttrsClass(DataclasLikeClass, model.Class):
     def setup(self) -> None:

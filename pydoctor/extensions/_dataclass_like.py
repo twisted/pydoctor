@@ -11,15 +11,26 @@ from pydoctor.model import Module, Attribute, Class, Documentable
 from pydoctor.extensions import ModuleVisitorExt, ClassMixin
 
 class DataclasLikeClass(ClassMixin):
-    isDataclassLike:bool = False
+    dataclassLike:Optional[object] = None
 
 class DataclassLikeVisitor(ModuleVisitorExt, ABC):
+
+    DATACLASS_LIKE_KIND:object = NotImplemented
+
+    def __init__(self) -> None:
+        super().__init__()
+        assert self.DATACLASS_LIKE_KIND is not NotImplemented, "constant DATACLASS_LIKE_KIND should have a value"
     
     @abstractmethod
-    def isDataclassLike(self, cls:ast.ClassDef, mod:Module) -> bool:
+    def isDataclassLike(self, cls:ast.ClassDef, mod:Module) -> Optional[object]:
         """
-        Whether L{transformClassVar} method should be called for each class variables
+        If this classdef adopts dataclass-like behaviour, returns an non-zero int, otherwise returns None.
+        Returned value is directly stored in the C{dataclassLike} attribute of the visited class.
+        Used to determine whether L{transformClassVar} method should be called for each class variables
         in this class.
+
+        The int value should be a constant representing the kind of dataclass-like this class implements.
+        Class decorated with @dataclass and @attr.s will have different non-zero C{dataclassLike} attribute.
         """
 
     @abstractmethod
@@ -28,9 +39,8 @@ class DataclassLikeVisitor(ModuleVisitorExt, ABC):
                           value:Optional[ast.expr]) -> None:
         """
         Transform this class variable into a instance variable.
-        This method is left abstract because it might not be as simple as setting::
+        This method is left abstract because it's not as simple as setting::
             attr.kind = model.DocumentableKind.INSTANCE_VARIABLE
-        (but it also might be just that for the simpler cases)
         """
     
     def visit_ClassDef(self, node: ast.ClassDef) -> None:
@@ -38,7 +48,12 @@ class DataclassLikeVisitor(ModuleVisitorExt, ABC):
         if not isinstance(cls, Class):
             return
         assert isinstance(cls, DataclasLikeClass)
-        cls.isDataclassLike = self.isDataclassLike(node, cls.module)
+        dataclassLikeKind = self.isDataclassLike(node, cls.module)
+        if dataclassLikeKind:
+            if not cls.dataclassLike:
+                cls.dataclassLike = dataclassLikeKind
+            else:
+                cls.report(f'class is both {cls.dataclassLike} and {dataclassLikeKind}')
     
     def visit_Assign(self, node: Union[ast.Assign, ast.AnnAssign]) -> None:
         current = self.visitor.builder.current
@@ -49,7 +64,7 @@ class DataclassLikeVisitor(ModuleVisitorExt, ABC):
                 if not isinstance(current, Class):
                     continue
                 assert isinstance(current, DataclasLikeClass)
-                if not current.isDataclassLike:
+                if not current.dataclassLike == self.DATACLASS_LIKE_KIND:
                     continue
                 target, = dottedname
                 attr: Optional[Documentable] = current.contents.get(target)
