@@ -302,13 +302,12 @@ def collect_inherited_constructor_params(cls:AttrsClass) -> Tuple[List[inspect.P
     # Traverse the MRO and collect attributes.
     for base_cls in reversed(cls.mro(include_external=False, include_self=False)):
         assert isinstance(base_cls, AttrsClass)
-        for (name, ann),p in zip(base_cls.attrs_constructor_annotations.items(), 
-                       base_cls.attrs_constructor_parameters):
-            if name == 'self' or name in own_attr_names:
+        for p in base_cls.attrs_constructor_parameters[1:]:
+            if p.name in own_attr_names:
                 continue
 
             base_attrs.append(p)
-            base_annotations[name] = ann
+            base_annotations[p.name] = base_cls.attrs_constructor_annotations[p.name]
 
     # For each name, only keep the freshest definition i.e. the furthest at the
     # back.  base_annotations is fine because it gets overwritten with every new
@@ -349,7 +348,9 @@ def postProcess(system:model.System) -> None:
             # collect arguments from super classes attributes definitions.
             inherited_params, inherited_annotations = collect_inherited_constructor_params(cls)
             parameters = [cls.attrs_constructor_parameters[0], *inherited_params, *cls.attrs_constructor_parameters[1:]]
-            annotations = {**inherited_annotations, **cls.attrs_constructor_annotations}
+            annotations = {'self': None}
+            annotations.update(inherited_annotations)
+            annotations.update(cls.attrs_constructor_annotations)
             
             # Re-ordering kw_only arguments at the end of the list
             for param in tuple(parameters):

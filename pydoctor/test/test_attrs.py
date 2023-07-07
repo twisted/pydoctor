@@ -261,6 +261,7 @@ def test_attrs_constructor_single_inheritance(systemcls: Type[model.System]) -> 
     assert isinstance(Derived, model.Class)
     constructor = Derived.contents['__init__']
     assert isinstance(constructor, model.Function)
+    assert epydoc2stan.format_constructor_short_text(constructor, Derived) == 'Derived(a, b)'
     assert flatten_text(pages.format_signature(constructor)) == '(self, a: int, b: str)'
 
 # Test case for multiple inheritance:
@@ -285,6 +286,7 @@ def test_attrs_constructor_multiple_inheritance(systemcls: Type[model.System]) -
     assert isinstance(Derived, model.Class)
     constructor = Derived.contents['__init__']
     assert isinstance(constructor, model.Function)
+    assert epydoc2stan.format_constructor_short_text(constructor, Derived) == 'Derived(b, a, c)'
     assert flatten_text(pages.format_signature(constructor)) == '(self, b: str, a: int, c: float)'
 
 # Test case for inheritance with overridden attributes:
@@ -307,7 +309,34 @@ def test_attrs_constructor_single_inheritance_overridden_attribute(systemcls: Ty
     assert isinstance(Derived, model.Class)
     constructor = Derived.contents['__init__']
     assert isinstance(constructor, model.Function)
+    assert epydoc2stan.format_constructor_short_text(constructor, Derived) == 'Derived(a, b, c)'
     assert flatten_text(pages.format_signature(constructor)) == '(self, a: int, b: str = \'overridden\', c: float = 3.14)'
+
+@attrs_systemcls_param
+def test_attrs_constructor_single_inheritance_traverse_subclasses(systemcls: Type[model.System]) -> None:
+    src = '''\
+    import attr
+    @attr.s(auto_attribs=True)
+    class FieldDesc:
+        name: Optional[str] = None
+        type: Optional[Tag] = None
+        body: Optional[Tag] = None
+
+    @attr.s(auto_attribs=True)
+    class _SignatureDesc(FieldDesc):
+        type_origin: Optional[object] = None
+
+    @attr.s(auto_attribs=True)
+    class ReturnDesc(_SignatureDesc):...
+    '''
+
+    mod = fromText(src, systemcls=systemcls)
+    ReturnDesc = mod.contents['ReturnDesc']
+    assert isinstance(ReturnDesc, model.Class)
+    constructor = ReturnDesc.contents['__init__']
+    assert isinstance(constructor, model.Function)
+    assert epydoc2stan.format_constructor_short_text(constructor, ReturnDesc) == 'ReturnDesc(name, type, body, type_origin)'
+    assert flatten_text(pages.format_signature(constructor)) == '(self, name: Optional[str] = None, type: Optional[Tag] = None, body: Optional[Tag] = None, type_origin: Optional[object] = None)'
 
 # Test case with attr.ib(init=False):
 @attrs_systemcls_param
