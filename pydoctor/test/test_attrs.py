@@ -92,7 +92,7 @@ def test_attrs_auto_instance(systemcls: Type[model.System]) -> None:
     ''', modname='test', systemcls=systemcls)
     C = mod.contents['C']
     assert isinstance(C, attrs.AttrsClass)
-    assert C.attrs_auto_attribs == True
+    assert C.attrs_options['auto_attribs'] == True
     assert C.contents['a'].kind is model.DocumentableKind.INSTANCE_VARIABLE
     assert C.contents['b'].kind is model.DocumentableKind.INSTANCE_VARIABLE
     assert C.contents['c'].kind is model.DocumentableKind.CLASS_VARIABLE
@@ -147,10 +147,10 @@ def test_attrs_constructor_method_infer_arg_types(systemcls: Type[model.System],
     assert capsys.readouterr().out == ''
     C = mod.contents['C']
     assert isinstance(C, attrs.AttrsClass)
-    assert C.attrs_init == True
+    assert C.attrs_options['init'] == True
     D = mod.contents['D']
     assert isinstance(D, attrs.AttrsClass)
-    assert D.attrs_init == False
+    assert D.attrs_options['init'] == False
 
     assert isinstance(C, model.Class)
     constructor = C.contents['__init__']
@@ -188,8 +188,8 @@ def test_attrs_constructor_kw_only(systemcls: Type[model.System]) -> None:
     mod = fromText(src, systemcls=systemcls)
     C = mod.contents['C']
     assert isinstance(C, attrs.AttrsClass)
-    assert C.attrs_kw_only==True
-    assert C.attrs_init==True
+    assert C.attrs_options['kw_only']==True
+    assert C.attrs_options['init']==True
     constructor = C.contents['__init__']
     assert isinstance(constructor, model.Function)
     assert flatten_text(pages.format_signature(constructor)) == '(self, *, a, b: str)'
@@ -344,3 +344,28 @@ def test_attrs_constructor_attribute_kw_only_reorder(systemcls: Type[model.Syste
     constructor = MyClass.contents['__init__']
     assert isinstance(constructor, model.Function)
     assert flatten_text(pages.format_signature(constructor)) == '(self, a: int, c: float, *, b: str)'
+
+@attrs_systemcls_param
+def test_converter_init_annotation(systemcls) -> None:
+    src = '''\
+    import attr
+
+    class Stuff:
+        ...
+
+    def convert_to_upper(value: object) -> str:
+        return str(value).upper()
+
+    @attr.s
+    class MyClass:
+        name: str = attr.ib(converter=convert_to_upper)
+        st:Stuff = attr.ib(converter=Stuff)
+        age:int = attr.ib(converter=int)
+    '''
+
+    mod = fromText(src)
+    MyClass = mod.contents['MyClass']
+    assert isinstance(MyClass, model.Class)
+    constructor = MyClass.contents['__init__']
+    assert isinstance(constructor, model.Function)
+    assert flatten_text(pages.format_signature(constructor)) == '(self, name: object, st: Stuff, age: object)'

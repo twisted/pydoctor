@@ -6,7 +6,7 @@ Support for L{attrs}.
 import ast
 import inspect
 
-from typing import Dict, List, Optional, cast
+from typing import Dict, List, Optional, TypedDict, cast
 
 from pydoctor import astbuilder, model, astutils, extensions
 from pydoctor.extensions._dataclass_like import DataclasLikeClass, DataclassLikeVisitor
@@ -93,7 +93,7 @@ def _annotation_from_converter(
         elif isinstance(r, model.Function):
             args = dict(r.annotations)
         else:
-            return None    
+            return astutils.dottedname2node(['object'])
         args.pop('return', None)
         if len(args)==1:
             return args.popitem()[1]
@@ -143,17 +143,17 @@ def default_from_attrib(args:inspect.BoundArguments, ctx: model.Documentable) ->
         factory = get_factory(d, ctx)
         if factory:
             if astutils.node2dottedname(factory):
-                return ast.Call(func=factory, args=[], keywords=[], lineno=d.lineno, col_offset=d.col_offset)
+                return ast.Call(func=factory, args=[], keywords=[], lineno=d.lineno)
             else:
-                return ast.Constant(value=..., lineno=d.lineno, col_offset=d.col_offset)
+                return ast.Constant(value=..., lineno=d.lineno)
         return d
     elif isinstance(f, ast.expr):
         if astutils.node2dottedname(f):
             # If a simple factory is defined, the default value is a call to this function
-            return ast.Call(func=f, args=[], keywords=[], lineno=f.lineno, col_offset=f.col_offset)
+            return ast.Call(func=f, args=[], keywords=[], lineno=f.lineno)
         else:
             # Else we can't figure it out
-            return ast.Constant(value=..., lineno=f.lineno, col_offset=f.col_offset)
+            return ast.Constant(value=..., lineno=f.lineno)
     else:
         return None
 
@@ -179,15 +179,12 @@ class ModuleVisitor(DataclassLikeVisitor):
 
         attrs_args = astutils.safe_bind_args(attrs_decorator_signature, attrs_deco, mod)
         if attrs_args:
-            attrs_args_value = {name: astutils.get_literal_arg(attrs_args, name, default, 
+            cls.attrs_options.update({name: astutils.get_literal_arg(attrs_args, name, default, 
                                     typecheck, attrs_deco.lineno, mod
                                     ) for name, default, typecheck in 
                                     (('auto_attribs', False, bool),
                                      ('init', True, bool),
-                                     ('kw_only', False, bool),)}
-            cls.attrs_auto_attribs = attrs_args_value['auto_attribs']
-            cls.attrs_init = attrs_args_value['init']
-            cls.attrs_kw_only = attrs_args_value['kw_only']
+                                     ('kw_only', False, bool),)})
     
     def transformClassVar(self, cls: model.Class, 
                           attr: model.Attribute, 
@@ -195,7 +192,7 @@ class ModuleVisitor(DataclassLikeVisitor):
                           value:Optional[ast.expr]) -> None:
         assert isinstance(cls, AttrsClass)
         is_attrs_attrib = is_attrib(value, cls)
-        is_attrs_auto_attrib = cls.attrs_auto_attribs and not is_attrs_attrib and annotation is not None
+        is_attrs_auto_attrib = cls.attrs_options['auto_attribs'] and not is_attrs_attrib and annotation is not None
         
         attrib_args = None
         attrib_args_value = {}
@@ -215,27 +212,25 @@ class ModuleVisitor(DataclassLikeVisitor):
                                             ('kw_only', False, bool),)}
         
             # Handle the auto-creation of the __init__ method.
-            if cls.attrs_init:
+            if cls.attrs_options['init']:
                 if is_attrs_auto_attrib or (attrib_args and attrib_args_value['init']):    
                     kind:inspect._ParameterKind = inspect.Parameter.POSITIONAL_OR_KEYWORD
                 
-                    if cls.attrs_kw_only or (attrib_args and attrib_args_value['kw_only']):
+                    if cls.attrs_options['kw_only'] or (attrib_args and attrib_args_value['kw_only']):
                         kind = inspect.Parameter.KEYWORD_ONLY
 
-                    attrs_default:Optional[ast.expr] = ast.Constant(value=...)
+                    attrs_default:Optional[ast.expr] = ast.Constant(value=..., lineno=attr.linenumber)
                     
                     if is_attrs_auto_attrib:
-                        attrs_default = value
-                        factory = get_factory(attrs_default, cls)
+                        factory = get_factory(value, cls)
                         if factory:
                             if astutils.node2dottedname(factory):
-                                attrs_default = ast.Call(func=factory, args=[], keywords=[], 
-                                                         lineno=factory.lineno, col_offset=factory.col_offset)
-                            else:
-                                # Factory is not a default value stricly speaking, 
-                                # so we give up on trying to figure it out.
-                                attrs_default = ast.Constant(value=..., lineno=factory.lineno, 
-                                                             col_offset=factory.col_offset)
+                                attrs_default = ast.Call(func=factory, args=[], keywords=[], lineno=factory.lineno)
+                            
+                            # else, the factory is not a simple function/class name, 
+                            # so we give up on trying to figure it out.
+                        else:
+                            attrs_default = value
                     
                     elif attrib_args:
                         attrs_default = default_from_attrib(attrib_args, cls)
@@ -263,29 +258,30 @@ class ModuleVisitor(DataclassLikeVisitor):
             return self.DATACLASS_LIKE_KIND
         return None
 
+class AttrsOptions(TypedDict):
+    auto_attribs: bool
+    """
+    L{True} if this class uses the C{auto_attribs} feature of the L{attrs}
+    library to automatically convert annotated fields into attributes.
+    """
+
+    kw_only: bool
+    """
+    C{True} is this class uses C{kw_only} feature of L{attrs <attr>} library.
+    """
+
+    init: bool
+    """
+    False if L{attrs <attr>} is not generating an __init__ method for this class.
+    """
+
 class AttrsClass(DataclasLikeClass, model.Class):
     def setup(self) -> None:
         super().setup()
-        
-        self.attrs_auto_attribs: bool = False
-        """
-        L{True} if this class uses the C{auto_attribs} feature of the L{attrs}
-        library to automatically convert annotated fields into attributes.
-        """
-        
-        self.attrs_kw_only: bool = False
-        """
-        C{True} is this class uses C{kw_only} feature of L{attrs <attr>} library.
-        """
 
-        self.attrs_init: bool = True
-        """
-        False if L{attrs <attr>} is not generating an __init__ method for this class.
-        """
-
-        # since the signatures doesnt include type annotations, we track them in a separate attribute.
-        self.attrs_constructor_parameters:List[inspect.Parameter] = []
-        self.attrs_constructor_parameters.append(inspect.Parameter('self', inspect.Parameter.POSITIONAL_OR_KEYWORD,))
+        self.attrs_options:AttrsOptions = {'init':True, 'auto_attribs':False, 'kw_only':False}
+        self.attrs_constructor_parameters:List[inspect.Parameter] = [
+            inspect.Parameter('self', inspect.Parameter.POSITIONAL_OR_KEYWORD,)]
         self.attrs_constructor_annotations: Dict[str, Optional[ast.expr]] = {'self': None}
 
 def postProcess(system:model.System) -> None:
@@ -294,7 +290,7 @@ def postProcess(system:model.System) -> None:
         # by default attr.s() overrides any defined __init__ mehtod, whereas dataclasses.
         # TODO: but if auto_detect=True, we need to check if __init__ already exists, otherwise it does not replace it.
         # NOTE: But attr.define() use auto_detect=True by default! this is getting complicated...
-        if cls.dataclassLike == ModuleVisitor.DATACLASS_LIKE_KIND and cls.attrs_init:
+        if cls.dataclassLike == ModuleVisitor.DATACLASS_LIKE_KIND and cls.attrs_options['init']:
             func = system.Function(system, '__init__', cls)
             system.addObject(func)
             # init Function attributes that otherwise would be undefined :/
