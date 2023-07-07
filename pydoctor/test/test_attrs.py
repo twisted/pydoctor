@@ -147,10 +147,10 @@ def test_attrs_constructor_method_infer_arg_types(systemcls: Type[model.System],
     assert capsys.readouterr().out == ''
     C = mod.contents['C']
     assert isinstance(C, attrs.AttrsClass)
-    assert C.attrs_options['init'] == True
+    assert C.attrs_options['init'] is None
     D = mod.contents['D']
     assert isinstance(D, attrs.AttrsClass)
-    assert D.attrs_options['init'] == False
+    assert D.attrs_options['init'] is False
 
     assert isinstance(C, model.Class)
     constructor = C.contents['__init__']
@@ -188,8 +188,8 @@ def test_attrs_constructor_kw_only(systemcls: Type[model.System]) -> None:
     mod = fromText(src, systemcls=systemcls)
     C = mod.contents['C']
     assert isinstance(C, attrs.AttrsClass)
-    assert C.attrs_options['kw_only']==True
-    assert C.attrs_options['init']==True
+    assert C.attrs_options['kw_only'] is True
+    assert C.attrs_options['init'] is None
     constructor = C.contents['__init__']
     assert isinstance(constructor, model.Function)
     assert flatten_text(pages.format_signature(constructor)) == '(self, *, a, b: str)'
@@ -346,7 +346,7 @@ def test_attrs_constructor_attribute_kw_only_reorder(systemcls: Type[model.Syste
     assert flatten_text(pages.format_signature(constructor)) == '(self, a: int, c: float, *, b: str)'
 
 @attrs_systemcls_param
-def test_converter_init_annotation(systemcls) -> None:
+def test_converter_init_annotation(systemcls:Type[model.System]) -> None:
     src = '''\
     import attr
 
@@ -363,9 +363,81 @@ def test_converter_init_annotation(systemcls) -> None:
         age:int = attr.ib(converter=int)
     '''
 
-    mod = fromText(src)
+    mod = fromText(src, systemcls=systemcls)
     MyClass = mod.contents['MyClass']
     assert isinstance(MyClass, model.Class)
     constructor = MyClass.contents['__init__']
     assert isinstance(constructor, model.Function)
     assert flatten_text(pages.format_signature(constructor)) == '(self, name: object, st: Stuff, age: object)'
+
+@attrs_systemcls_param
+def test_auto_detect_init(systemcls:Type[model.System]) -> None:
+    src = '''\
+    import attr
+
+    @attr.s(auto_detect=True, auto_attribs=True)
+    class MyClass:
+        a: int
+        b: str
+
+        def __init__(self):
+            self.a = 1
+            self.b = 0
+
+        '''
+    
+    mod = fromText(src, systemcls=systemcls)
+    MyClass = mod.contents['MyClass']
+    assert isinstance(MyClass, model.Class)
+    constructor = MyClass.contents['__init__']
+    assert isinstance(constructor, model.Function)
+    assert flatten_text(pages.format_signature(constructor)) == '(self)'
+
+@attrs_systemcls_param
+def test_auto_detect_is_False_init_overriden(systemcls:Type[model.System]) -> None:
+    src = '''\
+    import attr
+
+    @attr.s(auto_detect=False, auto_attribs=True)
+    class MyClass:
+        a: int
+        b: str
+
+        def __init__(self):
+            self.a = 1
+            self.b = 0
+
+        '''
+    
+    mod = fromText(src, systemcls=systemcls)
+    MyClass = mod.contents['MyClass']
+    assert isinstance(MyClass, model.Class)
+    constructor = MyClass.contents['__init__']
+    assert isinstance(constructor, model.Function)
+    assert flatten_text(pages.format_signature(constructor)) == '(self, a: int, b: str)'
+
+@attrs_systemcls_param
+def test_auto_detect_is_True_init_is_True(systemcls:Type[model.System]) -> None:
+    # Passing ``True`` or ``False`` to *init*, *repr*, *eq*, *order*,
+    #     *cmp*, or *hash* overrides whatever *auto_detect* would determine.
+    
+    src = '''\
+    import attr
+
+    @attr.s(auto_detect=True, auto_attribs=True, init=True)
+    class MyClass:
+        a: int
+        b: str
+
+        def __init__(self):
+            self.a = 1
+            self.b = 0
+
+        '''
+    
+    mod = fromText(src, systemcls=systemcls)
+    MyClass = mod.contents['MyClass']
+    assert isinstance(MyClass, model.Class)
+    constructor = MyClass.contents['__init__']
+    assert isinstance(constructor, model.Function)
+    assert flatten_text(pages.format_signature(constructor)) == '(self, a: int, b: str)'

@@ -15,9 +15,9 @@ from pydoctor import visitor
 
 if TYPE_CHECKING:
     from pydoctor import model
-    from typing import Protocol, Literal
+    from typing import Protocol, Literal, TypeGuard
 else:
-    Protocol = Literal = object
+    Protocol = Literal = TypeGuard = object
 
 # AST visitors
 
@@ -455,7 +455,8 @@ def safe_bind_args(sig:Signature, call: ast.AST, ctx: 'model.Module') -> Optiona
 class _V(enum.Enum): 
     NoValue = enum.auto()
 _T =  TypeVar('_T', bound=object)
-def _get_literal_arg(args:BoundArguments, name:str, typecheck:Type[_T]) -> Union['Literal[_V.NoValue]', _T]:
+def _get_literal_arg(args:BoundArguments, name:str, 
+                     typecheck:'type[_T]|tuple[type[_T],...]') -> Union['Literal[_V.NoValue]', _T]:
     """
     Helper function for L{get_literal_arg}. 
 
@@ -475,15 +476,17 @@ def _get_literal_arg(args:BoundArguments, name:str, typecheck:Type[_T]) -> Union
         raise ValueError(message)
 
     if not isinstance(value, typecheck):
+        expected_type = " or ".join(repr(t.__name__) for t in (typecheck if isinstance(typecheck, tuple) else (typecheck,)))
         message = (f'Value for {name!r} argument '
-            f'has type "{type(value).__name__}", expected {typecheck.__name__!r}'
+            f'has type "{type(value).__name__}", expected {expected_type}'
             ).replace("'", '"')
         raise ValueError(message)
 
     return value
 
 def get_literal_arg(args:BoundArguments, name:str, default:_T, 
-                          typecheck:Type[_T], lineno:int, module: 'model.Module') -> _T:
+                          typecheck:'type[_T]|tuple[type[_T],...]', 
+                          lineno:int, module: 'model.Module') -> _T:
     """
     Retreive the literal value of an argument from the L{BoundArguments}. 
     Only works with purely literal values (no C{Name} or C{Attribute}).

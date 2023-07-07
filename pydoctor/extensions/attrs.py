@@ -168,7 +168,8 @@ class ModuleVisitor(DataclassLikeVisitor):
         super().visit_ClassDef(node)
 
         cls = self.visitor.builder._stack[-1].contents.get(node.name)
-        if not isinstance(cls, AttrsClass) or not cls.dataclassLike:
+        if not isinstance(cls, AttrsClass) or cls.dataclassLike != self.DATACLASS_LIKE_KIND:
+            # not an attrs class
             return
         mod = cls.module
         try:
@@ -183,8 +184,9 @@ class ModuleVisitor(DataclassLikeVisitor):
                                     typecheck, attrs_deco.lineno, mod
                                     ) for name, default, typecheck in 
                                     (('auto_attribs', False, bool),
-                                     ('init', True, bool),
-                                     ('kw_only', False, bool),)})
+                                     ('init', None, (bool, type(None))),
+                                     ('kw_only', False, bool),
+                                     ('auto_detect', False, bool), )})
     
     def transformClassVar(self, cls: model.Class, 
                           attr: model.Attribute, 
@@ -194,64 +196,66 @@ class ModuleVisitor(DataclassLikeVisitor):
         is_attrs_attrib = is_attrib(value, cls)
         is_attrs_auto_attrib = cls.attrs_options['auto_attribs'] and not is_attrs_attrib and annotation is not None
         
+        
+        if not (is_attrs_attrib or is_attrs_auto_attrib):
+            return
+        
         attrib_args = None
         attrib_args_value = {}
-        if is_attrs_attrib or is_attrs_auto_attrib:
+
+        attr.kind = model.DocumentableKind.INSTANCE_VARIABLE
+        if value is not None:
+            attrib_args = astutils.safe_bind_args(attrib_signature, value, cls.module)
+            if attrib_args:
+                if annotation is None:
+                    attr.annotation = annotation_from_attrib(attrib_args, cls)
             
-            attr.kind = model.DocumentableKind.INSTANCE_VARIABLE
-            if value is not None:
-                attrib_args = astutils.safe_bind_args(attrib_signature, value, cls.module)
-                if attrib_args:
-                    if annotation is None:
-                        attr.annotation = annotation_from_attrib(attrib_args, cls)
-                
-                    attrib_args_value = {name: astutils.get_literal_arg(attrib_args, name, default, 
-                                            typecheck, attr.linenumber, cls.module
-                                            ) for name, default, typecheck in 
-                                            (('init', True, bool),
-                                            ('kw_only', False, bool),)}
+                attrib_args_value = {name: astutils.get_literal_arg(attrib_args, name, default, 
+                                        typecheck, attr.linenumber, cls.module
+                                        ) for name, default, typecheck in 
+                                        (('init', True, bool),
+                                        ('kw_only', False, bool),)}
+    
+        # Handle the auto-creation of the __init__ method.
+        if cls.attrs_options['init'] in (True, None) and is_attrs_auto_attrib or attrib_args_value.get('init'):    
+            kind:inspect._ParameterKind = inspect.Parameter.POSITIONAL_OR_KEYWORD
         
-            # Handle the auto-creation of the __init__ method.
-            if cls.attrs_options['init']:
-                if is_attrs_auto_attrib or (attrib_args and attrib_args_value['init']):    
-                    kind:inspect._ParameterKind = inspect.Parameter.POSITIONAL_OR_KEYWORD
-                
-                    if cls.attrs_options['kw_only'] or (attrib_args and attrib_args_value['kw_only']):
-                        kind = inspect.Parameter.KEYWORD_ONLY
+            if cls.attrs_options['kw_only'] or attrib_args_value.get('kw_only'):
+                kind = inspect.Parameter.KEYWORD_ONLY
 
-                    attrs_default:Optional[ast.expr] = ast.Constant(value=..., lineno=attr.linenumber)
+            attrs_default:Optional[ast.expr] = ast.Constant(value=..., lineno=attr.linenumber)
+            
+            if is_attrs_auto_attrib:
+                factory = get_factory(value, cls)
+                if factory:
+                    if astutils.node2dottedname(factory):
+                        attrs_default = ast.Call(func=factory, args=[], keywords=[], lineno=factory.lineno)
                     
-                    if is_attrs_auto_attrib:
-                        factory = get_factory(value, cls)
-                        if factory:
-                            if astutils.node2dottedname(factory):
-                                attrs_default = ast.Call(func=factory, args=[], keywords=[], lineno=factory.lineno)
-                            
-                            # else, the factory is not a simple function/class name, 
-                            # so we give up on trying to figure it out.
-                        else:
-                            attrs_default = value
-                    
-                    elif attrib_args:
-                        attrs_default = default_from_attrib(attrib_args, cls)
-                    
-                    # attrs strips the leading underscores from the parameter names,
-                    # since there is not such thing as a private parameter.
-                    init_param_name = attr.name.lstrip('_')
+                    # else, the factory is not a simple function/class name, 
+                    # so we give up on trying to figure it out.
+                else:
+                    attrs_default = value
+            
+            elif attrib_args:
+                attrs_default = default_from_attrib(attrib_args, cls)
+            
+            # attrs strips the leading underscores from the parameter names,
+            # since there is not such thing as a private parameter.
+            init_param_name = attr.name.lstrip('_')
 
-                    if attrib_args:
-                        constructor_annotation = cls.attrs_constructor_annotations[init_param_name] = \
-                            annotation_from_attrib(attrib_args, cls, for_constructor=True) or annotation
-                    else:
-                        constructor_annotation = cls.attrs_constructor_annotations[init_param_name] = annotation
-                    
-                    cls.attrs_constructor_parameters.append(
-                        inspect.Parameter(
-                            init_param_name, kind=kind, 
-                            default=astbuilder._ValueFormatter(attrs_default, cls) 
-                                if attrs_default else inspect.Parameter.empty, 
-                            annotation=astbuilder._AnnotationValueFormatter(constructor_annotation, cls) 
-                                if constructor_annotation else inspect.Parameter.empty))
+            if attrib_args:
+                constructor_annotation = annotation_from_attrib(attrib_args, cls, for_constructor=True) or annotation
+            else:
+                constructor_annotation = annotation
+            
+            cls.attrs_constructor_annotations[init_param_name] = constructor_annotation
+            cls.attrs_constructor_parameters.append(
+                inspect.Parameter(
+                    init_param_name, kind=kind, 
+                    default=astbuilder._ValueFormatter(attrs_default, cls) 
+                        if attrs_default else inspect.Parameter.empty, 
+                    annotation=astbuilder._AnnotationValueFormatter(constructor_annotation, cls) 
+                        if constructor_annotation else inspect.Parameter.empty))
     
     def isDataclassLike(self, cls:ast.ClassDef, mod:model.Module) -> Optional[object]:
         if any(is_attrs_deco(dec, mod) for dec in cls.decorator_list):
@@ -270,16 +274,19 @@ class AttrsOptions(TypedDict):
     C{True} is this class uses C{kw_only} feature of L{attrs <attr>} library.
     """
 
-    init: bool
+    init: Optional[bool]
     """
     False if L{attrs <attr>} is not generating an __init__ method for this class.
     """
+
+    auto_detect:bool
 
 class AttrsClass(DataclasLikeClass, model.Class):
     def setup(self) -> None:
         super().setup()
 
-        self.attrs_options:AttrsOptions = {'init':True, 'auto_attribs':False, 'kw_only':False}
+        self.attrs_options:AttrsOptions = {'init':None, 'auto_attribs':False, 
+                                           'kw_only':False, 'auto_detect':False}
         self.attrs_constructor_parameters:List[inspect.Parameter] = [
             inspect.Parameter('self', inspect.Parameter.POSITIONAL_OR_KEYWORD,)]
         self.attrs_constructor_annotations: Dict[str, Optional[ast.expr]] = {'self': None}
@@ -290,13 +297,21 @@ def postProcess(system:model.System) -> None:
         # by default attr.s() overrides any defined __init__ mehtod, whereas dataclasses.
         # TODO: but if auto_detect=True, we need to check if __init__ already exists, otherwise it does not replace it.
         # NOTE: But attr.define() use auto_detect=True by default! this is getting complicated...
-        if cls.dataclassLike == ModuleVisitor.DATACLASS_LIKE_KIND and cls.attrs_options['init']:
+        if cls.dataclassLike == ModuleVisitor.DATACLASS_LIKE_KIND:
+            
+            if cls.attrs_options['init'] is False or \
+                cls.attrs_options['init'] is None and \
+                cls.attrs_options['auto_detect'] is True and \
+                cls.contents.get('__init__'):
+                continue
+
             func = system.Function(system, '__init__', cls)
-            system.addObject(func)
             # init Function attributes that otherwise would be undefined :/
+            func.parentMod = cls.parentMod
             func.decorators = None
             func.is_async = False
             func.parentMod = cls.parentMod
+            system.addObject(func)
             func.setLineNumber(cls.linenumber)
 
             parameters = cls.attrs_constructor_parameters
