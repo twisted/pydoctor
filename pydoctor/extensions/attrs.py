@@ -19,6 +19,10 @@ attrs_decorator_signature = inspect.signature(attr.s)
 attrib_signature = inspect.signature(attr.ib)
 """Signature of the L{attr.ib} function for defining class attributes."""
 
+builtin_types = frozenset(('frozenset', 'int', 'bytes', 
+                           'complex', 'list', 'tuple', 
+                           'set', 'dict', 'range'))
+
 def is_attrs_deco(deco: ast.AST, module: model.Module) -> bool:
     if isinstance(deco, ast.Call):
         deco = deco.func
@@ -46,31 +50,90 @@ def get_factory(expr: Optional[ast.expr], ctx: model.Documentable) -> Optional[a
     else:
         return None
 
+def _callable_return_type(dname:List[str], ctx:model.Documentable) -> Optional[ast.expr]:
+    """
+    Given a callable dotted name in a certain context, 
+    get it's return type as ast expression.
+
+    Note that the expression might not be fully 
+    resolvable in the new context since it can come from other modules. 
+    """
+    r = ctx.resolveName('.'.join(dname))
+    if isinstance(r, model.Class):
+        return astutils.dottedname2node(dname)
+    elif isinstance(r, model.Function):
+        rtype = r.annotations.get('return')
+        if rtype:
+            return rtype
+    elif r is None and len(dname)==1 and dname[0] in builtin_types:
+        return astutils.dottedname2node(dname)
+    # TODO: we might be able to use the shpinx inventory yo check if the 
+    # provided callable is a class, in which case the class could be linked.
+    return None
+
+def _annotation_from_factory(
+        factory:ast.expr,
+        ctx: model.Documentable,
+        ) -> Optional[ast.expr]:
+    dname = astutils.node2dottedname(factory)
+    if dname:
+        return _callable_return_type(dname, ctx)
+    else:
+        return None
+
+def _annotation_from_converter(
+        converter:ast.expr,
+        ctx: model.Documentable,
+        ) -> Optional[ast.expr]:
+    dname = astutils.node2dottedname(converter)
+    if dname:
+        r = ctx.resolveName('.'.join(dname))
+        if isinstance(r, model.Class):
+            args = dict(r.constructor_params)
+        elif isinstance(r, model.Function):
+            args = dict(r.annotations)
+        else:
+            return None    
+        args.pop('return', None)
+        if len(args)==1:
+            return args.popitem()[1]
+    return None
+    
 def annotation_from_attrib(
         args:inspect.BoundArguments,
         ctx: model.Documentable,
-        for_init_method:bool=False
+        for_constructor:bool=False
         ) -> Optional[ast.expr]:
     """Get the type of an C{attr.ib} definition.
     @param args: The L{inspect.BoundArguments} of the C{attr.ib()} call.
     @param ctx: The context in which this expression is evaluated.
-    @param for_init_method: Whether we're trying to figure out the __init__ parameter annotations
+    @param for_constructor: Whether we're trying to figure out the __init__ parameter annotations
         instead of the attribute annotations.
     @return: A type annotation, or None if the expression is not
                 an C{attr.ib} definition or contains no type information.
     """
+    if for_constructor:
+        # If a converter is defined...
+        converter = args.arguments.get('converter')
+        if converter is not None:
+            return _annotation_from_converter(converter, ctx)
+        
     typ = args.arguments.get('type')
     if typ is not None:
         return astutils.unstring_annotation(typ, ctx)
+    
+    factory = args.arguments.get('factory')
+    if factory is not None:
+        return _annotation_from_factory(factory, ctx)
+
     default = args.arguments.get('default')
     if default is not None:
-        return astbuilder._infer_type(default)
-    # TODO: support factory parameter.
-    if for_init_method:
-        # If a converter is defined, then we can't be sure of what exact type of parameter is accepted
-        converter = args.arguments.get('converter')
-        if converter is not None:
-            return ast.Constant(value=...)
+        factory = get_factory(default, ctx)
+        if factory is not None:
+            return _annotation_from_factory(factory, ctx)
+        else:
+            return astbuilder._infer_type(default)
+
     return None
 
 def default_from_attrib(args:inspect.BoundArguments, ctx: model.Documentable) -> Optional[ast.expr]:
@@ -164,28 +227,27 @@ class ModuleVisitor(DataclassLikeVisitor):
                         factory = get_factory(attrs_default, cls)
                         if factory:
                             if astutils.node2dottedname(factory):
-                                attrs_default = ast.Call(func=factory, args=[], keywords=[], lineno=factory.lineno, col_offset=factory.col_offset)
+                                attrs_default = ast.Call(func=factory, args=[], keywords=[], 
+                                                         lineno=factory.lineno, col_offset=factory.col_offset)
                             else:
                                 # Factory is not a default value stricly speaking, 
                                 # so we give up on trying to figure it out.
-                                attrs_default = ast.Constant(value=..., lineno=factory.lineno, col_offset=factory.col_offset)
+                                attrs_default = ast.Constant(value=..., lineno=factory.lineno, 
+                                                             col_offset=factory.col_offset)
                     
-                    elif attrib_args is not None:
+                    elif attrib_args:
                         attrs_default = default_from_attrib(attrib_args, cls)
                     
                     # attrs strips the leading underscores from the parameter names,
                     # since there is not such thing as a private parameter.
                     init_param_name = attr.name.lstrip('_')
 
-                    if attrib_args is not None:
+                    if attrib_args:
                         constructor_annotation = cls.attrs_constructor_annotations[init_param_name] = \
-                            annotation_from_attrib(attrib_args, cls, for_init_method=True) or annotation
+                            annotation_from_attrib(attrib_args, cls, for_constructor=True) or annotation
                     else:
                         constructor_annotation = cls.attrs_constructor_annotations[init_param_name] = annotation
                     
-                    # TODO: Check if attrs defines a converter, if it does not, it's OK
-                    # to deduce that the type of the argument is the same as type of the parameter.
-                    # But actually, this might be a wrong assumption.
                     cls.attrs_constructor_parameters.append(
                         inspect.Parameter(
                             init_param_name, kind=kind, 
@@ -228,7 +290,7 @@ def postProcess(system:model.System) -> None:
         # by default attr.s() overrides any defined __init__ mehtod, whereas dataclasses.
         # TODO: but if auto_detect=True, we need to check if __init__ already exists, otherwise it does not replace it.
         # NOTE: But attr.define() use auto_detect=True by default! this is getting complicated...
-        if cls.attrs_init:
+        if cls.isDataclassLike and cls.attrs_init:
             func = system.Function(system, '__init__', cls)
             system.addObject(func)
             # init Function attributes that otherwise would be undefined :/

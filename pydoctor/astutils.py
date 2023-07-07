@@ -120,6 +120,17 @@ def node2dottedname(node: Optional[ast.AST]) -> Optional[List[str]]:
     parts.reverse()
     return parts
 
+def dottedname2node(parts:List[str]) -> Union[ast.Name, ast.Attribute]:
+    """
+    Reverse operation of L{node2dottedname}.
+    """
+    assert parts, "must not be empty"
+    
+    if len(parts)==1:
+        return ast.Name(parts[0], ast.Load())
+    else:
+        return ast.Attribute(dottedname2node(parts[:-1]), parts[-1], ast.Load())
+
 def node2fullname(expr: Optional[ast.AST], ctx: 'model.Documentable') -> Optional[str]:
     dottedname = node2dottedname(expr)
     if dottedname is None:

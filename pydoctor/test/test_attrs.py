@@ -196,20 +196,38 @@ def test_attrs_constructor_kw_only(systemcls: Type[model.System]) -> None:
 
 # Test case for default factory
 @attrs_systemcls_param
-def test_attrs_constructor_factory_optional(systemcls: Type[model.System]) -> None:
+def test_attrs_constructor_factory(systemcls: Type[model.System]) -> None:
     src = '''\
     import attr
-    @attr.s
+    @attr.s(auto_attribs=True)
     class C:
         a: int = attr.ib(factory=list)
-        b: str = attr.ib(factory=str)
+        b: str = attr.Factory(str)
+        c: list = attr.ib(default=attr.Factory(list))
     '''
     mod = fromText(src, systemcls=systemcls)
     C = mod.contents['C']
     assert isinstance(C, model.Class)
     constructor = C.contents['__init__']
     assert isinstance(constructor, model.Function)
-    assert flatten_text(pages.format_signature(constructor)) == '(self, a: int = list(), b: str = str())'
+    assert flatten_text(pages.format_signature(constructor)) == '(self, a: list = list(), b: str = str(), c: list = list())'
+
+@attrs_systemcls_param
+def test_attrs_constructor_factory_no_annotations(systemcls: Type[model.System]) -> None:
+    src = '''\
+    import attr
+    @attr.s
+    class C:
+        a = attr.ib(factory=list)
+        b = attr.ib(default=attr.Factory(list))
+    '''
+    mod = fromText(src, systemcls=systemcls)
+    C = mod.contents['C']
+    assert isinstance(C, model.Class)
+    constructor = C.contents['__init__']
+    assert isinstance(constructor, model.Function)
+    assert flatten_text(pages.format_signature(constructor)) == '(self, a: list = list(), b: list = list())'
+
 
 # Test case for init=False:
 @attrs_systemcls_param
