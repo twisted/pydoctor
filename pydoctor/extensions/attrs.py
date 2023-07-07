@@ -6,7 +6,7 @@ Support for L{attrs}.
 import ast
 import inspect
 
-from typing import Dict, List, Optional, TypedDict, cast
+from typing import Dict, List, Optional, Tuple, TypedDict, cast
 
 from pydoctor import astbuilder, model, astutils, extensions
 from pydoctor.extensions._dataclass_like import DataclasLikeClass, DataclassLikeVisitor
@@ -291,6 +291,38 @@ class AttrsClass(DataclasLikeClass, model.Class):
             inspect.Parameter('self', inspect.Parameter.POSITIONAL_OR_KEYWORD,)]
         self.attrs_constructor_annotations: Dict[str, Optional[ast.expr]] = {'self': None}
 
+def collect_inherited_constructor_params(cls:AttrsClass) -> Tuple[List[inspect.Parameter], 
+                                                    Dict[str, Optional[ast.expr]]]:
+    # see https://github.com/python-attrs/attrs/pull/635/files
+
+    base_attrs:List[inspect.Parameter] = []
+    base_annotations:Dict[str, Optional[ast.expr]] = {}
+    own_attr_names = cls.attrs_constructor_annotations
+
+    # Traverse the MRO and collect attributes.
+    for base_cls in reversed(cls.mro(include_external=False, include_self=False)):
+        assert isinstance(base_cls, AttrsClass)
+        for (name, ann),p in zip(base_cls.attrs_constructor_annotations.items(), 
+                       base_cls.attrs_constructor_parameters):
+            if name == 'self' or name in own_attr_names:
+                continue
+
+            base_attrs.append(p)
+            base_annotations[name] = ann
+
+    # For each name, only keep the freshest definition i.e. the furthest at the
+    # back.  base_annotations is fine because it gets overwritten with every new
+    # instance.
+    filtered:List[inspect.Parameter] = []
+    seen = set()
+    for a in reversed(base_attrs):
+        if a.name in seen:
+            continue
+        filtered.insert(0, a)
+        seen.add(a.name)
+
+    return filtered, base_annotations
+
 def postProcess(system:model.System) -> None:
 
     for cls in list(system.objectsOfType(AttrsClass)):
@@ -314,8 +346,10 @@ def postProcess(system:model.System) -> None:
             system.addObject(func)
             func.setLineNumber(cls.linenumber)
 
-            parameters = cls.attrs_constructor_parameters
-            annotations = cls.attrs_constructor_annotations
+            # collect arguments from super classes attributes definitions.
+            inherited_params, inherited_annotations = collect_inherited_constructor_params(cls)
+            parameters = [cls.attrs_constructor_parameters[0], *inherited_params, *cls.attrs_constructor_parameters[1:]]
+            annotations = {**inherited_annotations, **cls.attrs_constructor_annotations}
             
             # Re-ordering kw_only arguments at the end of the list
             for param in tuple(parameters):
@@ -328,7 +362,6 @@ def postProcess(system:model.System) -> None:
 
             func.annotations = annotations
             try:
-                # TODO: collect arguments from super classes attributes definitions.
                 func.signature = inspect.Signature(parameters)
             except Exception as e:
                 func.report(f'could not deduce attrs class __init__ signature: {e}')

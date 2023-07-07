@@ -285,7 +285,7 @@ def test_attrs_constructor_multiple_inheritance(systemcls: Type[model.System]) -
     assert isinstance(Derived, model.Class)
     constructor = Derived.contents['__init__']
     assert isinstance(constructor, model.Function)
-    assert flatten_text(pages.format_signature(constructor)) == '(self, a: int, b: str, c: float)'
+    assert flatten_text(pages.format_signature(constructor)) == '(self, b: str, a: int, c: float)'
 
 # Test case for inheritance with overridden attributes:
 @attrs_systemcls_param
@@ -307,7 +307,7 @@ def test_attrs_constructor_single_inheritance_overridden_attribute(systemcls: Ty
     assert isinstance(Derived, model.Class)
     constructor = Derived.contents['__init__']
     assert isinstance(constructor, model.Function)
-    assert flatten_text(pages.format_signature(constructor)) == '(self, a: int, b: str = "overridden", c: float = 3.14)'
+    assert flatten_text(pages.format_signature(constructor)) == '(self, a: int, b: str = \'overridden\', c: float = 3.14)'
 
 # Test case with attr.ib(init=False):
 @attrs_systemcls_param
