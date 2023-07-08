@@ -3,7 +3,7 @@ Code building ``all-documents.html``, ``searchindex.json`` and ``fullsearchindex
 """
 
 from pathlib import Path
-from typing import Iterable, Iterator, List, Optional, Tuple, Type, Dict, TYPE_CHECKING
+from typing import Iterator, List, Optional, Tuple, Type, Dict, TYPE_CHECKING
 import json
 
 import attr
@@ -17,22 +17,27 @@ from lunr import lunr, get_default_builder
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable
 
-def get_all_documents_flattenable(system: model.System) -> List[Dict[str, "Flattenable"]]:
+def get_all_documents_flattenable(system: model.System) -> Iterator[Dict[str, "Flattenable"]]:
     """
-    Get the all data to be writen into ``all-documents.html`` file.
+    Get a generator for all data to be writen into ``all-documents.html`` file.
     """
-    documents: List[Dict[str, "Flattenable"]] = [dict(
-                          id=ob.fullName(), 
-                          name=epydoc2stan.insert_break_points(ob.name), 
-                          fullName=epydoc2stan.insert_break_points(ob.fullName()), 
-                          kind=epydoc2stan.format_kind(ob.kind) if ob.kind else '', 
-                          type=str(ob.__class__.__name__),
-                          summary=epydoc2stan.format_summary(ob),
-                          url=ob.url, 
-                          privacy=str(ob.privacyClass.name))   
+    # This function accounts for a substantial proportion of pydoctor runtime. 
+    # So it's optimized.
+    insert_break_points = epydoc2stan.insert_break_points
+    format_kind = epydoc2stan.format_kind
+    format_summary = epydoc2stan.format_summary
 
-                          for ob in system.allobjects.values() if ob.isVisible]
-    return documents
+    return ({
+            'id':         ob.fullName(), 
+            'name':       ob.name, 
+            'fullName':   insert_break_points(ob.fullName()), 
+            'kind':       format_kind(ob.kind) if ob.kind else '', 
+            'type':       str(ob.__class__.__name__),
+            'summary':    format_summary(ob),
+            'url':        ob.url,
+            'privacy':    str(ob.privacyClass.name)}   
+
+            for ob in system.allobjects.values() if ob.isVisible)
 
 class AllDocuments(Page):
     
@@ -42,7 +47,7 @@ class AllDocuments(Page):
         return "All Documents"
 
     @renderer
-    def documents(self, request: None, tag: Tag) -> Iterable[Tag]:        
+    def documents(self, request: None, tag: Tag) -> Iterator[Tag]:        
         for doc in get_all_documents_flattenable(self.system):
             yield tag.clone().fillSlots(**doc)
 
@@ -110,23 +115,17 @@ class LunrIndexWriter:
         return epydoc2stan.format_kind(ob.kind) if ob.kind else ''
 
     def get_corpus(self) -> List[Tuple[Dict[str, Optional[str]], Dict[str, int]]]:
-
-        documents: List[Tuple[Dict[str, Optional[str]], Dict[str, int]]] = []
-
-        for ob in (o for o in self.system.allobjects.values() if o.isVisible):
-
-            documents.append(
-                        (
-                            {
-                                f:self.format(ob, f) for f in self.fields
-                            }, 
-                            {
-                                "boost": self.get_ob_boost(ob)
-                            }
-                        )
-            )   
-        
-        return documents
+        return [
+            (
+                {
+                    f:self.format(ob, f) for f in self.fields
+                }, 
+                {
+                    "boost": self.get_ob_boost(ob)
+                }
+            )
+            for ob in (o for o in self.system.allobjects.values() if o.isVisible)
+        ]
 
     def write(self) -> None:
 
