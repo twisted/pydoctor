@@ -5,6 +5,7 @@ Support for L{attrs}.
 
 import ast
 import inspect
+import copy
 
 from typing import Dict, List, Optional, Tuple, TypedDict, cast
 
@@ -317,7 +318,7 @@ def collect_inherited_constructor_params(cls:AttrsClass) -> Tuple[List[inspect.P
     for a in reversed(base_attrs):
         if a.name in seen:
             continue
-        filtered.insert(0, a)
+        filtered.insert(0, copy.copy(a))
         seen.add(a.name)
 
     return filtered, base_annotations
@@ -326,8 +327,7 @@ def postProcess(system:model.System) -> None:
 
     for cls in list(system.objectsOfType(AttrsClass)):
         # by default attr.s() overrides any defined __init__ mehtod, whereas dataclasses.
-        # TODO: but if auto_detect=True, we need to check if __init__ already exists, otherwise it does not replace it.
-        # NOTE: But attr.define() use auto_detect=True by default! this is getting complicated...
+        # TODO: attr.define() use auto_detect=True by default.
         if cls.dataclassLike == ModuleVisitor.DATACLASS_LIKE_KIND:
             
             if cls.attrs_options['init'] is False or \
@@ -345,12 +345,15 @@ def postProcess(system:model.System) -> None:
             func.setLineNumber(cls.linenumber)
             system.addObject(func)
 
-            # collect arguments from super classes attributes definitions.
+            # collect arguments from super classes attributes definitions.  
             inherited_params, inherited_annotations = collect_inherited_constructor_params(cls)
+            # don't forget to set the KEYWORD_ONLY flag on inherited parameters
+            if cls.attrs_options['kw_only'] is True:
+                for p in inherited_params:
+                    p._kind = inspect.Parameter.KEYWORD_ONLY
+            # make sure that self is kept first.
             parameters = [cls.attrs_constructor_parameters[0], *inherited_params, *cls.attrs_constructor_parameters[1:]]
-            annotations = {'self': None}
-            annotations.update(inherited_annotations)
-            annotations.update(cls.attrs_constructor_annotations)
+            annotations = {'self': None, **inherited_annotations, **cls.attrs_constructor_annotations}
             
             # Re-ordering kw_only arguments at the end of the list
             for param in tuple(parameters):
