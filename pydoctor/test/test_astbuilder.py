@@ -1,3 +1,4 @@
+from textwrap import dedent
 from typing import Optional, Tuple, Type, List, overload, cast
 import ast
 
@@ -2396,3 +2397,42 @@ def test_default_constructors(systemcls: Type[model.System]) -> None:
 
     mod = fromText(src, systemcls=systemcls)
     assert getConstructorsText(mod.contents['Animal']) == "Animal()"
+
+# test for astutils.collect_assigns
+def test_astutils_collect_assigns() -> None:
+    mod = ast.parse(dedent('''\
+    class C:
+        def __init__(self):...
+        var:int
+        foo = True
+        class F:
+            [a for a in []]
+            {n:stuff for (n,stuff) in ()}
+            second = 1
+            l = lambda x:True
+    '''
+    ))
+
+    C = mod.body[0]
+    F = C.body[-1]
+    # no assignment in module
+    assert [n for n in astutils.collect_assigns(mod)] == []
+    # found one class in module
+    assert [n.name for n in astutils._collect_nodes(mod, ast.ClassDef)] == ['C']
+
+    # two attribute assignment in C
+    assert [n.lineno for n in astutils.collect_assigns(C)] == [3,4]
+    # one function
+    assert [n.name for n in astutils._collect_nodes(C, ast.FunctionDef)] == ['__init__']
+    # one class
+    assert [n.name for n in astutils._collect_nodes(C, ast.ClassDef)] == ['F']
+
+    # two assignments in F
+    assert [n.lineno for n in astutils.collect_assigns(F)] == [8,9]
+
+    # two names in F (it does not recurse on nested scopes)
+    assert [n.lineno for n in astutils._collect_nodes(F, ast.Name)] == [8,9]
+
+    # two comprehensions
+    assert [n.lineno for n in astutils._collect_nodes(F, (ast.ListComp, ast.DictComp))] == [6,7]
+

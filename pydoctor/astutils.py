@@ -7,7 +7,7 @@ import inspect
 import platform
 import sys
 from numbers import Number
-from typing import Iterator, Optional, List, Iterable, Sequence, TYPE_CHECKING, Tuple, Union, Type, TypeVar
+from typing import Any, Iterator, Optional, List, Iterable, Sequence, TYPE_CHECKING, Tuple, Union, Type, TypeVar, Generic
 from inspect import BoundArguments, Signature, Parameter
 import ast
 
@@ -511,3 +511,39 @@ def get_literal_arg(args:BoundArguments, name:str, default:_T,
         return default
     else:
         return value
+
+_TC =  TypeVar('_TC', bound=object)
+_SCOPE_TYPES = (ast.SetComp, ast.DictComp, ast.ListComp, ast.GeneratorExp, 
+           ast.Lambda, ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)
+
+class _Collector(ast.NodeVisitor, Generic[_TC]):
+    
+    def __init__(self, 
+                 typecheck:Union[Type[_TC], Tuple[Type[_TC],...]],
+                 stop_typecheck: Union[Type[Any], Tuple[Type[Any],...]],
+                 ):
+        self.collected:List[_TC] = []
+        self.typecheck = typecheck
+        self.stop_typecheck = stop_typecheck
+    
+    def _collect(self, node:ast.AST) -> None:
+        if isinstance(node, self.typecheck):
+            self.collected.append(node)
+
+    def generic_visit(self, node: ast.AST) -> Any:
+        self._collect(node)
+        if not isinstance(node, self.stop_typecheck):
+            return super().generic_visit(node)
+
+def _collect_nodes(node:ast.AST, typecheck:Union[Type[_TC], Tuple[Type[_TC],...]],
+                   stop_typecheck:Union[Type[Any], Tuple[Type[Any],...]]=_SCOPE_TYPES) -> Sequence[_TC]:
+    visitor:_Collector[_TC] = _Collector(typecheck, stop_typecheck)
+    ast.NodeVisitor.generic_visit(visitor, node)
+    return visitor.collected
+
+def collect_assigns(node:ast.AST) -> Sequence[Union[ast.Assign, ast.AnnAssign]]:
+    """
+    Returns a list of L{ast.Assign} or L{ast.AnnAssign} declared in the given scope.
+    It does not include assignments in nested scopes.
+    """
+    return _collect_nodes(node, (ast.Assign, ast.AnnAssign))
