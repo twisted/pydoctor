@@ -15,9 +15,9 @@ from pydoctor import visitor
 
 if TYPE_CHECKING:
     from pydoctor import model
-    from typing import Protocol, Literal, TypeGuard
+    from typing import Protocol, Literal
 else:
-    Protocol = Literal = TypeGuard = object
+    Protocol = Literal = object
 
 # AST visitors
 
@@ -482,7 +482,7 @@ def _get_literal_arg(args:BoundArguments, name:str,
             ).replace("'", '"')
         raise ValueError(message)
 
-    return value
+    return value #type:ignore
 
 def get_literal_arg(args:BoundArguments, name:str, default:_T, 
                           typecheck:'type[_T]|tuple[type[_T],...]', 
@@ -512,32 +512,24 @@ def get_literal_arg(args:BoundArguments, name:str, default:_T,
     else:
         return value
 
-_TC =  TypeVar('_TC', bound=object)
 _SCOPE_TYPES = (ast.SetComp, ast.DictComp, ast.ListComp, ast.GeneratorExp, 
            ast.Lambda, ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)
+_ClassInfo = Union[Type[Any], Tuple[Type[Any],...]]
 
-class _Collector(ast.NodeVisitor, Generic[_TC]):
-    
-    def __init__(self, 
-                 typecheck:Union[Type[_TC], Tuple[Type[_TC],...]],
-                 stop_typecheck: Union[Type[Any], Tuple[Type[Any],...]],
-                 ):
-        self.collected:List[_TC] = []
-        self.typecheck = typecheck
-        self.stop_typecheck = stop_typecheck
-    
-    def _collect(self, node:ast.AST) -> None:
-        if isinstance(node, self.typecheck):
-            self.collected.append(node)
-
-    def generic_visit(self, node: ast.AST) -> Any:
-        self._collect(node)
-        if not isinstance(node, self.stop_typecheck):
-            return super().generic_visit(node)
-
-def _collect_nodes(node:ast.AST, typecheck:Union[Type[_TC], Tuple[Type[_TC],...]],
-                   stop_typecheck:Union[Type[Any], Tuple[Type[Any],...]]=_SCOPE_TYPES) -> Sequence[_TC]:
-    visitor:_Collector[_TC] = _Collector(typecheck, stop_typecheck)
+def _collect_nodes(node:ast.AST, typecheck:_ClassInfo, 
+                   stop_typecheck:_ClassInfo=_SCOPE_TYPES) -> Sequence[ast.AST]:
+    class _Collector(ast.NodeVisitor):
+        def __init__(self) -> None:
+            self.collected:List[ast.AST] = []
+        def _collect(self, node:ast.AST) -> None:
+            if isinstance(node, typecheck):
+                self.collected.append(node)
+        def generic_visit(self, node: ast.AST) -> None:
+            self._collect(node)
+            if not isinstance(node, stop_typecheck):
+                super().generic_visit(node)
+        
+    visitor = _Collector()
     ast.NodeVisitor.generic_visit(visitor, node)
     return visitor.collected
 
@@ -546,4 +538,4 @@ def collect_assigns(node:ast.AST) -> Sequence[Union[ast.Assign, ast.AnnAssign]]:
     Returns a list of L{ast.Assign} or L{ast.AnnAssign} declared in the given scope.
     It does not include assignments in nested scopes.
     """
-    return _collect_nodes(node, (ast.Assign, ast.AnnAssign))
+    return _collect_nodes(node, (ast.Assign, ast.AnnAssign)) #type:ignore

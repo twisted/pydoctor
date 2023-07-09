@@ -441,7 +441,7 @@ def test_auto_detect_is_True_init_is_True(systemcls:Type[model.System]) -> None:
     assert_constructor(mod.contents['MyClass'], '(self, a: int, b: str)')
 
 @attrs_systemcls_param
-def test_field_keyword_only_inherited_parameters(systemcls) -> None:
+def test_field_keyword_only_inherited_parameters(systemcls:Type[model.System]) -> None:
     src = '''\
     import attr
     @attr.s
@@ -454,8 +454,10 @@ def test_field_keyword_only_inherited_parameters(systemcls) -> None:
     mod = fromText(src, systemcls=systemcls)
     assert_constructor(mod.contents['B'], '(self, a: int = 0, *, b)')
 
+
+
 @attrs_systemcls_param
-def test_class_keyword_only_inherited_parameters(systemcls) -> None:
+def test_class_keyword_only_inherited_parameters(systemcls:Type[model.System]) -> None:
     # see https://github.com/python-attrs/attrs/commit/123df6704176d1981cf0d8f15a5021f4e2ce01ed
     src = '''\
     import attr
@@ -484,7 +486,7 @@ def test_class_keyword_only_inherited_parameters(systemcls) -> None:
     assert_constructor(mod.contents['B'], '(self, *, a: int, b: int)', 'B(a, b)')
 
 @attrs_systemcls_param
-def test_attrs_new_APIs_autodetect_auto_attribs_is_True(systemcls) -> None:
+def test_attrs_new_APIs_autodetect_auto_attribs_is_True(systemcls:Type[model.System]) -> None:
     src = '''\
     import attrs as attr
 
@@ -494,27 +496,27 @@ def test_attrs_new_APIs_autodetect_auto_attribs_is_True(systemcls) -> None:
         b: str = attr.field(default=attr.Factory(str))
     '''
     mod = fromText(src, systemcls=systemcls)
-    assert mod.contents['MyClass'].attrs_options['auto_attribs']==True
+    assert mod.contents['MyClass'].attrs_options['auto_attribs']==True #type:ignore
     assert_constructor(mod.contents['MyClass'], '(self, a: int, b: str = str())')
 
     mod = fromText(src.replace('@attr.define(auto_attribs=None)', '@attr.define'), systemcls=systemcls)
-    assert mod.contents['MyClass'].attrs_options['auto_attribs']==True
+    assert mod.contents['MyClass'].attrs_options['auto_attribs']==True #type:ignore
     assert_constructor(mod.contents['MyClass'], '(self, a: int, b: str = str())')
 
     mod = fromText(src.replace('@attr.define(auto_attribs=None)', '@attr.mutable'), systemcls=systemcls)
-    assert mod.contents['MyClass'].attrs_options['auto_attribs']==True
+    assert mod.contents['MyClass'].attrs_options['auto_attribs']==True #type:ignore
     assert_constructor(mod.contents['MyClass'], '(self, a: int, b: str = str())')
 
     mod = fromText(src.replace('@attr.define', '@attr.mutable'), systemcls=systemcls)
-    assert mod.contents['MyClass'].attrs_options['auto_attribs']==True
+    assert mod.contents['MyClass'].attrs_options['auto_attribs']==True #type:ignore
     assert_constructor(mod.contents['MyClass'], '(self, a: int, b: str = str())')
 
     mod = fromText(src.replace('@attr.define(auto_attribs=None)', '@attr.frozen'), systemcls=systemcls)
-    assert mod.contents['MyClass'].attrs_options['auto_attribs']==True
+    assert mod.contents['MyClass'].attrs_options['auto_attribs']==True #type:ignore
     assert_constructor(mod.contents['MyClass'], '(self, a: int, b: str = str())')
 
     mod = fromText(src.replace('@attr.define', '@attr.frozen'), systemcls=systemcls)
-    assert mod.contents['MyClass'].attrs_options['auto_attribs']==True
+    assert mod.contents['MyClass'].attrs_options['auto_attribs']==True #type:ignore
     assert_constructor(mod.contents['MyClass'], '(self, a: int, b: str = str())')
 
     # older namespace
@@ -536,3 +538,20 @@ def test_attrs_new_APIs_autodetect_auto_attribs_is_True(systemcls) -> None:
 
     mod = fromText(src.replace('@attr.define', '@attr.frozen').replace('import attrs as attr', 'import attr'), systemcls=systemcls)
     assert_constructor(mod.contents['MyClass'], '(self, a: int, b: str = str())')
+
+@attrs_systemcls_param
+def test_attrs_duplicate_param(systemcls: Type[model.System]) -> None:
+    src = '''\
+    import attr
+    @attr.s(auto_attribs=True)
+    class MyClass:
+        a: int
+
+    if int('36'):
+        @attr.s(auto_attribs=True)
+        class MyClass:
+            a: int
+        
+    '''
+    mod = fromText(src, systemcls=systemcls)
+    assert_constructor(mod.contents['MyClass'], '(self, a: int)')

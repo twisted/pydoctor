@@ -8,7 +8,7 @@ import enum
 import inspect
 import copy
 
-from typing import Dict, List, Optional, Sequence, Tuple, TypedDict, Union
+from typing import Any, Dict, List, Optional, Sequence, Tuple, Type, TypedDict, Union
 
 from pydoctor import astbuilder, model, astutils, extensions
 from pydoctor.extensions._dataclass_like import DataclasLikeClass, DataclassLikeVisitor
@@ -179,14 +179,18 @@ def default_from_attrib(args:inspect.BoundArguments, ctx: model.Documentable) ->
 
 def collect_fields(node:ast.ClassDef, ctx:model.Documentable) -> Sequence[Union[ast.Assign, ast.AnnAssign]]:
     # used for the auto detection of auto_attribs value in newer APIs.
-    def _f(assign):
+    def _f(assign:Union[ast.Assign, ast.AnnAssign]) -> bool:
         if isinstance(assign, ast.AnnAssign) and \
             not astutils.is_using_typing_classvar(assign.annotation, ctx):
             return True
-        if is_attrib(assign.value):
+        if is_attrib(assign.value, ctx):
             return True
         return False
     return list(filter(_f, astutils.collect_assigns(node)))    
+
+_fallback_attrs_call = ast.Call(func=ast.Name(id='define', ctx=ast.Load()),
+                                args=[], keywords=[], lineno=0,)
+_nothing = object()
 
 class ModuleVisitor(DataclassLikeVisitor):
 
@@ -209,33 +213,41 @@ class ModuleVisitor(DataclassLikeVisitor):
         except StopIteration:
             return
         
+        # init the self argument
+        cls.attrs_constructor_parameters.append(
+            inspect.Parameter('self', 
+                              inspect.Parameter.POSITIONAL_OR_KEYWORD)
+        )
+        cls.attrs_constructor_annotations['self'] = None
+        
         kind = attrs_deco_kind(attrs_deco, mod)
         attrs_args = astutils.safe_bind_args(attrs_decorator_signature, attrs_deco, mod)
         
         # init attrs options based on arguments and whether the devs are using
         # the newer version of the APIs
-        if attrs_args:
-            attrs_options = {'auto_attribs': (False, bool),
-                             'init': (None, (bool, type(None))),
-                             'kw_only': (False, bool),
-                             'auto_detect': (False, bool), }
-            
-            if kind == AttrsDeco.NEW:
-                attrs_options['auto_attribs'] = (None, (bool, type(None)))
-                attrs_options['auto_detect'] = (True, bool)
+        attrs_param_spec: Dict[str, Tuple[object, Union[Type[Any], Tuple[Type[Any],...]]]] = \
+                   {'auto_attribs': (False, bool),
+                    'init': (None, (bool, type(None))),
+                    'kw_only': (False, bool),
+                    'auto_detect': (False, bool), }
+        
+        if kind == AttrsDeco.NEW:
+            attrs_param_spec['auto_attribs'] = (None, (bool, type(None)))
+            attrs_param_spec['auto_detect'] = (True, bool)
+        
+        if not attrs_args:
+            attrs_args = astutils.bind_args(attrs_decorator_signature, _fallback_attrs_call)
 
-            cls.attrs_options.update({name: astutils.get_literal_arg(attrs_args, name, default, 
-                                    typecheck, attrs_deco.lineno, mod
-                                    ) for name, (default, typecheck) in 
-                                    attrs_options.items()})
-        elif kind == AttrsDeco.NEW:
-            cls.attrs_options['auto_attribs'] = None
-            cls.attrs_options['auto_detect'] = True
+        cls.attrs_options.update({name: astutils.get_literal_arg(attrs_args, name, default, 
+                                typecheck, attrs_deco.lineno, mod
+                                ) for name, (default, typecheck) in 
+                                attrs_param_spec.items()})
 
-        if kind == AttrsDeco.NEW and cls.attrs_options['auto_attribs'] is None:
+        if kind is AttrsDeco.NEW and cls.attrs_options['auto_attribs'] is None:
             fields = collect_fields(node, cls)
             # auto detect auto_attrib value
-            cls.attrs_options['auto_attribs'] = len(fields)>0 and not any(isinstance(a, ast.Assign) for a in fields)
+            cls.attrs_options['auto_attribs'] = len(fields)>0 and \
+                not any(isinstance(a, ast.Assign) for a in fields)
     
     def transformClassVar(self, cls: model.Class, 
                           attr: model.Attribute, 
@@ -243,7 +255,8 @@ class ModuleVisitor(DataclassLikeVisitor):
                           value:Optional[ast.expr]) -> None:
         assert isinstance(cls, AttrsClass)
         is_attrs_attrib = is_attrib(value, cls)
-        is_attrs_auto_attrib = cls.attrs_options['auto_attribs'] and not is_attrs_attrib and annotation is not None
+        is_attrs_auto_attrib = cls.attrs_options.get('auto_attribs') and \
+            not is_attrs_attrib and annotation is not None
         
         if not (is_attrs_attrib or is_attrs_auto_attrib):
             return
@@ -265,10 +278,11 @@ class ModuleVisitor(DataclassLikeVisitor):
                                         ('kw_only', False, bool),)}
     
         # Handle the auto-creation of the __init__ method.
-        if cls.attrs_options['init'] in (True, None) and is_attrs_auto_attrib or attrib_args_value.get('init'):    
+        if cls.attrs_options.get('init', _nothing) in (True, None) and \
+            is_attrs_auto_attrib or attrib_args_value.get('init'):    
+
             kind:inspect._ParameterKind = inspect.Parameter.POSITIONAL_OR_KEYWORD
-        
-            if cls.attrs_options['kw_only'] or attrib_args_value.get('kw_only'):
+            if cls.attrs_options.get('kw_only') or attrib_args_value.get('kw_only'):
                 kind = inspect.Parameter.KEYWORD_ONLY
 
             attrs_default:Optional[ast.expr] = ast.Constant(value=..., lineno=attr.linenumber)
@@ -277,7 +291,8 @@ class ModuleVisitor(DataclassLikeVisitor):
                 factory = get_factory(value, cls)
                 if factory:
                     if astutils.node2dottedname(factory):
-                        attrs_default = ast.Call(func=factory, args=[], keywords=[], lineno=factory.lineno)
+                        attrs_default = ast.Call(func=factory, args=[], keywords=[], 
+                                                 lineno=factory.lineno)
                     
                     # else, the factory is not a simple function/class name, 
                     # so we give up on trying to figure it out.
@@ -311,34 +326,33 @@ class ModuleVisitor(DataclassLikeVisitor):
             return self.DATACLASS_LIKE_KIND
         return None
 
-class AttrsOptions(TypedDict):
-    auto_attribs: bool
+class AttrsOptions(Dict[str, object]):
     """
-    L{True} if this class uses the C{auto_attribs} feature of the L{attrs}
-    library to automatically convert annotated fields into attributes.
-    """
+    Dictionary that may contain the following keys:
 
-    kw_only: bool
-    """
-    C{True} is this class uses C{kw_only} feature of L{attrs <attr>} library.
-    """
+    - auto_attribs: bool|None
 
-    init: Optional[bool]
-    """
-    False if L{attrs <attr>} is not generating an __init__ method for this class.
-    """
+      L{True} if this class uses the C{auto_attribs} feature of the L{attrs}
+      library to automatically convert annotated fields into attributes.
 
-    auto_detect:bool
+    - kw_only: bool
+    
+      C{True} is this class uses C{kw_only} feature of L{attrs <attr>} library.
+
+    - init: bool|None
+    
+      False if L{attrs <attr>} is not generating an __init__ method for this class.
+
+    - auto_detect:bool
+    """
 
 class AttrsClass(DataclasLikeClass, model.Class):
     def setup(self) -> None:
         super().setup()
 
-        self.attrs_options:AttrsOptions = {'init':None, 'auto_attribs':False, 
-                                           'kw_only':False, 'auto_detect':False}
-        self.attrs_constructor_parameters:List[inspect.Parameter] = [
-            inspect.Parameter('self', inspect.Parameter.POSITIONAL_OR_KEYWORD,)]
-        self.attrs_constructor_annotations: Dict[str, Optional[ast.expr]] = {'self': None}
+        self.attrs_options = AttrsOptions()
+        self.attrs_constructor_parameters: List[inspect.Parameter] = []
+        self.attrs_constructor_annotations: Dict[str, Optional[ast.expr]] = {}
 
 def collect_inherited_constructor_params(cls:AttrsClass) -> Tuple[List[inspect.Parameter], 
                                                     Dict[str, Optional[ast.expr]]]:
@@ -377,9 +391,9 @@ def postProcess(system:model.System) -> None:
         # by default attr.s() overrides any defined __init__ mehtod, whereas dataclasses.
         if cls.dataclassLike == ModuleVisitor.DATACLASS_LIKE_KIND:
             
-            if cls.attrs_options['init'] is False or \
-                cls.attrs_options['init'] is None and \
-                cls.attrs_options['auto_detect'] is True and \
+            if cls.attrs_options.get('init') is False or \
+                cls.attrs_options.get('init', _nothing) is None and \
+                cls.attrs_options.get('auto_detect') is True and \
                 cls.contents.get('__init__'):
                 continue
 
@@ -395,13 +409,13 @@ def postProcess(system:model.System) -> None:
             # collect arguments from super classes attributes definitions.  
             inherited_params, inherited_annotations = collect_inherited_constructor_params(cls)
             # don't forget to set the KEYWORD_ONLY flag on inherited parameters
-            if cls.attrs_options['kw_only'] is True:
+            if cls.attrs_options.get('kw_only') is True:
                 for p in inherited_params:
-                    p._kind = inspect.Parameter.KEYWORD_ONLY
+                    p._kind = inspect.Parameter.KEYWORD_ONLY #type:ignore[attr-defined]
             # make sure that self is kept first.
             parameters = [cls.attrs_constructor_parameters[0], 
                           *inherited_params, *cls.attrs_constructor_parameters[1:]]
-            annotations = {'self': None, **inherited_annotations, 
+            annotations:Dict[str, Optional[ast.expr]] = {'self': None, **inherited_annotations, 
                            **cls.attrs_constructor_annotations}
             
             # Re-ordering kw_only arguments at the end of the list
