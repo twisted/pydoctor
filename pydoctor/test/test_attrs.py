@@ -555,3 +555,45 @@ def test_attrs_duplicate_param(systemcls: Type[model.System]) -> None:
     '''
     mod = fromText(src, systemcls=systemcls)
     assert_constructor(mod.contents['MyClass'], '(self, a: int)')
+
+@attrs_systemcls_param
+def test_type_comment_wins_over_factory_annotation(systemcls: Type[model.System]) -> None:
+    src = '''\
+    from typing import List
+    import attr
+
+    @attr.s
+    class SomeClass:
+
+        a_number = attr.ib(default=42)
+        """One number."""
+
+        list_of_numbers = attr.ib(factory=list)  # type: List[int]
+        """Multiple numbers."""    
+    '''
+
+    mod = fromText(src, systemcls=systemcls)
+    assert_constructor(mod.contents['SomeClass'], '(self, a_number: int = 42, list_of_numbers: List[int] = list())')
+
+@attrs_systemcls_param
+def test_type_comment_wins_over_factory_annotation(systemcls: Type[model.System]) -> None:
+    src = '''\
+    from typing import List
+    import pathlib
+    import attr
+
+    def convert_paths(p:List[str]) -> List[pathlib.Path]:
+        return [pathlib.Path(s) for s in p]
+
+    @attr.s(auto_attribs=True)
+    class Base:
+        a: int
+
+    @attr.s(auto_attribs=True, kw_only=True)
+    class SomeClass(Base):
+        a_number:int=42
+        list_of_numbers:List[int] = attr.ib(factory=list)
+        converted_paths:List[pathlib.Path] = attr.ib(converter=convert_paths, factory=list)'''
+
+    mod = fromText(src, systemcls=systemcls)
+    assert_constructor(mod.contents['SomeClass'], '(self, *, a: int, a_number: int = 42, list_of_numbers: list = list(), converted_paths: List[str] = list())')

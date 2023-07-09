@@ -2398,6 +2398,15 @@ def test_default_constructors(systemcls: Type[model.System]) -> None:
     mod = fromText(src, systemcls=systemcls)
     assert getConstructorsText(mod.contents['Animal']) == "Animal()"
 
+@systemcls_param
+def test_docstring_attribute_inline(systemcls:Type[model.System]) -> None:
+    src='''\
+    class SomeClass(Base):
+        a_number:int=42; "docstring of number A."
+        '''
+    mod = fromText(src, systemcls=systemcls)
+    assert mod.contents['SomeClass'].contents['a_number'].docstring=="docstring of number A."
+
 # test for astutils.collect_assigns
 def test_astutils_collect_assigns() -> None:
     mod = ast.parse(dedent('''\
