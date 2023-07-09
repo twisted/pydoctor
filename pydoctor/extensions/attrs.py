@@ -8,12 +8,21 @@ import enum
 import inspect
 import copy
 
-from typing import Any, Dict, List, Optional, Sequence, Tuple, Type, TypedDict, Union
-
-from pydoctor import astbuilder, model, astutils, extensions
-from pydoctor.extensions._dataclass_like import DataclasLikeClass, DataclassLikeVisitor
+from typing import Any, Dict, List, Optional, Sequence, Tuple, Type, Union
 
 import attr
+from docutils import nodes
+
+from pydoctor import astbuilder, model, astutils, extensions, epydoc2stan
+from pydoctor.extensions._dataclass_like import DataclasLikeClass, DataclassLikeVisitor
+from pydoctor.epydoc.markup import ParsedDocstring, Field
+from pydoctor.epydoc.markup.restructuredtext import ParsedRstDocstring
+from pydoctor.epydoc.markup._pyval_repr import colorize_inline_pyval
+
+from pydoctor.epydoc2stan import parse_docstring
+from pydoctor.epydoc.docutils import new_document, set_node_attributes
+
+
 
 attrs_decorator_signature = inspect.signature(attr.s)
 """Signature of the L{attr.s} class decorator."""
@@ -57,7 +66,7 @@ def is_attrib(expr: Optional[ast.expr], ctx: model.Documentable) -> bool:
     
 def get_factory(expr: Optional[ast.expr], ctx: model.Documentable) -> Optional[ast.expr]:
     """
-    If this AST represent a call to L{attr.Factory}, returns the expression inside the factory call
+    If this AST represent a call to L{attrs.Factory}, returns the expression inside the factory call
     """
     if isinstance(expr, ast.Call) and \
         astutils.node2fullname(expr.func, ctx) in ('attrs.Factory', 'attr.Factory'):
@@ -308,9 +317,9 @@ class ModuleVisitor(DataclassLikeVisitor):
 
             if attrib_args:
                 constructor_annotation = annotation_from_attrib(
-                    attrib_args, cls, for_constructor=True) or annotation
+                    attrib_args, cls, for_constructor=True) or attr.annotation
             else:
-                constructor_annotation = annotation
+                constructor_annotation = attr.annotation
             
             cls.attrs_constructor_annotations[init_param_name] = constructor_annotation
             cls.attrs_constructor_parameters.append(
@@ -330,20 +339,20 @@ class AttrsOptions(Dict[str, object]):
     """
     Dictionary that may contain the following keys:
 
-    - auto_attribs: bool|None
+        - auto_attribs: bool|None
 
-      L{True} if this class uses the C{auto_attribs} feature of the L{attrs}
-      library to automatically convert annotated fields into attributes.
+        L{True} if this class uses the C{auto_attribs} feature of the L{attrs}
+        library to automatically convert annotated fields into attributes.
 
-    - kw_only: bool
-    
-      C{True} is this class uses C{kw_only} feature of L{attrs <attr>} library.
+        - kw_only: bool
+        
+        C{True} is this class uses C{kw_only} feature of L{attrs <attr>} library.
 
-    - init: bool|None
-    
-      False if L{attrs <attr>} is not generating an __init__ method for this class.
+        - init: bool|None
+        
+        False if L{attrs <attr>} is not generating an __init__ method for this class.
 
-    - auto_detect:bool
+        - auto_detect:bool
     """
 
 class AttrsClass(DataclasLikeClass, model.Class):
@@ -385,6 +394,30 @@ def collect_inherited_constructor_params(cls:AttrsClass) -> Tuple[List[inspect.P
 
     return filtered, base_annotations
 
+def craft_constructor_docstring(cls:AttrsClass, constructor_signature:inspect.Signature) -> ParsedDocstring:
+    fields = []
+    for param in constructor_signature.parameters.values():
+        if param.name=='self':
+            continue
+        attr = cls.find(param.name)
+        if isinstance(attr, model.Attribute):
+            doc_has_info = False
+            if is_attrib(attr.value, cls):
+                parsed_doc = colorize_inline_pyval(attr.value)
+                doc_has_info = True
+            else:
+                parsed_doc = parse_docstring(cls, '', cls, markup='epytext', section='attrs')
+            epydoc2stan.ensure_parsed_docstring(attr)
+            if attr.parsed_docstring:
+                parsed_doc = parsed_doc.concatenate(attr.parsed_docstring)
+                doc_has_info = True
+            if doc_has_info:
+                fields.append(Field('param', param.name, parsed_doc, lineno=cls.linenumber))
+    doc = parse_docstring(cls, 'U{attrs <https://www.attrs.org>} generated method', 
+                          cls, markup='epytext', section='attrs')
+    doc.fields = fields
+    return doc
+
 def postProcess(system:model.System) -> None:
 
     for cls in list(system.objectsOfType(AttrsClass)):
@@ -414,7 +447,7 @@ def postProcess(system:model.System) -> None:
                     p._kind = inspect.Parameter.KEYWORD_ONLY #type:ignore[attr-defined]
             # make sure that self is kept first.
             parameters = [cls.attrs_constructor_parameters[0], 
-                          *inherited_params, *cls.attrs_constructor_parameters[1:]]
+                *inherited_params, *cls.attrs_constructor_parameters[1:]]
             annotations:Dict[str, Optional[ast.expr]] = {'self': None, **inherited_annotations, 
                            **cls.attrs_constructor_annotations}
             
@@ -436,7 +469,8 @@ def postProcess(system:model.System) -> None:
                 func.annotations = {}
             else:
                 cls.constructors.append(func)
-
+                func.parsed_docstring = craft_constructor_docstring(cls, func.signature)
+            
 def setup_pydoctor_extension(r:extensions.ExtRegistrar) -> None:
     r.register_astbuilder_visitor(ModuleVisitor)
     r.register_mixin(AttrsClass)
