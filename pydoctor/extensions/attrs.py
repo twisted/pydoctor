@@ -409,8 +409,11 @@ def craft_constructor_docstring(cls:AttrsClass, constructor_signature:inspect.Si
                 parsed_doc = parse_docstring(cls, '', cls, markup='epytext', section='attrs')
             epydoc2stan.ensure_parsed_docstring(attr)
             if attr.parsed_docstring:
-                parsed_doc = parsed_doc.concatenate(attr.parsed_docstring)
-                doc_has_info = True
+                try:
+                    parsed_doc = parsed_doc.concatenate(attr.parsed_docstring)
+                    doc_has_info = True
+                except:
+                    pass
             if doc_has_info:
                 fields.append(Field('param', param.name, parsed_doc, lineno=cls.linenumber))
     doc = parse_docstring(cls, 'U{attrs <https://www.attrs.org>} generated method', 
@@ -468,7 +471,6 @@ def postProcess(system:model.System) -> None:
                 func.signature = inspect.Signature()
                 func.annotations = {}
             else:
-                cls.constructors.append(func)
                 func.parsed_docstring = craft_constructor_docstring(cls, func.signature)
             
 def setup_pydoctor_extension(r:extensions.ExtRegistrar) -> None:
