@@ -223,7 +223,10 @@ class ParsedDocstring(abc.ABC):
             self._summary = visitor.summary or epydoc2stan.ParsedStanOnly(tags.span(class_='undocumented')("No summary"))
         return self._summary
 
-    def concatenate(self, other:'ParsedDocstring') -> 'ParsedDocstring':
+    def concat(self, other:'ParsedDocstring') -> 'ParsedDocstring':
+        """
+        Returns a new docstring with the content of the given docstring appended.
+        """
         from pydoctor.epydoc.markup.restructuredtext import ParsedRstDocstring
         other_node = other.to_node()
         self_node = self.to_node()
