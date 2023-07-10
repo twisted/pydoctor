@@ -1,8 +1,10 @@
+import re
 from typing import Optional, Type
 
 from pydoctor import epydoc2stan, model
 from pydoctor.extensions import attrs
 from pydoctor.stanutils import flatten_text
+from pydoctor.node2stan import gettext
 from pydoctor.templatewriter import pages
 from pydoctor.test import CapSys
 
@@ -202,12 +204,12 @@ def test_attrs_constructor_factory(systemcls: Type[model.System]) -> None:
     import attr
     @attr.s(auto_attribs=True)
     class C:
-        a: int = attr.ib(factory=list)
+        a: int = attr.ib(factory=lambda:False)
         b: str = attr.Factory(str)
         c: list = attr.ib(default=attr.Factory(list))
     '''
     mod = fromText(src, systemcls=systemcls)
-    assert_constructor(mod.contents['C'], '(self, a: list = list(), b: str = str(), c: list = list())')
+    assert_constructor(mod.contents['C'], '(self, a: int = ..., b: str = str(), c: list = list())')
     
 @attrs_systemcls_param
 def test_attrs_constructor_factory_no_annotations(systemcls: Type[model.System]) -> None:
@@ -540,6 +542,21 @@ def test_attrs_new_APIs_autodetect_auto_attribs_is_True(systemcls:Type[model.Sys
     assert_constructor(mod.contents['MyClass'], '(self, a: int, b: str = str())')
 
 @attrs_systemcls_param
+def test_attrs_new_APIs_autodetect_auto_attribs_is_False(systemcls:Type[model.System]) -> None:
+    src = '''\
+    import attrs as attr
+
+    @attr.define
+    class MyClass:
+        a: int
+        b = attr.field(factory=set)
+        c = 42
+    '''
+    mod = fromText(src, systemcls=systemcls)
+    assert mod.contents['MyClass'].attrs_options['auto_attribs']==False #type:ignore
+    assert_constructor(mod.contents['MyClass'], '(self, b: set = set())')
+
+@attrs_systemcls_param
 def test_attrs_duplicate_param(systemcls: Type[model.System]) -> None:
     src = '''\
     import attr
@@ -576,7 +593,7 @@ def test_type_comment_wins_over_factory_annotation(systemcls: Type[model.System]
     assert_constructor(mod.contents['SomeClass'], '(self, a_number: int = 42, list_of_numbers: List[int] = list())')
 
 @attrs_systemcls_param
-def test_type_comment_wins_over_factory_annotation(systemcls: Type[model.System]) -> None:
+def test_docstring_generated(systemcls: Type[model.System]) -> None:
     src = '''\
     from typing import List
     import pathlib
@@ -591,9 +608,31 @@ def test_type_comment_wins_over_factory_annotation(systemcls: Type[model.System]
 
     @attr.s(auto_attribs=True, kw_only=True)
     class SomeClass(Base):
-        a_number:int=42
-        list_of_numbers:List[int] = attr.ib(factory=list)
-        converted_paths:List[pathlib.Path] = attr.ib(converter=convert_paths, factory=list)'''
+        a_number:int=42; "docstring of number A"
+        list_of_numbers:List[int] = attr.ib(factory=list); "List of ints"
+        converted_paths:List[pathlib.Path] = attr.ib(converter=convert_paths, factory=list); "Uses a converter"
+    '''
 
     mod = fromText(src, systemcls=systemcls)
-    assert_constructor(mod.contents['SomeClass'], '(self, *, a: int, a_number: int = 42, list_of_numbers: list = list(), converted_paths: List[str] = list())')
+    assert_constructor(mod.contents['SomeClass'], '(self, *, a: int, a_number: int = 42, list_of_numbers: List[int] = list(), converted_paths: List[str] = list())')
+    
+    __init__ = mod.contents['SomeClass'].contents['__init__']
+    assert re.match(
+        r'''attrs generated method''', 
+        ''.join(gettext(__init__.parsed_docstring.to_node())))
+    assert len(__init__.parsed_docstring.fields)==3
+    assert re.match(
+        r'''docstring of number A\sattr.ib\(factory=list\)List of ints\sattr.ib\(converter=convert_paths, factory=list\)Uses a converter''',
+        ' '.join(text for text in (''.join(gettext(f.body().to_node())) for f in __init__.parsed_docstring.fields))
+    )
+
+@attrs_systemcls_param
+def test_define_type_comment_not_auto_attribs(systemcls: Type[model.System]) -> None:
+    # this should be interpreted as using auto_attribs=False
+    src='''\
+    import attr
+    @attr.define
+    class A:
+        a = 0 #type:int'''
+    mod = fromText(src, systemcls=systemcls)
+    assert_constructor(mod.contents['A'], '(self)')

@@ -11,12 +11,11 @@ import copy
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Type, Union
 
 import attr
-from docutils import nodes
 
 from pydoctor import astbuilder, model, astutils, extensions, epydoc2stan
 from pydoctor.extensions._dataclass_like import DataclasLikeClass, DataclassLikeVisitor
 from pydoctor.epydoc.markup import ParsedDocstring, Field
-from pydoctor.epydoc.markup.restructuredtext import ParsedRstDocstring
+from pydoctor.epydoc.markup.plaintext import ParsedPlaintextDocstring
 from pydoctor.epydoc.markup._pyval_repr import colorize_inline_pyval
 
 from pydoctor.epydoc2stan import parse_docstring
@@ -151,17 +150,18 @@ def annotation_from_attrib(
     if typ is not None:
         return astutils.unstring_annotation(typ, ctx)
     
-    factory = args.arguments.get('factory')
-    if factory is not None:
-        return _annotation_from_factory(factory, ctx)
-
-    default = args.arguments.get('default')
-    if default is not None:
-        factory = get_factory(default, ctx)
+    if not for_constructor:
+        factory = args.arguments.get('factory')
         if factory is not None:
             return _annotation_from_factory(factory, ctx)
-        else:
-            return astbuilder._infer_type(default)
+
+        default = args.arguments.get('default')
+        if default is not None:
+            factory = get_factory(default, ctx)
+            if factory is not None:
+                return _annotation_from_factory(factory, ctx)
+            else:
+                return astbuilder._infer_type(default)
 
     return None
 
@@ -277,7 +277,7 @@ class ModuleVisitor(DataclassLikeVisitor):
         if value is not None:
             attrib_args = astutils.safe_bind_args(attrib_signature, value, cls.module)
             if attrib_args:
-                if annotation is None:
+                if annotation is None and attr.annotation is None:
                     attr.annotation = annotation_from_attrib(attrib_args, cls)
             
                 attrib_args_value = {name: astutils.get_literal_arg(attrib_args, name, default, 
@@ -317,7 +317,9 @@ class ModuleVisitor(DataclassLikeVisitor):
 
             if attrib_args:
                 constructor_annotation = annotation_from_attrib(
-                    attrib_args, cls, for_constructor=True) or attr.annotation
+                    attrib_args, cls, for_constructor=True) or \
+                    attr.annotation or annotation_from_attrib(
+                        attrib_args, cls)
             else:
                 constructor_annotation = attr.annotation
             
@@ -407,7 +409,7 @@ def attrs_constructor_docstring(cls:AttrsClass, constructor_signature:inspect.Si
             if is_attrib(attr.value, cls):
                 field_doc = colorize_inline_pyval(attr.value)
             else:
-                field_doc = parse_docstring(cls, '', cls, markup='epytext', section='attrs')
+                field_doc = ParsedPlaintextDocstring('')
             epydoc2stan.ensure_parsed_docstring(attr)
             if attr.parsed_docstring:
                 field_doc = field_doc.concat(attr.parsed_docstring)

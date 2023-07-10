@@ -69,7 +69,7 @@ class ParsedPlaintextDocstring(ParsedDocstring):
             paragraphs = [set_node_attributes(nodes.paragraph('',''), children=[
                             set_node_attributes(nodes.Text(p.strip('\n')), document=_document, lineno=0)], 
                             document=_document, lineno=0)
-                                for p in self._text.split('\n\n')] 
+                                for p in self._text.split('\n\n') if p not in ('', '\n')] 
             
             # assemble document
             _document = set_node_attributes(_document, 
