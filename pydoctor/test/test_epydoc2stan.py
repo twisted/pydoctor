@@ -1029,21 +1029,22 @@ def test_EpydocLinker_switch_context_is_reentrant(linkercls:Type[linker._EpydocL
     mod.parsed_docstring.get_summary().to_stan(mod.docstring_linker) # type:ignore
 
     warnings = ['test:2: Cannot find link target for "thing.notfound" (you can link to external docs with --intersphinx)']
-    if linkercls is linker._EpydocLinker:
-        warnings = warnings * 2
     assert capsys.readouterr().out.strip().splitlines() == warnings
-
+    
+    # reset warnings
+    mod.system.once_msgs = set()
+    
     # This is wrong:
     Klass.parsed_docstring.to_stan(mod.docstring_linker) # type:ignore
     Klass.parsed_docstring.get_summary().to_stan(mod.docstring_linker) # type:ignore
     
     # Because the warnings will be reported on line 2
     warnings = ['test:2: Cannot find link target for "thing.notfound" (you can link to external docs with --intersphinx)']
-    warnings = warnings * 2
     
     assert capsys.readouterr().out.strip().splitlines() == warnings
 
-    # assert capsys.readouterr().out == ''
+    # reset warnings
+    mod.system.once_msgs = set()
 
     # Reset stan and summary, because they are supposed to be cached.
     Klass.parsed_docstring._stan = None # type:ignore
@@ -1054,9 +1055,7 @@ def test_EpydocLinker_switch_context_is_reentrant(linkercls:Type[linker._EpydocL
         Klass.parsed_docstring.to_stan(mod.docstring_linker) # type:ignore
         Klass.parsed_docstring.get_summary().to_stan(mod.docstring_linker) # type:ignore
 
-    warnings = ['test:5: Cannot find link target for "thing.notfound" (you can link to external docs with --intersphinx)']
-    warnings = warnings * 2
-    
+    warnings = ['test:5: Cannot find link target for "thing.notfound" (you can link to external docs with --intersphinx)']    
     assert capsys.readouterr().out.strip().splitlines() == warnings
     
 def test_EpydocLinker_look_for_intersphinx_no_link() -> None:
@@ -1291,8 +1290,6 @@ def test_EpydocLinker_warnings(capsys: CapSys) -> None:
     # The rationale about xref warnings is to warn when the target cannot be found.
 
     assert captured == ('module:3: Cannot find link target for "notfound"'
-                        '\nmodule:3: Cannot find link target for "notfound"'
-                        '\nmodule:5: Cannot find link target for "notfound"'
                         '\nmodule:5: Cannot find link target for "notfound"\n')
 
     assert 'href="index.html#base"' in summary2html(mod)
@@ -1999,7 +1996,6 @@ def test_top_level_type_alias_wins_over_class_level(capsys:CapSys) -> None:
 
     assert capsys.readouterr().out == """\
 m:5: ambiguous annotation 'typ', could be interpreted as 'm.C.typ' instead of 'm.typ'
-m:5: ambiguous annotation 'typ', could be interpreted as 'm.C.typ' instead of 'm.typ'
 m:7: ambiguous annotation 'typ', could be interpreted as 'm.C.typ' instead of 'm.typ'
 """
 
@@ -2177,10 +2173,23 @@ def test_parsed_names_partially_resolved_early() -> None:
     unknow = system.allobjects['top.src.unknow']
     assert flatten_text(unknow.parsed_type.to_stan(unknow.docstring_linker)) == 'i|None|list'
 
-    
+    # test the __init__ signature
+    assert 'href="top.src.html#_T"' in flatten(format_signature(Cls.contents['__init__']))
 
-    # TODO: test the __init__ signature and the class bases
-
-    # TODO: Fix two new twisted warnings:
-    # twisted/internet/_sslverify.py:330: Cannot find link target for "twisted.internet.ssl.DN", resolved from "twisted.internet._sslverify.DistinguishedName"
-    # twisted/internet/_sslverify.py:347: Cannot find link target for "twisted.internet.ssl.DN", resolved from "twisted.internet._sslverify.DistinguishedName"
+def test_reparented_ambiguous_annotation_confusion() -> None:
+    """
+    Like L{test_top_level_type_alias_wins_over_class_level} but with reparented class.
+    """
+    src = '''
+    typ = object()
+    class C:
+        typ = int|str
+        var: typ
+    '''
+    system = model.System()
+    builder = system.systemBuilder(system)
+    builder.addModuleString(src, modname='_m')
+    builder.addModuleString('from _m import C; __all__=["C"]', 'm')            
+    builder.buildModules()
+    var = system.allobjects['m.C.var']
+    assert 'href="_m.html#typ"' in flatten(var.parsed_type.to_stan(var.docstring_linker))

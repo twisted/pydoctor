@@ -380,7 +380,8 @@ class Documentable:
 
     def report(self, descr: str, section: str = 'parsing', lineno_offset: int = 0, thresh:int=-1) -> None:
         """
-        Log an error or warning about this documentable object.
+        Log an error or warning about this documentable object. 
+        A reported message will only be printed once.
 
         @param descr: The error/warning string
         @param section: What the warning is about.
@@ -405,7 +406,8 @@ class Documentable:
         self.system.msg(
             section,
             f'{self.description}:{linenumber}: {descr}',
-            thresh=thresh)
+            # some warnings can be reported more that once.
+            thresh=thresh, once=True)
 
     @property
     def docstring_linker(self) -> 'linker.DocstringLinker':

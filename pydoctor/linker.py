@@ -252,6 +252,19 @@ class _EpydocLinker(DocstringLinker):
             self.reporting_obj.report(message, 'resolve_identifier_xref', lineno)
         raise LookupError(identifier)
 
+def warn_ambiguous_annotation(mod:'model.Documentable', 
+                              obj:'model.Documentable', 
+                              target:str) -> None:
+    # report a low-level message about ambiguous annotation
+    mod_ann = mod.expandName(target)
+    obj_ann = obj.expandName(target)
+    if mod_ann != obj_ann:
+        obj.report(
+            f'ambiguous annotation {target!r}, could be interpreted as '
+            f'{obj_ann!r} instead of {mod_ann!r}', section='annotation',
+            thresh=1
+        )
+
 class _AnnotationLinker(DocstringLinker):
     """
     Specialized linker to resolve annotations attached to the given L{Documentable}. 
@@ -271,21 +284,10 @@ class _AnnotationLinker(DocstringLinker):
     @property
     def obj(self) -> 'model.Documentable':
         return self._obj
-
-    def warn_ambiguous_annotation(self, target:str) -> None:
-        # report a low-level message about ambiguous annotation
-        mod_ann = self._module.expandName(target)
-        obj_ann = self._scope.expandName(target)
-        if mod_ann != obj_ann:
-            self.obj.report(
-                f'ambiguous annotation {target!r}, could be interpreted as '
-                f'{obj_ann!r} instead of {mod_ann!r}', section='annotation',
-                thresh=1
-            )
     
     def link_to(self, target: str, label: "Flattenable") -> Tag:
         if self._module.isNameDefined(target):
-            self.warn_ambiguous_annotation(target)
+            warn_ambiguous_annotation(self._module, self._obj, target)
             return self._module_linker.link_to(target, label)
         elif self._scope.isNameDefined(target):
             return self._scope_linker.link_to(target, label)

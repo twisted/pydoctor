@@ -1154,9 +1154,11 @@ def populate_constructors_extra_info(cls:model.Class) -> None:
 
 class _ReferenceTransform(Transform):
 
-    def __init__(self, document:nodes.document, ctx:'model.Documentable'):
+    def __init__(self, document:nodes.document, 
+                 ctx:'model.Documentable', is_annotation:bool):
         super().__init__(document)
         self.ctx = ctx
+        self.is_annotation = is_annotation
     
     def apply(self):
         ctx = self.ctx
@@ -1165,18 +1167,25 @@ class _ReferenceTransform(Transform):
             _, target = parse_reference(node)
             if target == node.attributes.get('refuri', target):
                 name, *rest = target.split('.')
-                # Only apply transformation to non-ambigous names, 
-                # because we don't know if we're dealing with an annotation
-                # or an interpreted, so we must go with the conservative approach.
-                if ((module.isNameDefined(name) and
-                    not ctx.isNameDefined(name, only_locals=True))
-                    or (ctx.isNameDefined(name, only_locals=True) and 
-                    not module.isNameDefined(name))):
+                
+                # kindda duplicate a little part of the annotation linker logic here,
+                # there are no simple way of doing it otherwise at the moment.
+                # Once all presented parsed elements are stored as Documentable attributes 
+                # we might be able to simply use that and drop the use of the annotation linker,
+                # but for now this will to the trick:
+                lookup_context = ctx
+                if self.is_annotation and ctx is not module and module.isNameDefined(name, 
+                        only_locals=True) and ctx.isNameDefined(name, only_locals=True):
+                    # If we're dealing with an annotation, give precedence to the module's 
+                    # lookup (wrt PEP 563)
+                    lookup_context = module
+                    linker.warn_ambiguous_annotation(module, ctx, target)
                     
-                    node.attributes['refuri'] = '.'.join(chain(
-                        ctx._localNameToFullName(name).split('.'), rest))
+                node.attributes['refuri'] = '.'.join(chain(
+                    lookup_context._localNameToFullName(name).split('.'), rest))
 
-def _apply_reference_transform(doc:ParsedDocstring, ctx:'model.Documentable') -> None:
+def _apply_reference_transform(doc:ParsedDocstring, ctx:'model.Documentable', 
+                               is_annotation:bool=False) -> None:
     """
     Runs L{_ReferenceTransform} on the underlying docutils document. 
     No-op if L{to_node} raises L{NotImplementedError}.
@@ -1186,7 +1195,7 @@ def _apply_reference_transform(doc:ParsedDocstring, ctx:'model.Documentable') ->
     except NotImplementedError:
         return
     else:
-        _ReferenceTransform(document, ctx).apply()
+        _ReferenceTransform(document, ctx, is_annotation).apply()
 
 def transform_parsed_names(node:'model.Module') -> None:
     """
@@ -1210,7 +1219,7 @@ def transform_parsed_names(node:'model.Module') -> None:
                 for p in ob.signature.parameters.values():
                     ann = p.annotation if p.annotation is not inspect.Parameter.empty else None                    
                     if isinstance(ann, astbuilder._ValueFormatter):
-                        _apply_reference_transform(ann._colorized, ob)
+                        _apply_reference_transform(ann._colorized, ob, is_annotation=True)
                     default = p.default if p.default is not inspect.Parameter.empty else None
                     if isinstance(default, astbuilder._ValueFormatter):
                         _apply_reference_transform(default._colorized, ob)
@@ -1221,7 +1230,7 @@ def transform_parsed_names(node:'model.Module') -> None:
             # resolve attribute annotation with parsed_type attribute
             parsed_type = get_parsed_type(ob)
             if parsed_type:
-                _apply_reference_transform(parsed_type, ob)
+                _apply_reference_transform(parsed_type, ob, is_annotation=True)
             # TODO: resolve parsed_value
             # TODO: resolve parsed_decorators
         elif isinstance(ob, model.Class):
