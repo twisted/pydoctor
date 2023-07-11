@@ -394,13 +394,13 @@ class ModuleVistor(NodeVisitor):
             if asname is None:
                 asname = orgname
 
-            if mod is not None and self._handleReExport(exports, orgname, asname, mod) is True:
-                continue
-
             # If we're importing from a package, make sure imported modules
             # are processed (getProcessedModule() ignores non-modules).
             if isinstance(mod, model.Package):
                 self.system.getProcessedModule(f'{modname}.{orgname}')
+            
+            if mod is not None and self._handleReExport(exports, orgname, asname, mod) is True:
+                continue
 
             _localNameToFullName[asname] = f'{modname}.{orgname}'
 
