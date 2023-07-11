@@ -56,7 +56,7 @@ def parse_reference(node:nodes.title_reference) -> Tuple[Union[str, Sequence[nod
     """
     Split a reference into (label, target).
     """
-    label: "Flattenable"
+    label: Union[str, Sequence[nodes.Node]]
     if 'refuri' in node.attributes:
         # Epytext parsed or manually constructed nodes.
         label, target = node.children, node.attributes['refuri']

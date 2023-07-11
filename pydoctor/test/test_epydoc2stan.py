@@ -2160,21 +2160,21 @@ def test_parsed_names_partially_resolved_early() -> None:
     clsvar2 = Cls.contents['clsvar2']
     a = Cls.contents['_a']
     assert clsvar.expandName('typing.List')=='typing.List'
-    assert '<obj_reference refuri="typing.List">' in clsvar.parsed_type.to_node().pformat()
-    assert 'href="typing.html#List"' in flatten(clsvar.parsed_type.to_stan(clsvar.docstring_linker))
-    assert 'href="typing.html#ClassVar"' in flatten(clsvar2.parsed_type.to_stan(clsvar2.docstring_linker))
-    assert 'href="top.src.html#_T"' in flatten(a.parsed_type.to_stan(clsvar.docstring_linker))
+    assert '<obj_reference refuri="typing.List">' in clsvar.parsed_type.to_node().pformat() #type: ignore
+    assert 'href="typing.html#List"' in flatten(clsvar.parsed_type.to_stan(clsvar.docstring_linker)) #type: ignore
+    assert 'href="typing.html#ClassVar"' in flatten(clsvar2.parsed_type.to_stan(clsvar2.docstring_linker)) #type: ignore
+    assert 'href="top.src.html#_T"' in flatten(a.parsed_type.to_stan(clsvar.docstring_linker)) #type: ignore
 
     # the reparenting/alias issue
     ann = system.allobjects['top.src.ann']
-    assert 'href="top.Cls.html"' in  flatten(ann.parsed_type.to_stan(ann.docstring_linker))
-    assert 'href="top.Cls.html"' in flatten(Cls.parsed_docstring.to_stan(Cls.docstring_linker))
+    assert 'href="top.Cls.html"' in  flatten(ann.parsed_type.to_stan(ann.docstring_linker)) #type: ignore
+    assert 'href="top.Cls.html"' in flatten(Cls.parsed_docstring.to_stan(Cls.docstring_linker)) #type: ignore
     
     unknow = system.allobjects['top.src.unknow']
-    assert flatten_text(unknow.parsed_type.to_stan(unknow.docstring_linker)) == 'i|None|list'
+    assert flatten_text(unknow.parsed_type.to_stan(unknow.docstring_linker)) == 'i|None|list' #type: ignore
 
     # test the __init__ signature
-    assert 'href="top.src.html#_T"' in flatten(format_signature(Cls.contents['__init__']))
+    assert 'href="top.src.html#_T"' in flatten(format_signature(Cls.contents['__init__'])) #type: ignore
 
 def test_reparented_ambiguous_annotation_confusion() -> None:
     """
@@ -2192,4 +2192,4 @@ def test_reparented_ambiguous_annotation_confusion() -> None:
     builder.addModuleString('from _m import C; __all__=["C"]', 'm')            
     builder.buildModules()
     var = system.allobjects['m.C.var']
-    assert 'href="_m.html#typ"' in flatten(var.parsed_type.to_stan(var.docstring_linker))
+    assert 'href="_m.html#typ"' in flatten(var.parsed_type.to_stan(var.docstring_linker)) #type: ignore

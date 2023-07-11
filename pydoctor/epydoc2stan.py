@@ -1160,7 +1160,7 @@ class _ReferenceTransform(Transform):
         self.ctx = ctx
         self.is_annotation = is_annotation
     
-    def apply(self):
+    def apply(self) -> None:
         ctx = self.ctx
         module = self.ctx.module
         for node in self.document.findall(nodes.title_reference):
@@ -1237,3 +1237,5 @@ def transform_parsed_names(node:'model.Module') -> None:
             # TODO: resolve parsed_class_signature
             # TODO: resolve parsed_decorators
             pass
+
+# do one test with parsed type docstrings
