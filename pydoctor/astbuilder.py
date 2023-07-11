@@ -149,6 +149,133 @@ def extract_final_subscript(annotation: ast.Subscript) -> ast.expr:
         assert isinstance(ann_slice, ast.expr)
         return ann_slice
 
+class ImportParser(ast.NodeVisitor):
+    """
+    Transform import statements into a series of `ImportedName`s.
+
+    One instance of ImportParser can be used to parse all imports in a given module.
+    """
+    
+    def __init__(self, modname:Tuple[str,...], *, is_package:bool) -> None:
+        self._modname = modname
+        self._is_package = is_package
+        self._result:List[model.ImportedName] = []
+    
+    # parsing imports, partially adjusted from typeshed_client
+
+    def visit_Import(self, node: ast.Import) -> List[model.ImportedName]:
+        self._result.clear()
+        for al in node.names:
+            if al.asname:
+                self._result.append(
+                    model.ImportedName(al, orgmodule=al.name))
+            else:
+                # here, we're lossng the dependency on "driver" of "import pydoctor.driver" in 'orgmodule',
+                self._result.append(
+                    model.ImportedName(al, orgmodule=al.name.split(".", 1)[0]))
+        return self._result
+    
+    def visit_ImportFrom(self, node: ast.ImportFrom) -> List[model.ImportedName]:
+        self._result.clear()
+        current_module: Tuple[str, ...] = self._modname
+        module: Tuple[str, ...]
+        
+        if node.module is None:
+            module = ()
+        else:
+            module = tuple(node.module.split("."))
+        if node.level == 0:
+            source_module = module
+        else:
+            if node.level == 1:
+                if self._is_package:
+                    relative_module = current_module
+                else:
+                    relative_module = current_module[:-1]
+            else:
+                if self._is_package:
+                    relative_module = current_module[: 1 - node.level]
+                else:
+                    relative_module = current_module[: -node.level]
+        
+            if not relative_module:
+                raise ValueError("relative import level (%d) too high" % node.level,)
+        
+            source_module = relative_module + module
+
+        for alias in node.names:
+            self._result.append(
+                model.ImportedName(alias, orgmodule=source_module, orgname=alias.name)
+            )
+        return self._result
+
+def _handleReExport(mod:'model.Module',  
+                    origin_name:str, as_name:str,
+                    origin_module:model.Module) -> None:
+    """
+    Move re-exported objects into current module.
+    """
+    # Move re-exported objects into current module.
+    current = mod
+    modname = origin_module.fullName()
+
+    # In case of duplicates names, we can't rely on resolveName,
+    # So we use content.get first to resolve non-alias names. 
+    ob = origin_module.contents.get(origin_name) or origin_module.resolveName(origin_name)
+    if ob is None:
+        current.report("cannot resolve re-exported name :"
+                                f'{modname}.{origin_name}', thresh=1)
+    else:
+        if origin_module.all is None or origin_name not in origin_module.all:
+            current.system.msg(
+                "astbuilder",
+                "moving %r into %r" % (ob.fullName(), current.fullName())
+                )
+            ob.reparent(current, as_name)
+        else:
+            current.system.msg(
+                "astbuilder",
+                f"not moving %r into %r, because {origin_name} is present in {modname}.__all__" % (ob.fullName(), current.fullName())
+                )
+
+def getModuleExports(mod:'model.Module') -> Collection[str]:
+    # Fetch names to export.
+    exports = mod.all
+    if exports is None:
+        exports = []
+    return exports
+
+def getPublicNames(mod:'model.Module') -> Collection[str]:
+    names = mod.all
+    if names is None:
+        names = [
+            name
+            for name in chain(mod.contents.keys(),
+                                mod._localNameToFullName_map.keys())
+            if not name.startswith('_')
+            ]
+    return names
+
+def processReExports(system:'model.System') -> None:
+    # avoids RuntimeError: dictionary keys changed during iteration
+    for mod in list(system.objectsOfType(model.Module)):
+        exports = getModuleExports(mod)
+        for imported_name in mod._toplevel_imports:
+            local_name = imported_name.name()
+            if local_name != '*' and local_name not in exports:
+                continue
+            origin = system._modules.get('.'.join(imported_name.orgmodule))
+            if isinstance(origin, model.Module):
+                if local_name != '*':
+                    _handleReExport(mod, imported_name.orgname, local_name, origin)
+                else:
+                    for n in getPublicNames(origin):
+                        if n in exports:
+                            _handleReExport(mod, n, n, origin)
+            else:
+                mod.report("cannot resolve origin module of re-exported name :"
+                                f"{'.'.join(imported_name.orgmodule)}.{local_name}")
+
 class ModuleVistor(NodeVisitor):
 
     def __init__(self, builder: 'ASTBuilder', module: model.Module):
@@ -266,37 +393,21 @@ class ModuleVistor(NodeVisitor):
         if not isinstance(ctx, model.CanContainImportsDocumentable):
             # processing import statement in odd context
             return
+        
+        try:
+            names = ImportParser(tuple(ctx.module.fullName().split('.')), 
+                                 is_package=isinstance(ctx.module, model.Package)).visit(node)
+        except ValueError as e:
+            ctx.module.report(str(e), lineno_offset=node.lineno)
+        else:
+            if isinstance(ctx, model.Module):
+                ctx._toplevel_imports.extend(names)
 
-        modname = node.module
-        level = node.level
-        if level:
-            # Relative import.
-            parent: Optional[model.Documentable] = ctx.parentMod
-            if isinstance(ctx.module, model.Package):
-                level -= 1
-            for _ in range(level):
-                if parent is None:
-                    break
-                parent = parent.parent
-            if parent is None:
-                assert ctx.parentMod is not None
-                ctx.parentMod.report(
-                    "relative import level (%d) too high" % node.level,
-                    lineno_offset=node.lineno
-                    )
-                return
-            if modname is None:
-                modname = parent.fullName()
+            modname = '.'.join(names[0].orgmodule)
+            if names[0].name()=='*':
+                self._importAll(modname)
             else:
-                modname = f'{parent.fullName()}.{modname}'
-        else:
-            # The module name can only be omitted on relative imports.
-            assert modname is not None
-
-        if node.names[0].name == '*':
-            self._importAll(modname)
-        else:
-            self._importNames(modname, node.names)
+                self._importNames(modname, node.names)
 
     def _importAll(self, modname: str) -> None:
         """Handle a C{from <modname> import *} statement."""
@@ -312,17 +423,8 @@ class ModuleVistor(NodeVisitor):
 
         # Get names to import: use __all__ if available, otherwise take all
         # names that are not private.
-        names = mod.all
-        if names is None:
-            names = [
-                name
-                for name in chain(mod.contents.keys(),
-                                  mod._localNameToFullName_map.keys())
-                if not name.startswith('_')
-                ]
+        names = getPublicNames(mod)
 
-        # Fetch names to export.
-        exports = self._getCurrentModuleExports()
 
         # Add imported names to our module namespace.
         assert isinstance(self.builder.current, model.CanContainImportsDocumentable)
@@ -330,61 +432,14 @@ class ModuleVistor(NodeVisitor):
         expandName = mod.expandName
         for name in names:
 
-            if self._handleReExport(exports, name, name, mod) is True:
-                continue
 
             _localNameToFullName[name] = expandName(name)
-
-    def _getCurrentModuleExports(self) -> Collection[str]:
-        # Fetch names to export.
-        current = self.builder.current
-        if isinstance(current, model.Module):
-            exports = current.all
-            if exports is None:
-                exports = []
-        else:
-            # Don't export names imported inside classes or functions.
-            exports = []
-        return exports
-
-    def _handleReExport(self, curr_mod_exports:Collection[str], 
-                        origin_name:str, as_name:str,
-                        origin_module:model.Module) -> bool:
-        """
-        Move re-exported objects into current module.
-
-        @returns: True if the imported name has been sucessfully re-exported.
-        """
-        # Move re-exported objects into current module.
-        current = self.builder.current
-        modname = origin_module.fullName()
-        if as_name in curr_mod_exports:
-            # In case of duplicates names, we can't rely on resolveName,
-            # So we use content.get first to resolve non-alias names. 
-            ob = origin_module.contents.get(origin_name) or origin_module.resolveName(origin_name)
-            if ob is None:
-                current.report("cannot resolve re-exported name :"
-                                        f'{modname}.{origin_name}', thresh=1)
-            else:
-                if origin_module.all is None or origin_name not in origin_module.all:
-                    self.system.msg(
-                        "astbuilder",
-                        "moving %r into %r" % (ob.fullName(), current.fullName())
-                        )
-                    # Must be a Module since the exports is set to an empty list if it's not.
-                    assert isinstance(current, model.Module)
-                    ob.reparent(current, as_name)
-                    return True
-        return False
 
     def _importNames(self, modname: str, names: Iterable[ast.alias]) -> None:
         """Handle a C{from <modname> import <names>} statement."""
 
         # Process the module we're importing from.
         mod = self.system.getProcessedModule(modname)
-
-        # Fetch names to export.
-        exports = self._getCurrentModuleExports()
 
         current = self.builder.current
         assert isinstance(current, model.CanContainImportsDocumentable)
@@ -399,8 +454,6 @@ class ModuleVistor(NodeVisitor):
             if isinstance(mod, model.Package):
                 self.system.getProcessedModule(f'{modname}.{orgname}')
             
-            if mod is not None and self._handleReExport(exports, orgname, asname, mod) is True:
-                continue
 
             _localNameToFullName[asname] = f'{modname}.{orgname}'
 
@@ -417,16 +470,26 @@ class ModuleVistor(NodeVisitor):
         (dotted_name, as_name) where as_name is None if there was no 'as foo'
         part of the statement.
         """
-        if not isinstance(self.builder.current, model.CanContainImportsDocumentable):
+        ctx = self.builder.current
+        if not isinstance(ctx, model.CanContainImportsDocumentable):
             # processing import statement in odd context
             return
-        _localNameToFullName = self.builder.current._localNameToFullName_map
-        for al in node.names:
-            targetname, asname = al.name, al.asname
-            if asname is None:
-                # we're keeping track of all defined names
-                asname = targetname = targetname.split('.')[0]
-            _localNameToFullName[asname] = targetname
+        try:
+            names = ImportParser(tuple(ctx.module.fullName().split('.')), 
+                                 is_package=isinstance(ctx.module, model.Package)).visit(node)
+        except ValueError as e:
+            ctx.module.report(str(e), lineno_offset=node.lineno)
+        else:
+            if isinstance(ctx, model.Module):
+                ctx._toplevel_imports.extend(names)
+
+            _localNameToFullName = ctx._localNameToFullName_map
+            for al in node.names:
+                targetname, asname = al.name, al.asname
+                if asname is None:
+                    # we're keeping track of all defined names
+                    asname = targetname = targetname.split('.')[0]
+                _localNameToFullName[asname] = targetname
 
     def _handleOldSchoolMethodDecoration(self, target: str, expr: Optional[ast.expr]) -> bool:
         if not isinstance(expr, ast.Call):

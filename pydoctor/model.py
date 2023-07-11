@@ -421,7 +421,30 @@ class CanContainImportsDocumentable(Documentable):
             return self.module.isNameDefined(name)
         else:
             return False
+
+class ImportedName:
+    """
+    Wraps L{ast.alias} nodes.
     
+    @note: One L{ImportedName} instance is created for each 
+        name bound in the C{import} statement.
+    """
+    __slots__ = 'node', 'orgmodule', 'orgname', 'fullorgmodule'
+    
+    def __init__(self, node:ast.alias, orgmodule:Tuple[str,...], 
+                 orgname:Optional[str]=None) -> None:
+        self.node = node
+        self.orgmodule = orgmodule
+        self.orgname = orgname
+
+    def target(self) -> str:
+        if self.orgname:
+            return '.'.join((*self.orgmodule, self.orgname))
+        else:
+            return '.'.join(self.orgmodule)
+    
+    def name(self) -> str:
+        return (self.node.asname or self.node.name).split(".", 1)[0]
 
 class Module(CanContainImportsDocumentable):
     kind = DocumentableKind.MODULE
@@ -456,6 +479,8 @@ class Module(CanContainImportsDocumentable):
         """
 
         self._docformat: Optional[str] = None
+
+        self._toplevel_imports: List[ImportedName] = []
 
     def _localNameToFullName(self, name: str) -> str:
         if name in self.contents:
@@ -914,6 +939,9 @@ class System:
     """
 
     def __init__(self, options: Optional['Options'] = None):
+        self._modules: Dict[str, Module] = {}
+        # allobjects keys can be overriden by any objects, the _modules dict is not
+        # subject to change, whereas allobjects, wrt reparenting.
         self.allobjects: Dict[str, Documentable] = {}
         self.rootobjects: List[_ModuleT] = []
 
@@ -942,8 +970,6 @@ class System:
         self.needsnl = False
         self.once_msgs: Set[Tuple[str, str]] = set()
 
-        # We're using the id() of the modules as key, and not the fullName becaue modules can
-        # be reparented, generating KeyError.
         self.unprocessed_modules: List[_ModuleT] = []
 
         self.module_count = 0
@@ -1141,6 +1167,10 @@ class System:
             self.rootobjects.append(obj)
         else:
             raise ValueError(f'Top-level object is not a module: {obj!r}')
+        
+        if isinstance(obj, Module):
+            # we already handled duplication of modules, normally.
+            self._modules[obj.fullName()] = obj
 
         first = self.allobjects.setdefault(obj.fullName(), obj)
         if obj is not first:
@@ -1433,6 +1463,9 @@ class System:
         without the risk of drawing incorrect conclusions because modules
         were not fully processed yet.
         """
+
+        from pydoctor.astbuilder import processReExports
+        processReExports(self)
 
         # default post-processing includes:
         # - Processing of subclasses
