@@ -1200,7 +1200,7 @@ def _apply_reference_transform(doc:ParsedDocstring, ctx:'model.Documentable',
 def transform_parsed_names(node:'model.Module') -> None:
     """
     Walk this module's content and apply in-place transformations to the 
-    L{ParsedDocstring} instances that olds L{obj_reference} or L{title_reference} nodes. 
+    L{ParsedDocstring} instances that olds L{obj_reference} or L{nodes.title_reference} nodes. 
 
     Fixing "Lookup of name in annotation fails on reparented object #295".
     The fix is not 100% complete at the moment: attribute values and decorators
