@@ -4,6 +4,8 @@ Convert L{pydoctor.epydoc} parsed markup into renderable content.
 
 from collections import defaultdict
 import enum
+import inspect
+from itertools import chain
 from typing import (
     TYPE_CHECKING, Any, Callable, ClassVar, DefaultDict, Dict, Generator,
     Iterator, List, Mapping, Optional, Sequence, Tuple, Union,
@@ -12,8 +14,11 @@ import ast
 import re
 
 import attr
+from docutils.transforms import Transform
+from docutils import nodes
 
 from pydoctor import model, linker, node2stan
+from pydoctor.node2stan import parse_reference
 from pydoctor.astutils import is_none_literal
 from pydoctor.epydoc.markup import Field as EpydocField, ParseError, get_parser_by_name, processtypes
 from twisted.web.template import Tag, tags
@@ -884,7 +889,10 @@ def get_parsed_type(obj: model.Documentable) -> Optional[ParsedDocstring]:
     # Only Attribute instances have the 'annotation' attribute.
     annotation: Optional[ast.expr] = getattr(obj, 'annotation', None)
     if annotation is not None:
-        return colorize_inline_pyval(annotation)
+        parsed_type = colorize_inline_pyval(annotation)
+        # cache parsed_type attribute
+        obj.parsed_type = parsed_type
+        return parsed_type
 
     return None
 
@@ -1143,3 +1151,80 @@ def populate_constructors_extra_info(cls:model.Class) -> None:
             extra_epytext += '`%s <%s>`' % (short_text, c.fullName())
         
         cls.extra_info.append(parse_docstring(cls, extra_epytext, cls, 'restructuredtext', section='constructor extra'))
+
+class _ReferenceTransform(Transform):
+
+    def __init__(self, document:nodes.document, ctx:'model.Documentable'):
+        super().__init__(document)
+        self.ctx = ctx
+    
+    def apply(self):
+        ctx = self.ctx
+        module = self.ctx.module
+        for node in self.document.findall(nodes.title_reference):
+            _, target = parse_reference(node)
+            if target == node.attributes.get('refuri', target):
+                name, *rest = target.split('.')
+                # Only apply transformation to non-ambigous names, 
+                # because we don't know if we're dealing with an annotation
+                # or an interpreted, so we must go with the conservative approach.
+                if ((module.isNameDefined(name) and
+                    not ctx.isNameDefined(name, only_locals=True))
+                    or (ctx.isNameDefined(name, only_locals=True) and 
+                    not module.isNameDefined(name))):
+                    
+                    node.attributes['refuri'] = '.'.join(chain(
+                        ctx._localNameToFullName(name).split('.'), rest))
+
+def _apply_reference_transform(doc:ParsedDocstring, ctx:'model.Documentable') -> None:
+    """
+    Runs L{_ReferenceTransform} on the underlying docutils document. 
+    No-op if L{to_node} raises L{NotImplementedError}.
+    """
+    try:
+        document = doc.to_node()
+    except NotImplementedError:
+        return
+    else:
+        _ReferenceTransform(document, ctx).apply()
+
+def transform_parsed_names(node:'model.Module') -> None:
+    """
+    Walk this module's content and apply in-place transformations to the 
+    L{ParsedDocstring} instances that olds L{obj_reference} or L{title_reference} nodes. 
+
+    Fixing "Lookup of name in annotation fails on reparented object #295".
+    The fix is not 100% complete at the moment: attribute values and decorators
+    are not handled.
+    """
+    from pydoctor import model, astbuilder
+    # resolve names early when possible
+    for ob in model.walk(node):
+        # resolve names in parsed_docstring, do not forget field bodies
+        if ob.parsed_docstring:
+            _apply_reference_transform(ob.parsed_docstring, ob)
+            for f in ob.parsed_docstring.fields:
+                _apply_reference_transform(f.body(), ob)
+        if isinstance(ob, model.Function):
+            if ob.signature:
+                for p in ob.signature.parameters.values():
+                    ann = p.annotation if p.annotation is not inspect.Parameter.empty else None                    
+                    if isinstance(ann, astbuilder._ValueFormatter):
+                        _apply_reference_transform(ann._colorized, ob)
+                    default = p.default if p.default is not inspect.Parameter.empty else None
+                    if isinstance(default, astbuilder._ValueFormatter):
+                        _apply_reference_transform(default._colorized, ob)
+            # TODO: resolve function's annotations, they are currently presented twice
+            # we can only change signature, annotations in param table must be handled by
+            # introducing attribute parsed_annotations
+        elif isinstance(ob, model.Attribute):
+            # resolve attribute annotation with parsed_type attribute
+            parsed_type = get_parsed_type(ob)
+            if parsed_type:
+                _apply_reference_transform(parsed_type, ob)
+            # TODO: resolve parsed_value
+            # TODO: resolve parsed_decorators
+        elif isinstance(ob, model.Class):
+            # TODO: resolve parsed_class_signature
+            # TODO: resolve parsed_decorators
+            pass

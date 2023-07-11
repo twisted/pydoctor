@@ -2106,3 +2106,81 @@ Hello
     assert docstring2html(mod.contents['func'], docformat='plaintext') == expected
     captured = capsys.readouterr().out
     assert captured == ''
+
+def test_parsed_names_partially_resolved_early() -> None:
+    """
+    Test for issue #295
+
+    Annotations are first locally resolved when we reach the end of the module, 
+    then again when we actually resolve the name when generating the stan for the annotation.
+    """
+    typing = '''\
+    List = ClassVar = TypeVar = object()
+    '''
+
+    base = '''\
+    import ast
+    class Vis(ast.NodeVisitor):
+        ...
+    '''
+    src = '''\
+    from typing import List
+    import typing as t
+
+    from .base import Vis
+    
+    class Cls(Vis, t.Generic['_T']):
+        """
+        L{Cls}
+        """
+        clsvar:List[str]
+        clsvar2:t.ClassVar[List[str]]
+
+        def __init__(self, a:'_T'):
+            self._a:'_T' = a
+    
+    C = Cls
+    _T = t.TypeVar('_T')
+    unknow: i|None|list
+    ann:Cls
+    '''
+
+    top = '''\
+    # the order matters here
+    from .src import C, Cls, Vis
+    __all__ = ['Cls', 'C', 'Vis']
+    '''
+
+    system = model.System()
+    builder = system.systemBuilder(system)
+    builder.addModuleString(top, 'top', is_package=True)
+    builder.addModuleString(base, 'base', 'top')
+    builder.addModuleString(src, 'src', 'top')
+    builder.addModuleString(typing, 'typing')
+    builder.buildModules()
+
+    Cls = system.allobjects['top.Cls']
+    clsvar = Cls.contents['clsvar']
+    clsvar2 = Cls.contents['clsvar2']
+    a = Cls.contents['_a']
+    assert clsvar.expandName('typing.List')=='typing.List'
+    assert '<obj_reference refuri="typing.List">' in clsvar.parsed_type.to_node().pformat()
+    assert 'href="typing.html#List"' in flatten(clsvar.parsed_type.to_stan(clsvar.docstring_linker))
+    assert 'href="typing.html#ClassVar"' in flatten(clsvar2.parsed_type.to_stan(clsvar2.docstring_linker))
+    assert 'href="top.src.html#_T"' in flatten(a.parsed_type.to_stan(clsvar.docstring_linker))
+
+    # the reparenting/alias issue
+    ann = system.allobjects['top.src.ann']
+    assert 'href="top.Cls.html"' in  flatten(ann.parsed_type.to_stan(ann.docstring_linker))
+    assert 'href="top.Cls.html"' in flatten(Cls.parsed_docstring.to_stan(Cls.docstring_linker))
+    
+    unknow = system.allobjects['top.src.unknow']
+    assert flatten_text(unknow.parsed_type.to_stan(unknow.docstring_linker)) == 'i|None|list'
+
+    
+
+    # TODO: test the __init__ signature and the class bases
+
+    # TODO: Fix two new twisted warnings:
+    # twisted/internet/_sslverify.py:330: Cannot find link target for "twisted.internet.ssl.DN", resolved from "twisted.internet._sslverify.DistinguishedName"
+    # twisted/internet/_sslverify.py:347: Cannot find link target for "twisted.internet.ssl.DN", resolved from "twisted.internet._sslverify.DistinguishedName"

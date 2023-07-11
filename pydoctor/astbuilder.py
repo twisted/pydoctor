@@ -176,6 +176,7 @@ class ModuleVistor(NodeVisitor):
 
     def depart_Module(self, node: ast.Module) -> None:
         self.builder.pop(self.module)
+        epydoc2stan.transform_parsed_names(self.module)
 
     def visit_ClassDef(self, node: ast.ClassDef) -> None:
         # Ignore classes within functions.
@@ -1072,6 +1073,8 @@ DocumentableT = TypeVar('DocumentableT', bound=model.Documentable)
 class ASTBuilder:
     """
     Keeps tracks of the state of the AST build, creates documentable and adds objects to the system.
+
+    One ASTBuilder instance is only suitable to build one Module.
     """
     ModuleVistor = ModuleVistor
 

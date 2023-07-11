@@ -133,9 +133,13 @@ class _EpydocLinker(DocstringLinker):
     def link_to(self, identifier: str, label: "Flattenable") -> Tag:
         fullID = self.obj.expandName(identifier)
 
-        target = self.obj.system.objForFullName(fullID)
-        if target is not None:
-            return taglink(target, self.page_url, label)
+        try:
+            target = self.obj.system.find_object(fullID)
+        except LookupError:
+            pass
+        else:
+            if target is not None:
+                return taglink(target, self.page_url, label)
 
         url = self.look_for_intersphinx(fullID)
         if url is not None:
@@ -184,8 +188,18 @@ class _EpydocLinker(DocstringLinker):
         if target is not None:
             return target
 
-        # Check if the fullID exists in an intersphinx inventory.
         fullID = self.obj.expandName(identifier)
+
+        # Try fetching the name with it's outdated fullname
+        try:
+            target = self.obj.system.find_object(fullID)
+        except LookupError:
+            pass
+        else:
+            if target is not None:
+                return target
+        
+        # Check if the fullID exists in an intersphinx inventory.
         target_url = self.look_for_intersphinx(fullID)
         if not target_url:
             # FIXME: https://github.com/twisted/pydoctor/issues/125
