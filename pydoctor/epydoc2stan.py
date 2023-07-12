@@ -5,6 +5,7 @@ Convert L{pydoctor.epydoc} parsed markup into renderable content.
 from collections import defaultdict
 import enum
 import inspect
+import builtins
 from itertools import chain
 from typing import (
     TYPE_CHECKING, Any, Callable, ClassVar, DefaultDict, Dict, Generator,
@@ -1152,6 +1153,8 @@ def populate_constructors_extra_info(cls:model.Class) -> None:
         
         cls.extra_info.append(parse_docstring(cls, extra_epytext, cls, 'restructuredtext', section='constructor extra'))
 
+_builtin_names = set(dir(builtins))
+
 class _ReferenceTransform(Transform):
 
     def __init__(self, document:nodes.document, 
@@ -1165,14 +1168,34 @@ class _ReferenceTransform(Transform):
         module = self.ctx.module
         for node in self.document.findall(nodes.title_reference):
             _, target = parse_reference(node)
-            if target == node.attributes.get('refuri', target):
+            
+            # we're setting two attributes here: 'refuri' and 'rawtarget'. 
+            # 'refuri' might already be created by the colorizer or docstring parser,
+            # but 'rawtarget' is only created from within this transform, so we can
+            # use that information to ensure this process is only ever applied once
+            # per title_reference element.
+            attribs = node.attributes
+            if target == attribs.get('refuri', target) and 'rawtarget' not in attribs:                
+                # save the raw target name
+                attribs['rawtarget'] = target
+                
                 name, *rest = target.split('.')
+                is_name_defined = ctx.isNameDefined(name)
+                # check if it's a non-shadowed builtins
+                if not is_name_defined and name in _builtin_names:
+                    # transform bare builtin name into builtins.<name>
+                    attribs['refuri'] = '.'.join(('builtins', name, *rest))
+                    return
+                # no-op for unbound name
+                if not is_name_defined:
+                    attribs['refuri'] = target
+                    return
                 
                 # kindda duplicate a little part of the annotation linker logic here,
                 # there are no simple way of doing it otherwise at the moment.
                 # Once all presented parsed elements are stored as Documentable attributes 
                 # we might be able to simply use that and drop the use of the annotation linker,
-                # but for now this will to the trick:
+                # but for now this will do the trick:
                 lookup_context = ctx
                 if self.is_annotation and ctx is not module and module.isNameDefined(name, 
                         only_locals=True) and ctx.isNameDefined(name, only_locals=True):
@@ -1180,9 +1203,9 @@ class _ReferenceTransform(Transform):
                     # lookup (wrt PEP 563)
                     lookup_context = module
                     linker.warn_ambiguous_annotation(module, ctx, target)
-                    
-                node.attributes['refuri'] = '.'.join(chain(
-                    lookup_context._localNameToFullName(name).split('.'), rest))
+                # save pre-resolved refuri
+                attribs['refuri'] = '.'.join(chain(lookup_context.expandName(name).split('.'), rest))
+
 
 def _apply_reference_transform(doc:ParsedDocstring, ctx:'model.Documentable', 
                                is_annotation:bool=False) -> None:

@@ -1187,6 +1187,43 @@ def test_EpydocLinker_resolve_identifier_xref_intersphinx_link_not_found(capsys:
     assert expected == captured
 
 
+def test_EpydocLinker_link_not_found_show_original(capsys: CapSys) -> None:
+    n = ''
+    m = '''\
+    from n import Stuff
+    S = Stuff
+    '''
+    src = '''\
+    """
+    L{S}
+    """
+    class Cls:
+        """
+        L{Stuff <m.S>}
+        """
+    from m import S
+    '''
+    system = model.System()
+    builder = system.systemBuilder(system)
+    builder.addModuleString(n, 'n')
+    builder.addModuleString(m, 'm')
+    builder.addModuleString(src, 'src')
+    builder.buildModules()
+    docstring2html(system.allobjects['src'])
+    captured = capsys.readouterr().out
+    # TODO: shoud say resolved from "S"
+    expected = (
+        'src:2: Cannot find link target for "n.Stuff", resolved from "m.S"\n'
+        )
+    assert expected == captured
+
+    docstring2html(system.allobjects['src.Cls'])
+    captured = capsys.readouterr().out
+    expected = (
+        'src:6: Cannot find link target for "n.Stuff", resolved from "m.S"\n'
+        )
+    assert expected == captured
+
 class InMemoryInventory:
     """
     A simple inventory implementation which has an in-memory API link mapping.
@@ -1412,6 +1449,8 @@ class RecordingAnnotationLinker(NotFoundLinker):
         self.requests: List[str] = []
 
     def link_to(self, target: str, label: "Flattenable") -> Tag:
+        if target.startswith('builtins.'):
+            target = target[len('builtins.'):]
         self.requests.append(target)
         return tags.transparent(label)
 
@@ -2160,7 +2199,7 @@ def test_parsed_names_partially_resolved_early() -> None:
     clsvar2 = Cls.contents['clsvar2']
     a = Cls.contents['_a']
     assert clsvar.expandName('typing.List')=='typing.List'
-    assert '<obj_reference refuri="typing.List">' in clsvar.parsed_type.to_node().pformat() #type: ignore
+    assert 'refuri="typing.List"' in clsvar.parsed_type.to_node().pformat() #type: ignore
     assert 'href="typing.html#List"' in flatten(clsvar.parsed_type.to_stan(clsvar.docstring_linker)) #type: ignore
     assert 'href="typing.html#ClassVar"' in flatten(clsvar2.parsed_type.to_stan(clsvar2.docstring_linker)) #type: ignore
     assert 'href="top.src.html#_T"' in flatten(a.parsed_type.to_stan(clsvar.docstring_linker)) #type: ignore
@@ -2193,3 +2232,30 @@ def test_reparented_ambiguous_annotation_confusion() -> None:
     builder.buildModules()
     var = system.allobjects['m.C.var']
     assert 'href="_m.html#typ"' in flatten(var.parsed_type.to_stan(var.docstring_linker)) #type: ignore
+
+def test_reparented_builtins_confusion() -> None:
+    """
+    - builtin links are resolved as such even when the new parent 
+      declares a name shadowing a builtin.
+    """
+    src = '''
+    class C:
+        var: list
+        C = print('one')
+    '''
+    top = '''
+    list = object
+    print = partial(print, flush=True)
+
+    from src import C
+    __all__=["C"]
+    '''
+    system = model.System()
+    builder = system.systemBuilder(system)
+    builder.addModuleString(src, modname='src')
+    builder.addModuleString(top, modname='top')  
+    builder.buildModules()
+    clsvar = system.allobjects['top.C.var']
+
+    assert 'refuri="builtins.list"' in clsvar.parsed_type.to_node().pformat() #type: ignore
+    # does not work for constant values at the moment

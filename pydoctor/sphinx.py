@@ -135,6 +135,12 @@ class SphinxInventory:
         """
         Return link for `name` or None if no link is found.
         """
+        # special casing the 'builtins' module because our name resolving
+        # replaces bare builtins names with builtins.<name> in order not to confuse
+        # them with objects in the system when reparenting. 
+        if name.startswith('builtins.'):
+            name = name[len('builtins.'):]
+
         base_url, relative_link = self._links.get(name, (None, None))
         if not relative_link:
             return None
