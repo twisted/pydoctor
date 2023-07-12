@@ -2259,3 +2259,21 @@ def test_reparented_builtins_confusion() -> None:
 
     assert 'refuri="builtins.list"' in clsvar.parsed_type.to_node().pformat() #type: ignore
     # does not work for constant values at the moment
+
+def test_link_resolving_unbound_names() -> None:
+    """
+    - unbdound names are not touched, and does not stop the process.
+    """
+    src = '''
+    class C:
+        var: unknown|list
+    '''
+    system = model.System()
+    builder = system.systemBuilder(system)
+    builder.addModuleString(src, modname='src') 
+    builder.buildModules()
+    clsvar = system.allobjects['src.C.var']
+
+    assert 'refuri="builtins.list"' in clsvar.parsed_type.to_node().pformat() #type: ignore
+    assert 'refuri="unknown"' in clsvar.parsed_type.to_node().pformat() #type: ignore
+    # does not work for constant values at the moment

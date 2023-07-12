@@ -1161,50 +1161,51 @@ class _ReferenceTransform(Transform):
                  ctx:'model.Documentable', is_annotation:bool):
         super().__init__(document)
         self.ctx = ctx
+        self.module = ctx.module
         self.is_annotation = is_annotation
     
-    def apply(self) -> None:
+    def _transform(self, node:nodes.title_reference) -> None:
         ctx = self.ctx
-        module = self.ctx.module
+        module = self.module
+        _, target = parse_reference(node)
+        # we're setting two attributes here: 'refuri' and 'rawtarget'. 
+        # 'refuri' might already be created by the colorizer or docstring parser,
+        # but 'rawtarget' is only created from within this transform, so we can
+        # use that information to ensure this process is only ever applied once
+        # per title_reference element.
+        attribs = node.attributes
+        if target == attribs.get('refuri', target) and 'rawtarget' not in attribs:                
+            # save the raw target name
+            attribs['rawtarget'] = target
+            name, *rest = target.split('.')
+            is_name_defined = ctx.isNameDefined(name)
+            # check if it's a non-shadowed builtins
+            if not is_name_defined and name in _builtin_names:
+                # transform bare builtin name into builtins.<name>
+                attribs['refuri'] = '.'.join(('builtins', name, *rest))
+                return
+            # no-op for unbound name
+            if not is_name_defined:
+                attribs['refuri'] = target
+                return
+            # kindda duplicate a little part of the annotation linker logic here,
+            # there are no simple way of doing it otherwise at the moment.
+            # Once all presented parsed elements are stored as Documentable attributes 
+            # we might be able to simply use that and drop the use of the annotation linker,
+            # but for now this will do the trick:
+            lookup_context = ctx
+            if self.is_annotation and ctx is not module and module.isNameDefined(name, 
+                    only_locals=True) and ctx.isNameDefined(name, only_locals=True):
+                # If we're dealing with an annotation, give precedence to the module's 
+                # lookup (wrt PEP 563)
+                lookup_context = module
+                linker.warn_ambiguous_annotation(module, ctx, target)
+            # save pre-resolved refuri
+            attribs['refuri'] = '.'.join(chain(lookup_context.expandName(name).split('.'), rest))
+    
+    def apply(self) -> None:
         for node in self.document.findall(nodes.title_reference):
-            _, target = parse_reference(node)
-            
-            # we're setting two attributes here: 'refuri' and 'rawtarget'. 
-            # 'refuri' might already be created by the colorizer or docstring parser,
-            # but 'rawtarget' is only created from within this transform, so we can
-            # use that information to ensure this process is only ever applied once
-            # per title_reference element.
-            attribs = node.attributes
-            if target == attribs.get('refuri', target) and 'rawtarget' not in attribs:                
-                # save the raw target name
-                attribs['rawtarget'] = target
-                
-                name, *rest = target.split('.')
-                is_name_defined = ctx.isNameDefined(name)
-                # check if it's a non-shadowed builtins
-                if not is_name_defined and name in _builtin_names:
-                    # transform bare builtin name into builtins.<name>
-                    attribs['refuri'] = '.'.join(('builtins', name, *rest))
-                    return
-                # no-op for unbound name
-                if not is_name_defined:
-                    attribs['refuri'] = target
-                    return
-                
-                # kindda duplicate a little part of the annotation linker logic here,
-                # there are no simple way of doing it otherwise at the moment.
-                # Once all presented parsed elements are stored as Documentable attributes 
-                # we might be able to simply use that and drop the use of the annotation linker,
-                # but for now this will do the trick:
-                lookup_context = ctx
-                if self.is_annotation and ctx is not module and module.isNameDefined(name, 
-                        only_locals=True) and ctx.isNameDefined(name, only_locals=True):
-                    # If we're dealing with an annotation, give precedence to the module's 
-                    # lookup (wrt PEP 563)
-                    lookup_context = module
-                    linker.warn_ambiguous_annotation(module, ctx, target)
-                # save pre-resolved refuri
-                attribs['refuri'] = '.'.join(chain(lookup_context.expandName(name).split('.'), rest))
+            self._transform(node)
 
 
 def _apply_reference_transform(doc:ParsedDocstring, ctx:'model.Documentable', 
