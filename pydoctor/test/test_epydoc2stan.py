@@ -1359,6 +1359,61 @@ def test_AnnotationLinker_xref(capsys: CapSys) -> None:
     assert 'href="#var"' in url
     assert not capsys.readouterr().out
 
+def test_EpydocLinker_xref_look_for_name_multiple_candidates(capsys:CapSys) -> None:
+    """
+    When the linker use look_for_name(), if 'identifier' refers to more than one object, it complains.
+    """
+    system = model.System()
+    builder = system.systemBuilder(system)
+    builder.addModuleString('class C:...', modname='_one')
+    builder.addModuleString('class C:...', modname='_two')
+    builder.addModuleString('"L{C}"', modname='top')  
+    builder.buildModules()
+    docstring2html(system.allobjects['top'])
+    assert capsys.readouterr().out == (
+        'top:1: ambiguous ref to C, could be _one.C, _two.C\n'
+        'top:1: Cannot find link target for "C"\n')
+
+def test_EpydocLinker_xref_look_for_name_into_uncle_objects(capsys:CapSys) -> None:
+    """
+    The linker walk up the object tree and see if 'identifier' refers to an
+    object in an "uncle" object.
+    """
+    system = model.System()
+    builder = system.systemBuilder(system)
+    builder.addModuleString('', modname='pack', is_package=True)
+    builder.addModuleString('class C:...', modname='mod2', parent_name='pack')
+    builder.addModuleString('class I:\n var=1;"L{C}"', modname='mod1', parent_name='pack')
+    builder.buildModules()
+    assert 'href="pack.mod2.C.html"' in docstring2html(system.allobjects['pack.mod1.I.var'])
+    assert capsys.readouterr().out == ''
+
+def test_EpydocLinker_xref_look_for_name_into_all_modules(capsys:CapSys) -> None:
+    """
+    The linker examine every module and package in the system and see if 'identifier'
+    names an object in each one.
+    """
+    system = model.System()
+    builder = system.systemBuilder(system)
+    builder.addModuleString('class C:...', modname='_one')
+    builder.addModuleString('"L{C}"', modname='top')  
+    builder.buildModules()
+    assert 'href="_one.C.html"' in docstring2html(system.allobjects['top'])
+    assert capsys.readouterr().out == ''
+
+def test_EpydocLinker_xref_walk_up_the_object_tree(capsys:CapSys) -> None:
+    """
+    The linker walks up the object tree and see if 'identifier' refers
+    to an object by Python name resolution in each context.
+    """
+    system = model.System()
+    builder = system.systemBuilder(system)
+    builder.addModuleString('class C:...', modname='pack', is_package=True)
+    builder.addModuleString('class I:\n var=1;"L{C}"', modname='mod1', parent_name='pack')
+    builder.buildModules()
+    assert 'href="pack.C.html"' in docstring2html(system.allobjects['pack.mod1.I.var'])
+    assert capsys.readouterr().out == ''
+
 def test_xref_not_found_epytext(capsys: CapSys) -> None:
     """
     When a link in an epytext docstring cannot be resolved, the reference
