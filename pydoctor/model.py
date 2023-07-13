@@ -20,7 +20,7 @@ from enum import Enum
 from inspect import signature, Signature
 from pathlib import Path
 from typing import (
-    TYPE_CHECKING, Any, Callable, Collection, Dict, Iterable, Iterator, List, Mapping,
+    TYPE_CHECKING, Any, Callable, Collection, Dict, Iterator, List, Mapping,
     Optional, Sequence, Set, Tuple, Type, TypeVar, Union, cast, overload,
 )
 from urllib.parse import quote
