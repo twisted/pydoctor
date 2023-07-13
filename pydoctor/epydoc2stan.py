@@ -910,8 +910,10 @@ def get_parsed_decorators(obj: Union[model.Attribute, model.Function,
     def _get_parsed_decorators() -> Optional[Sequence[ParsedDocstring]]:
         v = [colorize_inline_pyval(dec) for dec in obj.decorators] if \
             obj.decorators is not None else None
+        documentable_obj = obj if not isinstance(obj, model.FunctionOverload) else obj.primary
         for c in v or ():
-            reportWarnings(obj, c.warnings, section='colorize decorators')
+            if c:
+             reportWarnings(documentable_obj, c.warnings, section='colorize decorators')
         return v
     return _memoize(obj, 'parsed_decorators', _get_parsed_decorators)
 
