@@ -17,7 +17,6 @@ from pydoctor.astbuilder import node2fullname
 from pydoctor.templatewriter import util, TemplateLookup, TemplateElement
 from pydoctor.templatewriter.pages.table import ChildTable
 from pydoctor.templatewriter.pages.sidebar import SideBar
-from pydoctor.epydoc.markup._pyval_repr import colorize_inline_pyval
 
 if TYPE_CHECKING:
     from typing_extensions import Final

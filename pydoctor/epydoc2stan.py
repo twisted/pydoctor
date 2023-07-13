@@ -4,7 +4,6 @@ Convert L{pydoctor.epydoc} parsed markup into renderable content.
 
 from collections import defaultdict
 import enum
-from functools import partial
 import inspect
 import builtins
 from itertools import chain
@@ -12,7 +11,6 @@ from typing import (
     TYPE_CHECKING, Any, Callable, ClassVar, DefaultDict, Dict, Generator,
     Iterator, List, Mapping, Optional, Sequence, Tuple, TypeVar, Union,
 )
-import ast
 import re
 
 import attr
@@ -926,7 +924,8 @@ def get_parsed_value(obj:model.Attribute) -> Optional[ParsedDocstring]:
             linelen=obj.system.options.pyvalreprlinelen,
             maxlines=obj.system.options.pyvalreprmaxlines) if obj.value is not None else None
         # Report eventual warnings.
-        reportWarnings(obj, v.warnings, section='colorize constant')
+        if v:
+            reportWarnings(obj, v.warnings, section='colorize constant')
         return v
     return _memoize(obj, 'parsed_value', _get_parsed_value)
 
