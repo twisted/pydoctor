@@ -1971,7 +1971,7 @@ def test_package_name_clash(systemcls: Type[model.System]) -> None:
 
     # The following statement completely overrides module 'mod' and all it's submodules.
     builder.addModuleString('', 'mod', is_package=True)
-
+    assert len(system.root_names)==1
     with pytest.raises(KeyError):
         system.allobjects['mod.sub']
 

@@ -39,7 +39,7 @@ def parse_xml(text: str) -> minidom.Document:
     """
     try:
         # TODO: submit a PR to typeshed to add a return type for parseString()
-        return cast(minidom.Document, minidom.parseString(text))
+        return minidom.parseString(text)
     except Exception as e:
         raise ValueError(f"Failed to parse template as XML: {e}") from e
     

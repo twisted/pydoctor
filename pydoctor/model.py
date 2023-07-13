@@ -20,8 +20,8 @@ from enum import Enum
 from inspect import signature, Signature
 from pathlib import Path
 from typing import (
-    TYPE_CHECKING, Any, Callable, Collection, Dict, Iterator, List, Mapping,
-    Optional, Sequence, Set, Tuple, Type, TypeVar, Union, cast, overload
+    TYPE_CHECKING, Any, Callable, Collection, Dict, Iterable, Iterator, List, Mapping,
+    Optional, Sequence, Set, Tuple, Type, TypeVar, Union, cast, overload,
 )
 from urllib.parse import quote
 
@@ -110,6 +110,92 @@ class DocumentableKind(Enum):
     INSTANCE_VARIABLE   = 200
     PROPERTY            = 150
     VARIABLE            = 100
+
+class AllObjectsMap:
+    """
+    Implementation of L{System.allobjects} (read-only).
+    Proxy that lazily get the documentable having the requested fullname based on L{System.rootobjects} and L{System.modules}.
+
+    Provides mapping-like interface: L{__getitem__}, L{__contains__}, L{get} and L{values}.
+
+    @note: It does not implement C{__iter__} and C{__len__} on purpose.
+    """
+    def __init__(self, rootobjects:Sequence['Module'], modules:Mapping[str, 'Module']) -> None:
+        self._roots = rootobjects
+        self._modules = modules
+    
+    def __getitem__(self, item: str) -> 'Documentable':
+        def get(_root_contents:Mapping[str, 'Documentable'], 
+                  _names:Iterable[str]) -> Optional['Documentable']:
+            contents:Mapping[str, 'Documentable'] = _root_contents
+            root, *parts = _names
+            ob = None
+            while root:
+                ob = contents.get(root)
+                if ob:
+                    contents = ob.contents
+                else:
+                    break
+                if not parts:
+                    break
+                root, *parts = parts
+            return ob
+    
+        ob = get({r.name:r for r in self._roots}, item.split('.'))
+        if ob:
+            return ob
+        
+        # support getting modules by name in System.modules 
+        # (also modules with dots in their names)
+        mod = item.split('.')
+        names:Tuple[str, ...] = ()
+        module = None
+        while mod:
+            maybe_modname = '.'.join(mod)
+            module = self._modules.get(maybe_modname)
+            if module:
+                break
+            else:
+                *mod, name = maybe_modname.split('.')
+                names = (name, ) + names
+        if module:
+            if not names:
+                return module
+            ob = get(module.contents, names)
+            if ob:
+                return ob
+        
+        raise KeyError(f'object {item!r} not found in the system')
+
+    def __contains__(self, item: str) -> bool:
+        try: 
+            self[item]
+        except KeyError:
+            return False
+        return True
+    
+    def get(self, item:str) -> Optional['Documentable']:
+        try:
+            return self[item]
+        except KeyError:
+            return None
+    
+    def values(self) -> Iterator['Documentable']:
+        for r in self._roots:
+            yield from walk(r)
+
+def walk(node:'Documentable') -> Iterator['Documentable']:
+    """
+    Recursively yield all descendant nodes in the tree starting at *node*
+    (including *node* itself), in no specified order.  This is useful if you
+    only want to modify nodes in place and don't care about the context.
+    """
+    from collections import deque
+    todo = deque([node])
+    while todo:
+        node = todo.popleft()
+        todo.extend(node.contents.values())
+        yield node
 
 class Documentable:
     """An object that can be documented.
@@ -246,27 +332,14 @@ class Documentable:
         # invariants assumed by various bits of pydoctor
         # and that are of course not written down anywhere
         # :/
-        self._handle_reparenting_pre()
         old_parent = self.parent
         assert isinstance(old_parent, CanContainImportsDocumentable)
         old_name = self.name
         self.parent = self.parentMod = new_parent
         self.name = new_name
-        self._handle_reparenting_post()
         del old_parent.contents[old_name]
         old_parent._localNameToFullName_map[old_name] = self.fullName()
         new_parent.contents[new_name] = self
-        self._handle_reparenting_post()
-
-    def _handle_reparenting_pre(self) -> None:
-        del self.system.allobjects[self.fullName()]
-        for o in self.contents.values():
-            o._handle_reparenting_pre()
-
-    def _handle_reparenting_post(self) -> None:
-        self.system.allobjects[self.fullName()] = self
-        for o in self.contents.values():
-            o._handle_reparenting_post()
     
     def _localNameToFullName(self, name: str) -> str:
         raise NotImplementedError(self._localNameToFullName)
@@ -421,7 +494,18 @@ class CanContainImportsDocumentable(Documentable):
             return self.module.isNameDefined(name)
         else:
             return False
+
+@attr.s(auto_attribs=True, slots=True)
+class Import:
+    """
+    An imported name.
     
+    @note: One L{Import} instance is created for each 
+        name bound in the C{import} statement.
+    """
+    name:str
+    orgmodule:str
+    orgname:Optional[str]=None
 
 class Module(CanContainImportsDocumentable):
     kind = DocumentableKind.MODULE
@@ -456,6 +540,8 @@ class Module(CanContainImportsDocumentable):
         """
 
         self._docformat: Optional[str] = None
+
+        self.imports: List[Import] = []
 
     def _localNameToFullName(self, name: str) -> str:
         if name in self.contents:
@@ -914,8 +1000,9 @@ class System:
     """
 
     def __init__(self, options: Optional['Options'] = None):
-        self.allobjects: Dict[str, Documentable] = {}
+        self.modules: Dict[str, Module] = {}
         self.rootobjects: List[_ModuleT] = []
+        self.allobjects = AllObjectsMap(self.rootobjects, self.modules)
 
         self.violations = 0
         """The number of docstring problems found.
@@ -942,8 +1029,6 @@ class System:
         self.needsnl = False
         self.once_msgs: Set[Tuple[str, str]] = set()
 
-        # We're using the id() of the modules as key, and not the fullName becaue modules can
-        # be reparented, generating KeyError.
         self.unprocessed_modules: List[_ModuleT] = []
 
         self.module_count = 0
@@ -1135,16 +1220,22 @@ class System:
     def addObject(self, obj: Documentable) -> None:
         """Add C{object} to the system."""
 
+        first = self.allobjects.get(obj.fullName())
+        
+        if isinstance(obj, _ModuleT):
+            self.modules[obj.fullName()] = obj
+        elif first:
+            # we already handled duplication of modules.
+            self.handleDuplicate(obj, first)
+
         if obj.parent:
             obj.parent.contents[obj.name] = obj
         elif isinstance(obj, _ModuleT):
             self.rootobjects.append(obj)
         else:
             raise ValueError(f'Top-level object is not a module: {obj!r}')
-
-        first = self.allobjects.setdefault(obj.fullName(), obj)
-        if obj is not first:
-            self.handleDuplicate(obj)
+    
+            
 
     # if we assume:
     #
@@ -1217,7 +1308,7 @@ class System:
         module to the system.
         """
         assert mod.state is ProcessingState.UNPROCESSED
-        first = self.allobjects.get(mod.fullName())
+        first = self.modules.get(mod.fullName())
         if first is not None:
             # At this step of processing only modules exists
             assert isinstance(first, Module)
@@ -1226,7 +1317,7 @@ class System:
             self.unprocessed_modules.append(mod)
             self.addObject(mod)
             self.progress(
-                "analyzeModule", len(self.allobjects),
+                "analyzeModule", len(self.modules),
                 None, "modules and packages discovered")        
             self.module_count += 1
 
@@ -1249,7 +1340,12 @@ class System:
             return
         else:
             # Else, the last added module wins
-            self._remove(first)
+            def removeModule(m:_ModuleT) -> None:
+                if m.fullName() in self.modules:
+                    del self.modules[m.fullName()]
+                for child in (c for c in m.contents.values() if isinstance(c, _ModuleT)):
+                    removeModule(child)
+            removeModule(first)
             self.unprocessed_modules.remove(first)
             self._addUnprocessedModule(dup)
 
@@ -1332,14 +1428,8 @@ class System:
             elif suffix in importlib.machinery.SOURCE_SUFFIXES:
                 self.analyzeModule(path, module_name, package)
             break
-    
-    def _remove(self, o: Documentable) -> None:
-        del self.allobjects[o.fullName()]
-        oc = list(o.contents.values())
-        for c in oc:
-            self._remove(c)
 
-    def handleDuplicate(self, obj: Documentable) -> None:
+    def handleDuplicate(self, obj: Documentable, first: Documentable) -> None:
         """
         This is called when we see two objects with the same
         .fullName(), for example::
@@ -1358,17 +1448,14 @@ class System:
         fullName = obj.fullName()
         while (fullName + ' ' + str(i)) in self.allobjects:
             i += 1
-        prev = self.allobjects[fullName]
-        obj.report(f"duplicate {str(prev)}", thresh=1)
-        self._remove(prev)
-        prev.name = obj.name + ' ' + str(i)
-        def readd(o: Documentable) -> None:
-            self.allobjects[o.fullName()] = o
-            for c in o.contents.values():
-                readd(c)
-        readd(prev)
-        self.allobjects[fullName] = obj
+        obj.report(f"duplicate {str(first)}", thresh=1)
 
+        # rename first object
+        parent = first.parent
+        assert parent is not None
+        del parent.contents[first.name]
+        first.name = obj.name + ' ' + str(i)
+        parent.contents[first.name] = first
 
     def getProcessedModule(self, modname: str) -> Optional[_ModuleT]:
         mod = self.allobjects.get(modname)
@@ -1433,6 +1520,11 @@ class System:
         without the risk of drawing incorrect conclusions because modules
         were not fully processed yet.
         """
+        # TODO: it might be better to do the re-exporting after default 
+        # post-processes (zopeinterface post process is designed to be run after
+        # reparenting); or better implement a sorted based or post processing priority 
+        from pydoctor.astbuilder import processReExports
+        processReExports(self)
 
         # default post-processing includes:
         # - Processing of subclasses

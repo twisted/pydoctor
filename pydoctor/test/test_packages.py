@@ -108,10 +108,18 @@ def test_reparented_module() -> None:
     assert top.resolveName('module') is top.contents['module']
     assert top.resolveName('module.f') is mod.contents['f']
 
-    # The module old name is not in allobjects
-    assert 'reparented_module.mod' not in system.allobjects
+    # The module old name is still accessible in allobjects,
+    # because modules keys are never changed in the mapping of modules.
+    assert 'reparented_module.mod' in system.allobjects
     # But can still be resolved with it's old name
     assert top.resolveName('mod') is top.contents['module']
+    # the name 'mod' does not exists anymore in 'reparented_module'
+    assert 'mod' not in top.contents
+
+    from pydoctor.test.test_templatewriter import getHTMLOf
+    html = getHTMLOf(top)
+    assert 'reparented_module.mod.html' not in html
+    assert 'reparented_module.module.html' in html
 
 def test_reparenting_follows_aliases() -> None:
     """
