@@ -125,38 +125,36 @@ class AllObjectsMap:
         self._modules = modules
     
     def __getitem__(self, item: str) -> 'Documentable':
-        def get(_root_contents:Mapping[str, 'Documentable'], 
-                  _names:Iterable[str]) -> Optional['Documentable']:
-            contents:Mapping[str, 'Documentable'] = _root_contents
-            root, *parts = _names
+        def get(contents:Mapping[str, 'Documentable'], 
+                  path:Sequence[str]) -> Optional['Documentable']:
+            curr, *parts = path
             ob = None
-            while root:
-                ob = contents.get(root)
+            while curr:
+                ob = contents.get(curr)
                 if ob:
                     contents = ob.contents
                 else:
                     break
                 if not parts:
                     break
-                root, *parts = parts
+                curr, *parts = parts
             return ob
-    
-        ob = get({r.name:r for r in self._roots}, item.split('.'))
+        
+        fullname: Sequence[str] = item.split('.')
+        ob = get({r.name:r for r in self._roots}, fullname)
         if ob:
             return ob
         
         # support getting modules by name in System.modules 
         # (also modules with dots in their names)
-        mod = item.split('.')
         names:Tuple[str, ...] = ()
         module = None
-        while mod:
-            maybe_modname = '.'.join(mod)
-            module = self._modules.get(maybe_modname)
+        while fullname:
+            module = self._modules.get('.'.join(fullname))
             if module:
                 break
             else:
-                *mod, name = maybe_modname.split('.')
+                *fullname, name = fullname
                 names = (name, ) + names
         if module:
             if not names:
