@@ -4,12 +4,13 @@ Convert L{pydoctor.epydoc} parsed markup into renderable content.
 
 from collections import defaultdict
 import enum
+from functools import partial
 import inspect
 import builtins
 from itertools import chain
 from typing import (
     TYPE_CHECKING, Any, Callable, ClassVar, DefaultDict, Dict, Generator,
-    Iterator, List, Mapping, Optional, Sequence, Tuple, Union,
+    Iterator, List, Mapping, Optional, Sequence, Tuple, TypeVar, Union,
 )
 import ast
 import re
@@ -271,18 +272,19 @@ class FieldHandler:
         self.sinces: List[Field] = []
         self.unknowns: DefaultDict[str, List[FieldDesc]] = defaultdict(list)
 
-    def set_param_types_from_annotations(
-            self, annotations: Mapping[str, Optional[ast.expr]]
-            ) -> None:
+    def set_param_types_from_annotations(self) -> None:
+        if not isinstance(self.obj, model.Function):
+            return
+        annotations = self.obj.annotations
         _linker = linker._AnnotationLinker(self.obj)
         formatted_annotations = {
-            name: None if value is None
-                       else ParamType(safe_to_stan(colorize_inline_pyval(value), _linker,
+            name: None if parsed_annotation is None
+                       else ParamType(safe_to_stan(parsed_annotation, _linker,
                                 self.obj, fallback=colorized_pyval_fallback, section='annotation', report=False),
                                 # don't spam the log, invalid annotation are going to be reported when the signature gets colorized
                                 origin=FieldOrigin.FROM_AST)
 
-            for name, value in annotations.items()
+            for name, parsed_annotation in get_parsed_annotations(self.obj).items()
             }
 
         ret_type = formatted_annotations.pop('return', None)
@@ -799,8 +801,7 @@ def format_docstring(obj: model.Documentable) -> Tag:
         ret(unwrap_docstring_stan(stan))
 
     fh = FieldHandler(obj)
-    if isinstance(obj, model.Function):
-        fh.set_param_types_from_annotations(obj.annotations)
+    fh.set_param_types_from_annotations()
     if source is not None:
         assert obj.parsed_docstring is not None, "ensure_parsed_docstring() did not do it's job"
         for field in obj.parsed_docstring.fields:
@@ -879,23 +880,87 @@ def type2stan(obj: model.Documentable) -> Optional[Tag]:
         return safe_to_stan(parsed_type, _linker, obj,
             fallback=colorized_pyval_fallback, section='annotation')
 
+_T = TypeVar('_T')
+def _memoize(o:object, attrname:str, getter:Callable[[], _T]) -> _T:
+    parsed = getattr(o, attrname, None)
+    if parsed is not None:
+        return parsed #type:ignore
+    parsed = getter()
+    setattr(o, attrname, parsed)
+    return parsed
+
 def get_parsed_type(obj: model.Documentable) -> Optional[ParsedDocstring]:
     """
     Get the type of this attribute as parsed docstring.
     """
-    parsed_type = obj.parsed_type
-    if parsed_type is not None:
-        return parsed_type
+    def _get_parsed_type() -> Optional[ParsedDocstring]:
+        annotation = getattr(obj, 'annotation', None)
+        if annotation is not None:
+            v = colorize_inline_pyval(annotation)
+            reportWarnings(obj, v.warnings, section='colorize annotation')
+            return v
+        return None
+    return _memoize(obj, 'parsed_type', _get_parsed_type)
 
-    # Only Attribute instances have the 'annotation' attribute.
-    annotation: Optional[ast.expr] = getattr(obj, 'annotation', None)
-    if annotation is not None:
-        parsed_type = colorize_inline_pyval(annotation)
-        # cache parsed_type attribute
-        obj.parsed_type = parsed_type
-        return parsed_type
+def get_parsed_decorators(obj: Union[model.Attribute, model.Function, 
+                                     model.FunctionOverload]) -> Optional[Sequence[ParsedDocstring]]:
+    """
+    Get the decorators of this function as parsed docstring.
+    """
+    def _get_parsed_decorators() -> Optional[Sequence[ParsedDocstring]]:
+        v = [colorize_inline_pyval(dec) for dec in obj.decorators] if \
+            obj.decorators is not None else None
+        for c in v or ():
+            reportWarnings(obj, c.warnings, section='colorize decorators')
+        return v
+    return _memoize(obj, 'parsed_decorators', _get_parsed_decorators)
 
-    return None
+def get_parsed_value(obj:model.Attribute) -> Optional[ParsedDocstring]:
+    """
+    Get the value of this constant as parsed docstring.
+    """
+    def _get_parsed_value() -> Optional[ParsedDocstring]:
+        v = colorize_pyval(obj.value,
+            linelen=obj.system.options.pyvalreprlinelen,
+            maxlines=obj.system.options.pyvalreprmaxlines) if obj.value is not None else None
+        # Report eventual warnings.
+        reportWarnings(obj, v.warnings, section='colorize constant')
+        return v
+    return _memoize(obj, 'parsed_value', _get_parsed_value)
+
+def get_parsed_annotations(obj:model.Function) -> Mapping[str, Optional[ParsedDocstring]]:
+    """
+    Get the annotations of this function as dict from str to parsed docstring.
+    """
+    def _get_parsed_annotations() -> Mapping[str, Optional[ParsedDocstring]]:
+        return {name:colorize_inline_pyval(ann) if ann else None for \
+                (name, ann) in obj.annotations.items()}
+        # do not warn here
+    return _memoize(obj, 'parsed_annotations', _get_parsed_annotations)
+
+def get_parsed_bases(obj:model.Class) -> Sequence[ParsedDocstring]:
+    """
+    Get the bases of this class as a seqeunce of parsed docstrings.
+    """
+    def _get_parsed_bases() -> Sequence[ParsedDocstring]:
+        r = []
+        for (str_base, base_node), base_obj in zip(obj.rawbases, obj.baseobjects):
+            # Make sure we bypass the linker’s resolver process for base object, 
+            # because it has been resolved already (with two passes).
+            # Otherwise, since the class declaration wins over the imported names,
+            # a class with the same name as a base class confused pydoctor and it would link 
+            # to it self: https://github.com/twisted/pydoctor/issues/662
+            refmap = None
+            if base_obj is not None:
+                refmap = {str_base:base_obj.fullName()}
+                
+            # link to external class, using the colorizer here
+            # to link to classes with generics (subscripts and other AST expr).
+            p = colorize_inline_pyval(base_node, refmap=refmap)
+            r.append(p)
+            reportWarnings(obj, p.warnings, section='colorize bases')
+        return r
+    return _memoize(obj, 'parsed_bases', _get_parsed_bases)
 
 def format_toc(obj: model.Documentable) -> Optional[Tag]:
     # Load the parsed_docstring if it's not already done.
@@ -990,22 +1055,18 @@ def colorized_pyval_fallback(_: List[ParseError], doc:ParsedDocstring, __:model.
     return Tag('code')(node2stan.gettext(doc.to_node()))
 
 def _format_constant_value(obj: model.Attribute) -> Iterator["Flattenable"]:
-
+    doc = get_parsed_value(obj)
+    if doc is None:
+        return
+    
     # yield the table title, "Value"
     row = tags.tr(class_="fieldStart")
     row(tags.td(class_="fieldName")("Value"))
     # yield the first row.
     yield row
 
-    doc = colorize_pyval(obj.value,
-        linelen=obj.system.options.pyvalreprlinelen,
-        maxlines=obj.system.options.pyvalreprmaxlines)
-
     value_repr = safe_to_stan(doc, obj.docstring_linker, obj,
         fallback=colorized_pyval_fallback, section='rendering of constant')
-
-    # Report eventual warnings. It warns when a regex failed to parse.
-    reportWarnings(obj, doc.warnings, section='colorize constant')
 
     # yield the value repr.
     row = tags.tr()
@@ -1243,23 +1304,34 @@ def transform_parsed_names(node:'model.Module') -> None:
                 for p in ob.signature.parameters.values():
                     ann = p.annotation if p.annotation is not inspect.Parameter.empty else None                    
                     if isinstance(ann, astbuilder._ValueFormatter):
-                        _apply_reference_transform(ann._colorized, ob, is_annotation=True)
+                        _apply_reference_transform(ann.parsed, ob, is_annotation=True)
                     default = p.default if p.default is not inspect.Parameter.empty else None
                     if isinstance(default, astbuilder._ValueFormatter):
-                        _apply_reference_transform(default._colorized, ob)
-            # TODO: resolve function's annotations, they are currently presented twice
-            # we can only change signature, annotations in param table must be handled by
-            # introducing attribute parsed_annotations
+                        _apply_reference_transform(default.parsed, ob)
+            for _,ann in get_parsed_annotations(ob).items():
+                if ann:
+                    _apply_reference_transform(ann, ob, is_annotation=True)
+            for dec in get_parsed_decorators(ob) or ():
+                if dec:
+                    _apply_reference_transform(dec, ob)
+            for overload in ob.overloads:
+                for dec in get_parsed_decorators(overload) or ():
+                    if dec:
+                        _apply_reference_transform(dec, ob)
         elif isinstance(ob, model.Attribute):
             # resolve attribute annotation with parsed_type attribute
             parsed_type = get_parsed_type(ob)
             if parsed_type:
                 _apply_reference_transform(parsed_type, ob, is_annotation=True)
-            # TODO: resolve parsed_value
-            # TODO: resolve parsed_decorators
+            if ob.kind in ob.system.show_attr_value:
+                parsed_value = get_parsed_value(ob)
+                if parsed_value:
+                    _apply_reference_transform(parsed_value, ob)
+            for dec in get_parsed_decorators(ob) or ():
+                if dec:
+                    _apply_reference_transform(dec, ob)
         elif isinstance(ob, model.Class):
-            # TODO: resolve parsed_class_signature
-            # TODO: resolve parsed_decorators
-            pass
+            for base in get_parsed_bases(ob):
+                _apply_reference_transform(base, ob)
 
 # do one test with parsed type docstrings

@@ -50,7 +50,8 @@ def format_decorators(obj: Union[model.Function, model.Attribute, model.Function
     # primary function for parts that requires an interface to Documentable methods or attributes
     documentable_obj = obj if not isinstance(obj, model.FunctionOverload) else obj.primary
 
-    for dec in obj.decorators or ():
+    for dec, doc in zip(obj.decorators or (), 
+                        epydoc2stan.get_parsed_decorators(obj) or ()):
         if isinstance(dec, ast.Call):
             fn = node2fullname(dec.func, documentable_obj)
             # We don't want to show the deprecated decorator;
@@ -58,15 +59,9 @@ def format_decorators(obj: Union[model.Function, model.Attribute, model.Function
             if fn in ("twisted.python.deprecate.deprecated",
                       "twisted.python.deprecate.deprecatedProperty"):
                 break
-
-        # Colorize decorators!
-        doc = colorize_inline_pyval(dec)
         stan = epydoc2stan.safe_to_stan(doc, documentable_obj.docstring_linker, documentable_obj,
             fallback=epydoc2stan.colorized_pyval_fallback, 
             section='rendering of decorators')
-        
-        # Report eventual warnings. It warns when we can't colorize the expression for some reason.
-        epydoc2stan.reportWarnings(documentable_obj, doc.warnings, section='colorize decorator')
         yield '@', stan.children, tags.br()
 
 def format_signature(func: Union[model.Function, model.FunctionOverload]) -> "Flattenable":
@@ -90,29 +85,17 @@ def format_class_signature(cls: model.Class) -> "Flattenable":
     """
     r: List["Flattenable"] = []
     # the linker will only be used to resolve the generic arguments of the base classes, 
-    # it won't actually resolve the base classes (see comment few lines below).
+    # it won't actually resolve the base classes (see comment in epydoc2stan.get_parsed_bases).
     # this is why we're using the annotation linker.
     _linker = linker._AnnotationLinker(cls)
-    if cls.rawbases:
+    parsed_bases = epydoc2stan.get_parsed_bases(cls)
+    if parsed_bases:
         r.append('(')
         
-        for idx, ((str_base, base_node), base_obj) in enumerate(zip(cls.rawbases, cls.baseobjects)):
+        for idx, parsed_base in enumerate(parsed_bases):
             if idx != 0:
                 r.append(', ')
-
-            # Make sure we bypass the linker’s resolver process for base object, 
-            # because it has been resolved already (with two passes).
-            # Otherwise, since the class declaration wins over the imported names,
-            # a class with the same name as a base class confused pydoctor and it would link 
-            # to it self: https://github.com/twisted/pydoctor/issues/662
-
-            refmap = None
-            if base_obj is not None:
-                refmap = {str_base:base_obj.fullName()}
-                
-            # link to external class, using the colorizer here
-            # to link to classes with generics (subscripts and other AST expr).
-            stan = epydoc2stan.safe_to_stan(colorize_inline_pyval(base_node, refmap=refmap), _linker, cls, 
+            stan = epydoc2stan.safe_to_stan(parsed_base, _linker, cls, 
                 fallback=epydoc2stan.colorized_pyval_fallback, 
                 section='rendering of class signature')
             r.extend(stan.children)

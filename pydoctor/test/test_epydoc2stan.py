@@ -2294,13 +2294,15 @@ def test_reparented_builtins_confusion() -> None:
       declares a name shadowing a builtin.
     """
     src = '''
-    class C:
+    class C(int):
         var: list
         C = print('one')
+        @stuff(auto=object)
+        def __init__(self, v:bytes=bytes):
+            "L{str}"
     '''
     top = '''
-    list = object
-    print = partial(print, flush=True)
+    list = object = int = print = str = bytes = True
 
     from src import C
     __all__=["C"]
@@ -2311,9 +2313,17 @@ def test_reparented_builtins_confusion() -> None:
     builder.addModuleString(top, modname='top')  
     builder.buildModules()
     clsvar = system.allobjects['top.C.var']
+    C = system.allobjects['top.C']
+    Ci = system.allobjects['top.C.C']
+    __init__ = system.allobjects['top.C.__init__']
 
     assert 'refuri="builtins.list"' in clsvar.parsed_type.to_node().pformat() #type: ignore
-    # does not work for constant values at the moment
+    assert 'refuri="builtins.print"' in Ci.parsed_value.to_node().pformat() #type: ignore
+    assert 'refuri="builtins.int"' in C.parsed_bases[0].to_node().pformat() #type: ignore
+    assert 'refuri="builtins.object"' in __init__.parsed_decorators[0].to_node().pformat() #type: ignore
+    assert 'refuri="builtins.bytes"' in __init__.signature.parameters['v'].default.parsed.to_node().pformat() #type: ignore
+    assert 'refuri="builtins.bytes"' in __init__.signature.parameters['v'].annotation.parsed.to_node().pformat() #type: ignore
+    assert 'refuri="builtins.bytes"' in __init__.parsed_annotations['v'].to_node().pformat() #type: ignore
 
 def test_link_resolving_unbound_names() -> None:
     """
@@ -2332,3 +2342,7 @@ def test_link_resolving_unbound_names() -> None:
     assert 'refuri="builtins.list"' in clsvar.parsed_type.to_node().pformat() #type: ignore
     assert 'refuri="unknown"' in clsvar.parsed_type.to_node().pformat() #type: ignore
     # does not work for constant values at the moment
+
+# what to do with inherited documentation of reparented class attribute part of an
+# import cycle? We can't set the value of parsed_docstring from the astbuilder because
+# we havnen't resolved the mro yet.

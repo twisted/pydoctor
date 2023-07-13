@@ -13,6 +13,7 @@ from pydoctor.napoleon.docstring import TokenType, TypeDocstring
 from docutils import nodes
 from twisted.web.template import Tag, tags
 
+# TODO: this class should support to_node() like others.
 class ParsedTypeDocstring(TypeDocstring, ParsedDocstring):
     """
     Add L{ParsedDocstring} interface on top of L{TypeDocstring} and 

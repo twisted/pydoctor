@@ -981,12 +981,12 @@ class _ValueFormatter:
     """
 
     def __init__(self, value: ast.expr, ctx: model.Documentable):
-        self._colorized = colorize_inline_pyval(value)
+        self.parsed = colorize_inline_pyval(value)
         """
         The colorized value as L{ParsedDocstring}.
         """
 
-        self._linker = ctx.docstring_linker
+        self.linker = ctx.docstring_linker
         """
         Linker.
         """
@@ -999,7 +999,7 @@ class _ValueFormatter:
         # Using node2stan.node2html instead of flatten(to_stan()). 
         # This avoids calling flatten() twice, 
         # but potential XML parser errors caused by XMLString needs to be handled later.
-        return ''.join(node2stan.node2html(self._colorized.to_node(), self._linker))
+        return ''.join(node2stan.node2html(self.parsed.to_node(), self.linker))
 
 class _AnnotationValueFormatter(_ValueFormatter):
     """
@@ -1007,7 +1007,7 @@ class _AnnotationValueFormatter(_ValueFormatter):
     """
     def __init__(self, value: ast.expr, ctx: model.Function):
         super().__init__(value, ctx)
-        self._linker = linker._AnnotationLinker(ctx)
+        self.linker = linker._AnnotationLinker(ctx)
     
     def __repr__(self) -> str:
         """

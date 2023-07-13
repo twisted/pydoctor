@@ -646,7 +646,9 @@ class Class(CanContainImportsDocumentable):
         """
         self._initialbases: List[str] = []
         self._initialbaseobjects: List[Optional['Class']] = []
-    
+
+        self.parsed_bases:Optional[List[ParsedDocstring]] = None
+
     def _init_mro(self) -> None:
         """
         Compute the correct value of the method resolution order returned by L{mro()}.
@@ -843,6 +845,8 @@ class Function(Inheritable):
             self.kind = DocumentableKind.METHOD
         self.signature = None
         self.overloads = []
+        self.parsed_decorators:Optional[Sequence[ParsedDocstring]] = None
+        self.parsed_annotations:Optional[Dict[str, Optional[ParsedDocstring]]] = None
 
 @attr.s(auto_attribs=True)
 class FunctionOverload:
@@ -852,6 +856,7 @@ class FunctionOverload:
     primary: Function
     signature: Signature
     decorators: Sequence[ast.expr]
+    parsed_decorators:Optional[Sequence[ParsedDocstring]] = None
 
 class Attribute(Inheritable):
     kind: Optional[DocumentableKind] = DocumentableKind.ATTRIBUTE
@@ -863,6 +868,8 @@ class Attribute(Inheritable):
 
     None value means the value is not initialized at the current point of the the process. 
     """
+    parsed_decorators:Optional[Sequence[ParsedDocstring]] = None
+    parsed_value:Optional[ParsedDocstring] = None
 
 # Work around the attributes of the same name within the System class.
 _ModuleT = Module
