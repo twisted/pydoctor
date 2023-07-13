@@ -2324,6 +2324,8 @@ def test_reparented_builtins_confusion() -> None:
     assert 'refuri="builtins.bytes"' in __init__.signature.parameters['v'].default.parsed.to_node().pformat() #type: ignore
     assert 'refuri="builtins.bytes"' in __init__.signature.parameters['v'].annotation.parsed.to_node().pformat() #type: ignore
     assert 'refuri="builtins.bytes"' in __init__.parsed_annotations['v'].to_node().pformat() #type: ignore
+    assert __init__.parsed_docstring is None # should not be none, actually :/
+    # assert 'refuri="builtins.bytes"' in __init__.parsed_docstring.to_node().pformat() #type: ignore
 
 def test_link_resolving_unbound_names() -> None:
     """
@@ -2343,6 +2345,29 @@ def test_link_resolving_unbound_names() -> None:
     assert 'refuri="unknown"' in clsvar.parsed_type.to_node().pformat() #type: ignore
     # does not work for constant values at the moment
 
+def test_reference_transform_in_type_docstring() -> None:
+    """
+    It will fail with ParsedTypeDocstring at the moment.
+    """
+    src = '''
+    __docformat__='google'
+    class C:
+        """
+        Args:
+            a (list): the list
+        """
+    '''
+    system = model.System()
+    builder = system.systemBuilder(system)
+    builder.addModuleString(src, modname='src') 
+    builder.addModuleString('from src import C;__all__=["C"];list=True', modname='top') 
+    builder.buildModules()
+    clsvar = system.allobjects['top.C']
+
+    with pytest.raises(NotImplementedError):
+        assert 'refuri="builtins.list"' in clsvar.parsed_docstring.fields[1].body().to_node().pformat() #type: ignore
+
 # what to do with inherited documentation of reparented class attribute part of an
 # import cycle? We can't set the value of parsed_docstring from the astbuilder because
 # we havnen't resolved the mro yet.
+
