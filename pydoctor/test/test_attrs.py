@@ -1,4 +1,5 @@
 import re
+import sys
 from typing import Optional, Type
 
 from pydoctor import epydoc2stan, model
@@ -573,6 +574,7 @@ def test_attrs_duplicate_param(systemcls: Type[model.System]) -> None:
     mod = fromText(src, systemcls=systemcls)
     assert_constructor(mod.contents['MyClass'], '(self, a: int)')
 
+@pytest.mark.skipif(sys.version_info < (3, 8), reason="type comment requires python 3.8 or later")
 @attrs_systemcls_param
 def test_type_comment_wins_over_factory_annotation(systemcls: Type[model.System]) -> None:
     src = '''\
