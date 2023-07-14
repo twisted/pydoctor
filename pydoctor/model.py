@@ -962,7 +962,7 @@ class System:
         # Initialize the extension system
         self._factory = factory.Factory()
         self._astbuilder_visitors: List[Type['astutils.NodeVisitorExt']] = []
-        self._post_processors: List[Callable[['System'], None]] = []
+        self._post_processor = extensions.PriorityProcessor(self)
         
         if self.extensions == _default_extensions:
             self.extensions = list(extensions.get_extensions())
@@ -1451,8 +1451,7 @@ class System:
             if is_exception(cls):
                 cls.kind = DocumentableKind.EXCEPTION
 
-        for post_processor in self._post_processors:
-            post_processor(self)
+        self._post_processor.apply_processors()
 
 
     def fetchIntersphinxInventories(self, cache: CacheT) -> None:
