@@ -149,39 +149,37 @@ def extract_final_subscript(annotation: ast.Subscript) -> ast.expr:
         assert isinstance(ann_slice, ast.expr)
         return ann_slice
 
-def _handleReExport(mod:'model.Module',  
+def _handleReExport(new_parent:'model.Module',  
                     origin_name:str, as_name:str,
                     origin_module:model.Module) -> None:
     """
-    Move re-exported objects into current module.
+    Move re-exported objects into module C{new_parent}.
     """
-    # Move re-exported objects into current module.
-    current = mod
     modname = origin_module.fullName()
 
     # In case of duplicates names, we can't rely on resolveName,
     # So we use content.get first to resolve non-alias names. 
     ob = origin_module.contents.get(origin_name) or origin_module.resolveName(origin_name)
     if ob is None:
-        current.report("cannot resolve re-exported name :"
+        new_parent.report("cannot resolve re-exported name :"
                                 f'{modname}.{origin_name}', thresh=1)
     else:
         if origin_module.all is None or origin_name not in origin_module.all:
             if as_name != ob.name:
-                current.system.msg(
+                new_parent.system.msg(
                     "astbuilder",
-                    "moving %r into %r as %r" % (ob.fullName(), current.fullName(), as_name)
+                    "moving %r into %r as %r" % (ob.fullName(), new_parent.fullName(), as_name)
                     )
             else:
-                current.system.msg(
+                new_parent.system.msg(
                     "astbuilder",
-                    "moving %r into %r" % (ob.fullName(), current.fullName())
+                    "moving %r into %r" % (ob.fullName(), new_parent.fullName())
                     )
-            ob.reparent(current, as_name)
+            ob.reparent(new_parent, as_name)
         else:
-            current.system.msg(
+            new_parent.system.msg(
                 "astbuilder",
-                f"not moving %r into %r, because {origin_name} is present in {modname}.__all__" % (ob.fullName(), current.fullName()),
+                f"not moving %r into %r, because {origin_name} is present in {modname}.__all__" % (ob.fullName(), new_parent.fullName()),
                 thresh=1
                 )
 
