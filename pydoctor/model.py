@@ -131,12 +131,9 @@ class AllObjectsMap:
             ob = None
             while curr:
                 ob = contents.get(curr)
-                if ob:
-                    contents = ob.contents
-                else:
+                if not ob or not parts:
                     break
-                if not parts:
-                    break
+                contents = ob.contents
                 curr, *parts = parts
             return ob
         
@@ -153,9 +150,8 @@ class AllObjectsMap:
             module = self._modules.get('.'.join(fullname))
             if module:
                 break
-            else:
-                *fullname, name = fullname
-                names = (name, ) + names
+            *fullname, name = fullname
+            names = (name, ) + names
         if module:
             if not names:
                 return module
