@@ -125,6 +125,10 @@ class AllObjectsMap:
         self._modules = modules
     
     def __getitem__(self, item: str) -> 'Documentable':
+        """
+        Returns the L{Documentable} at the given full dotted name.
+        This function does not do any name resolving, it only looks into L{Documentable.contents}.
+        """
         def get(contents:Mapping[str, 'Documentable'], 
                   path:Sequence[str]) -> Optional['Documentable']:
             curr, *parts = path
