@@ -456,7 +456,7 @@ class _V(enum.Enum):
     NoValue = enum.auto()
 _T =  TypeVar('_T', bound=object)
 def _get_literal_arg(args:BoundArguments, name:str, 
-                     typecheck:'type[_T]|tuple[type[_T],...]') -> Union['Literal[_V.NoValue]', _T]:
+                     typecheck:Union[Type[_T], Tuple[Type[_T],...]]) -> Union['Literal[_V.NoValue]', _T]:
     """
     Helper function for L{get_literal_arg}. 
 
@@ -485,7 +485,7 @@ def _get_literal_arg(args:BoundArguments, name:str,
     return value #type:ignore
 
 def get_literal_arg(args:BoundArguments, name:str, default:_T, 
-                          typecheck:'type[_T]|tuple[type[_T],...]', 
+                          typecheck: Union[Type[_T], Tuple[Type[_T],...]], 
                           lineno:int, module: 'model.Module') -> _T:
     """
     Retreive the literal value of an argument from the L{BoundArguments}. 
