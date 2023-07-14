@@ -503,6 +503,7 @@ class Import:
     """
     name:str
     orgmodule:str
+    linenumber:int
     orgname:Optional[str]=None
 
 class Module(CanContainImportsDocumentable):
