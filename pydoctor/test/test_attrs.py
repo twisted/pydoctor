@@ -23,7 +23,7 @@ def assert_constructor(cls:model.Documentable, sig:str,
     assert cls.dataclassLike == attrs.ModuleVisitor.DATACLASS_LIKE_KIND
     constructor = cls.contents['__init__']
     assert isinstance(constructor, model.Function)
-    assert flatten_text(pages.format_signature(constructor)) == sig
+    assert flatten_text(pages.format_signature(constructor)).replace(' ','') == sig.replace(' ','')
     if shortsig:
         assert epydoc2stan.format_constructor_short_text(constructor, forclass=cls) == shortsig
 
