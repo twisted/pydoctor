@@ -619,11 +619,11 @@ def test_docstring_generated(systemcls: Type[model.System]) -> None:
     __init__ = mod.contents['SomeClass'].contents['__init__']
     assert re.match(
         r'''attrs generated method''', 
-        ''.join(gettext(__init__.parsed_docstring.to_node())))
-    assert len(__init__.parsed_docstring.fields)==3
+        ''.join(gettext(__init__.parsed_docstring.to_node()))) # type:ignore
+    assert len(__init__.parsed_docstring.fields)==3 # type:ignore
     assert re.match(
         r'''docstring of number A\sattr.ib\(factory=list\)List of ints\sattr.ib\(converter=convert_paths, factory=list\)Uses a converter''',
-        ' '.join(text for text in (''.join(gettext(f.body().to_node())) for f in __init__.parsed_docstring.fields))
+        ' '.join(text for text in (''.join(gettext(f.body().to_node())) for f in __init__.parsed_docstring.fields)) # type:ignore
     )
 
 @attrs_systemcls_param

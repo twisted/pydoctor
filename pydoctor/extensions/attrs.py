@@ -407,7 +407,7 @@ def attrs_constructor_docstring(cls:AttrsClass, constructor_signature:inspect.Si
         attr = cls.find(param.name)
         if isinstance(attr, model.Attribute):
             if is_attrib(attr.value, cls):
-                field_doc = colorize_inline_pyval(attr.value)
+                field_doc: ParsedDocstring = colorize_inline_pyval(attr.value)
             else:
                 field_doc = ParsedPlaintextDocstring('')
             epydoc2stan.ensure_parsed_docstring(attr)
