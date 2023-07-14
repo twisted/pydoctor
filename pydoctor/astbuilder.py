@@ -371,24 +371,25 @@ class ModuleVistor(NodeVisitor):
             assert modname is not None
 
         if node.names[0].name == '*':
-            if isinstance(ctx, model.Module):
-                ctx.imports.append(model.Import('*', modname, 
-                                                linenumber=node.lineno))
-            self._importAll(modname)
+            self._importAll(modname, linenumber=node.lineno)
         else:
-            self._importNames(modname, node.names)
+            self._importNames(modname, node.names, linenumber=node.lineno)
 
-    def _importAll(self, modname: str) -> None:
+    def _importAll(self, modname: str, linenumber:int) -> None:
         """Handle a C{from <modname> import *} statement."""
         ctx = self.builder.current
+        if isinstance(ctx, model.Module):
+                ctx.imports.append(model.Import('*', modname, linenumber=linenumber))
         mod = self.system.getProcessedModule(modname)
         if mod is None:
             # We don't have any information about the module, so we don't know
             # what names to import.
-            ctx.report(f"import * from unknown {modname}", thresh=1)
+            ctx.report(f"import * from unknown module {modname!r}", thresh=1, lineno_offset=linenumber)
             return
-
-        ctx.report(f"import * from {modname}", thresh=1)
+        
+        if mod.state is model.ProcessingState.PROCESSING:
+            ctx.report(f"import * from partially processed module {modname!r}", 
+                       thresh=1, lineno_offset=linenumber)
 
         # Get names to import: use __all__ if available, otherwise take all
         # names that are not private.
@@ -401,7 +402,7 @@ class ModuleVistor(NodeVisitor):
         for name in names:
             _localNameToFullName[name] = expandName(name)
 
-    def _importNames(self, modname: str, names: Iterable[ast.alias]) -> None:
+    def _importNames(self, modname: str, names: Iterable[ast.alias], linenumber:int) -> None:
         """Handle a C{from <modname> import <names>} statement."""
 
         # Process the module we're importing from.
@@ -425,7 +426,7 @@ class ModuleVistor(NodeVisitor):
             if is_module:
                 cast(model.Module,
                      current).imports.append(model.Import(asname, modname,
-                                                          orgname=orgname, linenumber=al.lineno))
+                                                          orgname=orgname, linenumber=linenumber))
 
     def visit_Import(self, node: ast.Import) -> None:
         """Process an import statement.
