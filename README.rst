@@ -88,6 +88,12 @@ in development
 * Improve the class hierarchy such that it links top level names with intersphinx when possible.
 * Add highlighting when clicking on "View In Hierarchy" link from class page.
 * Recognize variadic generics type variables (PEP 646).
+* Better ``attrs`` support: generate precise ``__init__`` method from analyzed fields, supports 
+  principal ``attrs`` idioms: 
+    - ``attr.s(auto_attribs, kw_only, auto_detect, init)``/``attrs.define(...)``
+    - ``attr.ib(init, default, factory, converter, type, kw_only)``/``attrs.field(...)``
+    - ``attr.Factory(list)``
+  It does not support the decorators based syntax for setting the validator/factory/default or converter.
 
 pydoctor 23.4.1
 ^^^^^^^^^^^^^^^
