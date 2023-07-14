@@ -111,24 +111,24 @@ def _get_mixins(*mixins: Type[MixinT]) -> Dict[str, List[Type[MixinT]]]:
             assert False, f"Invalid mixin {mixin.__name__!r}. Mixins must subclass one of the base class."
     return mixins_by_name
 
-DEFAULT_PRIORITY = 100
-
 # Largely inspired by docutils Transformer class.
+DEFAULT_PRIORITY = 100
 class PriorityProcessor:
     """
     Stores L{Callable} and applies them to the system based on priority or insertion order.
-    The default priority is C{100}, custom priorities should stay in L{50 < priority < 150}.
+    The default priority is C{100}, see code source of L{astbuilder.setup_pydoctor_extension}, 
+    and others C{setup_pydoctor_extension} functions.
 
-    One L{PriorityProcessor} should be only run once on the system.
+    Highest priority callables will be called first, when priority is the same it's FIFO order.
+
+    One L{PriorityProcessor} should only be run once on the system.
     """
-
-    _Queue = List[Tuple[object, Callable[['model.System'], None]]]
     
     def __init__(self, system:'model.System'):
         self.system = system
         self.applied: List[Callable[['model.System'], None]] = []
-        self._post_processors: PriorityProcessor._Queue = []
-        self._counter = 1000
+        self._post_processors: List[Tuple[object, Callable[['model.System'], None]]] = []
+        self._counter = 256
         """Internal counter to keep track of the add order of callables."""
     
     def add_post_processor(self, post_processor:Callable[['model.System'], None], 
@@ -151,14 +151,14 @@ class PriorityProcessor:
         """Apply all of the stored processors, in priority order."""
         if self.applied:
             # this is typically only reached in tests, when we 
-            # call fromText() sevral times with the same 
+            # call fromText() several times with the same 
             # system or when we manually call System.postProcess()
             self.system.msg('post processing', 
-                            'warning, multiple post-processing pass detected', 
+                            'warning: multiple post-processing pass detected', 
                             thresh=-1)
+            self.applied.clear()
         
         self._post_processors.sort()
-        self.applied.clear()
         for p in reversed(self._post_processors):
             _, post_processor = p
             post_processor(self.system)

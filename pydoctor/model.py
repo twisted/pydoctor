@@ -1432,27 +1432,10 @@ class System:
         Analysis of relations between documentables can be done here,
         without the risk of drawing incorrect conclusions because modules
         were not fully processed yet.
+
+        @See: L{extensions.PriorityProcessor}.
         """
-
-        # default post-processing includes:
-        # - Processing of subclasses
-        # - MRO computing.
-        # - Lookup of constructors
-        # - Checking whether the class is an exception
-        for cls in self.objectsOfType(Class):
-            
-            cls._init_mro()
-            cls._init_constructors()
-            
-            for b in cls.baseobjects:
-                if b is not None:
-                    b.subclasses.append(cls)
-            
-            if is_exception(cls):
-                cls.kind = DocumentableKind.EXCEPTION
-
         self._post_processor.apply_processors()
-
 
     def fetchIntersphinxInventories(self, cache: CacheT) -> None:
         """
@@ -1460,6 +1443,24 @@ class System:
         """
         for url in self.options.intersphinx:
             self.intersphinx.update(cache, url)
+
+def defaultPostProcess(system:'System') -> None:
+    # default post-processing includes:
+    # - Processing of subclasses
+    # - MRO computing.
+    # - Lookup of constructors
+    # - Checking whether the class is an exception
+    for cls in system.objectsOfType(Class):
+        
+        cls._init_mro()
+        cls._init_constructors()
+        
+        for b in cls.baseobjects:
+            if b is not None:
+                b.subclasses.append(cls)
+        
+        if is_exception(cls):
+            cls.kind = DocumentableKind.EXCEPTION
 
 def get_docstring(
         obj: Documentable
