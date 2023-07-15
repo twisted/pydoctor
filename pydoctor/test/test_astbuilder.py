@@ -2414,3 +2414,27 @@ def test_typealias_unstring(systemcls: Type[model.System]) -> None:
     with pytest.raises(StopIteration):
         # there is not Constant nodes in the type alias anymore
         next(n for n in ast.walk(typealias.value) if isinstance(n, ast.Constant))
+
+@systemcls_param
+def test_allobjects_mapping_reparented_confusion(systemcls: Type[model.System]) -> None:
+    src1 = '''\
+    class mything:
+        class stuff:
+            do = object.__call__
+    '''
+    mything_src = '''\
+    class stuff:
+        def do(x:int):...
+    '''
+    pack = 'from ._src import mything; __all__=["mything"]'
+
+    system = systemcls()
+    builder = system.systemBuilder(system)
+    builder.addModuleString(pack, 'pack', is_package=True)
+    builder.addModuleString(src1, '_src', parent_name='pack')
+    builder.addModuleString(mything_src, 'mything', parent_name='pack')
+    builder.buildModules()
+
+    assert isinstance(system.allobjects['pack.mything'], model.Class)
+    assert isinstance(system.allobjects['pack.mything.stuff.do'], model.Attribute)
+    assert isinstance(system.modules['pack.mything'], model.Module)
