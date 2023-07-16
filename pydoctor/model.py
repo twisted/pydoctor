@@ -337,7 +337,10 @@ class Documentable:
         self.name = new_name
         del old_parent.contents[old_name]
         old_parent._localNameToFullName_map[old_name] = self.fullName()
-        new_parent.contents[new_name] = self
+        new_contents = new_parent.contents
+        if new_name in new_contents:
+            self.system.handleDuplicate(self, new_contents[new_name])
+        new_contents[new_name] = self
     
     def _localNameToFullName(self, name: str) -> str:
         raise NotImplementedError(self._localNameToFullName)

@@ -2416,14 +2416,19 @@ def test_typealias_unstring(systemcls: Type[model.System]) -> None:
         next(n for n in ast.walk(typealias.value) if isinstance(n, ast.Constant))
 
 @systemcls_param
-def test_allobjects_mapping_reparented_confusion(systemcls: Type[model.System]) -> None:
+def test_allobjects_mapping_reparented_confusion(systemcls: Type[model.System], capsys:CapSys) -> None:
+    """
+    When reparenting, it takes care to handle duplicte objects with system.handleDuplicate.
+    """
     src1 = '''\
     class mything:
+        "reparented"
         class stuff:
-            do = object.__call__
+            do = object()
     '''
     mything_src = '''\
     class stuff:
+        "doc"
         def do(x:int):...
     '''
     pack = 'from ._src import mything; __all__=["mything"]'
@@ -2435,6 +2440,21 @@ def test_allobjects_mapping_reparented_confusion(systemcls: Type[model.System]) 
     builder.addModuleString(mything_src, 'mything', parent_name='pack')
     builder.buildModules()
 
-    assert isinstance(system.allobjects['pack.mything'], model.Class)
-    assert isinstance(system.allobjects['pack.mything.stuff.do'], model.Attribute)
-    assert isinstance(system.modules['pack.mything'], model.Module)
+    assert [(o.name,o.kind) for o in  
+            system.allobjects['pack'].contents.values()] == [('_src', model.DocumentableKind.MODULE),
+                                                             ('mything 0', model.DocumentableKind.MODULE),
+                                                             ('mything', model.DocumentableKind.CLASS)]
+    
+    assert system.allobjects['pack.mything'].docstring == "reparented"
+
+    assert system.allobjects['pack.mything.stuff'].docstring == None
+    assert system.allobjects['pack.mything.stuff.do'].kind == model.DocumentableKind.CLASS_VARIABLE
+    
+    assert system.allobjects['pack.mything 0.stuff'].docstring == "doc"
+    assert system.allobjects['pack.mything 0.stuff'].kind == model.DocumentableKind.CLASS
+    assert system.allobjects['pack.mything 0.stuff.do'].kind == model.DocumentableKind.METHOD
+    
+    assert capsys.readouterr().out == (
+        "moving 'pack._src.mything' into 'pack'\n"
+        "pack:1: duplicate Module 'pack.mything'\n"
+    )
