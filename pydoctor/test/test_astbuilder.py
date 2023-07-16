@@ -2458,3 +2458,28 @@ def test_allobjects_mapping_reparented_confusion(systemcls: Type[model.System], 
         "moving 'pack._src.mything' into 'pack'\n"
         "pack:1: duplicate Module 'pack.mything'\n"
     )
+
+@systemcls_param
+def test_cannot_resolve_reparented(systemcls: Type[model.System], capsys:CapSys) -> None:
+    """
+    When reparenting, it warns when the reparented target cannot be found
+    """
+    src1 = '''\
+    class Cls:...
+    '''
+    mything_src = '''\
+    class Slc:...
+    '''
+    pack = 'from ._src2 import Slc;from ._src1 import Cls; __all__=["Cls", "Slc"]'
+
+    system = systemcls()
+    builder = system.systemBuilder(system)
+    builder.addModuleString(pack, 'pack', is_package=True)
+    builder.addModuleString(src1, '_src0', parent_name='pack')
+    builder.addModuleString(mything_src, '_src1', parent_name='pack')
+    builder.buildModules()
+
+    assert list(system.allobjects['pack'].contents) == ['_src0', '_src1']
+
+    assert capsys.readouterr().out == ("pack:1: cannot resolve origin module of re-exported name: 'Slc'from origin module 'pack._src2'\n"
+                                       "pack:1: cannot resolve re-exported name: 'pack._src1.Cls'\n")
