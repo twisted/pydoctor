@@ -1531,7 +1531,7 @@ def test_module_docformat_inheritence(capsys: CapSys) -> None:
     
     top = system.allobjects['top']
     mod = system.allobjects['top.pkg.mod']
-    
+    assert isinstance(mod, model.Module)
     assert mod.docformat == 'epytext'
     captured = capsys.readouterr().out
     assert not captured
