@@ -2453,10 +2453,14 @@ def test_allobjects_mapping_reparented_confusion(systemcls: Type[model.System], 
     assert system.allobjects['pack.mything 0.stuff'].docstring == "doc"
     assert system.allobjects['pack.mything 0.stuff'].kind == model.DocumentableKind.CLASS
     assert system.allobjects['pack.mything 0.stuff.do'].kind == model.DocumentableKind.METHOD
+
+    # the module is still accessible in System.modules even if shadowed by reparenting
+    assert system.modules['pack.mything'].name == 'mything 0'
     
     assert capsys.readouterr().out == (
         "moving 'pack._src.mything' into 'pack'\n"
-        "pack:1: duplicate Module 'pack.mything'\n"
+        "pack._src:1: duplicate Module 'pack.mything'\n"
+        "pack._src:1: introduced by re-exporting Class 'pack._src.mything' into Package 'pack'\n"
     )
 
 @systemcls_param

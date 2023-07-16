@@ -333,15 +333,20 @@ class Documentable:
         old_parent = self.parent
         assert isinstance(old_parent, CanContainImportsDocumentable)
         old_name = self.name
-        self.parent = self.parentMod = new_parent
-        self.name = new_name
+        # delete old object
         del old_parent.contents[old_name]
-        old_parent._localNameToFullName_map[old_name] = self.fullName()
+        # issue warnings
         new_contents = new_parent.contents
         if new_name in new_contents:
             self.system.handleDuplicate(self, new_contents[new_name])
-        new_contents[new_name] = self
-    
+            self.report(f"introduced by re-exporting {self} into {new_parent}"
+                        '' if new_name==old_name else f' as {new_name!r}', thresh=1)
+        # do reparenting
+        self.parent = self.parentMod = new_parent # change parent
+        self.name = new_name # change name
+        old_parent._localNameToFullName_map[old_name] = self.fullName() # leave reference
+        new_contents[new_name] = self # setup parent.contents
+
     def _localNameToFullName(self, name: str) -> str:
         raise NotImplementedError(self._localNameToFullName)
     
@@ -1441,11 +1446,11 @@ class System:
                 if something:
                     def meth(self):
                         implementation 1
-                else:
+                if something_else:
                     def meth(self):
                         implementation 2
 
-        The default is that the second definition "wins".
+        The second definition "wins" and object C{first} is renamed.
         """
         i = 0
         fullName = obj.fullName()
