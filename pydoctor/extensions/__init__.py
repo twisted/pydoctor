@@ -140,7 +140,7 @@ class PriorityProcessor:
     
     def _get_priority_key(self, priority:int) -> object:
         """
-        Return a string, `priority` combined with `self._counter`.
+        Return a tuple, `priority` combined with `self._counter`.
 
         This ensures FIFO order on callables with identical priority.
         """
