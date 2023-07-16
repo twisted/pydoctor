@@ -1322,7 +1322,13 @@ class System:
                 "analyzeModule", len(self.modules),
                 None, "modules and packages discovered")        
             self.module_count += 1
-
+    
+    def _removeModule(self, m:_ModuleT) -> None:
+        if m.fullName() in self.modules:
+            del self.modules[m.fullName()]
+        for child in (c for c in m.contents.values() if isinstance(c, _ModuleT)):
+            self._removeModule(child)
+    
     def _handleDuplicateModule(self, first: _ModuleT, dup: _ModuleT) -> None:
         """
         This is called when two modules have the same name. 
@@ -1342,12 +1348,7 @@ class System:
             return
         else:
             # Else, the last added module wins
-            def removeModule(m:_ModuleT) -> None:
-                if m.fullName() in self.modules:
-                    del self.modules[m.fullName()]
-                for child in (c for c in m.contents.values() if isinstance(c, _ModuleT)):
-                    removeModule(child)
-            removeModule(first)
+            self._removeModule(first)
             self.unprocessed_modules.remove(first)
             self._addUnprocessedModule(dup)
 
