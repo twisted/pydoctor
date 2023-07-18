@@ -2,6 +2,7 @@
 
 import ast
 from collections import defaultdict
+from statistics import mean 
 import sys
 
 from functools import partial
@@ -170,32 +171,31 @@ def _handleReExport(info:'ReExport', elsewhere:Collection['ReExport']) -> None:
     as_name = info.as_name
     target_parent = target.parent
     assert isinstance(target_parent, model.Module)
-
-    if as_name != target.name:
-        new_parent.system.msg(
-            "astbuilder",
-            f"moving {target.fullName()!r} into {new_parent.fullName()!r} as {as_name!r}")
-    else:
-        new_parent.system.msg(
-            "astbuilder",
-            f"moving {target.fullName()!r} into {new_parent.fullName()!r}")
     
     target_parent.elsewhere_contents[target.name] = target
 
+    extra_msg = ''
+
     for e in elsewhere:
+        e.new_parent.elsewhere_contents[e.as_name] = target
+
+        if not extra_msg:
+            extra_msg += ', also available at '
+            extra_msg += f"'{e.new_parent.fullName()}.{e.as_name}'"
+        else:
+            extra_msg += f" and '{e.new_parent.fullName()}.{e.as_name}'"
+        
+    if as_name != target.name:
         new_parent.system.msg(
             "astbuilder",
-            f"also available at '{e.new_parent.fullName()}.{e.as_name}'")
-        e.new_parent.elsewhere_contents[e.as_name] = target
-    
+            f"moving {target.fullName()!r} into {new_parent.fullName()!r} as {as_name!r}{extra_msg}")
+    else:
+        new_parent.system.msg(
+            "astbuilder",
+            f"moving {target.fullName()!r} into {new_parent.fullName()!r}{extra_msg}")
+
     target.reparent(new_parent, as_name)
 
-    # if origin_module.all is None or origin_name not in origin_module.all:
-    # else:
-    #     new_parent.system.msg(
-    #         "astbuilder",
-    #         f"not moving {target.fullName()} into {new_parent.fullName()}, "
-    #         f"because {origin_name!r} is already exported in {modname}.__all__")
 
 def getModuleExports(mod:'model.Module') -> Collection[str]:
     # Fetch names to export.
@@ -222,6 +222,16 @@ class ReExport:
     origin_module: model.Module
     target: model.Documentable
 
+def _exports_order(r:ReExport) -> object:
+    privacies:List[int] = []
+    p = r.new_parent
+    while p:
+        privacies.append(p.privacyClass.value)
+        p = p.parent
+    
+    return (-mean(privacies), 
+            r.new_parent.fullName().count('.'), 
+            -len(r.as_name))
 
 def _maybeExistingNameOverridesImport(mod:model.Module, local_name:str, 
                                       imp:model.Import, target:model.Documentable) -> bool:
@@ -288,15 +298,28 @@ def processReExports(system:'model.System') -> None:
 
     for target, _exports in exports_per_target.items():
         elsewhere = []
+
+        if isinstance(target.parent, model.Module) and target.parent.all is not None \
+            and target.name in target.parent.all \
+            and target.parent.privacyClass is model.PrivacyClass.PUBLIC:
+            
+            target.system.msg(
+                "astbuilder",
+                f"not moving {target.fullName()} into {' or '.join(repr(e.new_parent.fullName()) for e in _exports)}, "
+                f"because {target.name!r} is already exported in public module {target.parent.fullName()!r}")
+
+            for e in _exports:
+                e.new_parent.elsewhere_contents[e.as_name] = target
+
+            continue
+        
         assert len(_exports) > 0
         if len(_exports) > 1:
-            # when an object has several re-exports, the module with the lowest number
+            # when an object has several re-exports, the public module with the lowest number
             # of dot in it's name is choosen, if there is an equality, the longer local name
-            # if choosen 
-            # TODO: move this into a system method
-            # TODO: do not move objects inside a private module
-            # TODO: do not move objects when they are listed in __all__ of a public module
-            _exports.sort(key=lambda r:(r.new_parent.fullName().count('.'), -len(r.as_name)))
+            # is choosen 
+
+            _exports.sort(key=_exports_order)
             elsewhere.extend(_exports[1:])
         
         reexport = _exports[0]

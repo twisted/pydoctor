@@ -2491,20 +2491,47 @@ def test_cannot_resolve_reparented(systemcls: Type[model.System], capsys:CapSys)
 @systemcls_param
 def test_reparenting_from_module_that_defines__all__(systemcls: Type[model.System], capsys:CapSys) -> None:
     """
-    Even if a module defined it's own __all__ attribute, we can reparent it's direct children to a new module.
+    Even if a module defined it's own __all__ attribute, we can reparent it's direct children to a new module 
+    when the origin module is private, otherwise the name stays there.
     """
-    src = '''\
+    _src = '''\
     class cls:...
-    __all__ = ['cls']
+    class cls3:...
+    class cls4:...
+    __all__ = ['cls', 'cls3', 'cls4']
     '''
-    pack = 'from ._src import cls; __all__=["cls"]'
+    src = '''
+    class cls2:...
+    __all__ = ['cls2']
+    '''
+    pack = '''\
+    from ._src import cls
+    from .src import cls2
+    __all__=["cls","cls2"]
+    '''
+    subpack = '''\
+    from .._src import cls3
+    __all__=["cls3"]
+    '''
+    private = '''\
+    from pack._src import cls3, cls4
+    __all__ = ['cls3', 'cls4']
+    '''
 
     system = systemcls()
     builder = system.systemBuilder(system)
+    builder.addModuleString(private, '_private')
     builder.addModuleString(pack, 'pack', is_package=True)
-    builder.addModuleString(src, '_src', parent_name='pack')
+    builder.addModuleString(subpack, 'subpack', parent_name='pack', is_package=True)
+    builder.addModuleString(_src, '_src', parent_name='pack')
+    builder.addModuleString(src, 'src', parent_name='pack')
     builder.buildModules()
-    assert capsys.readouterr().out == "moving 'pack._src.cls' into 'pack'\n"
+    assert capsys.readouterr().out == (
+        "moving 'pack._src.cls3' into 'pack.subpack', also available at '_private.cls3'\n"
+        "moving 'pack._src.cls4' into '_private'\n"
+        "moving 'pack._src.cls' into 'pack'\n"
+        "not moving pack.src.cls2 into 'pack', because 'cls2' is already exported in public module 'pack.src'\n")
+    
     assert system.allobjects['pack.cls'] is system.allobjects['pack._src'].elsewhere_contents['cls'] # type:ignore
 
 @systemcls_param
@@ -2564,7 +2591,7 @@ def test_multiple_re_exports(systemcls: Type[model.System], capsys:CapSys) -> No
     builder.addModuleString(src, 'src', parent_name='pack.subpack')
     builder.buildModules()
 
-    assert capsys.readouterr().out == ("moving 'pack.subpack.src.Cls' into 'pack'\n"
+    assert capsys.readouterr().out == ("moving 'pack.subpack.src.Cls' into 'pack', "
                                        "also available at 'pack.subpack.Cls'\n")
 
     assert system.allobjects['pack.Cls'] is system.allobjects['pack.subpack'].elsewhere_contents['Cls'] # type:ignore
@@ -2592,7 +2619,7 @@ def test_multiple_re_exports_alias(systemcls: Type[model.System], capsys:CapSys)
     builder.addModuleString(src, 'src', parent_name='pack.subpack')
     builder.buildModules()
 
-    assert capsys.readouterr().out == ("moving 'pack.subpack.src.DistinguishedName' into 'pack' as 'DisName'\n"
+    assert capsys.readouterr().out == ("moving 'pack.subpack.src.DistinguishedName' into 'pack' as 'DisName', "
                                        "also available at 'pack.DN'\n")
 
     assert system.allobjects['pack.DisName'] is system.allobjects['pack'].elsewhere_contents['DN'] # type:ignore
