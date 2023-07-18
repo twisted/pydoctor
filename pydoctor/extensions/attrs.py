@@ -19,7 +19,6 @@ from pydoctor.epydoc.markup.plaintext import ParsedPlaintextDocstring
 from pydoctor.epydoc.markup._pyval_repr import colorize_inline_pyval
 
 from pydoctor.epydoc2stan import parse_docstring
-from pydoctor.epydoc.docutils import new_document, set_node_attributes
 
 
 

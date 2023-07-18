@@ -1,5 +1,5 @@
 """Render pydoctor data as HTML."""
-from typing import Any, Iterable, Iterator, Optional, Union, cast, TYPE_CHECKING
+from typing import Any, Iterable, Iterator, Optional, Union, TYPE_CHECKING
 if TYPE_CHECKING:
     from typing_extensions import Protocol, runtime_checkable
 else:

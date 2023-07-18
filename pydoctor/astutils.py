@@ -7,8 +7,8 @@ import inspect
 import platform
 import sys
 from numbers import Number
-from typing import Any, Iterator, Optional, List, Iterable, Sequence, TYPE_CHECKING, Tuple, Union, Type, TypeVar, Generic
-from inspect import BoundArguments, Signature, Parameter
+from typing import Any, Iterator, Optional, List, Iterable, Sequence, TYPE_CHECKING, Tuple, Union, Type, TypeVar
+from inspect import BoundArguments, Signature
 import ast
 
 from pydoctor import visitor
