@@ -222,14 +222,8 @@ class ReExport:
     origin_module: model.Module
     target: model.Documentable
 
-def _exports_order(r:ReExport) -> object:
-    privacies:List[int] = []
-    p = r.new_parent
-    while p:
-        privacies.append(p.privacyClass.value)
-        p = p.parent
-    
-    return (-mean(privacies), 
+def _exports_order(r:ReExport) -> object:    
+    return (-r.new_parent.privacyClass.value, 
             r.new_parent.fullName().count('.'), 
             -len(r.as_name))
 
