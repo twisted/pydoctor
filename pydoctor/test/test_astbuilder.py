@@ -2487,3 +2487,113 @@ def test_cannot_resolve_reparented(systemcls: Type[model.System], capsys:CapSys)
 
     assert capsys.readouterr().out == ("pack:1: cannot resolve origin module of re-exported name: 'Slc'from origin module 'pack._src2'\n"
                                        "pack:1: cannot resolve re-exported name: 'pack._src1.Cls'\n")
+
+@systemcls_param
+def test_reparenting_from_module_that_defines__all__(systemcls: Type[model.System], capsys:CapSys) -> None:
+    """
+    Even if a module defined it's own __all__ attribute, we can reparent it's direct children to a new module.
+    """
+    src = '''\
+    class cls:...
+    __all__ = ['cls']
+    '''
+    pack = 'from ._src import cls; __all__=["cls"]'
+
+    system = systemcls()
+    builder = system.systemBuilder(system)
+    builder.addModuleString(pack, 'pack', is_package=True)
+    builder.addModuleString(src, '_src', parent_name='pack')
+    builder.buildModules()
+    assert capsys.readouterr().out == "moving 'pack._src.cls' into 'pack'\n"
+    assert system.allobjects['pack.cls'] is system.allobjects['pack._src'].elsewhere_contents['cls'] # type:ignore
+
+@systemcls_param
+def test_do_not_reparent_to_existing_name(systemcls: Type[model.System], capsys:CapSys) -> None:
+    """
+    Pydoctor will not re-export a name that is shadowed by a local by the same name.
+    """
+    src1 = '''\
+    class Cls:...
+    '''
+    src2 = '''\
+    class Slc:...
+    '''
+    pack = '''\
+        class Slc:...
+        from ._src1 import Slc
+        from ._src import Cls
+        class Cls:...
+        __all__=["Cls", "Slc"]
+        '''
+
+    system = systemcls()
+    builder = system.systemBuilder(system)
+    builder.addModuleString(pack, 'pack', is_package=True)
+    builder.addModuleString(src1, '_src', parent_name='pack')
+    builder.addModuleString(src2, '_src1', parent_name='pack')
+    builder.buildModules()
+
+    assert capsys.readouterr().out == ("pack:3: not moving pack._src.Cls into pack, because 'Cls' is defined at line 4\n"
+                                       "moving 'pack._src1.Slc' into 'pack'\n"
+                                       "pack._src1:1: duplicate Class 'pack.Slc'\n"
+                                       "pack._src1:1: introduced by re-exporting Class 'pack._src1.Slc' into Package 'pack'\n")
+    
+    assert system.allobjects['pack.Slc'] is system.allobjects['pack._src1'].elsewhere_contents['Slc'] # type:ignore
+
+@systemcls_param
+def test_multiple_re_exports(systemcls: Type[model.System], capsys:CapSys) -> None:
+    """
+    Pydoctor will re-export a name to the module with the lowest amount of dots in it's fullname.
+    """
+    src = '''\
+    class Cls:...
+    '''
+    subpack = '''\
+    from pack.subpack.src import Cls
+    __all__=['Cls']
+    '''
+    pack = '''\
+    from pack.subpack import Cls
+    __all__=["Cls"]
+    '''
+
+    system = systemcls()
+    builder = system.systemBuilder(system)
+    builder.addModuleString(pack, 'pack', is_package=True)
+    builder.addModuleString(subpack, 'subpack', is_package=True, parent_name='pack')
+    builder.addModuleString(src, 'src', parent_name='pack.subpack')
+    builder.buildModules()
+
+    assert capsys.readouterr().out == ("moving 'pack.subpack.src.Cls' into 'pack'\n"
+                                       "also available at 'pack.subpack.Cls'\n")
+
+    assert system.allobjects['pack.Cls'] is system.allobjects['pack.subpack'].elsewhere_contents['Cls'] # type:ignore
+    assert system.allobjects['pack.Cls'] is system.allobjects['pack.subpack.src'].elsewhere_contents['Cls'] # type:ignore
+
+@systemcls_param
+def test_multiple_re_exports_alias(systemcls: Type[model.System], capsys:CapSys) -> None:
+    """
+    The case of twisted.internet.ssl.DistinguishedName/DN
+    """
+    src = '''\
+    class DistinguishedName:...
+    DN = DistinguishedName
+    '''
+    subpack = ''
+    pack = '''
+    from pack.subpack.src import DN, DistinguishedName as DisName
+    __all__=['DN', 'DisName']
+    '''
+
+    system = systemcls()
+    builder = system.systemBuilder(system)
+    builder.addModuleString(pack, 'pack', is_package=True)
+    builder.addModuleString(subpack, 'subpack', is_package=True, parent_name='pack')
+    builder.addModuleString(src, 'src', parent_name='pack.subpack')
+    builder.buildModules()
+
+    assert capsys.readouterr().out == ("moving 'pack.subpack.src.DistinguishedName' into 'pack' as 'DisName'\n"
+                                       "also available at 'pack.DN'\n")
+
+    assert system.allobjects['pack.DisName'] is system.allobjects['pack'].elsewhere_contents['DN'] # type:ignore
+    assert system.allobjects['pack.DisName'] is system.allobjects['pack.subpack.src'].elsewhere_contents['DistinguishedName'] # type:ignore
