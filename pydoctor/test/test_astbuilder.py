@@ -2144,6 +2144,19 @@ def test_type_alias(systemcls: Type[model.System]) -> None:
     assert mod.contents['F'].contents['Q'].kind == model.DocumentableKind.INSTANCE_VARIABLE
 
 @systemcls_param
+def test_typevartuple(systemcls: Type[model.System]) -> None:
+    """
+    Variadic type variables are recognized.
+    """
+
+    mod = fromText('''
+    from typing import TypeVarTuple
+    Shape = TypeVarTuple('Shape')
+    ''', systemcls=systemcls)
+
+    assert mod.contents['Shape'].kind == model.DocumentableKind.TYPE_VARIABLE
+
+@systemcls_param
 def test_prepend_package(systemcls: Type[model.System]) -> None:
     """
    Option --prepend-package option relies simply on the L{ISystemBuilder} interface, 
@@ -2516,3 +2529,23 @@ def test_augmented_assignment_alone_is_not_documented(systemcls: Type[model.Syst
 
     assert 'var' not in mod.contents
     assert 'var' not in mod.contents['c'].contents
+
+
+@systemcls_param
+def test_typealias_unstring(systemcls: Type[model.System]) -> None:
+    """
+    The type aliases are unstringed by the astbuilder
+    """
+    
+    mod = fromText('''
+    from typing import Callable
+    ParserFunction = Callable[[str, List['ParseError']], 'ParsedDocstring']
+    ''', modname='pydoctor.epydoc.markup', systemcls=systemcls)
+
+    typealias = mod.contents['ParserFunction']
+    assert isinstance(typealias, model.Attribute)
+    assert typealias.value
+    with pytest.raises(StopIteration):
+        # there is not Constant nodes in the type alias anymore
+        next(n for n in ast.walk(typealias.value) if isinstance(n, ast.Constant))
+
