@@ -81,7 +81,7 @@ in development
   be reported when an annotation name is ambiguous (can be resolved to different names 
   depending on the scope context) with option ``-v``.
 * Use stricter verifications before marking an attribute as constant. 
-* Do not trigger warnings when pydoctor cannot make sens of a potential constant attribute 
+* Do not trigger warnings when pydoctor cannot make sense of a potential constant attribute 
   (pydoctor is not a static checker).
 
 pydoctor 23.4.1
