@@ -2498,3 +2498,23 @@ def test_inherited_type_is_not_propagated_to_subclasses(systemcls: Type[model.Sy
     builder.buildModules()
     thing = system.allobjects['mod.Stuff.thing']
     assert epydoc2stan.type2stan(thing) is None
+
+@systemcls_param
+def test_typealias_unstring(systemcls: Type[model.System]) -> None:
+    """
+    The type aliases are unstringed by the astbuilder
+    """
+    
+    mod = fromText('''
+    from typing import Callable
+    ParserFunction = Callable[[str, List['ParseError']], 'ParsedDocstring']
+    ''', modname='pydoctor.epydoc.markup', systemcls=systemcls)
+
+    typealias = mod.contents['ParserFunction']
+    assert isinstance(typealias, model.Attribute)
+    assert typealias.value
+    with pytest.raises(StopIteration):
+        # there is not Constant nodes in the type alias anymore
+        next(n for n in ast.walk(typealias.value) if isinstance(n, ast.Constant))
+
+        

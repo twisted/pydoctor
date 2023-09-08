@@ -83,11 +83,13 @@ in development
   be reported when an annotation name is ambiguous (can be resolved to different names 
   depending on the scope context) with option ``-v``.
 * Ensure that explicit annotation are honored when there are multiple declarations of the same name.
+* Fix presentation of type aliases in string form.
 * Improve the AST colorizer to output less parenthesis when it's not required.
 * Fix colorization of dictionary unpacking.
 * Improve the class hierarchy such that it links top level names with intersphinx when possible.
 * Add highlighting when clicking on "View In Hierarchy" link from class page.
 * Recognize variadic generics type variables (PEP 646).
+* Fix support for introspection of cython3 generated modules.
 
 pydoctor 23.4.1
 ^^^^^^^^^^^^^^^
