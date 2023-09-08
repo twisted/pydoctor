@@ -5,8 +5,7 @@ sphinx:
   fail_on_warning: false
 
 python:
-  version: 3.8
-  system_packages: false
+  version: 3.11
   install:
     - method: pip
       path: .
