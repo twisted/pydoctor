@@ -91,6 +91,7 @@ in development
 * Improve the class hierarchy such that it links top level names with intersphinx when possible.
 * Add highlighting when clicking on "View In Hierarchy" link from class page.
 * Recognize variadic generics type variables (PEP 646).
+* Fix support for introspection of cython3 generated modules.
 
 pydoctor 23.4.1
 ^^^^^^^^^^^^^^^
