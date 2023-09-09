@@ -51,7 +51,7 @@ from pydoctor.epydoc import sre_parse36, sre_constants36 as sre_constants
 from pydoctor.epydoc.markup import DocstringLinker
 from pydoctor.epydoc.markup.restructuredtext import ParsedRstDocstring
 from pydoctor.epydoc.docutils import set_node_attributes, wbr, obj_reference, new_document
-from pydoctor.astutils import node2dottedname, bind_args, Parentage
+from pydoctor.astutils import node2dottedname, bind_args, Parentage, get_parents
 
 def decode_with_backslashreplace(s: bytes) -> str:
     r"""
@@ -138,9 +138,13 @@ class _OperatorDelimiter:
 
         # We use a hack to populate a "parent" attribute on AST nodes.
         # See astutils.Parentage class, applied in PyvalColorizer._colorize_ast()
-        parent_node: Optional[ast.AST] = getattr(node, 'parent', None)
-
-        if parent_node:
+        try:
+            parent_node: ast.AST = next(get_parents(node))
+        except StopIteration:
+            return
+        
+        # avoid needless parenthesis, since we now collect parents for every nodes 
+        if isinstance(parent_node, (ast.expr, ast.keyword, ast.comprehension)):
             precedence = astor.op_util.get_op_precedence(node.op)
             if isinstance(parent_node, (ast.UnaryOp, ast.BinOp, ast.BoolOp)):
                 parent_precedence = astor.op_util.get_op_precedence(parent_node.op)
@@ -532,7 +536,9 @@ class PyvalColorizer:
 
     def _colorize_ast(self, pyval: ast.AST, state: _ColorizerState) -> None:
         # Set nodes parent in order to check theirs precedences and add delimiters when needed.
-        if not getattr(pyval, 'parent', None):
+        try:
+            next(get_parents(pyval))
+        except StopIteration:
             Parentage().visit(pyval)
 
         if self._is_ast_constant(pyval): 
