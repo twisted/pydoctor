@@ -82,7 +82,10 @@ in development
   scope when possible, when impossible, the theoretical runtime scopes are used. A warning can
   be reported when an annotation name is ambiguous (can be resolved to different names 
   depending on the scope context) with option ``-v``.
-* Use stricter verifications before marking an attribute as constant. 
+* Use stricter verification before marking an attribute as constant: 
+   - instance variables are never marked as constant
+   - a variable that has several definitions will not be marked as constant
+   - a variable declaration under any kind of control flow block will not be marked as constant
 * Do not trigger warnings when pydoctor cannot make sense of a potential constant attribute 
   (pydoctor is not a static checker).
 * Fix presentation of type aliases in string form.
