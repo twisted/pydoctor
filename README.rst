@@ -82,6 +82,7 @@ in development
   scope when possible, when impossible, the theoretical runtime scopes are used. A warning can
   be reported when an annotation name is ambiguous (can be resolved to different names 
   depending on the scope context) with option ``-v``.
+* Ensure that explicit annotation are honored when there are multiple declarations of the same name.
 * Use stricter verification before marking an attribute as constant: 
    - instance variables are never marked as constant
    - a variable that has several definitions will not be marked as constant
