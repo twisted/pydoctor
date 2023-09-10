@@ -123,6 +123,32 @@ Such new packages shouldn't get vendored. They need to be packaged in
 Debian. Best is to get in contact with the DPT to talk about about new
 requirements and the best way to get things done.
 
+Profiling pydoctor with austin and speedscope
+---------------------------------------------
+
+1. Install austin (https://github.com/P403n1x87/austin)
+2. Install austin-python (https://pypi.org/project/austin-python/)
+3. Run program under austin 
+
+   .. code::
+
+      $ sudo austin -i 1ms -C -o pydoctor.austin pydoctor <pydoctor args>
+
+4. Convert .austin to .speedscope (austin2speedscope comes from austin-python)
+
+   .. code::
+  
+    $ austin2speedscope pydoctor.austin pydoctor.speedscope
+
+
+5. Open https://speedscope.app and load pydoctor.speedscope into it.
+
+Note on sampling interval
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+On our large repo I turn down the sampling interval from 100us to 1ms to make 
+the resulting ``.speedscope`` file a manageable size (15MB instead of 158MB which is too large to put into a gist.)
+
 Author Design Notes
 -------------------
 

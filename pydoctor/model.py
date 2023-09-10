@@ -538,7 +538,7 @@ def is_exception(cls: 'Class') -> bool:
             return True
     return False
 
-def compute_mro(cls:'Class') -> List[Union['Class', str]]:
+def compute_mro(cls:'Class') -> Sequence[Union['Class', str]]:
     """
     Compute the method resolution order for this class.
     This function will also set the 
@@ -621,7 +621,7 @@ class Class(CanContainImportsDocumentable):
     # set in post-processing:
     _finalbaseobjects: Optional[List[Optional['Class']]] = None 
     _finalbases: Optional[List[str]] = None
-    _mro: Optional[List[Union['Class', str]]] = None
+    _mro: Optional[Sequence[Union['Class', str]]] = None
 
     def setup(self) -> None:
         super().setup()
@@ -686,10 +686,10 @@ class Class(CanContainImportsDocumentable):
         epydoc2stan.populate_constructors_extra_info(self)
 
     @overload
-    def mro(self, include_external:'Literal[True]', include_self:bool=True) -> List[Union['Class', str]]:...
+    def mro(self, include_external:'Literal[True]', include_self:bool=True) -> Sequence[Union['Class', str]]:...
     @overload
-    def mro(self, include_external:'Literal[False]'=False, include_self:bool=True) -> List['Class']:...
-    def mro(self, include_external:bool=False, include_self:bool=True) -> List[Union['Class', str]]: # type:ignore[misc]
+    def mro(self, include_external:'Literal[False]'=False, include_self:bool=True) -> Sequence['Class']:...
+    def mro(self, include_external:bool=False, include_self:bool=True) -> Sequence[Union['Class', str]]:
         """
         Get the method resution order of this class. 
 
@@ -698,8 +698,7 @@ class Class(CanContainImportsDocumentable):
         """
         if self._mro is None:
             return list(self.allbases(include_self))
-        
-        _mro: List[Union[str, Class]]
+        _mro: Sequence[Union[str, Class]]
         if include_external is False:
             _mro = [o for o in self._mro if not isinstance(o, str)]
         else:
@@ -1374,8 +1373,11 @@ class System:
         for k, v in thing.__dict__.items():
             if (isinstance(v, func_types)
                     # In PyPy 7.3.1, functions from extensions are not
-                    # instances of the abstract types in func_types
-                    or (hasattr(v, "__class__") and v.__class__.__name__ == 'builtin_function_or_method')):
+                    # instances of the abstract types in func_types, it will have the type 'builtin_function_or_method'.
+                    # Additionnaly cython3 produces function of type 'cython_function_or_method', 
+                    # so se use a heuristic on the class name as a fall back detection.
+                    or (hasattr(v, "__class__") and 
+                        v.__class__.__name__.endswith('function_or_method'))):
                 f = self.Function(self, k, parent)
                 f.parentMod = parentMod
                 f.docstring = v.__doc__
