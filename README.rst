@@ -73,8 +73,13 @@ You can select a different format using the ``--docformat`` option or the ``__do
 What's New?
 ~~~~~~~~~~~
 
-in development
-^^^^^^^^^^^^^^
+.. in development
+.. ^^^^^^^^^^^^^^
+
+pydoctor 23.9.0
+^^^^^^^^^^^^^^^
+
+This is the last major release to support Python 3.6.
 
 * Do not show `**kwargs` when keywords are specifically documented with the `keyword` field
   and no specific documentation is given for the `**kwargs` entry.
