@@ -95,6 +95,7 @@ in development
 * Add highlighting when clicking on "View In Hierarchy" link from class page.
 * Recognize variadic generics type variables (PEP 646).
 * Fix support for introspection of cython3 generated modules.
+* Instance variables are marked as such across subclasses.
 
 pydoctor 23.4.1
 ^^^^^^^^^^^^^^^
