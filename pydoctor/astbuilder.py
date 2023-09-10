@@ -174,6 +174,17 @@ class ModuleVistor(NodeVisitor):
         self.system = builder.system
         self.module = module
 
+    def _infer_attr_annotations(self, scope: 'model.Module | model.Class') -> None:
+        # Infer annotation when leaving scope so explicit
+        # annotations take precedence.
+        for attrib in scope.contents.values():
+            if not isinstance(attrib, model.Attribute):
+                continue
+            # If this attribute has not explicit annotation, 
+            # infer its type from it's ast expression.
+            if attrib.annotation is None and attrib.value is not None:
+                # do not override explicit annotation
+                attrib.annotation = infer_type(attrib.value)
 
     def visit_If(self, node: ast.If) -> None:
         if isinstance(node.test, ast.Compare):
@@ -193,6 +204,7 @@ class ModuleVistor(NodeVisitor):
             epydoc2stan.extract_fields(self.module)
 
     def depart_Module(self, node: ast.Module) -> None:
+        self._infer_attr_annotations(self.builder.current)
         self.builder.pop(self.module)
 
     def visit_ClassDef(self, node: ast.ClassDef) -> None:
@@ -276,6 +288,7 @@ class ModuleVistor(NodeVisitor):
 
 
     def depart_ClassDef(self, node: ast.ClassDef) -> None:
+        self._infer_attr_annotations(self.builder.current)
         self.builder.popClass()
 
 

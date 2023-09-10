@@ -1451,15 +1451,6 @@ class System:
             # Checking whether the class is an exception
             if is_exception(cls):
                 cls.kind = DocumentableKind.EXCEPTION
-        
-        # Infer annotation in post-processing so
-        # to explicit annotation take precedence.
-        for attrib in self.objectsOfType(Attribute):
-            # If this attribute has not explicit annotation, 
-            # infer its type from it's ast expression.
-            if attrib.annotation is None and attrib.value is not None:
-                # do not override explicit annotation
-                attrib.annotation = astutils.infer_type(attrib.value)
 
         for post_processor in self._post_processors:
             post_processor(self)
