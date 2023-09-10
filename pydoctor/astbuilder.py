@@ -174,7 +174,7 @@ class ModuleVistor(NodeVisitor):
         self.system = builder.system
         self.module = module
 
-    def _infer_attr_annotations(self, scope: 'model.Module | model.Class') -> None:
+    def _infer_attr_annotations(self, scope: model.Documentable) -> None:
         # Infer annotation when leaving scope so explicit
         # annotations take precedence.
         for attrib in scope.contents.values():
