@@ -849,20 +849,6 @@ class Attribute(Inheritable):
     None value means the value is not initialized at the current point of the the process. 
     """
 
-    def _inherits_instance_variable_kind(self) -> None:
-        """
-        If any of the inherited members of a class variable is an instance variable,
-        then the subclass' class variable become an instance variable as well.
-        """
-        if self.kind is not DocumentableKind.CLASS_VARIABLE:
-            return
-        docsources = self.docsources()
-        next(docsources)
-        for inherited in docsources:
-            if inherited.kind is DocumentableKind.INSTANCE_VARIABLE:
-                self.kind = DocumentableKind.INSTANCE_VARIABLE
-                break
-
 # Work around the attributes of the same name within the System class.
 _ModuleT = Module
 _PackageT = Package
@@ -1469,7 +1455,7 @@ class System:
                 cls.kind = DocumentableKind.EXCEPTION
 
         for attrib in self.objectsOfType(Attribute):
-            attrib._inherits_instance_variable_kind()
+            _inherits_instance_variable_kind(attrib)
 
         for post_processor in self._post_processors:
             post_processor(self)
@@ -1481,6 +1467,20 @@ class System:
         """
         for url in self.options.intersphinx:
             self.intersphinx.update(cache, url)
+
+def _inherits_instance_variable_kind(attr: Attribute) -> None:
+    """
+    If any of the inherited members of a class variable is an instance variable,
+    then the subclass' class variable become an instance variable as well.
+    """
+    if attr.kind is not DocumentableKind.CLASS_VARIABLE:
+        return
+    docsources = attr.docsources()
+    next(docsources)
+    for inherited in docsources:
+        if inherited.kind is DocumentableKind.INSTANCE_VARIABLE:
+            attr.kind = DocumentableKind.INSTANCE_VARIABLE
+            break
 
 def get_docstring(
         obj: Documentable
