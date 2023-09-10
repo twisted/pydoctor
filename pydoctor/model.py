@@ -1271,8 +1271,11 @@ class System:
         for k, v in thing.__dict__.items():
             if (isinstance(v, func_types)
                     # In PyPy 7.3.1, functions from extensions are not
-                    # instances of the abstract types in func_types
-                    or (hasattr(v, "__class__") and v.__class__.__name__ == 'builtin_function_or_method')):
+                    # instances of the abstract types in func_types, it will have the type 'builtin_function_or_method'.
+                    # Additionnaly cython3 produces function of type 'cython_function_or_method', 
+                    # so se use a heuristic on the class name as a fall back detection.
+                    or (hasattr(v, "__class__") and 
+                        v.__class__.__name__.endswith('function_or_method'))):
                 f = self.Function(self, k, parent)
                 f.parentMod = parentMod
                 f.docstring = v.__doc__
