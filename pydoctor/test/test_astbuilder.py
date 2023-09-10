@@ -2422,6 +2422,76 @@ def test_default_constructors(systemcls: Type[model.System]) -> None:
     assert getConstructorsText(mod.contents['Animal']) == "Animal()"
 
 @systemcls_param
+def test_class_var_override(systemcls: Type[model.System]) -> None:
+
+    src = '''\
+    from number import Number
+    class Thing(object):
+        def __init__(self):
+            self.var: Number = 1
+    class Stuff(Thing):
+        var:float
+        '''
+
+    mod = fromText(src, systemcls=systemcls, modname='mod')
+    var = mod.system.allobjects['mod.Stuff.var']
+    assert var.kind == model.DocumentableKind.INSTANCE_VARIABLE
+
+@systemcls_param
+def test_class_var_override_traverse_subclasses(systemcls: Type[model.System]) -> None:
+
+    src = '''\
+    from number import Number
+    class Thing(object):
+        def __init__(self):
+            self.var: Number = 1
+    class _Stuff(Thing):
+        ...
+    class Stuff(_Stuff):
+        var:float
+        '''
+
+    mod = fromText(src, systemcls=systemcls, modname='mod')
+    var = mod.system.allobjects['mod.Stuff.var']
+    assert var.kind == model.DocumentableKind.INSTANCE_VARIABLE
+
+    src = '''\
+    from number import Number
+    class Thing(object):
+        def __init__(self):
+            self.var: Optional[Number] = 0
+    class _Stuff(Thing):
+        var = None
+    class Stuff(_Stuff):
+        var: float
+        '''
+
+    mod = fromText(src, systemcls=systemcls, modname='mod')
+    var = mod.system.allobjects['mod._Stuff.var']
+    assert var.kind == model.DocumentableKind.INSTANCE_VARIABLE
+    
+    mod = fromText(src, systemcls=systemcls, modname='mod')
+    var = mod.system.allobjects['mod.Stuff.var']
+    assert var.kind == model.DocumentableKind.INSTANCE_VARIABLE
+
+def test_class_var_override_attrs() -> None:
+
+    systemcls = AttrsSystem
+
+    src = '''\
+    import attr
+    @attr.s
+    class Thing(object):
+        var = attr.ib()
+    class Stuff(Thing):
+        var: float
+        '''
+
+    mod = fromText(src, systemcls=systemcls, modname='mod')
+    var = mod.system.allobjects['mod.Stuff.var']
+    assert var.kind == model.DocumentableKind.INSTANCE_VARIABLE
+
+@systemcls_param
 def test_explicit_annotation_wins_over_inferred_type(systemcls: Type[model.System]) -> None:
     """
     Explicit annotations are the preffered way of presenting the type of an attribute.
