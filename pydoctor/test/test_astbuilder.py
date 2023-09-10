@@ -1829,9 +1829,9 @@ def test_all_caps_variable_in_instance_is_not_a_constant(systemcls: Type[model.S
     assert not captured
 
 @systemcls_param
-def test_constant_override_in_instace_warns(systemcls: Type[model.System], capsys: CapSys) -> None:
+def test_constant_override_in_instace(systemcls: Type[model.System], capsys: CapSys) -> None:
     """
-    It warns when a constant is beeing re defined in instance. But it ignores it's value. 
+    When an instance variable overrides a CONSTANT, it's flagged as INSTANCE_VARIABLE and no warning is raised.
     """
     mod = fromText('''
     class Clazz:
@@ -1842,18 +1842,13 @@ def test_constant_override_in_instace_warns(systemcls: Type[model.System], capsy
     ''', systemcls=systemcls, modname="mod")
     attr = mod.resolveName('Clazz.LANG')
     assert isinstance(attr, model.Attribute)
-    assert attr.kind == model.DocumentableKind.CONSTANT
-    assert attr.value is not None
-    assert ast.literal_eval(attr.value) == 'EN'
-
-    captured = capsys.readouterr().out
-    assert "mod:6: Assignment to constant \"LANG\" inside an instance is ignored, this value will not be part of the docs.\n" == captured
+    assert attr.kind == model.DocumentableKind.INSTANCE_VARIABLE
+    assert not capsys.readouterr().out
 
 @systemcls_param
-def test_constant_override_in_instace_warns2(systemcls: Type[model.System], capsys: CapSys) -> None:
+def test_constant_override_in_instace_bis(systemcls: Type[model.System], capsys: CapSys) -> None:
     """
-    It warns when a constant is beeing re defined in instance. But it ignores it's value. 
-    Even if the actual constant definition is detected after the instance variable of the same name.
+    When an instance variable overrides a CONSTANT, it's flagged as INSTANCE_VARIABLE and no warning is raised.
     """
     mod = fromText('''
     class Clazz:
@@ -1864,15 +1859,13 @@ def test_constant_override_in_instace_warns2(systemcls: Type[model.System], caps
     ''', systemcls=systemcls, modname="mod")
     attr = mod.resolveName('Clazz.LANG')
     assert isinstance(attr, model.Attribute)
-    assert attr.kind == model.DocumentableKind.CONSTANT
+    assert attr.kind == model.DocumentableKind.INSTANCE_VARIABLE
     assert attr.value is not None
     assert ast.literal_eval(attr.value) == 'EN'
-
-    captured = capsys.readouterr().out
-    assert "mod:5: Assignment to constant \"LANG\" inside an instance is ignored, this value will not be part of the docs.\n" == captured
+    assert not capsys.readouterr().out
 
 @systemcls_param
-def test_constant_override_in_module_warns(systemcls: Type[model.System], capsys: CapSys) -> None:
+def test_constant_override_in_module(systemcls: Type[model.System], capsys: CapSys) -> None:
 
     mod = fromText('''
     """Mod."""
@@ -1883,12 +1876,10 @@ def test_constant_override_in_module_warns(systemcls: Type[model.System], capsys
     ''', systemcls=systemcls, modname="mod")
     attr = mod.resolveName('IS_64BITS')
     assert isinstance(attr, model.Attribute)
-    assert attr.kind == model.DocumentableKind.CONSTANT
+    assert attr.kind == model.DocumentableKind.VARIABLE
     assert attr.value is not None
     assert ast.literal_eval(attr.value) == True
-
-    captured = capsys.readouterr().out
-    assert "mod:6: Assignment to constant \"IS_64BITS\" overrides previous assignment at line 4, the original value will not be part of the docs.\n" == captured
+    assert not capsys.readouterr().out
 
 @systemcls_param
 def test_constant_override_do_not_warns_when_defined_in_class_docstring(systemcls: Type[model.System], capsys: CapSys) -> None:
@@ -1926,6 +1917,39 @@ def test_constant_override_do_not_warns_when_defined_in_module_docstring(systemc
     assert ast.literal_eval(attr.value) == 99
     captured = capsys.readouterr().out
     assert not captured
+
+@systemcls_param
+def test_not_a_constant_module(systemcls: Type[model.System], capsys:CapSys) -> None:
+    """
+    If the constant assignment has any kind of constraint or there are multiple assignments in the scope, 
+    then it's not flagged as a constant.
+    """
+    mod = fromText('''
+    while False:
+        LANG = 'FR'
+    if True:
+        THING = 'EN'
+    OTHER = 1
+    OTHER += 1
+    E: typing.Final = 2
+    E = 4
+    LIST = [2.14]
+    LIST.insert(0,0)
+    ''', systemcls=systemcls)
+    assert mod.contents['LANG'].kind is model.DocumentableKind.VARIABLE
+    assert mod.contents['THING'].kind is model.DocumentableKind.VARIABLE
+    assert mod.contents['OTHER'].kind is model.DocumentableKind.VARIABLE
+    assert mod.contents['E'].kind is model.DocumentableKind.VARIABLE
+
+    # all-caps mutables variables are flagged as constant: this is a trade-off
+    # in between our weeknesses in terms static analysis (that is we don't recognized list modifications) 
+    # and our will to do the right thing and display constant values.
+    # This issue could be overcome by showing the value of variables with only one assigment no matter
+    # their kind and restrict the checks to immutable types for a attribute to be flagged as constant.
+    assert mod.contents['LIST'].kind is model.DocumentableKind.CONSTANT
+
+    # we could warn when a constant is beeing overriden, but we don't: pydoctor is not a checker.
+    assert not capsys.readouterr().out 
 
 @systemcls_param
 def test__name__equals__main__is_skipped(systemcls: Type[model.System]) -> None:
@@ -2500,6 +2524,115 @@ def test_inherited_type_is_not_propagated_to_subclasses(systemcls: Type[model.Sy
     assert epydoc2stan.type2stan(thing) is None
 
 @systemcls_param
+def test_augmented_assignment(systemcls: Type[model.System]) -> None:
+    mod = fromText('''
+    var = 1
+    var += 3
+    ''', systemcls=systemcls)
+    attr = mod.contents['var']
+    assert isinstance(attr, model.Attribute)
+    assert attr.value
+    assert astor.to_source(attr.value).strip() == '(1 + 3)'
+
+@systemcls_param
+def test_augmented_assignment_in_class(systemcls: Type[model.System]) -> None:
+    mod = fromText('''
+    class c:
+        var = 1
+        var += 3
+    ''', systemcls=systemcls)
+    attr = mod.contents['c'].contents['var']
+    assert isinstance(attr, model.Attribute)
+    assert attr.value
+    assert astor.to_source(attr.value).strip() == '(1 + 3)'
+
+
+@systemcls_param
+def test_augmented_assignment_conditionnal_else_ignored(systemcls: Type[model.System]) -> None:
+    """
+    The If.body branch is the only one in use.
+    """
+    mod = fromText('''
+    var = 1
+    if something():
+        var += 3
+    else:
+        var += 4
+    ''', systemcls=systemcls)
+    attr = mod.contents['var']
+    assert isinstance(attr, model.Attribute)
+    assert attr.value
+    assert astor.to_source(attr.value).strip() == '(1 + 3)'
+
+@systemcls_param
+def test_augmented_assignment_conditionnal_multiple_assignments(systemcls: Type[model.System]) -> None:
+    """
+    The If.body branch is the only one in use, but several Ifs which have  
+    theoritical exclusive conditions might be wrongly interpreted.
+    """
+    mod = fromText('''
+    var = 1
+    if something():
+        var += 3
+    if not_something():
+        var += 4
+    ''', systemcls=systemcls)
+    attr = mod.contents['var']
+    assert isinstance(attr, model.Attribute)
+    assert attr.value
+    assert astor.to_source(attr.value).strip() == '(1 + 3 + 4)'
+
+@systemcls_param
+def test_augmented_assignment_instance_var(systemcls: Type[model.System]) -> None:
+    """
+    Augmented assignments in instance var are not analyzed.
+    """
+    mod = fromText('''
+    class c:
+        def __init__(self, var):
+            self.var = 1
+            self.var += var
+        ''')
+    attr = mod.contents['c'].contents['var']
+    assert isinstance(attr, model.Attribute)
+    assert attr.value
+    assert astor.to_source(attr.value).strip() == '(1)'
+
+@systemcls_param
+def test_augmented_assignment_not_suitable_for_inline_docstring(systemcls: Type[model.System]) -> None:
+    """
+    Augmented assignments cannot have docstring attached.
+    """
+    mod = fromText('''
+    var = 1
+    var += 1
+    """
+    this is not a docstring
+    """
+    class c:
+        var = 1
+        var += 1
+        """
+        this is not a docstring
+        """
+        ''')
+    attr = mod.contents['var']
+    assert not attr.docstring
+    attr = mod.contents['c'].contents['var']
+    assert not attr.docstring
+
+@systemcls_param
+def test_augmented_assignment_alone_is_not_documented(systemcls: Type[model.System]) -> None:
+    mod = fromText('''
+    var += 1
+    class c:
+        var += 1
+        ''')
+
+    assert 'var' not in mod.contents
+    assert 'var' not in mod.contents['c'].contents
+
+@systemcls_param
 def test_typealias_unstring(systemcls: Type[model.System]) -> None:
     """
     The type aliases are unstringed by the astbuilder
@@ -2517,4 +2650,3 @@ def test_typealias_unstring(systemcls: Type[model.System]) -> None:
         # there is not Constant nodes in the type alias anymore
         next(n for n in ast.walk(typealias.value) if isinstance(n, ast.Constant))
 
-        
