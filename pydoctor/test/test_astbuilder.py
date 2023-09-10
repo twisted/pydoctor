@@ -2492,6 +2492,108 @@ def test_class_var_override_attrs() -> None:
     assert var.kind == model.DocumentableKind.INSTANCE_VARIABLE
 
 @systemcls_param
+def test_explicit_annotation_wins_over_inferred_type(systemcls: Type[model.System]) -> None:
+    """
+    Explicit annotations are the preffered way of presenting the type of an attribute.
+    """
+    src = '''\
+    class Stuff(object):
+        thing: List[Tuple[Thing, ...]]
+        def __init__(self):
+            self.thing = []
+        '''
+    mod = fromText(src, systemcls=systemcls, modname='mod')
+    thing = mod.system.allobjects['mod.Stuff.thing']
+    assert flatten_text(epydoc2stan.type2stan(thing)) == "List[Tuple[Thing, ...]]" #type:ignore
+
+    src = '''\
+    class Stuff(object):
+        thing = []
+        def __init__(self):
+            self.thing: List[Tuple[Thing, ...]] = []
+        '''
+    mod = fromText(src, systemcls=systemcls, modname='mod')
+    thing = mod.system.allobjects['mod.Stuff.thing']
+    assert flatten_text(epydoc2stan.type2stan(thing)) == "List[Tuple[Thing, ...]]" #type:ignore
+
+@systemcls_param
+def test_explicit_inherited_annotation_looses_over_inferred_type(systemcls: Type[model.System]) -> None:
+    """
+    Annotation are of inherited.
+    """
+    src = '''\
+    class _Stuff(object):
+        thing: List[Tuple[Thing, ...]]
+    class Stuff(_Stuff):
+        def __init__(self):
+            self.thing = []
+        '''
+    mod = fromText(src, systemcls=systemcls, modname='mod')
+    thing = mod.system.allobjects['mod.Stuff.thing']
+    assert flatten_text(epydoc2stan.type2stan(thing)) == "list" #type:ignore
+
+@systemcls_param
+def test_inferred_type_override(systemcls: Type[model.System]) -> None:
+    """
+    The last visited value will be used to infer the type annotation
+    of an unnanotated attribute.
+    """
+    src = '''\
+    class Stuff(object):
+        thing = 1
+        def __init__(self):
+            self.thing = (1,2)
+        '''
+    mod = fromText(src, systemcls=systemcls, modname='mod')
+    thing = mod.system.allobjects['mod.Stuff.thing']
+    assert flatten_text(epydoc2stan.type2stan(thing)) == "tuple[int, ...]" #type:ignore
+
+@systemcls_param
+def test_inferred_type_is_not_propagated_to_subclasses(systemcls: Type[model.System]) -> None:
+    """
+    Inferred type annotation should not be propagated to subclasses.
+    """
+    src = '''\
+    class _Stuff(object):
+        def __init__(self):
+            self.thing = []
+    class Stuff(_Stuff):
+        def __init__(self, thing):
+            self.thing = thing
+        '''
+    mod = fromText(src, systemcls=systemcls, modname='mod')
+    thing = mod.system.allobjects['mod.Stuff.thing']
+    assert epydoc2stan.type2stan(thing) is None
+
+
+@systemcls_param
+def test_inherited_type_is_not_propagated_to_subclasses(systemcls: Type[model.System]) -> None:
+    """
+    We can't repliably propage the annotations from one class to it's subclass because of 
+    issue https://github.com/twisted/pydoctor/issues/295.
+    """
+    src1 = '''\
+    class _s:...
+    class _Stuff(object):
+        def __init__(self):
+            self.thing:_s = []
+    '''
+    src2 = '''\
+    from base import _Stuff, _s
+    class Stuff(_Stuff):
+        def __init__(self, thing):
+            self.thing = thing
+    __all__=['Stuff', '_s']
+        '''
+    system = systemcls()
+    builder = system.systemBuilder(system)
+    builder.addModuleString(src1, 'base')
+    builder.addModuleString(src2, 'mod')
+    builder.buildModules()
+    thing = system.allobjects['mod.Stuff.thing']
+    assert epydoc2stan.type2stan(thing) is None
+
+@systemcls_param
 def test_augmented_assignment(systemcls: Type[model.System]) -> None:
     mod = fromText('''
     var = 1
@@ -2599,7 +2701,6 @@ def test_augmented_assignment_alone_is_not_documented(systemcls: Type[model.Syst
 
     assert 'var' not in mod.contents
     assert 'var' not in mod.contents['c'].contents
-
 
 @systemcls_param
 def test_typealias_unstring(systemcls: Type[model.System]) -> None:

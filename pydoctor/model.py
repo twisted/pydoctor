@@ -840,7 +840,7 @@ class FunctionOverload:
 
 class Attribute(Inheritable):
     kind: Optional[DocumentableKind] = DocumentableKind.ATTRIBUTE
-    annotation: Optional[ast.expr]
+    annotation: Optional[ast.expr] = None
     decorators: Optional[Sequence[ast.expr]] = None
     value: Optional[ast.expr] = None
     """
@@ -1436,21 +1436,19 @@ class System:
         without the risk of drawing incorrect conclusions because modules
         were not fully processed yet.
         """
-
-        # default post-processing includes:
-        # - Processing of subclasses
-        # - MRO computing.
-        # - Lookup of constructors
-        # - Checking whether the class is an exception
         for cls in self.objectsOfType(Class):
             
+            # Initiate the MROs
             cls._init_mro()
+            # Lookup of constructors
             cls._init_constructors()
             
+            # Compute subclasses
             for b in cls.baseobjects:
                 if b is not None:
                     b.subclasses.append(cls)
             
+            # Checking whether the class is an exception
             if is_exception(cls):
                 cls.kind = DocumentableKind.EXCEPTION
 
