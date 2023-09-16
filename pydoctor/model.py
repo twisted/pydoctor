@@ -840,7 +840,7 @@ class FunctionOverload:
 
 class Attribute(Inheritable):
     kind: Optional[DocumentableKind] = DocumentableKind.ATTRIBUTE
-    annotation: Optional[ast.expr]
+    annotation: Optional[ast.expr] = None
     decorators: Optional[Sequence[ast.expr]] = None
     value: Optional[ast.expr] = None
     """
@@ -1448,22 +1448,37 @@ class System:
             self.intersphinx.update(cache, url)
 
 def defaultPostProcess(system:'System') -> None:
-    # default post-processing includes:
-    # - Processing of subclasses
-    # - MRO computing.
-    # - Lookup of constructors
-    # - Checking whether the class is an exception
-    for cls in system.objectsOfType(Class):
-        
+    for cls in self.objectsOfType(Class):
+        # Initiate the MROs
         cls._init_mro()
+        # Lookup of constructors
         cls._init_constructors()
-        
+
+        # Compute subclasses
         for b in cls.baseobjects:
             if b is not None:
                 b.subclasses.append(cls)
-        
+
+        # Checking whether the class is an exception
         if is_exception(cls):
             cls.kind = DocumentableKind.EXCEPTION
+            
+    for attrib in self.objectsOfType(Attribute):
+       _inherits_instance_variable_kind(attrib)
+
+def _inherits_instance_variable_kind(attr: Attribute) -> None:
+    """
+    If any of the inherited members of a class variable is an instance variable,
+    then the subclass' class variable become an instance variable as well.
+    """
+    if attr.kind is not DocumentableKind.CLASS_VARIABLE:
+        return
+    docsources = attr.docsources()
+    next(docsources)
+    for inherited in docsources:
+        if inherited.kind is DocumentableKind.INSTANCE_VARIABLE:
+            attr.kind = DocumentableKind.INSTANCE_VARIABLE
+            break
 
 def get_docstring(
         obj: Documentable

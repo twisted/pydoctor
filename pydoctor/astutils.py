@@ -6,7 +6,7 @@ import inspect
 import platform
 import sys
 from numbers import Number
-from typing import Iterator, Optional, List, Iterable, Sequence, TYPE_CHECKING, Tuple, Union
+from typing import Iterator, Optional, List, Iterable, Sequence, TYPE_CHECKING, Tuple, Union, cast
 from inspect import BoundArguments, Signature
 import ast
 
@@ -403,3 +403,84 @@ def extract_docstring(node: ast.Str) -> Tuple[int, str]:
     """
     lineno = extract_docstring_linenum(node)
     return lineno, inspect.cleandoc(node.s)
+
+
+def infer_type(expr: ast.expr) -> Optional[ast.expr]:
+    """Infer a literal expression's type.
+    @param expr: The expression's AST.
+    @return: A type annotation, or None if the expression has no obvious type.
+    """
+    try:
+        value: object = ast.literal_eval(expr)
+    except (ValueError, TypeError):
+        return None
+    else:
+        ann = _annotation_for_value(value)
+        if ann is None:
+            return None
+        else:
+            return ast.fix_missing_locations(ast.copy_location(ann, expr))
+
+def _annotation_for_value(value: object) -> Optional[ast.expr]:
+    if value is None:
+        return None
+    name = type(value).__name__
+    if isinstance(value, (dict, list, set, tuple)):
+        ann_elem = _annotation_for_elements(value)
+        if isinstance(value, dict):
+            ann_value = _annotation_for_elements(value.values())
+            if ann_value is None:
+                ann_elem = None
+            elif ann_elem is not None:
+                ann_elem = ast.Tuple(elts=[ann_elem, ann_value])
+        if ann_elem is not None:
+            if name == 'tuple':
+                ann_elem = ast.Tuple(elts=[ann_elem, ast.Ellipsis()])
+            return ast.Subscript(value=ast.Name(id=name),
+                                 slice=ast.Index(value=ann_elem))
+    return ast.Name(id=name)
+
+def _annotation_for_elements(sequence: Iterable[object]) -> Optional[ast.expr]:
+    names = set()
+    for elem in sequence:
+        ann = _annotation_for_value(elem)
+        if isinstance(ann, ast.Name):
+            names.add(ann.id)
+        else:
+            # Nested sequences are too complex.
+            return None
+    if len(names) == 1:
+        name = names.pop()
+        return ast.Name(id=name)
+    else:
+        # Empty sequence or no uniform type.
+        return None
+
+      
+class Parentage(ast.NodeTransformer):
+    """
+    Add C{parent} attribute to ast nodes instances.
+    """
+    # stolen from https://stackoverflow.com/a/68845448
+    parent: Optional[ast.AST] = None
+
+    def visit(self, node: ast.AST) -> ast.AST:
+        setattr(node, 'parent', self.parent)
+        self.parent = node
+        node = super().visit(node)
+        if isinstance(node, ast.AST):
+            self.parent = getattr(node, 'parent')
+        return node
+
+def get_parents(node:ast.AST) -> Iterator[ast.AST]:
+    """
+    Once nodes have the C{.parent} attribute with {Parentage}, use this function
+    to get a iterator on all parents of the given node up to the root module.
+    """
+    def _yield_parents(n:Optional[ast.AST]) -> Iterator[ast.AST]:
+        if n:
+            yield n
+            p = cast(ast.AST, getattr(n, 'parent', None))
+            yield from _yield_parents(p)
+    yield from _yield_parents(getattr(node, 'parent', None))
+
