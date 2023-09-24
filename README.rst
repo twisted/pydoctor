@@ -76,6 +76,10 @@ What's New?
 in development
 ^^^^^^^^^^^^^^
 
+This is the last major release to support Python 3.7.
+
+* Drop support for Python 3.6
+
 pydoctor 23.9.0
 ^^^^^^^^^^^^^^^
 
