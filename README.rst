@@ -76,6 +76,11 @@ What's New?
 in development
 ^^^^^^^^^^^^^^
 
+pydoctor 23.9.0
+^^^^^^^^^^^^^^^
+
+This is the last major release to support Python 3.6.
+
 * Do not show `**kwargs` when keywords are specifically documented with the `keyword` field
   and no specific documentation is given for the `**kwargs` entry.
 * Fix annotation resolution edge cases: names are resolved in the context of the module 
