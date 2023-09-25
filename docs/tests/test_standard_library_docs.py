@@ -23,4 +23,11 @@ def test_std_lib_docs() -> None:
         elif entry.is_dir() and entry.joinpath('__init__.py').exists(): # Package
             assert BASE_DIR.joinpath('Lib.'+entry.name+'.html').exists()
 
+def test_std_lib_logs() -> None:
+    """
+    'Cannot parse file' do not appear too much.
+    This test expect a run.log file in cpython-output directory
+    """
+    log = (BASE_DIR / 'run.log').read_text()
+    assert log.count('Cannot parse file') == 4
     
