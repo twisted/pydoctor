@@ -18,7 +18,7 @@ from pydoctor import epydoc2stan, model, node2stan, extensions, linker
 from pydoctor.epydoc.markup._pyval_repr import colorize_inline_pyval
 from pydoctor.astutils import (is_none_literal, is_typing_annotation, is_using_annotations, is_using_typing_final, node2dottedname, node2fullname, 
                                is__name__equals__main__, unstring_annotation, iterassign, extract_docstring_linenum, infer_type, get_parents,
-                               get_docstring_node, get_str_value, NodeVisitor, Parentage)
+                               get_docstring_node, NodeVisitor, Parentage, Str)
 
 
 def parseFile(path: Path) -> ast.Module:
@@ -261,7 +261,7 @@ class ModuleVistor(NodeVisitor):
 
         doc_node = get_docstring_node(node)
         if doc_node is not None:
-            cls.setDocstring(node.body[0].value)
+            cls.setDocstring(doc_node)
             epydoc2stan.extract_fields(cls)
 
         if node.decorator_list:
@@ -776,7 +776,7 @@ class ModuleVistor(NodeVisitor):
 
     def visit_Expr(self, node: ast.Expr) -> None:
         value = node.value
-        if get_str_value(value) is not None:
+        if isinstance(value, Str):
             attr = self.builder.currentAttr
             if attr is not None:
                 attr.setDocstring(value)
@@ -941,7 +941,7 @@ class ModuleVistor(NodeVisitor):
 
     def _handlePropertyDef(self,
             node: Union[ast.AsyncFunctionDef, ast.FunctionDef],
-            doc_node: Optional[ast.Constant],
+            doc_node: Optional[Str],
             lineno: int
             ) -> model.Attribute:
 
