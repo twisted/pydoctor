@@ -29,5 +29,5 @@ def test_std_lib_logs() -> None:
     This test expect a run.log file in cpython-output directory
     """
     log = (BASE_DIR / 'run.log').read_text()
-    assert log.count('Cannot parse file') == 4
-    
+    assert log.count('cannot parse file') == 4
+
