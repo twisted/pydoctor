@@ -196,9 +196,9 @@ def is_using_annotations(expr: Optional[ast.AST],
 def is_none_literal(node: ast.expr) -> bool:
     """Does this AST node represent the literal constant None?"""
     if sys.version_info >= (3,8):
-        # TODO: remove me when python3.7 is not supported anymore
         return isinstance(node, ast.Constant) and node.value is None
     else:
+        # TODO: remove me when python3.7 is not supported anymore
         return isinstance(node, (ast.Constant, ast.NameConstant)) and node.value is None
     
 def unstring_annotation(node: ast.expr, ctx:'model.Documentable', section:str='annotation') -> ast.expr:
@@ -391,6 +391,7 @@ class _StrMeta(type):
                 return get_str_value(instance) is not None
             return False
     else:
+        # TODO: remove me when python3.7 is not supported
         def __instancecheck__(self, instance: object) -> bool:
             return isinstance(instance, ast.Str)
 
@@ -407,6 +408,7 @@ class Str(ast.expr, metaclass=_StrMeta):
     if sys.version_info >= (3,8):
         value: str
     else:
+        # TODO: remove me when python3.7 is not supported
         s: str
 
 def extract_docstring_linenum(node: Str) -> int:
