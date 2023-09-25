@@ -395,7 +395,7 @@ def extract_docstring_linenum(node: ast.Constant | ast.Str) -> int:
     return the line number of the first non-blank line.
     """
                           # TODO: remove me when python3.7 is not supported
-    doc = str(node.value) if isinstance(ast.Constant) else node.s
+    doc = str(node.value) if isinstance(node, ast.Constant) else node.s
     lineno = node.lineno
     if _string_lineno_is_end:
         # In older CPython versions, the AST only tells us the end line
