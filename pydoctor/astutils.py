@@ -384,7 +384,7 @@ _string_lineno_is_end = sys.version_info < (3,8) \
 line in the string, rather than the first line.
 """
 
-def extract_docstring_linenum(node: ast.Constant) -> int:
+def extract_docstring_linenum(node: ast.Constant | ast.Str) -> int:
     r"""
     In older CPython versions, the AST only tells us the end line
     number and we must approximate the start line number.
@@ -394,7 +394,8 @@ def extract_docstring_linenum(node: ast.Constant) -> int:
     Leading blank lines are stripped by cleandoc(), so we must
     return the line number of the first non-blank line.
     """
-    doc = str(node.value)
+                          # TODO: remove me when python3.7 is not supported
+    doc = str(node.value) if isinstance(ast.Constant) else node.s
     lineno = node.lineno
     if _string_lineno_is_end:
         # In older CPython versions, the AST only tells us the end line
@@ -413,7 +414,7 @@ def extract_docstring_linenum(node: ast.Constant) -> int:
     
     return lineno
 
-def extract_docstring(node: ast.Constant) -> Tuple[int, str]:
+def extract_docstring(node: ast.Constant | ast.Str) -> Tuple[int, str]:
     """
     Extract docstring information from an ast node that represents the docstring.
 
