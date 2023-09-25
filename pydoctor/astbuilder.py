@@ -1,4 +1,5 @@
 """Convert ASTs into L{pydoctor.model.Documentable} instances."""
+from __future__ import annotations
 
 import ast
 import sys

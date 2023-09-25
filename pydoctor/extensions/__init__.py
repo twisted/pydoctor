@@ -3,6 +3,8 @@ Pydoctor's extension system.
 
 An extension can be composed by mixin classes, AST builder visitor extensions and post processors.
 """
+from __future__ import annotations
+
 import importlib
 import sys
 from typing import Any, Callable, Dict, Iterable, Iterator, List, Type, Union, TYPE_CHECKING, cast

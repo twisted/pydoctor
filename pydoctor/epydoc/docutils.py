@@ -1,6 +1,8 @@
 """
 Collection of helper functions and classes related to the creation and processing of L{docutils} nodes.
 """
+from __future__ import annotations
+
 from typing import Iterable, Iterator, Optional
 
 import optparse

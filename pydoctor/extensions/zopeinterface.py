@@ -1,4 +1,5 @@
 """Support for Zope interfaces."""
+from __future__ import annotations
 
 from typing import Iterable, Iterator, List, Optional, Union
 import ast

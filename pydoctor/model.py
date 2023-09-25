@@ -5,6 +5,7 @@ The two core objects are L{Documentable} and L{System}.  Instances of
 system being documented.  An instance of L{System} represents the whole system
 being documented -- a System is a bad of Documentables, in some sense.
 """
+from __future__ import annotations
 
 import abc
 import ast

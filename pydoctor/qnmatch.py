@@ -9,6 +9,8 @@ Special patterns are::
     [seq]   matches any character in seq
     [!seq]  matches any char not in seq
 """
+from __future__ import annotations
+
 import functools
 import re
 from typing import Any, Callable

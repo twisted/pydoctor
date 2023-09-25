@@ -8,6 +8,7 @@ Forked from ``sphinx.ext.napoleon.iterators``.
     :copyright: Copyright 2007-2021 by the Sphinx team, see AUTHORS.
     :license: BSD, see LICENSE for details.
 """
+from __future__ import annotations
 
 import collections
 from typing import (

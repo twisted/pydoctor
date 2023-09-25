@@ -4,7 +4,6 @@
 # Author: Edward Loper <edloper@loper.org>
 # URL: <http://epydoc.sf.net>
 #
-
 """
 Syntax highlighter for Python values.  Currently provides special
 colorization support for:
@@ -32,6 +31,7 @@ C{__repr__}.
 B{Usage}: 
 >>> 
 """
+from __future__ import annotations
 
 __docformat__ = 'epytext en'
 
@@ -1053,4 +1053,3 @@ class PyvalColorizer:
                 else:
                     element = nodes.Text(segment)
                 state.result += [element, self.LINEWRAP]
-	

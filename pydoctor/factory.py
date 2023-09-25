@@ -1,6 +1,7 @@
 """
 Create customizable model classes. 
 """
+from __future__ import annotations
 
 from typing import Dict, List, Tuple, Type, Any, Union, Sequence, TYPE_CHECKING
 
