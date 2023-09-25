@@ -210,7 +210,7 @@ class ZopeInterfaceModuleVisitor(extensions.ModuleVisitorExt):
         if funcName == 'zope.interface.Attribute':
             attr.kind = model.DocumentableKind.ATTRIBUTE
             args = expr.args
-            if len(args) == 1 and isinstance(args[0], ast.Str):
+            if len(args) == 1 and astutils.get_str_value(args[0]) is not None:
                 attr.setDocstring(args[0])
             else:
                 attr.report(
@@ -232,7 +232,7 @@ class ZopeInterfaceModuleVisitor(extensions.ModuleVisitorExt):
 
             keywords = {arg.arg: arg.value for arg in expr.keywords}
             descrNode = keywords.get('description')
-            if isinstance(descrNode, ast.Str):
+            if astutils.get_str_value(descrNode) is not None:
                 attr.setDocstring(descrNode)
             elif descrNode is not None:
                 attr.report(

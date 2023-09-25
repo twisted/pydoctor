@@ -512,19 +512,29 @@ class PyvalColorizer:
 
     @staticmethod
     def _is_ast_constant(node: ast.AST) -> bool:
-        return isinstance(node, (ast.Num, ast.Str, ast.Bytes, 
-                                 ast.Constant, ast.NameConstant, ast.Ellipsis))
+        if sys.version_info[:2] >= (3, 8):
+            return isinstance(node, ast.Constant)
+        else:
+            # TODO: remove me when python3.7 is not supported anymore
+            return isinstance(node, (ast.Num, ast.Str, ast.Bytes, 
+                    ast.Constant, ast.NameConstant, ast.Ellipsis))
     @staticmethod
     def _get_ast_constant_val(node: ast.AST) -> Any:
         # Deprecated since version 3.8: Replaced by Constant
-        if isinstance(node, ast.Num): 
-            return(node.n)
-        if isinstance(node, (ast.Str, ast.Bytes)):
-           return(node.s)
-        if isinstance(node, (ast.Constant, ast.NameConstant)):
-            return(node.value)
-        if isinstance(node, ast.Ellipsis):
-            return(...)
+        if sys.version_info[:2] >= (3, 8):
+            if isinstance(node, ast.Constant):
+                return node.value
+        else:
+            # TODO: remove me when python3.7 is not supported anymore
+            if isinstance(node, ast.Num): 
+                return(node.n)
+            if isinstance(node, (ast.Str, ast.Bytes)):
+                return(node.s)
+            if isinstance(node, (ast.Constant, ast.NameConstant)):
+                return(node.value)
+            if isinstance(node, ast.Ellipsis):
+                return(...)
+        raise RuntimeError(f'expected a constant: {ast.dump(node)}')
         
     def _colorize_ast_constant(self, pyval: ast.AST, state: _ColorizerState) -> None:
         val = self._get_ast_constant_val(pyval)

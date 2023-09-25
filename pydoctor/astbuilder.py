@@ -16,8 +16,8 @@ import astor
 from pydoctor import epydoc2stan, model, node2stan, extensions, linker
 from pydoctor.epydoc.markup._pyval_repr import colorize_inline_pyval
 from pydoctor.astutils import (is_none_literal, is_typing_annotation, is_using_annotations, is_using_typing_final, node2dottedname, node2fullname, 
-                               is__name__equals__main__, unstring_annotation, iterassign, extract_docstring_linenum, infer_type, get_parents, 
-                               NodeVisitor, Parentage)
+                               is__name__equals__main__, unstring_annotation, iterassign, extract_docstring_linenum, infer_type, get_parents,
+                               get_docstring_node, get_str_value, NodeVisitor, Parentage)
 
 
 def parseFile(path: Path) -> ast.Module:
@@ -199,8 +199,9 @@ class ModuleVistor(NodeVisitor):
         Parentage().visit(node)
 
         self.builder.push(self.module, 0)
-        if len(node.body) > 0 and isinstance(node.body[0], ast.Expr) and isinstance(node.body[0].value, ast.Str):
-            self.module.setDocstring(node.body[0].value)
+        doc_node = get_docstring_node(node)
+        if doc_node is not None:
+            self.module.setDocstring(doc_node)
             epydoc2stan.extract_fields(self.module)
 
     def depart_Module(self, node: ast.Module) -> None:
@@ -257,7 +258,8 @@ class ModuleVistor(NodeVisitor):
         cls._initialbaseobjects = initialbaseobjects
         cls._initialbases = initialbases
 
-        if len(node.body) > 0 and isinstance(node.body[0], ast.Expr) and isinstance(node.body[0].value, ast.Str):
+        doc_node = get_docstring_node(node)
+        if doc_node is not None:
             cls.setDocstring(node.body[0].value)
             epydoc2stan.extract_fields(cls)
 
@@ -752,7 +754,7 @@ class ModuleVistor(NodeVisitor):
         if type_comment is None:
             annotation = None
         else:
-            annotation = unstring_annotation(ast.Str(type_comment, lineno=lineno), self.builder.current)
+            annotation = unstring_annotation(ast.Constant(type_comment, lineno=lineno), self.builder.current)
 
         for target in node.targets:
             if isinstance(target, ast.Tuple):
@@ -773,7 +775,7 @@ class ModuleVistor(NodeVisitor):
 
     def visit_Expr(self, node: ast.Expr) -> None:
         value = node.value
-        if isinstance(value, ast.Str):
+        if get_str_value(value) is not None:
             attr = self.builder.currentAttr
             if attr is not None:
                 attr.setDocstring(value)
@@ -803,11 +805,7 @@ class ModuleVistor(NodeVisitor):
             lineno = node.decorator_list[0].lineno
 
         # extracting docstring
-        docstring: Optional[ast.Str] = None
-        if len(node.body) > 0 and isinstance(node.body[0], ast.Expr) \
-                              and isinstance(node.body[0].value, ast.Str):
-            docstring = node.body[0].value
-
+        doc_node = get_docstring_node(node)
         func_name = node.name
 
         # determine the function's kind
@@ -840,7 +838,7 @@ class ModuleVistor(NodeVisitor):
 
         if is_property:
             # handle property and skip child nodes.
-            attr = self._handlePropertyDef(node, docstring, lineno)
+            attr = self._handlePropertyDef(node, doc_node, lineno)
             if is_classmethod:
                 attr.report(f'{attr.fullName()} is both property and classmethod')
             if is_staticmethod:
@@ -864,13 +862,13 @@ class ModuleVistor(NodeVisitor):
             func = self.builder.pushFunction(func_name, lineno)
 
         func.is_async = is_async
-        if docstring is not None:
+        if doc_node is not None:
             # Docstring not allowed on overload
             if is_overload_func:
-                docline = extract_docstring_linenum(docstring)
+                docline = extract_docstring_linenum(doc_node)
                 func.report(f'{func.fullName()} overload has docstring, unsupported', lineno_offset=docline-func.linenumber)
             else:
-                func.setDocstring(docstring)
+                func.setDocstring(doc_node)
         func.decorators = node.decorator_list
         if is_staticmethod:
             if is_classmethod:
@@ -942,7 +940,7 @@ class ModuleVistor(NodeVisitor):
 
     def _handlePropertyDef(self,
             node: Union[ast.AsyncFunctionDef, ast.FunctionDef],
-            docstring: Optional[ast.Str],
+            doc_node: Optional[ast.Constant],
             lineno: int
             ) -> model.Attribute:
 
@@ -951,8 +949,8 @@ class ModuleVistor(NodeVisitor):
                                          parent=self.builder.current)
         attr.setLineNumber(lineno)
 
-        if docstring is not None:
-            attr.setDocstring(docstring)
+        if doc_node is not None:
+            attr.setDocstring(doc_node)
             assert attr.docstring is not None
             pdoc = epydoc2stan.parse_docstring(attr, attr.docstring, attr)
             other_fields = []

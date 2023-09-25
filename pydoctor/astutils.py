@@ -137,6 +137,7 @@ if sys.version_info[:2] >= (3, 8):
         return isinstance(expr, ast.Constant) and expr.value == s
 else:
     # Before Python 3.8 "foo" was parsed as ast.Str.
+    # TODO: remove me when python3.7 is not supported anymore
     def get_str_value(expr:ast.expr) -> Optional[str]:
         if isinstance(expr, ast.Str):
             return expr.s
@@ -193,7 +194,11 @@ def is_using_annotations(expr: Optional[ast.AST],
 
 def is_none_literal(node: ast.expr) -> bool:
     """Does this AST node represent the literal constant None?"""
-    return isinstance(node, (ast.Constant, ast.NameConstant)) and node.value is None
+    if sys.version_info >= (3,8):
+        # TODO: remove me when python3.7 is not supported anymore
+        return isinstance(node, ast.Constant) and node.value is None
+    else:
+        return isinstance(node, (ast.Constant, ast.NameConstant)) and node.value is None
     
 def unstring_annotation(node: ast.expr, ctx:'model.Documentable', section:str='annotation') -> ast.expr:
     """Replace all strings in the given expression by parsed versions.
@@ -258,9 +263,10 @@ class _AnnotationStringParser(ast.NodeTransformer):
             return const
 
     # For Python < 3.8:
-
-    def visit_Str(self, node: ast.Str) -> ast.expr:
-        return ast.copy_location(self._parse_string(node.s), node)
+    if sys.version_info < (3,8):
+        # TODO: remove me when python3.7 is not supported anymore
+        def visit_Str(self, node: ast.Str) -> ast.expr:
+            return ast.copy_location(self._parse_string(node.s), node)
 
 TYPING_ALIAS = (
         "typing.Hashable",
@@ -357,6 +363,19 @@ def is_typing_annotation(node: ast.AST, ctx: 'model.Documentable') -> bool:
     return is_using_annotations(node, TYPING_ALIAS, ctx) or \
             is_using_annotations(node, SUBSCRIPTABLE_CLASSES_PEP585, ctx)
 
+def get_docstring_node(node: ast.AST) -> ast.Constant | None:
+    """
+    Return the docstring node for the given class, function or module
+    or None if no docstring can be found.
+    """
+    if not isinstance(node, (ast.AsyncFunctionDef, ast.FunctionDef, ast.ClassDef, ast.Module)) or not node.body:
+        return None
+    node = node.body[0]
+    if isinstance(node, ast.Expr):
+        v = get_str_value(node.value)
+        if v is not None:
+            return cast('ast.Constant | None', node.value)
+    return None
 
 _string_lineno_is_end = sys.version_info < (3,8) \
                     and platform.python_implementation() != 'PyPy'
@@ -364,7 +383,7 @@ _string_lineno_is_end = sys.version_info < (3,8) \
 line in the string, rather than the first line.
 """
 
-def extract_docstring_linenum(node: ast.Str) -> int:
+def extract_docstring_linenum(node: ast.Constant) -> int:
     r"""
     In older CPython versions, the AST only tells us the end line
     number and we must approximate the start line number.
@@ -374,7 +393,7 @@ def extract_docstring_linenum(node: ast.Str) -> int:
     Leading blank lines are stripped by cleandoc(), so we must
     return the line number of the first non-blank line.
     """
-    doc = node.s
+    doc = str(node.value)
     lineno = node.lineno
     if _string_lineno_is_end:
         # In older CPython versions, the AST only tells us the end line
@@ -393,7 +412,7 @@ def extract_docstring_linenum(node: ast.Str) -> int:
     
     return lineno
 
-def extract_docstring(node: ast.Str) -> Tuple[int, str]:
+def extract_docstring(node: ast.Constant) -> Tuple[int, str]:
     """
     Extract docstring information from an ast node that represents the docstring.
 
@@ -401,8 +420,11 @@ def extract_docstring(node: ast.Str) -> Tuple[int, str]:
         - The line number of the first non-blank line of the docsring. See L{extract_docstring_linenum}.
         - The docstring to be parsed, cleaned by L{inspect.cleandoc}.
     """
+    value = get_str_value(node)
+    if value is None:
+        raise TypeError(f'expected string constant, got {type(node.value)}')
     lineno = extract_docstring_linenum(node)
-    return lineno, inspect.cleandoc(node.s)
+    return lineno, inspect.cleandoc(value)
 
 
 def infer_type(expr: ast.expr) -> Optional[ast.expr]:
@@ -435,7 +457,7 @@ def _annotation_for_value(value: object) -> Optional[ast.expr]:
                 ann_elem = ast.Tuple(elts=[ann_elem, ann_value])
         if ann_elem is not None:
             if name == 'tuple':
-                ann_elem = ast.Tuple(elts=[ann_elem, ast.Ellipsis()])
+                ann_elem = ast.Tuple(elts=[ann_elem, ast.Constant(value=...)])
             return ast.Subscript(value=ast.Name(id=name),
                                  slice=ast.Index(value=ann_elem))
     return ast.Name(id=name)

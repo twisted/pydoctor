@@ -158,7 +158,7 @@ class Documentable:
         self.contents: Dict[str, Documentable] = {}
         self._linker: Optional['linker.DocstringLinker'] = None
 
-    def setDocstring(self, node: ast.Str) -> None:
+    def setDocstring(self, node: ast.Constant) -> None:
         lineno, doc = astutils.extract_docstring(node)
         self.docstring = doc
         self.docstring_lineno = lineno
