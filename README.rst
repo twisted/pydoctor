@@ -76,6 +76,9 @@ What's New?
 in development
 ^^^^^^^^^^^^^^
 
+* `ExtRegistrar.register_post_processor()` now supports a `priority` argument that is an int.
+  Highest priority callables will be called first during post-processing.
+
 pydoctor 23.9.0
 ^^^^^^^^^^^^^^^
 
