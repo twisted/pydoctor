@@ -1448,7 +1448,7 @@ class System:
             self.intersphinx.update(cache, url)
 
 def defaultPostProcess(system:'System') -> None:
-    for cls in self.objectsOfType(Class):
+    for cls in system.objectsOfType(Class):
         # Initiate the MROs
         cls._init_mro()
         # Lookup of constructors
@@ -1463,7 +1463,7 @@ def defaultPostProcess(system:'System') -> None:
         if is_exception(cls):
             cls.kind = DocumentableKind.EXCEPTION
             
-    for attrib in self.objectsOfType(Attribute):
+    for attrib in system.objectsOfType(Attribute):
        _inherits_instance_variable_kind(attrib)
 
 def _inherits_instance_variable_kind(attr: Attribute) -> None:
