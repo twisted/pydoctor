@@ -82,7 +82,9 @@ in development
    - ``attr.ib(init, default, factory, converter, type, kw_only)``/``attrs.field(...)``
    - ``attr.Factory(list)``
   It does not support the decorators based syntax for setting the validator/factory/default or converter.
-  
+* `ExtRegistrar.register_post_processor()` now supports a `priority` argument that is an int.
+  Highest priority callables will be called first during post-processing.
+
 pydoctor 23.9.0
 ^^^^^^^^^^^^^^^
 

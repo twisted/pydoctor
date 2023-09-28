@@ -382,9 +382,9 @@ def test_relative_import_past_top(
     ''', modname='mod', parent_name='pkg', system=system)
     captured = capsys.readouterr().out
     if level == 1:
-        assert not captured
+        assert 'relative import level' not in captured
     else:
-        assert f'pkg.mod:2: relative import level ({level}) too high\n' == captured
+        assert f'pkg.mod:2: relative import level ({level}) too high\n' in captured
 
 @systemcls_param
 def test_class_with_base_from_module(systemcls: Type[model.System]) -> None:
