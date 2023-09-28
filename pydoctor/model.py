@@ -18,7 +18,7 @@ from enum import Enum
 from inspect import signature, Signature
 from pathlib import Path
 from typing import (
-    TYPE_CHECKING, Any, Callable, Collection, Dict, Iterator, List, Mapping,
+    TYPE_CHECKING, Any, Collection, Dict, Iterator, List, Mapping,
     Optional, Sequence, Set, Tuple, Type, TypeVar, Union, cast, overload
 )
 from urllib.parse import quote
@@ -1075,7 +1075,7 @@ class System:
         # Initialize the extension system
         self._factory = factory.Factory()
         self._astbuilder_visitors: List[Type['astutils.NodeVisitorExt']] = []
-        self._post_processors: List[Callable[['System'], None]] = []
+        self._post_processor = extensions.PriorityProcessor(self)
         
         if self.extensions == _default_extensions:
             self.extensions = list(extensions.get_extensions())
@@ -1551,31 +1551,10 @@ class System:
         Analysis of relations between documentables can be done here,
         without the risk of drawing incorrect conclusions because modules
         were not fully processed yet.
+
+        @See: L{extensions.PriorityProcessor}.
         """
-        for cls in self.objectsOfType(Class):
-            
-            # Initiate the MROs
-            cls._init_mro()
-            # Lookup of constructors
-            cls._init_constructors()
-            
-            # Compute subclasses
-            for b in cls.baseobjects:
-                if b is not None:
-                    b.subclasses.append(cls)
-            
-            # Checking whether the class is an exception
-            if is_exception(cls):
-                cls.kind = DocumentableKind.EXCEPTION
-        
-        init_properties(self)
-
-        for attrib in self.objectsOfType(Attribute):
-            _inherits_instance_variable_kind(attrib)
-
-        for post_processor in self._post_processors:
-            post_processor(self)
-
+        self._post_processor.apply_processors()
 
     def fetchIntersphinxInventories(self, cache: CacheT) -> None:
         """
@@ -1583,6 +1562,27 @@ class System:
         """
         for url in self.options.intersphinx:
             self.intersphinx.update(cache, url)
+
+def defaultPostProcess(system:'System') -> None:
+    for cls in system.objectsOfType(Class):
+        # Initiate the MROs
+        cls._init_mro()
+        # Lookup of constructors
+        cls._init_constructors()
+
+        # Compute subclasses
+        for b in cls.baseobjects:
+            if b is not None:
+                b.subclasses.append(cls)
+
+        # Checking whether the class is an exception
+        if is_exception(cls):
+            cls.kind = DocumentableKind.EXCEPTION
+    
+    init_properties(system)
+    
+    for attrib in system.objectsOfType(Attribute):
+       _inherits_instance_variable_kind(attrib)
 
 def _inherits_instance_variable_kind(attr: Attribute) -> None:
     """

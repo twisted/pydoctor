@@ -5,7 +5,7 @@ An extension can be composed by mixin classes, AST builder visitor extensions an
 """
 import importlib
 import sys
-from typing import Any, Callable, Dict, Iterable, Iterator, List, Type, Union, TYPE_CHECKING, cast
+from typing import Any, Callable, Dict, Iterable, Iterator, List, Optional, Tuple, Type, Union, TYPE_CHECKING, cast
 
 # In newer Python versions, use importlib.resources from the standard library.
 # On older versions, a compatibility package must be installed from PyPI.
@@ -114,6 +114,59 @@ def _get_mixins(*mixins: Type[MixinT]) -> Dict[str, List[Type[MixinT]]]:
             assert False, f"Invalid mixin {mixin.__name__!r}. Mixins must subclass one of the base class."
     return mixins_by_name
 
+# Largely inspired by docutils Transformer class.
+DEFAULT_PRIORITY = 100
+class PriorityProcessor:
+    """
+    Stores L{Callable} and applies them to the system based on priority or insertion order.
+    The default priority is C{100}, see code source of L{astbuilder.setup_pydoctor_extension}, 
+    and others C{setup_pydoctor_extension} functions.
+
+    Highest priority callables will be called first, when priority is the same it's FIFO order.
+
+    One L{PriorityProcessor} should only be run once on the system.
+    """
+    
+    def __init__(self, system:'model.System'):
+        self.system = system
+        self.applied: List[Callable[['model.System'], None]] = []
+        self._post_processors: List[Tuple[object, Callable[['model.System'], None]]] = []
+        self._counter = 256
+        """Internal counter to keep track of the add order of callables."""
+    
+    def add_post_processor(self, post_processor:Callable[['model.System'], None], 
+                           priority:Optional[int]) -> None:
+        if priority is None:
+            priority = DEFAULT_PRIORITY
+        priority_key = self._get_priority_key(priority)
+        self._post_processors.append((priority_key, post_processor))
+    
+    def _get_priority_key(self, priority:int) -> object:
+        """
+        Return a tuple, `priority` combined with `self._counter`.
+
+        This ensures FIFO order on callables with identical priority.
+        """
+        self._counter -= 1
+        return (priority, self._counter)
+    
+    def apply_processors(self) -> None:
+        """Apply all of the stored processors, in priority order."""
+        if self.applied:
+            # this is typically only reached in tests, when we 
+            # call fromText() several times with the same 
+            # system or when we manually call System.postProcess()
+            self.system.msg('post processing', 
+                            'warning: multiple post-processing pass detected', 
+                            thresh=-1)
+            self.applied.clear()
+        
+        self._post_processors.sort()
+        for p in reversed(self._post_processors):
+            _, post_processor = p
+            post_processor(self.system)
+            self.applied.append(post_processor)
+
 @attr.s(auto_attribs=True)
 class ExtRegistrar:
     """
@@ -136,14 +189,18 @@ class ExtRegistrar:
         self.system._astbuilder_visitors.extend(visitor)
     
     def register_post_processor(self, 
-            *post_processor: Callable[['model.System'], None]) -> None:
+            *post_processor: Callable[['model.System'], None], 
+            priority:Optional[int]=None) -> None:
         """
         Register post processor(s).
          
         A post-processor is simply a one-argument callable receiving 
         the processed L{model.System} and doing stuff on the L{model.Documentable} tree.
+
+        @param priority: See L{PriorityProcessor}.
         """
-        self.system._post_processors.extend(post_processor)
+        for p in post_processor:
+            self.system._post_processor.add_post_processor(p, priority)
 
 def load_extension_module(system:'model.System', mod: str) -> None:
     """
