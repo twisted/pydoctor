@@ -160,8 +160,7 @@ def annotation_from_attrib(
             if factory is not None:
                 return _annotation_from_factory(factory, ctx)
             else:
-                return astbuilder._infer_type(default)
-
+                return astutils.infer_type(default)
     return None
 
 def default_from_attrib(args:inspect.BoundArguments, ctx: model.Documentable) -> Optional[ast.expr]:

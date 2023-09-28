@@ -76,24 +76,39 @@ What's New?
 in development
 ^^^^^^^^^^^^^^
 
-* Do not show `**kwargs` when keywords are specifically documented with the `keyword` field
-  and no specific documentation is given for the `**kwargs` entry.
-* Fix annotation resolution edge cases: names are resolved in the context of the module 
-  scope when possible, when impossible, the theoretical runtime scopes are used. A warning can
-  be reported when an annotation name is ambiguous (can be resolved to different names 
-  depending on the scope context) with option ``-v``.
-* Fix presentation of type aliases in string form.
-* Improve the AST colorizer to output less parenthesis when it's not required.
-* Fix colorization of dictionary unpacking.
-* Improve the class hierarchy such that it links top level names with intersphinx when possible.
-* Add highlighting when clicking on "View In Hierarchy" link from class page.
-* Recognize variadic generics type variables (PEP 646).
 * Better ``attrs`` support: generate precise ``__init__`` method from analyzed fields, supports 
   principal ``attrs`` idioms: 
    - ``attr.s(auto_attribs, kw_only, auto_detect, init)``/``attrs.define(...)``
    - ``attr.ib(init, default, factory, converter, type, kw_only)``/``attrs.field(...)``
    - ``attr.Factory(list)``
   It does not support the decorators based syntax for setting the validator/factory/default or converter.
+  
+pydoctor 23.9.0
+^^^^^^^^^^^^^^^
+
+This is the last major release to support Python 3.6.
+
+* Do not show `**kwargs` when keywords are specifically documented with the `keyword` field
+  and no specific documentation is given for the `**kwargs` entry.
+* Fix annotation resolution edge cases: names are resolved in the context of the module 
+  scope when possible, when impossible, the theoretical runtime scopes are used. A warning can
+  be reported when an annotation name is ambiguous (can be resolved to different names 
+  depending on the scope context) with option ``-v``.
+* Ensure that explicit annotation are honored when there are multiple declarations of the same name.
+* Use stricter verification before marking an attribute as constant: 
+   - instance variables are never marked as constant
+   - a variable that has several definitions will not be marked as constant
+   - a variable declaration under any kind of control flow block will not be marked as constant
+* Do not trigger warnings when pydoctor cannot make sense of a potential constant attribute 
+  (pydoctor is not a static checker).
+* Fix presentation of type aliases in string form.
+* Improve the AST colorizer to output less parenthesis when it's not required.
+* Fix colorization of dictionary unpacking.
+* Improve the class hierarchy such that it links top level names with intersphinx when possible.
+* Add highlighting when clicking on "View In Hierarchy" link from class page.
+* Recognize variadic generics type variables (PEP 646).
+* Fix support for introspection of cython3 generated modules.
+* Instance variables are marked as such across subclasses.
 
 pydoctor 23.4.1
 ^^^^^^^^^^^^^^^
