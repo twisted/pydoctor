@@ -840,7 +840,7 @@ class FunctionOverload:
 
 class Attribute(Inheritable):
     kind: Optional[DocumentableKind] = DocumentableKind.ATTRIBUTE
-    annotation: Optional[ast.expr]
+    annotation: Optional[ast.expr] = None
     decorators: Optional[Sequence[ast.expr]] = None
     value: Optional[ast.expr] = None
     """
@@ -1257,8 +1257,11 @@ class System:
         for k, v in thing.__dict__.items():
             if (isinstance(v, func_types)
                     # In PyPy 7.3.1, functions from extensions are not
-                    # instances of the abstract types in func_types
-                    or (hasattr(v, "__class__") and v.__class__.__name__ == 'builtin_function_or_method')):
+                    # instances of the abstract types in func_types, it will have the type 'builtin_function_or_method'.
+                    # Additionnaly cython3 produces function of type 'cython_function_or_method', 
+                    # so se use a heuristic on the class name as a fall back detection.
+                    or (hasattr(v, "__class__") and 
+                        v.__class__.__name__.endswith('function_or_method'))):
                 f = self.Function(self, k, parent)
                 f.parentMod = parentMod
                 f.docstring = v.__doc__
@@ -1433,23 +1436,24 @@ class System:
         without the risk of drawing incorrect conclusions because modules
         were not fully processed yet.
         """
-
-        # default post-processing includes:
-        # - Processing of subclasses
-        # - MRO computing.
-        # - Lookup of constructors
-        # - Checking whether the class is an exception
         for cls in self.objectsOfType(Class):
             
+            # Initiate the MROs
             cls._init_mro()
+            # Lookup of constructors
             cls._init_constructors()
             
+            # Compute subclasses
             for b in cls.baseobjects:
                 if b is not None:
                     b.subclasses.append(cls)
             
+            # Checking whether the class is an exception
             if is_exception(cls):
                 cls.kind = DocumentableKind.EXCEPTION
+
+        for attrib in self.objectsOfType(Attribute):
+            _inherits_instance_variable_kind(attrib)
 
         for post_processor in self._post_processors:
             post_processor(self)
@@ -1461,6 +1465,20 @@ class System:
         """
         for url in self.options.intersphinx:
             self.intersphinx.update(cache, url)
+
+def _inherits_instance_variable_kind(attr: Attribute) -> None:
+    """
+    If any of the inherited members of a class variable is an instance variable,
+    then the subclass' class variable become an instance variable as well.
+    """
+    if attr.kind is not DocumentableKind.CLASS_VARIABLE:
+        return
+    docsources = attr.docsources()
+    next(docsources)
+    for inherited in docsources:
+        if inherited.kind is DocumentableKind.INSTANCE_VARIABLE:
+            attr.kind = DocumentableKind.INSTANCE_VARIABLE
+            break
 
 def get_docstring(
         obj: Documentable

@@ -49,7 +49,7 @@ def on_build_finished(app: Sphinx, exception: Exception) -> None:
 
     runs = app.config.pydoctor_args
     placeholders = {
-        'outdir': app.outdir,
+        'outdir': str(app.outdir),
         }
 
     if not isinstance(runs, Mapping):
@@ -86,7 +86,7 @@ def on_builder_inited(app: Sphinx) -> None:
         raise ConfigError("Missing 'pydoctor_args'.")
 
     placeholders = {
-        'outdir': app.outdir,
+        'outdir': str(app.outdir),
         }
 
     runs = config.pydoctor_args

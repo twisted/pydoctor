@@ -16,8 +16,9 @@ import astor
 from pydoctor import epydoc2stan, model, node2stan, extensions, linker
 from pydoctor.epydoc.markup._pyval_repr import colorize_inline_pyval
 from pydoctor.astutils import (is_none_literal, is_typing_annotation, is_using_annotations, is_using_typing_final, node2dottedname, node2fullname, 
-                               is__name__equals__main__, unstring_annotation, iterassign, extract_docstring_linenum,  
-                               NodeVisitor)
+                               is__name__equals__main__, unstring_annotation, iterassign, extract_docstring_linenum, infer_type, get_parents, 
+                               NodeVisitor, Parentage)
+
 
 def parseFile(path: Path) -> ast.Module:
     """Parse the contents of a Python source file."""
@@ -60,18 +61,34 @@ def _handleAliasing(
     ctx._localNameToFullName_map[target] = full_name
     return True
 
-def is_constant(obj: model.Attribute) -> bool:
+
+_CONTROL_FLOW_BLOCKS:Tuple[Type[ast.stmt],...] = (ast.If, ast.While, ast.For, ast.Try, 
+                                            ast.AsyncFor, ast.With, ast.AsyncWith)
+"""
+AST types that introduces a new control flow block, potentially conditionnal.
+"""
+if sys.version_info >= (3, 10):
+    _CONTROL_FLOW_BLOCKS += (ast.Match,)
+if sys.version_info >= (3, 11):
+    _CONTROL_FLOW_BLOCKS += (ast.TryStar,)
+
+def is_constant(obj: model.Attribute, 
+                annotation:Optional[ast.expr], 
+                value:Optional[ast.expr]) -> bool:
     """
     Detect if the given assignment is a constant. 
 
-    To detect whether a assignment is a constant, this checks two things:
-        - all-caps variable name
-        - typing.Final annotation
+    For an assignment to be detected as constant, it should: 
+        - have all-caps variable name or using L{typing.Final} annotation
+        - not be overriden
+        - not be defined in a conditionnal block or any other kind of control flow blocks
     
     @note: Must be called after setting obj.annotation to detect variables using Final.
     """
-
-    return obj.name.isupper() or is_using_typing_final(obj.annotation, obj)
+    if not is_attribute_overridden(obj, value) and value:
+        if not any(isinstance(n, _CONTROL_FLOW_BLOCKS) for n in get_parents(value)):
+            return obj.name.isupper() or is_using_typing_final(annotation, obj)
+    return False
 
 class TypeAliasVisitorExt(extensions.ModuleVisitorExt):
     """
@@ -157,6 +174,17 @@ class ModuleVistor(NodeVisitor):
         self.system = builder.system
         self.module = module
 
+    def _infer_attr_annotations(self, scope: model.Documentable) -> None:
+        # Infer annotation when leaving scope so explicit
+        # annotations take precedence.
+        for attrib in scope.contents.values():
+            if not isinstance(attrib, model.Attribute):
+                continue
+            # If this attribute has not explicit annotation, 
+            # infer its type from it's ast expression.
+            if attrib.annotation is None and attrib.value is not None:
+                # do not override explicit annotation
+                attrib.annotation = infer_type(attrib.value)
 
     def visit_If(self, node: ast.If) -> None:
         if isinstance(node.test, ast.Compare):
@@ -168,6 +196,7 @@ class ModuleVistor(NodeVisitor):
 
     def visit_Module(self, node: ast.Module) -> None:
         assert self.module.docstring is None
+        Parentage().visit(node)
 
         self.builder.push(self.module, 0)
         if len(node.body) > 0 and isinstance(node.body[0], ast.Expr) and isinstance(node.body[0].value, ast.Str):
@@ -175,6 +204,7 @@ class ModuleVistor(NodeVisitor):
             epydoc2stan.extract_fields(self.module)
 
     def depart_Module(self, node: ast.Module) -> None:
+        self._infer_attr_annotations(self.builder.current)
         self.builder.pop(self.module)
 
     def visit_ClassDef(self, node: ast.ClassDef) -> None:
@@ -258,6 +288,7 @@ class ModuleVistor(NodeVisitor):
 
 
     def depart_ClassDef(self, node: ast.ClassDef) -> None:
+        self._infer_attr_annotations(self.builder.current)
         self.builder.popClass()
 
 
@@ -454,55 +485,74 @@ class ModuleVistor(NodeVisitor):
                     target_obj.kind = model.DocumentableKind.CLASS_METHOD
                 return True
         return False
+
+    @classmethod
+    def _handleConstant(cls, obj:model.Attribute, 
+                             annotation:Optional[ast.expr], 
+                             value:Optional[ast.expr],
+                             lineno:int, 
+                             defaultKind:model.DocumentableKind) -> None:
+        if is_constant(obj, annotation=annotation, value=value):
+            obj.kind = model.DocumentableKind.CONSTANT
+            cls._tweakConstantAnnotation(obj=obj, annotation=annotation, 
+                                value=value, lineno=lineno)
+        elif obj.kind is model.DocumentableKind.CONSTANT:
+            obj.kind = defaultKind
     
-    def _warnsConstantAssigmentOverride(self, obj: model.Attribute, lineno_offset: int) -> None:
-        obj.report(f'Assignment to constant "{obj.name}" overrides previous assignment '
-                    f'at line {obj.linenumber}, the original value will not be part of the docs.', 
-                            section='ast', lineno_offset=lineno_offset)
-                            
-    def _warnsConstantReAssigmentInInstance(self, obj: model.Attribute, lineno_offset: int = 0) -> None:
-        obj.report(f'Assignment to constant "{obj.name}" inside an instance is ignored, this value will not be part of the docs.', 
-                        section='ast', lineno_offset=lineno_offset)
-
-    def _handleConstant(self, obj: model.Attribute, value: Optional[ast.expr], lineno: int) -> None:
-        """Must be called after obj.setLineNumber() to have the right line number in the warning."""
-        
-        if is_attribute_overridden(obj, value):
-            
-            if obj.kind in (model.DocumentableKind.CONSTANT, 
-                                model.DocumentableKind.VARIABLE, 
-                                model.DocumentableKind.CLASS_VARIABLE):
-                # Module/Class level warning, regular override.
-                self._warnsConstantAssigmentOverride(obj=obj, lineno_offset=lineno-obj.linenumber)
-            else:
-                # Instance level warning caught at the time of the constant detection.
-                self._warnsConstantReAssigmentInInstance(obj)
-
-        obj.value = value
-        
-        obj.kind = model.DocumentableKind.CONSTANT
-
-        # A hack to to display variables annotated with Final with the real type instead.
-        if is_using_typing_final(obj.annotation, obj):
-            if isinstance(obj.annotation, ast.Subscript):
+    @staticmethod
+    def _tweakConstantAnnotation(obj: model.Attribute, annotation:Optional[ast.expr], 
+                        value: Optional[ast.expr], lineno: int) -> None:
+        # Display variables annotated with Final with the real type instead.
+        if is_using_typing_final(annotation, obj):
+            if isinstance(annotation, ast.Subscript):
                 try:
-                    annotation = extract_final_subscript(obj.annotation)
+                    annotation = extract_final_subscript(annotation)
                 except ValueError as e:
                     obj.report(str(e), section='ast', lineno_offset=lineno-obj.linenumber)
-                    obj.annotation = _infer_type(value) if value else None
+                    obj.annotation = infer_type(value) if value else None
                 else:
                     # Will not display as "Final[str]" but rather only "str"
                     obj.annotation = annotation
             else:
                 # Just plain "Final" annotation.
                 # Simply ignore it because it's duplication of information.
-                obj.annotation = _infer_type(value) if value else None
+                obj.annotation = infer_type(value) if value else None
+
+    @staticmethod
+    def _setAttributeAnnotation(obj: model.Attribute, 
+                                annotation: Optional[ast.expr],) -> None:
+        if annotation is not None:
+            # TODO: What to do when an attribute has several explicit annotations?
+            # (mypy reports a warning in these kind of cases)
+            obj.annotation = annotation
+
+    @staticmethod
+    def _storeAttrValue(obj:model.Attribute, new_value:Optional[ast.expr], 
+                        augassign:Optional[ast.operator]=None) -> None:
+        if new_value:
+            if augassign: 
+                if obj.value:
+                    # We're storing the value of augmented assignemnt value as binop for the sake 
+                    # of correctness, but we're not doing anything special with it at the
+                    # moment, nonethless this could be useful for future developments.
+                    # We don't bother reporting warnings, pydoctor is not a checker.
+                    obj.value = ast.BinOp(left=obj.value, op=augassign, right=new_value)
+            else:
+                obj.value = new_value
+    
+    def _storeCurrentAttr(self, obj:model.Attribute, 
+                          augassign:Optional[object]=None) -> None:
+        if not augassign:
+            self.builder.currentAttr = obj
+        else:
+            self.builder.currentAttr = None
 
     def _handleModuleVar(self,
             target: str,
             annotation: Optional[ast.expr],
             expr: Optional[ast.expr],
-            lineno: int
+            lineno: int,
+            augassign:Optional[ast.operator],
             ) -> None:
         if target in MODULE_VARIABLES_META_PARSERS:
             # This is metadata, not a variable that needs to be documented,
@@ -510,9 +560,12 @@ class ModuleVistor(NodeVisitor):
             return
         parent = self.builder.current
         obj = parent.contents.get(target)
-        
         if obj is None:
-            obj = self.builder.addAttribute(name=target, kind=None, parent=parent)
+            if augassign:
+                return
+            obj = self.builder.addAttribute(name=target, 
+                                            kind=model.DocumentableKind.VARIABLE, 
+                                            parent=parent)
         
         # If it's not an attribute it means that the name is already denifed as function/class 
         # probably meaning that this attribute is a bound callable. 
@@ -527,39 +580,34 @@ class ModuleVistor(NodeVisitor):
 
         if not isinstance(obj, model.Attribute):
             return
-            
-        if annotation is None and expr is not None:
-            annotation = _infer_type(expr)
         
-        obj.annotation = annotation
+        self._setAttributeAnnotation(obj, annotation)
+        
         obj.setLineNumber(lineno)
         
-        if is_constant(obj):
-            self._handleConstant(obj=obj, value=expr, lineno=lineno)
-        else:
-            obj.kind = model.DocumentableKind.VARIABLE
-            # We store the expr value for all Attribute in order to be able to 
-            # check if they have been initialized or not.
-            obj.value = expr
-
-        self.builder.currentAttr = obj
+        self._handleConstant(obj, annotation, expr, lineno, 
+                                  model.DocumentableKind.VARIABLE)
+        self._storeAttrValue(obj, expr, augassign)
+        self._storeCurrentAttr(obj, augassign)
 
     def _handleAssignmentInModule(self,
             target: str,
             annotation: Optional[ast.expr],
             expr: Optional[ast.expr],
-            lineno: int
+            lineno: int,
+            augassign:Optional[ast.operator],
             ) -> None:
         module = self.builder.current
         assert isinstance(module, model.Module)
         if not _handleAliasing(module, target, expr):
-            self._handleModuleVar(target, annotation, expr, lineno)
+            self._handleModuleVar(target, annotation, expr, lineno, augassign=augassign)
 
     def _handleClassVar(self,
             name: str,
             annotation: Optional[ast.expr],
             expr: Optional[ast.expr],
-            lineno: int
+            lineno: int,
+            augassign:Optional[ast.operator],
             ) -> None:
         cls = self.builder.current
         assert isinstance(cls, model.Class)
@@ -570,24 +618,21 @@ class ModuleVistor(NodeVisitor):
         obj = cast(Optional[model.Attribute], cls.contents.get(name))
 
         if obj is None:
+            if augassign:
+                return
             obj = self.builder.addAttribute(name=name, kind=None, parent=cls)
 
         if obj.kind is None:
             obj.kind = model.DocumentableKind.CLASS_VARIABLE
 
-        if expr is not None:
-            if annotation is None:
-                annotation = _infer_type(expr)
-        
-        obj.annotation = annotation
+        self._setAttributeAnnotation(obj, annotation)
+
         obj.setLineNumber(lineno)
 
-        if is_constant(obj):
-            self._handleConstant(obj=obj, value=expr, lineno=lineno)
-        else:
-            obj.value = expr
-
-        self.builder.currentAttr = obj
+        self._handleConstant(obj, annotation, expr, lineno, 
+                                  model.DocumentableKind.CLASS_VARIABLE)
+        self._storeAttrValue(obj, expr, augassign)
+        self._storeCurrentAttr(obj, augassign)
 
     def _handleInstanceVar(self,
             name: str,
@@ -607,35 +652,27 @@ class ModuleVistor(NodeVisitor):
         # Class variables can only be Attribute, so it's OK to cast because we used _maybeAttribute() above.
         obj = cast(Optional[model.Attribute], cls.contents.get(name))
         if obj is None:
-
             obj = self.builder.addAttribute(name=name, kind=None, parent=cls)
 
-        if annotation is None and expr is not None:
-            annotation = _infer_type(expr)
-        
-        obj.annotation = annotation
-        obj.setLineNumber(lineno)
+        self._setAttributeAnnotation(obj, annotation)
 
-        # Maybe an instance variable overrides a constant, 
-        # so we check before setting the kind to INSTANCE_VARIABLE.
-        if obj.kind is model.DocumentableKind.CONSTANT:
-            self._warnsConstantReAssigmentInInstance(obj, lineno_offset=lineno-obj.linenumber)
-        else:
-            obj.kind = model.DocumentableKind.INSTANCE_VARIABLE
-            obj.value = expr
-        
-        self.builder.currentAttr = obj
+        obj.setLineNumber(lineno)
+        # undonditionnaly set the kind to ivar
+        obj.kind = model.DocumentableKind.INSTANCE_VARIABLE
+        self._storeAttrValue(obj, expr)
+        self._storeCurrentAttr(obj)
 
     def _handleAssignmentInClass(self,
             target: str,
             annotation: Optional[ast.expr],
             expr: Optional[ast.expr],
-            lineno: int
+            lineno: int,
+            augassign:Optional[ast.operator],
             ) -> None:
         cls = self.builder.current
         assert isinstance(cls, model.Class)
         if not _handleAliasing(cls, target, expr):
-            self._handleClassVar(target, annotation, expr, lineno)
+            self._handleClassVar(target, annotation, expr, lineno, augassign=augassign)
 
     def _handleDocstringUpdate(self,
             targetNode: ast.expr,
@@ -689,17 +726,18 @@ class ModuleVistor(NodeVisitor):
             targetNode: ast.expr,
             annotation: Optional[ast.expr],
             expr: Optional[ast.expr],
-            lineno: int
+            lineno: int,
+            augassign:Optional[ast.operator]=None,
             ) -> None:
         if isinstance(targetNode, ast.Name):
             target = targetNode.id
             scope = self.builder.current
             if isinstance(scope, model.Module):
-                self._handleAssignmentInModule(target, annotation, expr, lineno)
+                self._handleAssignmentInModule(target, annotation, expr, lineno, augassign=augassign)
             elif isinstance(scope, model.Class):
-                if not self._handleOldSchoolMethodDecoration(target, expr):
-                    self._handleAssignmentInClass(target, annotation, expr, lineno)
-        elif isinstance(targetNode, ast.Attribute):
+                if augassign or not self._handleOldSchoolMethodDecoration(target, expr):
+                    self._handleAssignmentInClass(target, annotation, expr, lineno, augassign=augassign)
+        elif isinstance(targetNode, ast.Attribute) and not augassign:
             value = targetNode.value
             if targetNode.attr == '__doc__':
                 self._handleDocstringUpdate(value, expr, lineno)
@@ -728,6 +766,10 @@ class ModuleVistor(NodeVisitor):
     def visit_AnnAssign(self, node: ast.AnnAssign) -> None:
         annotation = unstring_annotation(node.annotation, self.builder.current)
         self._handleAssignment(node.target, annotation, node.value, node.lineno)
+    
+    def visit_AugAssign(self, node:ast.AugAssign) -> None:
+        self._handleAssignment(node.target, None, node.value, 
+                               node.lineno, augassign=node.op)
 
     def visit_Expr(self, node: ast.Expr) -> None:
         value = node.value
@@ -904,7 +946,9 @@ class ModuleVistor(NodeVisitor):
             lineno: int
             ) -> model.Attribute:
 
-        attr = self.builder.addAttribute(name=node.name, kind=model.DocumentableKind.PROPERTY, parent=self.builder.current)
+        attr = self.builder.addAttribute(name=node.name, 
+                                         kind=model.DocumentableKind.PROPERTY, 
+                                         parent=self.builder.current)
         attr.setLineNumber(lineno)
 
         if docstring is not None:
@@ -1013,59 +1057,6 @@ class _AnnotationValueFormatter(_ValueFormatter):
         Present the annotation wrapped inside <code> tags.
         """
         return '<code>%s</code>' % super().__repr__()
-
-
-def _infer_type(expr: ast.expr) -> Optional[ast.expr]:
-    """Infer an expression's type.
-    @param expr: The expression's AST.
-    @return: A type annotation, or None if the expression has no obvious type.
-    """
-    try:
-        value: object = ast.literal_eval(expr)
-    except (ValueError, TypeError):
-        return None
-    else:
-        ann = _annotation_for_value(value)
-        if ann is None:
-            return None
-        else:
-            return ast.fix_missing_locations(ast.copy_location(ann, expr))
-
-def _annotation_for_value(value: object) -> Optional[ast.expr]:
-    if value is None:
-        return None
-    name = type(value).__name__
-    if isinstance(value, (dict, list, set, tuple)):
-        ann_elem = _annotation_for_elements(value)
-        if isinstance(value, dict):
-            ann_value = _annotation_for_elements(value.values())
-            if ann_value is None:
-                ann_elem = None
-            elif ann_elem is not None:
-                ann_elem = ast.Tuple(elts=[ann_elem, ann_value])
-        if ann_elem is not None:
-            if name == 'tuple':
-                ann_elem = ast.Tuple(elts=[ann_elem, ast.Ellipsis()])
-            return ast.Subscript(value=ast.Name(id=name),
-                                 slice=ast.Index(value=ann_elem))
-    return ast.Name(id=name)
-
-def _annotation_for_elements(sequence: Iterable[object]) -> Optional[ast.expr]:
-    names = set()
-    for elem in sequence:
-        ann = _annotation_for_value(elem)
-        if isinstance(ann, ast.Name):
-            names.add(ann.id)
-        else:
-            # Nested sequences are too complex.
-            return None
-    if len(names) == 1:
-        name = names.pop()
-        return ast.Name(id=name)
-    else:
-        # Empty sequence or no uniform type.
-        return None
-
 
 DocumentableT = TypeVar('DocumentableT', bound=model.Documentable)
 
