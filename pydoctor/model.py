@@ -242,14 +242,31 @@ class Documentable:
 
 
     def reparent(self, new_parent: 'Module', new_name: str) -> None:
+        """
+        Move this documentable to a new location.
+        """
+        
+        old_name = self.name
+        new_contents = new_parent.contents
+
+        # issue warnings
+        if new_name in new_contents:
+            
+            self.system.handleDuplicate(new_contents[new_name])
+            self.report(f"introduced by re-exporting {self} into {new_parent}"
+                        '' if new_name==old_name else f' as {new_name!r}', thresh=1)
+        
         # this code attempts to preserve "rather a lot" of
         # invariants assumed by various bits of pydoctor
         # and that are of course not written down anywhere
         # :/
-        self._handle_reparenting_pre()
+        # Basically we maintain at least 2 references for each object in the system
+        # one in it's parent.contents dict and one in allobject dict. The later has been proven
+        # not to be necessary, but it speeds-up name resolving.
+        self._handle_reparenting_pre() # but why do we call this method twice?
         old_parent = self.parent
         assert isinstance(old_parent, CanContainImportsDocumentable)
-        old_name = self.name
+        
         self.parent = self.parentMod = new_parent
         self.name = new_name
         self._handle_reparenting_post()
@@ -421,7 +438,19 @@ class CanContainImportsDocumentable(Documentable):
             return self.module.isNameDefined(name)
         else:
             return False
+
+@attr.s(auto_attribs=True, slots=True)
+class Import:
+    """
+    An imported name.
     
+    @note: One L{Import} instance is created for each 
+        name bound in the C{import} statement.
+    """
+    name:str
+    orgmodule:str
+    linenumber:int
+    orgname:Optional[str]=None
 
 class Module(CanContainImportsDocumentable):
     kind = DocumentableKind.MODULE
@@ -456,6 +485,8 @@ class Module(CanContainImportsDocumentable):
         """
 
         self._docformat: Optional[str] = None
+
+        self.imports: List[Import] = []
 
     def _localNameToFullName(self, name: str) -> str:
         if name in self.contents:
@@ -1448,6 +1479,7 @@ class System:
             self.intersphinx.update(cache, url)
 
 def defaultPostProcess(system:'System') -> None:
+    
     for cls in system.objectsOfType(Class):
         # Initiate the MROs
         cls._init_mro()

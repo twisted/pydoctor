@@ -166,6 +166,21 @@ def extract_final_subscript(annotation: ast.Subscript) -> ast.expr:
         assert isinstance(ann_slice, ast.expr)
         return ann_slice
 
+def getPublicNames(mod:'model.Module') -> Collection[str]:
+    """
+    Get all names to import when wildcardm importing the given module: 
+    use __all__ if available, otherwise take all names that are not private.
+    """
+    names = mod.all
+    if names is None:
+        names = [
+            name
+            for name in chain(mod.contents.keys(),
+                                mod._localNameToFullName_map.keys())
+            if not name.startswith('_')
+            ]
+    return names
+
 class ModuleVistor(NodeVisitor):
 
     def __init__(self, builder: 'ASTBuilder', module: model.Module):
@@ -325,32 +340,23 @@ class ModuleVistor(NodeVisitor):
             assert modname is not None
 
         if node.names[0].name == '*':
-            self._importAll(modname)
+            self._importAll(modname, linenumber=node.lineno)
         else:
-            self._importNames(modname, node.names)
+            self._importNames(modname, node.names, linenumber=node.lineno)
 
-    def _importAll(self, modname: str) -> None:
+    def _importAll(self, modname: str, linenumber:int) -> None:
         """Handle a C{from <modname> import *} statement."""
 
+        ctx = self.builder.current
+        if isinstance(ctx, model.Module):
+            ctx.imports.append(model.Import('*', modname, linenumber=linenumber, orgname='*'))
         mod = self.system.getProcessedModule(modname)
         if mod is None:
             # We don't have any information about the module, so we don't know
             # what names to import.
-            self.builder.current.report(f"import * from unknown {modname}", thresh=1)
+            ctx.report(f"import * from unknown {modname}", thresh=1)
             return
-
-        self.builder.current.report(f"import * from {modname}", thresh=1)
-
-        # Get names to import: use __all__ if available, otherwise take all
-        # names that are not private.
-        names = mod.all
-        if names is None:
-            names = [
-                name
-                for name in chain(mod.contents.keys(),
-                                  mod._localNameToFullName_map.keys())
-                if not name.startswith('_')
-                ]
+        ctx.report(f"import * from {modname}", thresh=1)
 
         # Fetch names to export.
         exports = self._getCurrentModuleExports()
@@ -359,7 +365,7 @@ class ModuleVistor(NodeVisitor):
         assert isinstance(self.builder.current, model.CanContainImportsDocumentable)
         _localNameToFullName = self.builder.current._localNameToFullName_map
         expandName = mod.expandName
-        for name in names:
+        for name in getPublicNames(mod):
 
             if self._handleReExport(exports, name, name, mod) is True:
                 continue
@@ -394,8 +400,8 @@ class ModuleVistor(NodeVisitor):
             # So we use content.get first to resolve non-alias names. 
             ob = origin_module.contents.get(origin_name) or origin_module.resolveName(origin_name)
             if ob is None:
-                current.report("cannot resolve re-exported name :"
-                                        f'{modname}.{origin_name}', thresh=1)
+                current.report("cannot resolve re-exported name: "
+                                        f"'{modname}.{origin_name}'", thresh=1)
             else:
                 if origin_module.all is None or origin_name not in origin_module.all:
                     self.system.msg(
@@ -408,7 +414,7 @@ class ModuleVistor(NodeVisitor):
                     return True
         return False
 
-    def _importNames(self, modname: str, names: Iterable[ast.alias]) -> None:
+    def _importNames(self, modname: str, names: Iterable[ast.alias], linenumber:int) -> None:
         """Handle a C{from <modname> import <names>} statement."""
 
         # Process the module we're importing from.
@@ -420,6 +426,8 @@ class ModuleVistor(NodeVisitor):
         current = self.builder.current
         assert isinstance(current, model.CanContainImportsDocumentable)
         _localNameToFullName = current._localNameToFullName_map
+        is_module = isinstance(current, model.Module)
+
         for al in names:
             orgname, asname = al.name, al.asname
             if asname is None:
@@ -434,6 +442,10 @@ class ModuleVistor(NodeVisitor):
                 self.system.getProcessedModule(f'{modname}.{orgname}')
 
             _localNameToFullName[asname] = f'{modname}.{orgname}'
+            if is_module:
+                cast(model.Module,
+                     current).imports.append(model.Import(asname, modname,
+                                                          orgname=orgname, linenumber=linenumber))
 
     def visit_Import(self, node: ast.Import) -> None:
         """Process an import statement.
@@ -448,16 +460,23 @@ class ModuleVistor(NodeVisitor):
         (dotted_name, as_name) where as_name is None if there was no 'as foo'
         part of the statement.
         """
-        if not isinstance(self.builder.current, model.CanContainImportsDocumentable):
+        ctx = self.builder.current
+        if not isinstance(ctx, model.CanContainImportsDocumentable):
             # processing import statement in odd context
             return
-        _localNameToFullName = self.builder.current._localNameToFullName_map
+        _localNameToFullName = ctx._localNameToFullName_map
+        is_module = isinstance(ctx, model.Module)
+
         for al in node.names:
             targetname, asname = al.name, al.asname
             if asname is None:
                 # we're keeping track of all defined names
                 asname = targetname = targetname.split('.')[0]
             _localNameToFullName[asname] = targetname
+            if is_module:
+                cast(model.Module, 
+                    ctx).imports.append(model.Import(asname, targetname, 
+                                                     linenumber=node.lineno))
 
     def _handleOldSchoolMethodDecoration(self, target: str, expr: Optional[ast.expr]) -> bool:
         if not isinstance(expr, ast.Call):
