@@ -52,13 +52,6 @@ else:
 #   Functions can't contain anything.
 
 
-_string_lineno_is_end = sys.version_info < (3,8) \
-                    and platform.python_implementation() != 'PyPy'
-"""True iff the 'lineno' attribute of an AST string node points to the last
-line in the string, rather than the first line.
-"""
-
-
 class DocLocation(Enum):
     OWN_PAGE = 1
     PARENT_PAGE = 2
@@ -251,7 +244,6 @@ class Documentable:
 
         # issue warnings
         if new_name in new_contents:
-            
             self.system.handleDuplicate(new_contents[new_name])
             self.report(f"introduced by re-exporting {self} into {new_parent}"
                         '' if new_name==old_name else f' as {new_name!r}', thresh=1)
@@ -945,6 +937,7 @@ class System:
     """
 
     def __init__(self, options: Optional['Options'] = None):
+        self.modules: Dict[str, Module] = {}
         self.allobjects: Dict[str, Documentable] = {}
         self.rootobjects: List[_ModuleT] = []
 
@@ -1165,7 +1158,9 @@ class System:
 
     def addObject(self, obj: Documentable) -> None:
         """Add C{object} to the system."""
-
+        if isinstance(obj, _ModuleT):
+            # we already handled duplication of modules.
+            self.modules[obj.fullName()] = obj
         if obj.parent:
             obj.parent.contents[obj.name] = obj
         elif isinstance(obj, _ModuleT):
@@ -1477,40 +1472,6 @@ class System:
         """
         for url in self.options.intersphinx:
             self.intersphinx.update(cache, url)
-
-def defaultPostProcess(system:'System') -> None:
-    
-    for cls in system.objectsOfType(Class):
-        # Initiate the MROs
-        cls._init_mro()
-        # Lookup of constructors
-        cls._init_constructors()
-
-        # Compute subclasses
-        for b in cls.baseobjects:
-            if b is not None:
-                b.subclasses.append(cls)
-
-        # Checking whether the class is an exception
-        if is_exception(cls):
-            cls.kind = DocumentableKind.EXCEPTION
-            
-    for attrib in system.objectsOfType(Attribute):
-       _inherits_instance_variable_kind(attrib)
-
-def _inherits_instance_variable_kind(attr: Attribute) -> None:
-    """
-    If any of the inherited members of a class variable is an instance variable,
-    then the subclass' class variable become an instance variable as well.
-    """
-    if attr.kind is not DocumentableKind.CLASS_VARIABLE:
-        return
-    docsources = attr.docsources()
-    next(docsources)
-    for inherited in docsources:
-        if inherited.kind is DocumentableKind.INSTANCE_VARIABLE:
-            attr.kind = DocumentableKind.INSTANCE_VARIABLE
-            break
 
 def get_docstring(
         obj: Documentable
