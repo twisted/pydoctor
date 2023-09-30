@@ -2866,5 +2866,5 @@ def test_cannot_resolve_reparented(systemcls: Type[model.System], capsys:CapSys)
 
     assert list(system.allobjects['pack'].contents) == ['_src0', '_src1']
 
-    assert capsys.readouterr().out == ("pack:1: cannot resolve origin module of re-exported name: 'Slc'from origin module 'pack._src2'\n"
+    assert capsys.readouterr().out == ("pack:1: cannot resolve origin module of re-exported name: 'Slc' from origin module 'pack._src2'\n"
                                        "pack:1: cannot resolve re-exported name: 'pack._src1.Cls'\n")
