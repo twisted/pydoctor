@@ -305,7 +305,7 @@ def processReExports(system:'model.System') -> None:
                 msg = f"cannot resolve origin module of re-exported name: {orgname or local_name!r}"
                 if orgname and local_name!=orgname:
                     msg += f" as {local_name!r}"
-                msg += f"from origin module {imported_name.orgmodule!r}"
+                msg += f" from origin module {imported_name.orgmodule!r}"
                 mod.report(msg, lineno_offset=imported_name.linenumber)
 
     exports_per_target:Dict[model.Documentable, List[ReExport]] = defaultdict(list)
