@@ -1,10 +1,10 @@
-from typing import TYPE_CHECKING, Collection
+from typing import TYPE_CHECKING, Collection, Optional, Tuple, Union, overload
 
 from twisted.web.iweb import ITemplateLoader
 from twisted.web.template import Element, Tag, TagLoader, renderer, tags
 
 from pydoctor import epydoc2stan
-from pydoctor.model import Documentable, Function
+from pydoctor.model import Documentable, Function, Class
 from pydoctor.templatewriter import TemplateElement, util
 
 if TYPE_CHECKING:
@@ -18,16 +18,18 @@ class TableRow(Element):
             docgetter: util.DocGetter,
             ob: Documentable,
             child: Documentable,
+            as_name:Optional[str]
             ):
         super().__init__(loader)
         self.docgetter = docgetter
         self.ob = ob
         self.child = child
+        self.as_name = as_name
 
     @renderer
     def class_(self, request: object, tag: Tag) -> "Flattenable":
         class_ = util.css_class(self.child)
-        if self.child.parent is not self.ob:
+        if isinstance(self.ob, Class) and self.child.parent is not self.ob:
             class_ = 'base' + class_
         return class_
 
@@ -47,8 +49,9 @@ class TableRow(Element):
     @renderer
     def name(self, request: object, tag: Tag) -> Tag:
         return tag.clear()(tags.code(
-            epydoc2stan.taglink(self.child, self.ob.url, epydoc2stan.insert_break_points(self.child.name))
-            ))
+            epydoc2stan.taglink(self.child, self.ob.url, 
+                                epydoc2stan.insert_break_points(
+                                    self.as_name or self.child.name))))
 
     @renderer
     def summaryDoc(self, request: object, tag: Tag) -> Tag:
@@ -61,10 +64,27 @@ class ChildTable(TemplateElement):
 
     filename = 'table.html'
 
+    # not really a legit usage of overload, but mypy made me do it.
+    @overload
     def __init__(self,
             docgetter: util.DocGetter,
             ob: Documentable,
             children: Collection[Documentable],
+            loader: ITemplateLoader,
+            ):...
+    @overload
+    def __init__(self,
+            docgetter: util.DocGetter,
+            ob: Documentable,
+            children: Collection[Union[Documentable, 
+                                       Tuple[str, Documentable]]],
+            loader: ITemplateLoader,
+            ):...
+    def __init__(self,
+            docgetter: util.DocGetter,
+            ob: Documentable,
+            children: Collection[Union[Documentable, 
+                                       Tuple[str, Documentable]]],
             loader: ITemplateLoader,
             ):
         super().__init__(loader)
@@ -85,7 +105,8 @@ class ChildTable(TemplateElement):
                 TagLoader(tag),
                 self.docgetter,
                 self.ob,
-                child)
+                child=child if isinstance(child, Documentable) else child[1],
+                as_name=None if isinstance(child, Documentable) else child[0])
             for child in self.children
-            if child.isVisible
-            ]
+                if (child if isinstance(child, Documentable) else child[1]).isVisible
+                ]

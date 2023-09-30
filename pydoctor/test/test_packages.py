@@ -57,8 +57,10 @@ def test_allgames() -> None:
     assert isinstance(mod1, model.Module)
     mod2 = system.allobjects['allgames.mod2']
     assert isinstance(mod2, model.Module)
-    # InSourceAll is not moved into mod2, but NotInSourceAll is.
-    assert 'InSourceAll' in mod1.contents
+    # changed in 2023
+    # InSourceAll is moved into mod2 as well as NotInSourceAll.
+    assert 'InSourceAll' not in mod1.contents
+    assert 'InSourceAll' in mod2.contents
     assert 'NotInSourceAll' in mod2.contents
     # Source paths must be unaffected by the move, so that error messages
     # point to the right source code.
