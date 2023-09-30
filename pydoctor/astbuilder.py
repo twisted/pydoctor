@@ -242,21 +242,17 @@ def processReExports(system: model.System) -> None:
                         msg += f" as {local_name!r}"
                     msg += f"from origin module {imported_name.orgmodule!r}"
                     mod.report(msg, lineno_offset=imported_name.linenumber)
-            elif isinstance(origin, model.Module):
-                    if local_name != '*':
-                        if orgname:
-                            # only 'import from' statements can be used in re-exporting currently.
-                            _handleReExport(mod, orgname, local_name, origin, 
-                                            linenumber=imported_name.linenumber)
-                    else:
-                        for n in getPublicNames(origin):
-                            if n in exports:
-                                _handleReExport(mod, n, n, origin,
-                                                linenumber=imported_name.linenumber)
+            elif local_name != '*':
+                if orgname:
+                    # only 'import from' statements can be used in re-exporting currently.
+                    _handleReExport(mod, orgname, local_name, origin, 
+                                    linenumber=imported_name.linenumber)
             else:
-                msg = f"origin module {imported_name.orgmodule!r} should be Module, got {type(origin).__name__}"
-                mod.report(msg, lineno_offset=imported_name.linenumber)
-
+                for n in getPublicNames(origin):
+                    if n in exports:
+                        _handleReExport(mod, n, n, origin,
+                                        linenumber=imported_name.linenumber)
+           
 
 def postProcessClasses(system: model.System) -> None:
     for cls in system.objectsOfType(model.Class):
