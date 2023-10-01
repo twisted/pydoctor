@@ -483,7 +483,7 @@ class Module(CanContainImportsDocumentable):
         When pydoctor re-export objects, it leaves references to object in this dict
         so they can still be listed in childtable of origin modules. This attribute belongs 
         to the "view model" part of Documentable interface and should only be used to present
-        links to these objects, nor to do any name resolving.
+        links to these objects. Not to do name resolving.
         """
 
     def _localNameToFullName(self, name: str) -> str:
