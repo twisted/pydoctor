@@ -4,10 +4,13 @@ Parser for numpy-style docstrings.
 @See: L{pydoctor.epydoc.markup.google}
 @See: L{pydoctor.epydoc.markup._napoleon}
 """
+from __future__ import annotations
+
 from typing import Optional
-from pydoctor.model import Documentable
+
 from pydoctor.epydoc.markup import ParserFunction
 from pydoctor.epydoc.markup._napoleon import NapoelonDocstringParser
+from pydoctor.model import Documentable
 
 
 def get_parser(obj: Optional[Documentable]) -> ParserFunction:

@@ -1,6 +1,7 @@
 """
 This module provides implementations of epydoc's L{DocstringLinker} class.
 """
+from __future__ import annotations
 
 import contextlib
 from twisted.web.template import Tag, tags

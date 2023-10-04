@@ -1,4 +1,5 @@
 """The classes that turn  L{Documentable} instances into objects we can render."""
+from __future__ import annotations
 
 from typing import (
     TYPE_CHECKING, Dict, Iterator, List, Optional, Mapping, Sequence,

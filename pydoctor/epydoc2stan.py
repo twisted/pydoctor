@@ -1,6 +1,7 @@
 """
 Convert L{pydoctor.epydoc} parsed markup into renderable content.
 """
+from __future__ import annotations
 
 from collections import defaultdict
 import enum
