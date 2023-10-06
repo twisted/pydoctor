@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import TYPE_CHECKING, Collection, Optional, Tuple, Union, overload
 
 from twisted.web.iweb import ITemplateLoader

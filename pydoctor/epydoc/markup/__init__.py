@@ -4,7 +4,6 @@
 # A python documentation Module
 # Edward Loper
 #
-
 """
 Markup language support for docstrings.  Each submodule defines a
 parser for a single markup language.  These parsers convert an
@@ -31,6 +30,7 @@ Markup errors are represented using L{ParseError}s.  These exception
 classes record information about the cause, location, and severity of
 each error.
 """
+from __future__ import annotations
 __docformat__ = 'epytext en'
 
 from typing import Callable, ContextManager, List, Optional, Sequence, Iterator, TYPE_CHECKING

@@ -2,6 +2,8 @@
 This module contains a class to wrap shared behaviour between 
 L{pydoctor.epydoc.markup.numpy} and L{pydoctor.epydoc.markup.google}. 
 """
+from __future__ import annotations
+
 from typing import List, Optional, Type
 
 from pydoctor.epydoc.markup import ParsedDocstring, ParseError, processtypes

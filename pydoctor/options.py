@@ -1,6 +1,7 @@
 """
 The command-line parsing.
 """
+from __future__ import annotations
 
 import re
 from typing import Sequence, List, Optional, Type, Tuple, TYPE_CHECKING

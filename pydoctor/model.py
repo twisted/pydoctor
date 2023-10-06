@@ -5,6 +5,7 @@ The two core objects are L{Documentable} and L{System}.  Instances of
 system being documented.  An instance of L{System} represents the whole system
 being documented -- a System is a bad of Documentables, in some sense.
 """
+from __future__ import annotations
 
 import abc
 import ast
@@ -150,7 +151,7 @@ class Documentable:
         self.contents: Dict[str, Documentable] = {}
         self._linker: Optional['linker.DocstringLinker'] = None
 
-    def setDocstring(self, node: ast.Str) -> None:
+    def setDocstring(self, node: astutils.Str) -> None:
         lineno, doc = astutils.extract_docstring(node)
         self.docstring = doc
         self.docstring_lineno = lineno

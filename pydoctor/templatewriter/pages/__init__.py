@@ -1,4 +1,5 @@
 """The classes that turn  L{Documentable} instances into objects we can render."""
+from __future__ import annotations
 
 from itertools import chain
 from typing import (
