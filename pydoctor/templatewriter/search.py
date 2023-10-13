@@ -1,6 +1,7 @@
 """
 Code building ``all-documents.html``, ``searchindex.json`` and ``fullsearchindex.json``.
 """
+from __future__ import annotations
 
 from pathlib import Path
 from typing import Iterator, List, Optional, Tuple, Type, Dict, TYPE_CHECKING

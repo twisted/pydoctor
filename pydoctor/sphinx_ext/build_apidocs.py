@@ -21,6 +21,8 @@ The following format placeholders are resolved for C{pydoctor_args} at runtime:
 You must call pydoctor with C{--quiet} argument
 as otherwise any extra output is converted into Sphinx warnings.
 """
+from __future__ import annotations
+
 import os
 import pathlib
 import shutil

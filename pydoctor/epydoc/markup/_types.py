@@ -3,6 +3,7 @@ Render types from L{docutils.nodes.document} objects.
 
 This module provides yet another L{ParsedDocstring} subclass.
 """
+from __future__ import annotations
 
 from typing import Callable, Dict, List, Tuple, Union
 

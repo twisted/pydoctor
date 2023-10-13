@@ -4,7 +4,6 @@
 #
 # Created [04/10/01 12:00 AM]
 #
-
 """
 Parser for epytext strings.  Epytext is a lightweight markup whose
 primary intended application is Python documentation strings.  This
@@ -122,6 +121,7 @@ Description::
 """
 # Note: the symbol list is appended to the docstring automatically,
 # below.
+from __future__ import annotations
 
 __docformat__ = 'epytext en'
 

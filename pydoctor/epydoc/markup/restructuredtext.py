@@ -4,7 +4,6 @@
 #
 # Created [06/28/03 02:52 AM]
 #
-
 """
 Epydoc parser for ReStructuredText strings.  ReStructuredText is the
 standard markup language used by the Docutils project.
@@ -39,6 +38,7 @@ the names of possible consolidated fields; and the values are the
 names of the field tags that should be used for individual entries in
 the list.
 """
+from __future__ import annotations
 __docformat__ = 'epytext en'
 
 from typing import Iterable, List, Optional, Sequence, Set, cast
