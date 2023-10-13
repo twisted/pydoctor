@@ -244,7 +244,7 @@ class ReExport:
     origin_module: model.Module
     target: model.Documentable
 
-def _exports_order(r:ReExport) -> object:    
+def _exports_order(r:ReExport) -> tuple[int, int, int]:    
     return (-r.new_parent.privacyClass.value, 
             r.new_parent.fullName().count('.'), 
             -len(r.as_name))
