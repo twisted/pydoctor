@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import ast
 from collections import defaultdict
-from statistics import mean 
 import sys
 
 from functools import partial
