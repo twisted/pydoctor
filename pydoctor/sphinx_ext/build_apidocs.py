@@ -67,7 +67,12 @@ def on_build_finished(app: Sphinx, exception: Exception) -> None:
 
         temp_path = output_path.with_suffix('.pydoctor_temp')
         shutil.rmtree(sphinx_files, ignore_errors=True)
-        output_path.rename(sphinx_files)
+        try:
+            output_path.rename(sphinx_files)
+        except FileNotFoundError as e:
+            msg = str(e)
+            msg += '\nMake sur the pydoctor option --html-output is correctly configured.'
+            raise FileNotFoundError(msg) from e
         temp_path.rename(output_path)
 
 
