@@ -2915,7 +2915,7 @@ def test_reparenting_from_module_that_defines__all__(systemcls: Type[model.Syste
         "moving 'pack._src.cls' into 'pack'\n"
         "not moving pack.src.cls2 into 'pack', because 'cls2' is already exported in public module 'pack.src'\n")
     
-    assert system.allobjects['pack.cls'] is system.allobjects['pack._src'].elsewhere_contents['cls'] # type:ignore
+    assert system.allobjects['pack.cls'] is system.allobjects['pack._src'].exported['cls'] # type:ignore
 
 @systemcls_param
 def test_do_not_reparent_to_existing_name(systemcls: Type[model.System], capsys:CapSys) -> None:
@@ -2949,7 +2949,7 @@ def test_do_not_reparent_to_existing_name(systemcls: Type[model.System], capsys:
                                        "pack:1: duplicate Class 'pack.Slc'\n"
                                        "pack._src1:1: introduced by re-exporting Class 'pack._src1.Slc' into Package 'pack'\n")
     
-    assert system.allobjects['pack.Slc'] is system.allobjects['pack._src1'].elsewhere_contents['Slc'] # type:ignore
+    assert system.allobjects['pack.Slc'] is system.allobjects['pack._src1'].exported['Slc'] # type:ignore
 
 @systemcls_param
 def test_multiple_re_exports(systemcls: Type[model.System], capsys:CapSys) -> None:
@@ -2979,8 +2979,8 @@ def test_multiple_re_exports(systemcls: Type[model.System], capsys:CapSys) -> No
     assert capsys.readouterr().out == ("moving 'pack.subpack.src.Cls' into 'pack', "
                                        "also available at 'pack.subpack.Cls'\n")
 
-    assert system.allobjects['pack.Cls'] is system.allobjects['pack.subpack'].elsewhere_contents['Cls'] # type:ignore
-    assert system.allobjects['pack.Cls'] is system.allobjects['pack.subpack.src'].elsewhere_contents['Cls'] # type:ignore
+    assert system.allobjects['pack.Cls'] is system.allobjects['pack.subpack'].exported['Cls'] # type:ignore
+    assert system.allobjects['pack.Cls'] is system.allobjects['pack.subpack.src'].exported['Cls'] # type:ignore
 
 @systemcls_param
 def test_multiple_re_exports_alias(systemcls: Type[model.System], capsys:CapSys) -> None:
@@ -3007,5 +3007,27 @@ def test_multiple_re_exports_alias(systemcls: Type[model.System], capsys:CapSys)
     assert capsys.readouterr().out == ("moving 'pack.subpack.src.DistinguishedName' into 'pack' as 'DisName', "
                                        "also available at 'pack.DN'\n")
 
-    assert system.allobjects['pack.DisName'] is system.allobjects['pack'].elsewhere_contents['DN'] # type:ignore
-    assert system.allobjects['pack.DisName'] is system.allobjects['pack.subpack.src'].elsewhere_contents['DistinguishedName'] # type:ignore
+    assert system.allobjects['pack.DisName'] is system.allobjects['pack'].exported['DN'] # type:ignore
+    assert system.allobjects['pack.DisName'] is system.allobjects['pack.subpack.src'].exported['DistinguishedName'] # type:ignore
+
+@systemcls_param
+def test_re_export_method(systemcls: Type[model.System], capsys:CapSys) -> None:
+    src = '''\
+    class Thing:
+        def method(self):...
+    method = Thing.method
+    '''
+    subpack = ''
+    pack = '''
+    from pack.subpack.src import method
+    __all__=['method']
+    '''
+
+    system = systemcls()
+    builder = system.systemBuilder(system)
+    builder.addModuleString(pack, 'pack', is_package=True)
+    builder.addModuleString(subpack, 'subpack', is_package=True, parent_name='pack')
+    builder.addModuleString(src, 'src', parent_name='pack.subpack')
+    builder.buildModules()
+    assert capsys.readouterr().out == "moving 'pack.subpack.src.Thing.method' into 'pack'\n"
+

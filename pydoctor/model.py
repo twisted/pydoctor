@@ -419,6 +419,17 @@ class CanContainImportsDocumentable(Documentable):
     def setup(self) -> None:
         super().setup()
         self._localNameToFullName_map: Dict[str, str] = {}
+        """
+        Mapping from local names to fullnames: Powers name resolving.
+        """
+        
+        self.exported: Dict[str, 'Documentable'] = {}
+        """
+        When pydoctor re-export objects, it leaves references to object in this dict
+        so they can still be listed in childtable of origin modules or classes. This attribute belongs 
+        to the "view model" part of Documentable interface and should only be used to present
+        links to these objects. Not to do name resolving.
+        """
     
     def isNameDefined(self, name: str) -> bool:
         name = name.split('.')[0]
@@ -479,13 +490,6 @@ class Module(CanContainImportsDocumentable):
         self._docformat: Optional[str] = None
 
         self.imports: List[Import] = []
-        self.elsewhere_contents: Dict[str, 'Documentable'] = {}
-        """
-        When pydoctor re-export objects, it leaves references to object in this dict
-        so they can still be listed in childtable of origin modules. This attribute belongs 
-        to the "view model" part of Documentable interface and should only be used to present
-        links to these objects. Not to do name resolving.
-        """
 
     def _localNameToFullName(self, name: str) -> str:
         if name in self.contents:

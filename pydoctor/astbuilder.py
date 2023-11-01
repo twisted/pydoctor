@@ -186,15 +186,14 @@ def _handleReExport(info:'ReExport', elsewhere:Collection['ReExport']) -> None:
     target = info.target
     as_name = info.as_name
     target_parent = target.parent
-    assert isinstance(target_parent, model.Module)
     
     # Remember that this name is re-exported 
-    target_parent.elsewhere_contents[target.name] = target
+    target_parent.exported[target.name] = target
 
     extra_msg = ''
 
     for e in elsewhere:
-        e.new_parent.elsewhere_contents[e.as_name] = target
+        e.new_parent.exported[e.as_name] = target
 
         if not extra_msg:
             extra_msg += ', also available at '
@@ -325,7 +324,7 @@ def processReExports(system:'model.System') -> None:
                 f"because {target.name!r} is already exported in public module {target.parent.fullName()!r}")
 
             for e in _exports:
-                e.new_parent.elsewhere_contents[e.as_name] = target
+                e.new_parent.exported[e.as_name] = target
 
             continue
         

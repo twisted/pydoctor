@@ -407,7 +407,7 @@ class ModulePage(CommonPage):
     def _iter_reexported_members(self, predicate: Optional[Callable[[model.Documentable], bool]]=None) -> Iterator[Tuple[str, model.Documentable]]:
         if not predicate:
             predicate = lambda v:True
-        return ((n,o) for n,o in self.ob.elsewhere_contents.items() if o.isVisible and predicate(o))
+        return ((n,o) for n,o in self.ob.exported.items() if o.isVisible and predicate(o))
 
     def children(self) -> Sequence[Union[model.Documentable, Tuple[str, model.Documentable]]]:
         return sorted(chain(
