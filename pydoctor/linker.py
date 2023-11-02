@@ -263,7 +263,7 @@ class _AnnotationLinker(DocstringLinker):
         # report a low-level message about ambiguous annotation
         mod_ann = self._module.expandName(target)
         obj_ann = self._scope.expandName(target)
-        if mod_ann != obj_ann:
+        if mod_ann != obj_ann and '.' in obj_ann and '.' in mod_ann:
             self.obj.report(
                 f'ambiguous annotation {target!r}, could be interpreted as '
                 f'{obj_ann!r} instead of {mod_ann!r}', section='annotation',
