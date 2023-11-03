@@ -26,10 +26,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-    strategy:
-      matrix:
-        shard-index: [0, 1, 2, 3, 4]
-      fail-fast: false
     steps:
       - uses: actions/checkout@v4
         with:
@@ -38,7 +34,7 @@ jobs:
       - uses: actions/setup-python@v4
         with:
           python-version: "3.11"
-      - name: Install dependencies
+      - name: Install pydoctor_primer
         run: |
           python -m pip install -U pip
           pip install git+https://github.com/tristanlatr/pydoctor_primer.git
@@ -61,57 +57,11 @@ jobs:
             pydoctor_primer \
             --repo pydoctor_to_test \
             --new $GITHUB_SHA --old base_commit \
-            --num-shards 5 --shard-index ${{ matrix.shard-index }} \
             --debug \
             --output concise \
-            | tee diff_${{ matrix.shard-index }}.txt
+            -j 8 \
+            | tee diff.txt
           ) || [ $? -eq 1 ]
-      - name: Upload pydoctor_primer diff
-        uses: actions/upload-artifact@v3
-        with:
-          name: pydoctor_primer_diffs
-          path: diff_${{ matrix.shard-index }}.txt
-      - if: ${{ matrix.shard-index }} == 0
-        name: Save PR number
-        run: |
-          echo ${{ github.event.pull_request.number }} | tee pr_number.txt
-      - if: ${{ matrix.shard-index }} == 0
-        name: Upload PR number
-        uses: actions/upload-artifact@v3
-        with:
-          name: pydoctor_primer_diffs
-          path: pr_number.txt
-  
-  comment:
-    needs: [pydoctor_primer]
-    name: Comment PR from pydoctor_primer
-    runs-on: ubuntu-latest
-    
-    steps:
-      - name: Download diffs
-        uses: actions/github-script@v6
-        with:
-          script: |
-            const fs = require('fs');
-            const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
-               owner: context.repo.owner,
-               repo: context.repo.repo,
-               run_id: context.payload.workflow_run.id,
-            });
-            const [matchArtifact] = artifacts.data.artifacts.filter((artifact) =>
-              artifact.name == "pydoctor_primer_diffs");
-
-            const download = await github.rest.actions.downloadArtifact({
-               owner: context.repo.owner,
-               repo: context.repo.repo,
-               artifact_id: matchArtifact.id,
-               archive_format: "zip",
-            });
-            fs.writeFileSync("diff.zip", Buffer.from(download.data));
-
-      - run: unzip diff.zip
-      - run: |
-          cat diff_*.txt | tee fulldiff.txt
 
       - name: Post comment
         id: post-comment
@@ -123,7 +73,7 @@ jobs:
             const MAX_CHARACTERS_PER_PROJECT = MAX_CHARACTERS / 3
 
             const fs = require('fs')
-            let data = fs.readFileSync('fulldiff.txt', { encoding: 'utf8' })
+            let data = fs.readFileSync('diff.txt', { encoding: 'utf8' })
 
             function truncateIfNeeded(original, maxLength) {
               if (original.length <= maxLength) {
@@ -151,7 +101,11 @@ jobs:
             } else {
               body = "According to [pydoctor_primer](https://github.com/tristanlatr/pydoctor_primer), this change doesn't affect type check results on a corpus of open source code. ✅"
             }
-            const prNumber = parseInt(fs.readFileSync("pr_number.txt", { encoding: "utf8" }))
+            const ev = JSON.parse(
+              fs.readFileSync(process.env.GITHUB_EVENT_PATH, 'utf8')
+            )
+            const prNumber = ev.pull_request.number
+
             await github.rest.issues.createComment({
               issue_number: prNumber,
               owner: context.repo.owner,
