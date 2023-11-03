@@ -4,10 +4,10 @@
 #
 # Created [06/28/03 02:52 AM]
 #
-
 """
 Syntax highlighting for blocks of Python code.
 """
+from __future__ import annotations
 
 __docformat__ = 'epytext en'
 

@@ -23,6 +23,7 @@
 """
 C3 linearization algorithm.
 """
+from __future__ import annotations
 
 from collections import deque
 from itertools import islice

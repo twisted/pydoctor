@@ -1,6 +1,8 @@
 """
 Classes for the sidebar generation. 
 """
+from __future__ import annotations
+
 from typing import Any, Iterator, List, Optional, Sequence, Tuple, Type, Union
 from twisted.web.iweb import IRequest, ITemplateLoader
 from twisted.web.template import TagLoader, renderer, Tag, Element, tags
