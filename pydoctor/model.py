@@ -1450,8 +1450,6 @@ def defaultPostProcess(system:'System') -> None:
     for cls in system.objectsOfType(Class):
         # Initiate the MROs
         cls._init_mro()
-        # Lookup of constructors
-        cls._init_constructors()
 
         # Compute subclasses
         for b in cls.baseobjects:
