@@ -2106,3 +2106,46 @@ Hello
     assert docstring2html(mod.contents['func'], docformat='plaintext') == expected
     captured = capsys.readouterr().out
     assert captured == ''
+
+def test_regression_not_found_linenumbers(capsys: CapSys) -> None:
+    """
+    Test for issue https://github.com/twisted/pydoctor/issues/745
+    """
+    code = '''
+    __docformat__ = 'restructuredtext'
+    class Settings:
+        """
+        Object that manages the configuration for Twine.
+
+        This object can only be instantiated with keyword arguments.
+
+        For example,
+
+        .. code-block:: python
+
+            Settings(True, username='fakeusername')
+
+        Will raise a :class:`TypeError`. Instead, you would want
+
+        .. code-block:: python
+
+            Settings(sign=True, username='fakeusername')
+        """
+
+        def check_repository_url(self) -> None:
+            """
+            Verify we are not using legacy PyPI.
+            """
+            ...
+
+        def create_repository(self) -> repository.Repository:
+            """
+            Create a new repository for uploading.
+            """
+            ...
+    '''
+
+    mod = fromText(code, )
+    docstring2html(mod.contents['Settings'])
+    captured = capsys.readouterr().out
+    assert captured == '<test>:15: Cannot find link target for "TypeError"\n'
