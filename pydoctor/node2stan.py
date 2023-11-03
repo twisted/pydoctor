@@ -1,6 +1,8 @@
 """
 Helper function to convert L{docutils} nodes to Stan tree.
 """
+from __future__ import annotations
+
 import re
 import optparse
 from typing import Any, Callable, ClassVar, Iterable, List, Optional, Union, TYPE_CHECKING

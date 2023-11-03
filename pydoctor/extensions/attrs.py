@@ -1,7 +1,7 @@
-
 """
 Support for L{attrs}.
 """
+from __future__ import annotations
 
 import ast
 import inspect
