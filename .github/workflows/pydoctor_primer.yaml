@@ -4,14 +4,14 @@ on:
   # Only run on PR, since we diff against master
   pull_request:
     paths-ignore:
-      - 'pydoctor/test/**'
-      - 'docs/**'
-      - '*.rst'
-      - '*.txt'
-      - '*.in'
-      - '*.md'
-      - '.*'
-      - 'setup.py'
+    - 'pydoctor/test/**'
+    - 'docs/**'
+    - '*.rst'
+    - '*.txt'
+    - '*.in'
+    - '*.md'
+    - '.*'
+    - 'setup.py'
 
 permissions:
   contents: read
