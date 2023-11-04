@@ -73,8 +73,10 @@ You can select a different format using the ``--docformat`` option or the ``__do
 What's New?
 ~~~~~~~~~~~
 
-in development
-^^^^^^^^^^^^^^
+pydoctor 23.9.1
+^^^^^^^^^^^^^^^
+
+* Fix regression in link not found warnings' line numbers.
 
 pydoctor 23.9.0
 ^^^^^^^^^^^^^^^

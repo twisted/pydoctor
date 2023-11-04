@@ -251,8 +251,6 @@ class _AnnotationLinker(DocstringLinker):
         self._scope = obj.parent or obj
         self._module_linker = self._module.docstring_linker
         self._scope_linker = self._scope.docstring_linker
-
-        self.switch_context(obj).__enter__()
     
     @property
     def obj(self) -> 'model.Documentable':
@@ -270,16 +268,18 @@ class _AnnotationLinker(DocstringLinker):
             )
     
     def link_to(self, target: str, label: "Flattenable") -> Tag:
-        if self._module.isNameDefined(target):
-            self.warn_ambiguous_annotation(target)
-            return self._module_linker.link_to(target, label)
-        elif self._scope.isNameDefined(target):
-            return self._scope_linker.link_to(target, label)
-        else:
-            return self._module_linker.link_to(target, label)
+        with self.switch_context(self._obj):
+            if self._module.isNameDefined(target):
+                self.warn_ambiguous_annotation(target)
+                return self._module_linker.link_to(target, label)
+            elif self._scope.isNameDefined(target):
+                return self._scope_linker.link_to(target, label)
+            else:
+                return self._module_linker.link_to(target, label)
     
     def link_xref(self, target: str, label: "Flattenable", lineno: int) -> Tag:
-        return self.obj.docstring_linker.link_xref(target, label, lineno)
+        with self.switch_context(self._obj):
+            return self.obj.docstring_linker.link_xref(target, label, lineno)
 
     @contextlib.contextmanager
     def switch_context(self, ob:Optional['model.Documentable']) -> Iterator[None]:
