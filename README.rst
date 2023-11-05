@@ -84,6 +84,11 @@ This is the last major release to support Python 3.7.
   Highest priority callables will be called first during post-processing.
 * Fix too noisy ``--verbose`` mode (suppres some ambiguous annotations warnings).
 
+pydoctor 23.9.1
+^^^^^^^^^^^^^^^
+
+* Fix regression in link not found warnings' line numbers.
+
 pydoctor 23.9.0
 ^^^^^^^^^^^^^^^
 
