@@ -82,6 +82,7 @@ This is the last major release to support Python 3.7.
 * Add support for Python 3.12
 * `ExtRegistrar.register_post_processor()` now supports a `priority` argument that is an int.
   Highest priority callables will be called first during post-processing.
+* Fix too noisy ``--verbose`` mode (suppres some ambiguous annotations warnings).
 
 pydoctor 23.9.1
 ^^^^^^^^^^^^^^^
