@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import ast
+from collections import defaultdict
 import sys
 
 from functools import partial
@@ -13,13 +14,13 @@ from typing import (
     Type, TypeVar, Union, cast
 )
 
+import attr
 import astor
 from pydoctor import epydoc2stan, model, node2stan, extensions, linker
 from pydoctor.epydoc.markup._pyval_repr import colorize_inline_pyval
 from pydoctor.astutils import (is_none_literal, is_typing_annotation, is_using_annotations, is_using_typing_final, node2dottedname, node2fullname, 
                                is__name__equals__main__, unstring_annotation, iterassign, extract_docstring_linenum, infer_type, get_parents,
                                get_docstring_node, NodeVisitor, Parentage, Str)
-
 
 def parseFile(path: Path) -> ast.Module:
     """Parse the contents of a Python source file."""
@@ -166,6 +167,214 @@ def extract_final_subscript(annotation: ast.Subscript) -> ast.expr:
     else:
         assert isinstance(ann_slice, ast.expr)
         return ann_slice
+
+def _resolveReExportTarget(origin_module:model.Module,  origin_name:str, 
+                           new_parent:model.Module, linenumber:int) -> Optional[model.Documentable]:
+    # In case of duplicates names, we can't rely on resolveName,
+    # So we use content.get first to resolve non-alias names. 
+    ob = origin_module.contents.get(origin_name) or origin_module.resolveName(origin_name)
+    if ob is None:
+        new_parent.report("cannot resolve re-exported name: "
+                                f'\'{origin_module.fullName()}.{origin_name}\'', lineno_offset=linenumber)
+    return ob
+
+def _handleReExport(info:'ReExport', elsewhere:Collection['ReExport']) -> None:
+    """
+    Move re-exported objects into module C{new_parent}.
+    """
+    new_parent = info.new_parent
+    target = info.target
+    as_name = info.as_name
+    target_parent = target.parent
+    
+    # Remember that this name is re-exported 
+    target_parent.exported[target.name] = target
+
+    extra_msg = ''
+
+    for e in elsewhere:
+        e.new_parent.exported[e.as_name] = target
+
+        if not extra_msg:
+            extra_msg += ', also available at '
+            extra_msg += f"'{e.new_parent.fullName()}.{e.as_name}'"
+        else:
+            extra_msg += f" and '{e.new_parent.fullName()}.{e.as_name}'"
+        
+    if as_name != target.name:
+        new_parent.system.msg(
+            "astbuilder",
+            f"moving {target.fullName()!r} into {new_parent.fullName()!r} as {as_name!r}{extra_msg}")
+    else:
+        new_parent.system.msg(
+            "astbuilder",
+            f"moving {target.fullName()!r} into {new_parent.fullName()!r}{extra_msg}")
+
+    target.reparent(new_parent, as_name)
+
+
+def getModuleExports(mod:'model.Module') -> Collection[str]:
+    # Fetch names to export.
+    exports = mod.all
+    if exports is None:
+        exports = []
+    return exports
+
+def getPublicNames(mod: model.Module) -> Collection[str]:
+    """
+    Get all names to import when wildcardm importing the given module: 
+    use __all__ if available, otherwise take all names that are not private.
+    """
+    names = mod.all
+    if names is None:
+        names = [
+            name
+            for name in chain(mod.contents.keys(),
+                                mod._localNameToFullName_map.keys())
+            if not name.startswith('_')
+            ]
+    return names
+
+@attr.s(auto_attribs=True, slots=True)
+class ReExport:
+    new_parent: model.Module
+    as_name: str
+    origin_module: model.Module
+    target: model.Documentable
+
+def _exports_order(r:ReExport) -> tuple[int, int, int]:    
+    return (-r.new_parent.privacyClass.value, 
+            r.new_parent.fullName().count('.'), 
+            -len(r.as_name))
+
+
+def _maybeExistingNameOverridesImport(mod:model.Module, local_name:str, 
+                                      imp:model.Import, target:model.Documentable) -> bool:
+    if local_name in mod.contents:
+        existing = mod.contents[local_name]
+        # The imported name already exists in the locals, we test the linenumbers to 
+        # know whether the import should override the local name. We could do better if
+        # integrate with better static analysis like def-use chains.
+        if (not isinstance(existing, model.Module) and # modules are always shadowed by members
+            mod.contents[local_name].linenumber > imp.linenumber):
+            mod.report(f"not moving {target.fullName()} into {mod.fullName()}, "
+                f"because {local_name!r} is defined at line {existing.linenumber}", 
+                lineno_offset=imp.linenumber,
+                thresh=-1)
+            return True
+    return False
+
+def processReExports(system:'model.System') -> None:
+    # first gather all export infos, clean them up
+    # and apply them at the end.
+    reexports: List[ReExport] = []
+    
+    for mod in system.objectsOfType(model.Module):
+        exports = getModuleExports(mod)
+        for imported_name in mod.imports:
+            local_name = imported_name.name
+            orgname = imported_name.orgname
+            orgmodule = imported_name.orgmodule
+            if local_name != '*' and (not orgname or local_name not in exports):
+                continue
+            origin = system.modules.get(orgmodule) or system.allobjects.get(orgmodule)
+            if isinstance(origin, model.Module):
+                if local_name != '*':
+                    # only 'import from' statements can be used in re-exporting currently.
+                    if orgname:
+                        target = _resolveReExportTarget(origin, orgname, 
+                                                        mod, imported_name.linenumber)
+                        if target:
+                            if _maybeExistingNameOverridesImport(mod, local_name, imported_name, target):
+                                continue
+                            reexports.append(
+                                ReExport(mod, local_name, origin, target)
+                            )
+                else:
+                    for n in getPublicNames(origin):
+                        if n in exports:
+                            target = _resolveReExportTarget(origin, n, mod, imported_name.linenumber)
+                            if target:
+                                if _maybeExistingNameOverridesImport(mod, n, imported_name, target):
+                                    continue
+                                reexports.append(
+                                    ReExport(mod, n, origin, target)
+                                )
+            elif orgmodule.split('.', 1)[0] in system.root_names:
+                msg = f"cannot resolve origin module of re-exported name: {orgname or local_name!r}"
+                if orgname and local_name!=orgname:
+                    msg += f" as {local_name!r}"
+                msg += f" from origin module {imported_name.orgmodule!r}"
+                mod.report(msg, lineno_offset=imported_name.linenumber)
+
+    exports_per_target:Dict[model.Documentable, List[ReExport]] = defaultdict(list)
+    for r in reexports:
+        exports_per_target[r.target].append(r)
+
+    for target, _exports in exports_per_target.items():
+        elsewhere = []
+
+        if isinstance(target.parent, model.Module) and target.parent.all is not None \
+            and target.name in target.parent.all \
+            and target.parent.privacyClass is model.PrivacyClass.PUBLIC:
+            
+            target.system.msg(
+                "astbuilder",
+                f"not moving {target.fullName()} into {' or '.join(repr(e.new_parent.fullName()) for e in _exports)}, "
+                f"because {target.name!r} is already exported in public module {target.parent.fullName()!r}")
+
+            for e in _exports:
+                e.new_parent.exported[e.as_name] = target
+
+            continue
+        
+        assert len(_exports) > 0
+        if len(_exports) > 1:
+            # when an object has several re-exports, the public module with the lowest number
+            # of dot in it's name is choosen, if there is an equality, the longer local name
+            # is choosen 
+
+            _exports.sort(key=_exports_order)
+            elsewhere.extend(_exports[1:])
+        
+        reexport = _exports[0]
+        _handleReExport(reexport, elsewhere)
+
+def postProcessClasses(system: model.System) -> None:
+    for cls in system.objectsOfType(model.Class):
+        # Initiate the MROs
+        cls._init_mro()
+        # Lookup of constructors
+        cls._init_constructors()
+
+        # Compute subclasses
+        for b in cls.baseobjects:
+            if b is not None:
+                b.subclasses.append(cls)
+
+        # Checking whether the class is an exception
+        if model.is_exception(cls):
+            cls.kind = model.DocumentableKind.EXCEPTION
+
+def postProcessAttributes(system:model.System) -> None:     
+    for attrib in system.objectsOfType(model.Attribute):
+       _inherits_instance_variable_kind(attrib)
+
+def _inherits_instance_variable_kind(attr: model.Attribute) -> None:
+    """
+    If any of the inherited members of a class variable is an instance variable,
+    then the subclass' class variable become an instance variable as well.
+    """
+    if attr.kind is not model.DocumentableKind.CLASS_VARIABLE:
+        return
+    docsources = attr.docsources()
+    next(docsources)
+    for inherited in docsources:
+        if inherited.kind is model.DocumentableKind.INSTANCE_VARIABLE:
+            attr.kind = model.DocumentableKind.INSTANCE_VARIABLE
+            break
+
+# main ast visitor
 
 class ModuleVistor(NodeVisitor):
 
@@ -328,115 +537,64 @@ class ModuleVistor(NodeVisitor):
             assert modname is not None
 
         if node.names[0].name == '*':
-            self._importAll(modname)
+            self._importAll(modname, linenumber=node.lineno)
         else:
-            self._importNames(modname, node.names)
+            self._importNames(modname, node.names, linenumber=node.lineno)
 
-    def _importAll(self, modname: str) -> None:
+    def _importAll(self, modname: str, linenumber:int) -> None:
         """Handle a C{from <modname> import *} statement."""
-
+        ctx = self.builder.current
+        if isinstance(ctx, model.Module):
+            ctx.imports.append(model.Import('*', modname, 
+                                linenumber=linenumber, orgname='*'))
+        
         mod = self.system.getProcessedModule(modname)
         if mod is None:
             # We don't have any information about the module, so we don't know
             # what names to import.
-            self.builder.current.report(f"import * from unknown {modname}", thresh=1)
+            ctx.report(f"import * from unknown module {modname!r}", thresh=1, lineno_offset=linenumber)
             return
-
-        self.builder.current.report(f"import * from {modname}", thresh=1)
+        
+        if mod.state is model.ProcessingState.PROCESSING:
+            ctx.report(f"import * from partially processed module {modname!r}", 
+                       thresh=1, lineno_offset=linenumber)
 
         # Get names to import: use __all__ if available, otherwise take all
         # names that are not private.
-        names = mod.all
-        if names is None:
-            names = [
-                name
-                for name in chain(mod.contents.keys(),
-                                  mod._localNameToFullName_map.keys())
-                if not name.startswith('_')
-                ]
-
-        # Fetch names to export.
-        exports = self._getCurrentModuleExports()
+        names = getPublicNames(mod)
 
         # Add imported names to our module namespace.
-        assert isinstance(self.builder.current, model.CanContainImportsDocumentable)
-        _localNameToFullName = self.builder.current._localNameToFullName_map
+        assert isinstance(ctx, model.CanContainImportsDocumentable)
+        _localNameToFullName = ctx._localNameToFullName_map
         expandName = mod.expandName
         for name in names:
-
-            if self._handleReExport(exports, name, name, mod) is True:
-                continue
-
             _localNameToFullName[name] = expandName(name)
 
-    def _getCurrentModuleExports(self) -> Collection[str]:
-        # Fetch names to export.
-        current = self.builder.current
-        if isinstance(current, model.Module):
-            exports = current.all
-            if exports is None:
-                exports = []
-        else:
-            # Don't export names imported inside classes or functions.
-            exports = []
-        return exports
-
-    def _handleReExport(self, curr_mod_exports:Collection[str], 
-                        origin_name:str, as_name:str,
-                        origin_module:model.Module) -> bool:
-        """
-        Move re-exported objects into current module.
-
-        @returns: True if the imported name has been sucessfully re-exported.
-        """
-        # Move re-exported objects into current module.
-        current = self.builder.current
-        modname = origin_module.fullName()
-        if as_name in curr_mod_exports:
-            # In case of duplicates names, we can't rely on resolveName,
-            # So we use content.get first to resolve non-alias names. 
-            ob = origin_module.contents.get(origin_name) or origin_module.resolveName(origin_name)
-            if ob is None:
-                current.report("cannot resolve re-exported name :"
-                                        f'{modname}.{origin_name}', thresh=1)
-            else:
-                if origin_module.all is None or origin_name not in origin_module.all:
-                    self.system.msg(
-                        "astbuilder",
-                        "moving %r into %r" % (ob.fullName(), current.fullName())
-                        )
-                    # Must be a Module since the exports is set to an empty list if it's not.
-                    assert isinstance(current, model.Module)
-                    ob.reparent(current, as_name)
-                    return True
-        return False
-
-    def _importNames(self, modname: str, names: Iterable[ast.alias]) -> None:
+    def _importNames(self, modname: str, names: Iterable[ast.alias], linenumber:int) -> None:
         """Handle a C{from <modname> import <names>} statement."""
 
         # Process the module we're importing from.
         mod = self.system.getProcessedModule(modname)
 
-        # Fetch names to export.
-        exports = self._getCurrentModuleExports()
-
         current = self.builder.current
         assert isinstance(current, model.CanContainImportsDocumentable)
         _localNameToFullName = current._localNameToFullName_map
+        is_module = isinstance(current, model.Module)
         for al in names:
             orgname, asname = al.name, al.asname
             if asname is None:
                 asname = orgname
 
-            if mod is not None and self._handleReExport(exports, orgname, asname, mod) is True:
-                continue
-
             # If we're importing from a package, make sure imported modules
             # are processed (getProcessedModule() ignores non-modules).
             if isinstance(mod, model.Package):
                 self.system.getProcessedModule(f'{modname}.{orgname}')
-
+            
             _localNameToFullName[asname] = f'{modname}.{orgname}'
+            if is_module:
+                cast(model.Module,
+                     current).imports.append(model.Import(asname, modname,
+                                             orgname=orgname, linenumber=linenumber))
 
     def visit_Import(self, node: ast.Import) -> None:
         """Process an import statement.
@@ -451,16 +609,23 @@ class ModuleVistor(NodeVisitor):
         (dotted_name, as_name) where as_name is None if there was no 'as foo'
         part of the statement.
         """
-        if not isinstance(self.builder.current, model.CanContainImportsDocumentable):
+        ctx = self.builder.current
+        if not isinstance(ctx, model.CanContainImportsDocumentable):
             # processing import statement in odd context
             return
-        _localNameToFullName = self.builder.current._localNameToFullName_map
+        _localNameToFullName = ctx._localNameToFullName_map
+        is_module = isinstance(ctx, model.Module)
+
         for al in node.names:
             targetname, asname = al.name, al.asname
             if asname is None:
                 # we're keeping track of all defined names
                 asname = targetname = targetname.split('.')[0]
             _localNameToFullName[asname] = targetname
+            if is_module:
+                cast(model.Module, 
+                    ctx).imports.append(model.Import(asname, targetname, 
+                                                     linenumber=node.lineno))
 
     def _handleOldSchoolMethodDecoration(self, target: str, expr: Optional[ast.expr]) -> bool:
         if not isinstance(expr, ast.Call):
@@ -1291,4 +1456,6 @@ MODULE_VARIABLES_META_PARSERS: Mapping[str, Callable[[ast.Assign, model.Module],
 
 def setup_pydoctor_extension(r:extensions.ExtRegistrar) -> None:
     r.register_astbuilder_visitor(TypeAliasVisitorExt)
-    r.register_post_processor(model.defaultPostProcess, priority=200)
+    r.register_post_processor(processReExports, priority=250)
+    r.register_post_processor(postProcessClasses, priority=200)
+    r.register_post_processor(postProcessAttributes, priority=200)

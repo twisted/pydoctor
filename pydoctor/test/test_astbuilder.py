@@ -2720,3 +2720,314 @@ def test_typealias_unstring(systemcls: Type[model.System]) -> None:
         # there is not Constant nodes in the type alias anymore
         next(n for n in ast.walk(typealias.value) if isinstance(n, ast.Constant))
 
+@systemcls_param
+def test_module_imports(systemcls: Type[model.System]) -> None:
+        code = '''
+        import mod2
+        import pack.subpack
+        import pack.subpack as a
+        from mod2 import _k as k, _l as l, _m as m
+        from pack.subpack.stuff import C
+        from x import *
+        '''
+        expected = [('mod2','mod2', None),
+                    ('pack','pack', None),
+                    ('a','pack.subpack', None),
+                    ('k','mod2','_k'), 
+                    ('l','mod2','_l'), 
+                    ('m','mod2','_m'),
+                    ('C','pack.subpack.stuff','C'),
+                    ('*','x', '*')]
+        mod = fromText(code, systemcls=systemcls)
+
+        assert len(expected)==len(mod.imports)
+        for i, exp in zip(mod.imports, expected):
+            assert isinstance(i, model.Import)
+
+            expected_name, expected_orgmodule, expected_orgname = exp
+            assert i.name == expected_name
+            assert i.orgmodule == expected_orgmodule
+            assert i.orgname == expected_orgname
+
+@systemcls_param
+def test_module_relative_imports(systemcls: Type[model.System]) -> None:
+        code = '''
+        from ..mod2 import bar as b
+        from .pack import foo
+        '''
+        expected = [('b','top.mod2','bar'),
+                    ('foo','top.subpack.pack','foo'),]
+        system = systemcls()
+        builder = system.systemBuilder(system)
+        builder.addModuleString('', modname='top', is_package=True)
+        builder.addModuleString('', modname='subpack', parent_name='top', is_package=True)
+        builder.addModuleString(code, modname='other', parent_name='top.subpack')
+        builder.buildModules()
+        mod = system.allobjects['top.subpack.other']
+        assert isinstance(mod, model.Module)
+        assert len(expected)==len(mod.imports)
+        for i, exp in zip(mod.imports, expected):
+            assert isinstance(i, model.Import)
+
+            expected_name, expected_orgmodule, expected_orgname = exp
+            assert i.name == expected_name
+            assert i.orgmodule == expected_orgmodule
+            assert i.orgname == expected_orgname
+
+@systemcls_param
+def test_module_relative_package_imports(systemcls: Type[model.System]) -> None:
+        code = '''
+        from ...mod2 import bar as b
+        from .pack import foo
+        '''
+        expected = [('b','top.mod2','bar'),
+                    ('foo','top.subpack.other.pack','foo'),]
+        system = systemcls()
+        builder = system.systemBuilder(system)
+        builder.addModuleString('', modname='top', is_package=True)
+        builder.addModuleString('', modname='subpack', parent_name='top', is_package=True)
+        builder.addModuleString(code, modname='other', parent_name='top.subpack', is_package=True)
+        builder.buildModules()
+        mod = system.allobjects['top.subpack.other']
+        assert isinstance(mod, model.Module)
+        assert len(expected)==len(mod.imports)
+        for i, exp in zip(mod.imports, expected):
+            assert isinstance(i, model.Import)
+
+            expected_name, expected_orgmodule, expected_orgname = exp
+            assert i.name == expected_name
+            assert i.orgmodule == expected_orgmodule
+            assert i.orgname == expected_orgname
+
+@systemcls_param
+def test_allobjects_mapping_reparented_confusion(systemcls: Type[model.System], capsys:CapSys) -> None:
+    """
+    When reparenting, it takes care to handle duplicte objects with system.handleDuplicate.
+    """
+    src1 = '''\
+    class mything:
+        "reparented"
+        class stuff:
+            do = object()
+    '''
+    mything_src = '''\
+    class stuff:
+        "doc"
+        def do(x:int):...
+    '''
+    pack = 'from ._src import mything; __all__=["mything"]'
+
+    system = systemcls()
+    builder = system.systemBuilder(system)
+    builder.addModuleString(pack, 'pack', is_package=True)
+    builder.addModuleString(src1, '_src', parent_name='pack')
+    builder.addModuleString(mything_src, 'mything', parent_name='pack')
+    builder.buildModules()
+
+    assert [(o.name,o.kind) for o in  
+            system.allobjects['pack'].contents.values()] == [('_src', model.DocumentableKind.MODULE),
+                                                            #  ('mything 0', model.DocumentableKind.MODULE),
+                                                             ('mything', model.DocumentableKind.CLASS)]
+
+    assert system.allobjects['pack.mything'].docstring == "reparented"
+
+    assert system.allobjects['pack.mything.stuff'].docstring == None
+    assert system.allobjects['pack.mything.stuff.do'].kind == model.DocumentableKind.CLASS_VARIABLE
+
+    assert system.allobjects['pack.mything 0.stuff'].docstring == "doc"
+    assert system.allobjects['pack.mything 0.stuff'].kind == model.DocumentableKind.CLASS
+    assert system.allobjects['pack.mything 0.stuff.do'].kind == model.DocumentableKind.METHOD
+
+    assert capsys.readouterr().out == (
+        "moving 'pack._src.mything' into 'pack'\n"
+        "pack.mything:???: duplicate Module 'pack.mything'\n"
+        "pack._src:1: introduced by re-exporting Class 'pack._src.mything' into Package 'pack'\n"
+    )
+
+@systemcls_param
+def test_cannot_resolve_reparented(systemcls: Type[model.System], capsys:CapSys) -> None:
+    """
+    When reparenting, it warns when the reparented target cannot be found
+    """
+    src1 = '''\
+    class Cls:...
+    '''
+    mything_src = '''\
+    class Slc:...
+    '''
+    pack = 'from ._src2 import Slc;from ._src1 import Cls; __all__=["Cls", "Slc"]'
+
+    system = systemcls()
+    builder = system.systemBuilder(system)
+    builder.addModuleString(pack, 'pack', is_package=True)
+    builder.addModuleString(src1, '_src0', parent_name='pack')
+    builder.addModuleString(mything_src, '_src1', parent_name='pack')
+    builder.buildModules()
+
+    assert list(system.allobjects['pack'].contents) == ['_src0', '_src1']
+
+    assert capsys.readouterr().out == ("pack:1: cannot resolve origin module of re-exported name: 'Slc' from origin module 'pack._src2'\n"
+                                       "pack:1: cannot resolve re-exported name: 'pack._src1.Cls'\n")
+
+@systemcls_param
+def test_reparenting_from_module_that_defines__all__(systemcls: Type[model.System], capsys:CapSys) -> None:
+    """
+    Even if a module defined it's own __all__ attribute, 
+    we can reparent it's direct children to a new module 
+    but only when the origin module has a lower privacy class
+    (i.e reparenting from a private module to a plublic module), otherwise the name stays there.
+    """
+    _src = '''\
+    class cls:...
+    class cls3:...
+    class cls4:...
+    __all__ = ['cls', 'cls3', 'cls4']
+    '''
+    src = '''
+    class cls2:...
+    __all__ = ['cls2']
+    '''
+    pack = '''\
+    from ._src import cls
+    from .src import cls2
+    __all__=["cls","cls2"]
+    '''
+    subpack = '''\
+    from .._src import cls3
+    __all__=["cls3"]
+    '''
+    private = '''\
+    from pack._src import cls3, cls4
+    __all__ = ['cls3', 'cls4']
+    '''
+
+    system = systemcls()
+    builder = system.systemBuilder(system)
+    builder.addModuleString(private, '_private')
+    builder.addModuleString(pack, 'pack', is_package=True)
+    builder.addModuleString(subpack, 'subpack', parent_name='pack', is_package=True)
+    builder.addModuleString(_src, '_src', parent_name='pack')
+    builder.addModuleString(src, 'src', parent_name='pack')
+    builder.buildModules()
+    assert capsys.readouterr().out == (
+        "moving 'pack._src.cls3' into 'pack.subpack', also available at '_private.cls3'\n"
+        "moving 'pack._src.cls4' into '_private'\n"
+        "moving 'pack._src.cls' into 'pack'\n"
+        "not moving pack.src.cls2 into 'pack', because 'cls2' is already exported in public module 'pack.src'\n")
+    
+    assert system.allobjects['pack.cls'] is system.allobjects['pack._src'].exported['cls'] # type:ignore
+
+@systemcls_param
+def test_do_not_reparent_to_existing_name(systemcls: Type[model.System], capsys:CapSys) -> None:
+    """
+    Pydoctor will not re-export a name that is 
+    shadowed by a local by the same name.
+    """
+    src1 = '''\
+    class Cls:...
+    '''
+    src2 = '''\
+    class Slc:...
+    '''
+    pack = '''\
+        class Slc:...
+        from ._src1 import Slc
+        from ._src import Cls
+        class Cls:...
+        __all__=["Cls", "Slc"]
+        '''
+
+    system = systemcls()
+    builder = system.systemBuilder(system)
+    builder.addModuleString(pack, 'pack', is_package=True)
+    builder.addModuleString(src1, '_src', parent_name='pack')
+    builder.addModuleString(src2, '_src1', parent_name='pack')
+    builder.buildModules()
+
+    assert capsys.readouterr().out == ("pack:3: not moving pack._src.Cls into pack, because 'Cls' is defined at line 4\n"
+                                       "moving 'pack._src1.Slc' into 'pack'\n"
+                                       "pack:1: duplicate Class 'pack.Slc'\n"
+                                       "pack._src1:1: introduced by re-exporting Class 'pack._src1.Slc' into Package 'pack'\n")
+    
+    assert system.allobjects['pack.Slc'] is system.allobjects['pack._src1'].exported['Slc'] # type:ignore
+
+@systemcls_param
+def test_multiple_re_exports(systemcls: Type[model.System], capsys:CapSys) -> None:
+    """
+    Pydoctor will re-export a name to the module with 
+    the lowest amount of dots in it's fullname.
+    """
+    src = '''\
+    class Cls:...
+    '''
+    subpack = '''\
+    from pack.subpack.src import Cls
+    __all__=['Cls']
+    '''
+    pack = '''\
+    from pack.subpack import Cls
+    __all__=["Cls"]
+    '''
+
+    system = systemcls()
+    builder = system.systemBuilder(system)
+    builder.addModuleString(pack, 'pack', is_package=True)
+    builder.addModuleString(subpack, 'subpack', is_package=True, parent_name='pack')
+    builder.addModuleString(src, 'src', parent_name='pack.subpack')
+    builder.buildModules()
+
+    assert capsys.readouterr().out == ("moving 'pack.subpack.src.Cls' into 'pack', "
+                                       "also available at 'pack.subpack.Cls'\n")
+
+    assert system.allobjects['pack.Cls'] is system.allobjects['pack.subpack'].exported['Cls'] # type:ignore
+    assert system.allobjects['pack.Cls'] is system.allobjects['pack.subpack.src'].exported['Cls'] # type:ignore
+
+@systemcls_param
+def test_multiple_re_exports_alias(systemcls: Type[model.System], capsys:CapSys) -> None:
+    """
+    The case of twisted.internet.ssl.DistinguishedName/DN
+    """
+    src = '''\
+    class DistinguishedName:...
+    DN = DistinguishedName
+    '''
+    subpack = ''
+    pack = '''
+    from pack.subpack.src import DN, DistinguishedName as DisName
+    __all__=['DN', 'DisName']
+    '''
+
+    system = systemcls()
+    builder = system.systemBuilder(system)
+    builder.addModuleString(pack, 'pack', is_package=True)
+    builder.addModuleString(subpack, 'subpack', is_package=True, parent_name='pack')
+    builder.addModuleString(src, 'src', parent_name='pack.subpack')
+    builder.buildModules()
+
+    assert capsys.readouterr().out == ("moving 'pack.subpack.src.DistinguishedName' into 'pack' as 'DisName', "
+                                       "also available at 'pack.DN'\n")
+
+    assert system.allobjects['pack.DisName'] is system.allobjects['pack'].exported['DN'] # type:ignore
+    assert system.allobjects['pack.DisName'] is system.allobjects['pack.subpack.src'].exported['DistinguishedName'] # type:ignore
+
+@systemcls_param
+def test_re_export_method(systemcls: Type[model.System], capsys:CapSys) -> None:
+    src = '''\
+    class Thing:
+        def method(self):...
+    method = Thing.method
+    '''
+    subpack = ''
+    pack = '''
+    from pack.subpack.src import method
+    __all__=['method']
+    '''
+
+    system = systemcls()
+    builder = system.systemBuilder(system)
+    builder.addModuleString(pack, 'pack', is_package=True)
+    builder.addModuleString(subpack, 'subpack', is_package=True, parent_name='pack')
+    builder.addModuleString(src, 'src', parent_name='pack.subpack')
+    builder.buildModules()
+    assert capsys.readouterr().out == "moving 'pack.subpack.src.Thing.method' into 'pack'\n"
+

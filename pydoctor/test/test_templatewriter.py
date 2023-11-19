@@ -13,6 +13,7 @@ from pydoctor.templatewriter import (FailedToCreateTemplate, StaticTemplate, pag
                                      TemplateLookup, Template, 
                                      HtmlTemplate, UnsupportedTemplateVersion, 
                                      OverrideTemplateNotAllowed)
+from pydoctor.templatewriter.pages import PackagePage, ModulePage
 from pydoctor.templatewriter.pages.table import ChildTable
 from pydoctor.templatewriter.pages.attributechild import AttributeChild
 from pydoctor.templatewriter.summary import isClassNodePrivate, isPrivate, moduleSummary, ClassIndexPage
@@ -816,3 +817,61 @@ def test_class_hierarchy_links_top_level_names() -> None:
     index = flatten(ClassIndexPage(mod.system, TemplateLookup(template_dir)))
     assert 'href="https://docs.python.org/3/library/socket.html#socket.socket"' in index
 
+def test_multiple_re_exports_documented_elsewhere_renders() -> None:
+    """
+    Pydoctor will leave links from the origin module.
+    """
+    src = '''\
+    class Cls:...
+    '''
+    subpack = '''\
+    from pack.subpack.src import Cls
+    __all__=['Cls']
+    '''
+    pack = '''\
+    from pack.subpack import Cls
+    __all__=["Cls"]
+    '''
+
+    system = model.System()
+    builder = system.systemBuilder(system)
+    builder.addModuleString(pack, 'pack', is_package=True)
+    builder.addModuleString(subpack, 'subpack', is_package=True, parent_name='pack')
+    builder.addModuleString(src, 'src', parent_name='pack.subpack')
+    builder.buildModules()
+
+    subpackpage = PackagePage(system.allobjects['pack.subpack'], TemplateLookup(template_dir))
+    srcpage = ModulePage(system.allobjects['pack.subpack.src'], TemplateLookup(template_dir))
+    assert len(subpackpage.children())==1
+    assert ('Cls', system.allobjects['pack.Cls']) in subpackpage.initTableChildren()
+    assert ('Cls', system.allobjects['pack.Cls']) in srcpage.children()
+
+    assert system.allobjects['pack.Cls'].url in flatten(subpackpage)
+    assert system.allobjects['pack.Cls'].url in flatten(srcpage)
+
+@systemcls_param
+def test_multiple_re_exports_alias_renders_asname(systemcls: Type[model.System], capsys:CapSys) -> None:
+    """
+    The case of twisted.internet.ssl.DistinguishedName/DN
+    """
+    src = '''\
+    class DistinguishedName:...
+    DN = DistinguishedName
+    '''
+    pack = '''
+    from pack.subpack.src import DN, DistinguishedName
+    __all__=['DN', 'DistinguishedName']
+    '''
+
+    system = systemcls()
+    builder = system.systemBuilder(system)
+    builder.addModuleString(pack, 'pack', is_package=True)
+    builder.addModuleString('', 'subpack', is_package=True, parent_name='pack')
+    builder.addModuleString(src, 'src', parent_name='pack.subpack')
+    builder.buildModules()
+
+    subpackpage = PackagePage(system.allobjects['pack'], TemplateLookup(template_dir))
+    html = flatten(subpackpage)
+
+    assert system.allobjects['pack.DistinguishedName'].url in html
+    assert 'DN</a>' in html
