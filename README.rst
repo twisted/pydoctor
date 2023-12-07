@@ -88,7 +88,13 @@ This is the last major release to support Python 3.7.
    - ``attr.ib(init, default, factory, converter, type, kw_only)``/``attrs.field(...)``
    - ``attr.Factory(list)``
   It does not support the decorators based syntax for setting the validator/factory/default or converter.
-  
+* Fix too noisy ``--verbose`` mode (suppres some ambiguous annotations warnings).
+
+pydoctor 23.9.1
+^^^^^^^^^^^^^^^
+
+* Fix regression in link not found warnings' line numbers.
+
 pydoctor 23.9.0
 ^^^^^^^^^^^^^^^
 
