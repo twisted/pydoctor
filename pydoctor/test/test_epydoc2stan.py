@@ -1482,6 +1482,9 @@ def test_module_docformat(capsys: CapSys) -> None:
     captured = capsys.readouterr().out
     assert not captured
 
+    system = model.System()
+    system.options.docformat = 'epytext'
+
     mod = fromText('''
     """
     Link to pydoctor: `pydoctor <https://github.com/twisted/pydoctor>`_.
@@ -1520,14 +1523,18 @@ def test_module_docformat_inheritence(capsys: CapSys) -> None:
 
     system = model.System()
     system.options.docformat = 'restructuredtext'
-    top = fromText(top_src, modname='top', is_package=True, system=system)
-    fromText(pkg_src, modname='pkg', parent_name='top', is_package=True,
-                   system=system)
-    mod = fromText(mod_src, modname='top.pkg.mod', parent_name='top.pkg', system=system)
+    builder = system.systemBuilder(system)
+    builder.addModuleString(top_src, modname='top', is_package=True)
+    builder.addModuleString(pkg_src, modname='pkg', parent_name='top', is_package=True)
+    builder.addModuleString(mod_src, modname='mod', parent_name='top.pkg')
+    builder.buildModules()
     
+    top = system.allobjects['top']
+    mod = system.allobjects['top.pkg.mod']
+    assert isinstance(mod, model.Module)
+    assert mod.docformat == 'epytext'
     captured = capsys.readouterr().out
     assert not captured
-
     assert ''.join(docstring2html(top.contents['f']).splitlines()) == ''.join(docstring2html(mod.contents['f']).splitlines())
     
 
@@ -1553,10 +1560,14 @@ def test_module_docformat_with_docstring_inheritence(capsys: CapSys) -> None:
     '''
 
     system = model.System()
+    builder = system.systemBuilder(system)
     system.options.docformat = 'epytext'
 
-    mod = fromText(mod_src, modname='mod', system=system)
-    mod2 = fromText(mod2_src, modname='mod2', system=system)
+    builder.addModuleString(mod_src, modname='mod',)
+    builder.addModuleString(mod2_src, modname='mod2',)
+    builder.buildModules()
+    mod = system.allobjects['mod']
+    mod2 = system.allobjects['mod2']
     
     captured = capsys.readouterr().out
     assert not captured
@@ -1610,11 +1621,14 @@ def test_constant_values_rst(capsys: CapSys) -> None:
     '''
 
     system = model.System()
+    builder = system.systemBuilder(system)
     system.options.docformat = 'restructuredtext'
 
-    fromText("", modname='pack', system=system, is_package=True)
-    fromText(mod1, modname='mod1', system=system, parent_name='pack')
-    mod = fromText(mod2, modname='mod2', system=system, parent_name='pack')
+    builder.addModuleString("", modname='pack', is_package=True)
+    builder.addModuleString(mod1, modname='mod1',parent_name='pack')    
+    builder.addModuleString(mod2, modname='mod2', parent_name='pack')
+    builder.buildModules()
+    mod = system.allobjects['pack.mod2']
     
     captured = capsys.readouterr().out
     assert not captured
@@ -2106,3 +2120,46 @@ Hello
     assert docstring2html(mod.contents['func'], docformat='plaintext') == expected
     captured = capsys.readouterr().out
     assert captured == ''
+
+def test_regression_not_found_linenumbers(capsys: CapSys) -> None:
+    """
+    Test for issue https://github.com/twisted/pydoctor/issues/745
+    """
+    code = '''
+    __docformat__ = 'restructuredtext'
+    class Settings:
+        """
+        Object that manages the configuration for Twine.
+
+        This object can only be instantiated with keyword arguments.
+
+        For example,
+
+        .. code-block:: python
+
+            Settings(True, username='fakeusername')
+
+        Will raise a :class:`TypeError`. Instead, you would want
+
+        .. code-block:: python
+
+            Settings(sign=True, username='fakeusername')
+        """
+
+        def check_repository_url(self) -> None:
+            """
+            Verify we are not using legacy PyPI.
+            """
+            ...
+
+        def create_repository(self) -> repository.Repository:
+            """
+            Create a new repository for uploading.
+            """
+            ...
+    '''
+
+    mod = fromText(code, )
+    docstring2html(mod.contents['Settings'])
+    captured = capsys.readouterr().out
+    assert captured == '<test>:15: Cannot find link target for "TypeError"\n'

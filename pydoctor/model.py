@@ -5,6 +5,7 @@ The two core objects are L{Documentable} and L{System}.  Instances of
 system being documented.  An instance of L{System} represents the whole system
 being documented -- a System is a bad of Documentables, in some sense.
 """
+from __future__ import annotations
 
 import abc
 import ast
@@ -20,7 +21,7 @@ from enum import Enum
 from inspect import signature, Signature
 from pathlib import Path
 from typing import (
-    TYPE_CHECKING, Any, Callable, Collection, Dict, Iterator, List, Mapping,
+    TYPE_CHECKING, Any, Collection, Dict, Iterator, List, Mapping,
     Optional, Sequence, Set, Tuple, Type, TypeVar, Union, cast, overload
 )
 from urllib.parse import quote
@@ -158,7 +159,7 @@ class Documentable:
         self.contents: Dict[str, Documentable] = {}
         self._linker: Optional['linker.DocstringLinker'] = None
 
-    def setDocstring(self, node: ast.Str) -> None:
+    def setDocstring(self, node: astutils.Str) -> None:
         lineno, doc = astutils.extract_docstring(node)
         self.docstring = doc
         self.docstring_lineno = lineno
@@ -840,7 +841,7 @@ class FunctionOverload:
 
 class Attribute(Inheritable):
     kind: Optional[DocumentableKind] = DocumentableKind.ATTRIBUTE
-    annotation: Optional[ast.expr]
+    annotation: Optional[ast.expr] = None
     decorators: Optional[Sequence[ast.expr]] = None
     value: Optional[ast.expr] = None
     """
@@ -962,7 +963,7 @@ class System:
         # Initialize the extension system
         self._factory = factory.Factory()
         self._astbuilder_visitors: List[Type['astutils.NodeVisitorExt']] = []
-        self._post_processors: List[Callable[['System'], None]] = []
+        self._post_processor = extensions.PriorityProcessor(self)
         
         if self.extensions == _default_extensions:
             self.extensions = list(extensions.get_extensions())
@@ -1257,8 +1258,11 @@ class System:
         for k, v in thing.__dict__.items():
             if (isinstance(v, func_types)
                     # In PyPy 7.3.1, functions from extensions are not
-                    # instances of the abstract types in func_types
-                    or (hasattr(v, "__class__") and v.__class__.__name__ == 'builtin_function_or_method')):
+                    # instances of the abstract types in func_types, it will have the type 'builtin_function_or_method'.
+                    # Additionnaly cython3 produces function of type 'cython_function_or_method', 
+                    # so se use a heuristic on the class name as a fall back detection.
+                    or (hasattr(v, "__class__") and 
+                        v.__class__.__name__.endswith('function_or_method'))):
                 f = self.Function(self, k, parent)
                 f.parentMod = parentMod
                 f.docstring = v.__doc__
@@ -1432,28 +1436,10 @@ class System:
         Analysis of relations between documentables can be done here,
         without the risk of drawing incorrect conclusions because modules
         were not fully processed yet.
+
+        @See: L{extensions.PriorityProcessor}.
         """
-
-        # default post-processing includes:
-        # - Processing of subclasses
-        # - MRO computing.
-        # - Lookup of constructors
-        # - Checking whether the class is an exception
-        for cls in self.objectsOfType(Class):
-            
-            cls._init_mro()
-            cls._init_constructors()
-            
-            for b in cls.baseobjects:
-                if b is not None:
-                    b.subclasses.append(cls)
-            
-            if is_exception(cls):
-                cls.kind = DocumentableKind.EXCEPTION
-
-        for post_processor in self._post_processors:
-            post_processor(self)
-
+        self._post_processor.apply_processors()
 
     def fetchIntersphinxInventories(self, cache: CacheT) -> None:
         """
@@ -1461,6 +1447,39 @@ class System:
         """
         for url in self.options.intersphinx:
             self.intersphinx.update(cache, url)
+
+def defaultPostProcess(system:'System') -> None:
+    for cls in system.objectsOfType(Class):
+        # Initiate the MROs
+        cls._init_mro()
+        # Lookup of constructors
+        cls._init_constructors()
+
+        # Compute subclasses
+        for b in cls.baseobjects:
+            if b is not None:
+                b.subclasses.append(cls)
+
+        # Checking whether the class is an exception
+        if is_exception(cls):
+            cls.kind = DocumentableKind.EXCEPTION
+            
+    for attrib in system.objectsOfType(Attribute):
+       _inherits_instance_variable_kind(attrib)
+
+def _inherits_instance_variable_kind(attr: Attribute) -> None:
+    """
+    If any of the inherited members of a class variable is an instance variable,
+    then the subclass' class variable become an instance variable as well.
+    """
+    if attr.kind is not DocumentableKind.CLASS_VARIABLE:
+        return
+    docsources = attr.docsources()
+    next(docsources)
+    for inherited in docsources:
+        if inherited.kind is DocumentableKind.INSTANCE_VARIABLE:
+            attr.kind = DocumentableKind.INSTANCE_VARIABLE
+            break
 
 def get_docstring(
         obj: Documentable

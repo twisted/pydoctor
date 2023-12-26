@@ -1,7 +1,7 @@
-
 """
 Support for L{attrs}.
 """
+from __future__ import annotations
 
 import ast
 import inspect
@@ -108,7 +108,7 @@ def annotation_from_attrib(
             return astutils.unstring_annotation(typ, ctx)
         default = args.arguments.get('default')
         if default is not None:
-            return astbuilder._infer_type(default)
+            return astutils.infer_type(default)
     return None
 
 class ModuleVisitor(extensions.ModuleVisitorExt):

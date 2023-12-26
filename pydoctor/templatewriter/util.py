@@ -1,4 +1,5 @@
 """Miscellaneous utilities for the HTML writer."""
+from __future__ import annotations
 
 import warnings
 from typing import (Any, Dict, Generic, Iterable, Iterator, List, Mapping, 
