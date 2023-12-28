@@ -112,8 +112,13 @@ class TemplateWriter(IWriter):
 
             # When support for Python 3.9 and older is dropped use
             # pathlib.Path.hardlink_to() instead.
-            print(Path.cwd())
-            os.link(root_module_path.parent / 'index.html', root_module_path)
+            x = list(root_module_path.parent.glob('*'))
+            print(f'TTTT\n{root_module_path=} {x=}')
+            print(f'{root_module_path.exists()=}')
+            os.link(
+                src=root_module_path,  # original
+                dst=root_module_path.parent / 'index.html'  # the hardlink
+            )
 
     def _writeDocsFor(self, ob: model.Documentable) -> None:
         if not ob.isVisible:

@@ -215,6 +215,9 @@ def test_main_symlinked_paths(tmp_path: Path) -> None:
     link = tmp_path / 'src'
     link.symlink_to(Path.cwd(), target_is_directory=True)
 
+    print(f'{link=} {link.exists()=}')
+    print(f'{Path.cwd()=} {Path.cwd().exists()=}')
+
     exit_code = driver.main(args=[
         '--project-base-dir=.',
         '--html-viewsource-base=http://example.com',
