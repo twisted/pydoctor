@@ -12,6 +12,7 @@ apidocs/
 .eggs
 .hypothesis
 
+
 # Emacs temporary files
 \#*.py#
 .#*.py
