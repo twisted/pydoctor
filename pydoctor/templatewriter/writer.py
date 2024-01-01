@@ -115,10 +115,10 @@ class TemplateWriter(IWriter):
             x = list(root_module_path.parent.glob('*'))
             print(f'TTTT\n{root_module_path=} {x=}')
             print(f'{root_module_path.exists()=}')
-            os.link(
-                src=root_module_path,  # original
-                dst=root_module_path.parent / 'index.html'  # the hardlink
-            )
+            # os.link(
+            #     src=root_module_path,  # original
+            #     dst=root_module_path.parent / 'index.html'  # the hardlink
+            # )
 
     def _writeDocsFor(self, ob: model.Documentable) -> None:
         if not ob.isVisible:
