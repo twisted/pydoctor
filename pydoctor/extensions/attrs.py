@@ -1,8 +1,8 @@
-
 """
 Support for L{attrs} and other similar idioms, including L{dataclasses}, 
 L{typing.NamedTuple} and L{pydantic} models.
 """
+from __future__ import annotations
 
 import ast
 import enum
