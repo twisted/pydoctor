@@ -52,7 +52,7 @@ We use `tox <https://tox.wiki/en/stable/>`_ for running our checks, but you can 
      - ``pip install '.[mypy]' && mypy pydoctor``
    * - Run pydoctor on it's own source
      - ``tox -e apidocs``
-     - ``pip install . && pydoctor --privacy="HIDDEN:pydoctor.test" -q -W pydoctor``
+     - ``pip install . && pydoctor --privacy "HIDDEN:pydoctor.test" -q -W pydoctor``
 
 These should be the minimum check to run on your local system.
 A pull request will trigger more tests and most probably there is a tox
