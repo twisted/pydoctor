@@ -1,6 +1,7 @@
 
 """
-Support for L{attrs}.
+Support for L{attrs} and other similar idioms, including L{dataclasses}, 
+L{typing.NamedTuple} and L{pydantic} models.
 """
 
 import ast
@@ -84,6 +85,9 @@ def _callable_return_type(dname:List[str], ctx:model.Documentable) -> Optional[a
 
     Note that the expression might not be fully 
     resolvable in the new context since it can come from other modules. 
+
+    This is not type inference, we're simply looking up the name and. If it's 
+    a function, we use the return annotation as is. 
     """
     r = ctx.resolveName('.'.join(dname))
     if isinstance(r, model.Class):
@@ -91,10 +95,15 @@ def _callable_return_type(dname:List[str], ctx:model.Documentable) -> Optional[a
     elif isinstance(r, model.Function):
         rtype = r.annotations.get('return')
         if rtype:
+            # TODO: Here the returned ast might not be in the same module
+            # as the attrs class, so the names might not be resolvable. 
+            # So the right to do would be check whether it's defined in the same module
+            # and if not: use the fully qualified name instead so the linker will link to the
+            # object successfuly.
             return rtype
     elif r is None and len(dname)==1 and dname[0] in builtin_types:
         return astutils.dottedname2node(dname)
-    # TODO: we might be able to use the shpinx inventory yo check if the 
+    # TODO: we might be able to use the shpinx inventory to check if the 
     # provided callable is a class, in which case the class could be linked.
     return None
 
