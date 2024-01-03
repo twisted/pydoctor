@@ -9,7 +9,7 @@ from pydoctor import epydoc2stan, model, linker
 from pydoctor.epydoc.markup import get_supported_docformats
 from pydoctor.stanutils import flatten, flatten_text
 from pydoctor.epydoc.markup.epytext import ParsedEpytextDocstring
-from pydoctor.sphinx import SphinxInventory
+from pydoctor.sphinx import SphinxInventory, InventoryObject
 from pydoctor.test.test_astbuilder import fromText, unwrap
 from pydoctor.test import CapSys, NotFoundLinker
 from pydoctor.templatewriter.search import stem_identifier
@@ -168,7 +168,7 @@ def test_xref_link_intersphinx() -> None:
 
     system = mod.system
     inventory = SphinxInventory(system.msg)
-    inventory._links['external.func'] = ('https://example.net', 'lib.html#func')
+    inventory._links['external.func'] = InventoryObject(name='external.func', base_url='https://example.net', location='lib.html#func', typ='func')
     system.intersphinx = inventory
 
     html = docstring2html(mod.contents['func'])
@@ -1079,7 +1079,7 @@ def test_EpydocLinker_look_for_intersphinx_hit() -> None:
     """
     system = model.System()
     inventory = SphinxInventory(system.msg)
-    inventory._links['base.module.other'] = ('http://tm.tld', 'some.html')
+    inventory._links['base.module.other'] = InventoryObject(name='base.module.other', base_url='http://tm.tld', location='some.html', typ='mod')
     system.intersphinx = inventory
     target = model.Module(system, 'ignore-name')
     sut = target.docstring_linker
@@ -1095,7 +1095,7 @@ def test_EpydocLinker_adds_intersphinx_link_css_class() -> None:
     """
     system = model.System()
     inventory = SphinxInventory(system.msg)
-    inventory._links['base.module.other'] = ('http://tm.tld', 'some.html')
+    inventory._links['base.module.other'] = InventoryObject(name='base.module.other', base_url='http://tm.tld', location='some.html', typ='mod')
     system.intersphinx = inventory
     target = model.Module(system, 'ignore-name')
     sut = target.docstring_linker
@@ -1116,7 +1116,7 @@ def test_EpydocLinker_resolve_identifier_xref_intersphinx_absolute_id() -> None:
     """
     system = model.System()
     inventory = SphinxInventory(system.msg)
-    inventory._links['base.module.other'] = ('http://tm.tld', 'some.html')
+    inventory._links['base.module.other'] = InventoryObject(name='base.module.other', base_url='http://tm.tld', location='some.html', typ='mod')
     system.intersphinx = inventory
     target = model.Module(system, 'ignore-name')
     sut = target.docstring_linker
@@ -1136,7 +1136,7 @@ def test_EpydocLinker_resolve_identifier_xref_intersphinx_relative_id() -> None:
     """
     system = model.System()
     inventory = SphinxInventory(system.msg)
-    inventory._links['ext_package.ext_module'] = ('http://tm.tld', 'some.html')
+    inventory._links['ext_package.ext_module'] = InventoryObject(name='ext_package.ext_module', base_url='http://tm.tld', location='some.html', typ='mod')
     system.intersphinx = inventory
     target = model.Module(system, 'ignore-name')
     # Here we set up the target module as it would have this import.
