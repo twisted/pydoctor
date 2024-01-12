@@ -147,11 +147,9 @@ def test_fetchIntersphinxInventories_content() -> None:
     Download and parse intersphinx inventories for each configured
     intersphix.
     """
-    options = Options.defaults()
-    options.intersphinx = [
-        'http://sphinx/objects.inv',
-        'file:///twisted/index.inv',
-        ]
+    options = Options.from_args(['--intersphinx=http://sphinx/objects.inv', 
+                                 '--intersphinx=file:///twisted/index.inv'])
+    
     url_content = {
         'http://sphinx/objects.inv': zlib.compress(
             b'sphinx.module py:module -1 sp.html -'),

@@ -5,7 +5,8 @@ from __future__ import annotations
 
 import re
 import optparse
-from typing import Any, Callable, ClassVar, Iterable, List, Optional, Union, TYPE_CHECKING
+from typing import Any, ClassVar, Iterable, List, Optional, Sequence, Union, TYPE_CHECKING
+import attr
 from docutils.writers import html4css1
 from docutils import nodes, frontend, __version_info__ as docutils_version_info
 
@@ -58,9 +59,51 @@ def gettext(node: Union[nodes.Node, List[nodes.Node]]) -> List[str]:
 _TARGET_RE = re.compile(r'^(.*?)\s*<(?:URI:|URL:)?([^<>]+)>$')
 _VALID_IDENTIFIER_RE = re.compile('[^0-9a-zA-Z_]')
 
+@attr.s(auto_attribs=True)
+class Reference:
+    label: Union[str, Sequence[nodes.Node]]
+    target: str
+    invname: Optional[str] = None
+    domain: Optional[str] = None
+    reftype: Optional[str] = None
+    external: bool = False
+
+
+def parse_reference(node:nodes.Node) -> Reference:
+    """
+    Split a reference into (label, target).
+    """
+    label: Union[str, Sequence[nodes.Node]]
+    if 'refuri' in node.attributes:
+        # Epytext parsed or manually constructed nodes.
+        label, target = node.children, node.attributes['refuri']
+    else:
+        # RST parsed.
+        m = _TARGET_RE.match(node.astext())
+        if m:
+            label, target = m.groups()
+        else:
+            label = target = node.astext()
+    # Support linking to functions and methods with parameters
+    if target.endswith(')'):
+        # Remove arg lists for functions (e.g., L{_colorize_link()})
+        target = re.sub(r'\(.*\)$', '', target)
+    
+    return Reference(label, target, 
+                     invname=node.attributes.get('invname'), 
+                     domain=node.attributes.get('domain'),
+                     reftype=node.attributes.get('reftype'),
+                     external=node.attributes.get('external', False))
+
 def _valid_identifier(s: str) -> str:
     """Remove invalid characters to create valid CSS identifiers. """
     return _VALID_IDENTIFIER_RE.sub('', s)
+
+def _label2flattenable(label: Union[str, Sequence[nodes.Node]], linker:DocstringLinker) -> "Flattenable":
+    if not isinstance(label, str):
+        return node2stan(label, linker)
+    else:
+        return label
 
 class HTMLTranslator(html4css1.HTMLTranslator):
     """
@@ -100,30 +143,21 @@ class HTMLTranslator(html4css1.HTMLTranslator):
     # Handle interpreted text (crossreferences)
     def visit_title_reference(self, node: nodes.Node) -> None:
         lineno = get_lineno(node)
-        self._handle_reference(node, link_func=lambda target, label: self._linker.link_xref(target, label, lineno))
+        ref = parse_reference(node)
+        target = ref.target        
+        label = _label2flattenable(ref.label, self._linker)
+        link = self._linker.link_xref(target, label, lineno, 
+                    invname=ref.invname, domain=ref.domain, 
+                    reftype=ref.reftype, external=ref.external)
+        self.body.append(flatten(link))
+        raise nodes.SkipNode()
     
     # Handle internal references
     def visit_obj_reference(self, node: nodes.Node) -> None:
-        self._handle_reference(node, link_func=self._linker.link_to)
-    
-    def _handle_reference(self, node: nodes.Node, link_func: Callable[[str, "Flattenable"], "Flattenable"]) -> None:
-        label: "Flattenable"
-        if 'refuri' in node.attributes:
-            # Epytext parsed or manually constructed nodes.
-            label, target = node2stan(node.children, self._linker), node.attributes['refuri']
-        else:
-            # RST parsed.
-            m = _TARGET_RE.match(node.astext())
-            if m:
-                label, target = m.groups()
-            else:
-                label = target = node.astext()
-        
-        # Support linking to functions and methods with () at the end
-        if target.endswith('()'):
-            target = target[:len(target)-2]
-
-        self.body.append(flatten(link_func(target, label)))
+        ref = parse_reference(node)
+        target = ref.target        
+        label = _label2flattenable(ref.label, self._linker)
+        self.body.append(flatten(self._linker.link_to(target, label)))
         raise nodes.SkipNode()
 
     def should_be_compact_paragraph(self, node: nodes.Node) -> bool:

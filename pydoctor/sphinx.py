@@ -2,17 +2,19 @@
 Support for Sphinx compatibility.
 """
 from __future__ import annotations
+from collections import defaultdict
+import enum
 
 import logging
 import os
+from pathlib import Path
 import shutil
 import textwrap
 import zlib
 from typing import (
-    TYPE_CHECKING, Callable, ContextManager, Dict, IO, Iterable, Mapping,
-    Optional, Tuple
+    TYPE_CHECKING, Callable, ContextManager, Dict, IO, Iterable, List, Mapping,
+    Optional, Set, Tuple
 )
-import enum
 
 import appdirs
 import attr
@@ -32,87 +34,136 @@ else:
     Documentable = object
     CacheT = object
 
-
 logger = logging.getLogger(__name__)
 
-class InvObjectType(enum.Enum):
 
-    FUNCTION = ('function', 'func')
-    METHOD = ('method', 'meth')
-    MODULE = ('module', 'mod', 'package', 'pack')
-    CLASS = ('class', 'cls')
-    ATTRIBUTE = ('attribute', 'attr', 'attrib', 'data')
-    OBJECT = ('obj', 'object')
+class IntersphinxSource(enum.Enum):
+    FILE = enum.auto()
+    URL = enum.auto()
 
-    def common_name(self) -> str:
-        v = self.value
-        assert isinstance(v, tuple)
-        return v[0] # type:ignore
+@attr.s(auto_attribs=True)
+class IntersphinxOption:
+    """
+    Represent a single, parsed C{--intersphinx} option.
+    """
+    invname: Optional[str]
+    source: IntersphinxSource
+    url_or_path: str
+    base_url: str
 
-    @classmethod
-    def from_text(cls, txt:str) -> 'InvObjectType':
-        for e in InvObjectType._member_map_.values():
-            if txt in e.value:
-                assert isinstance(e, InvObjectType)
-                return e
-        return InvObjectType.OBJECT
+def parse_domain_reftype(name: str) -> Tuple[Optional[str], str]:
+    """
+    Given a string like C{class} or C{py:class} or C{rst:directive:option}, 
+    returns a tuple: (domain, reftype). 
+    The reftype is normalized with L{normalize_reftype}.
+    """
+    names = name.split(':', maxsplit=1)
+    if len(names) == 1: # reftype
+        domain, reftype = (None, *names)
+    else: # domain:reftype
+        domain, reftype = names
+    return (domain, normalize_reftype(reftype))
 
-def _convert_typ(typ:str) -> 'InvObjectType':
-    if typ.startswith('py:'):
-        return InvObjectType.from_text(typ[3:].strip(':'))
-    else:
-        return InvObjectType.from_text(typ.strip(':'))
+def normalize_reftype(reftype:str) -> str:
+    """
+    Some reftype can be written in several manners. I.e 'cls' to 'class'. 
+    This function transforms them into their canonical version. 
+
+    This is intended to be used for the 'py' domain reftypes. Other kind
+    of reftypes are returned as is.
+    """
+    return {
+
+        'cls': 'class',
+        'function': 'func',
+        'method': 'meth', 
+        'exception': 'exc',
+        'attribute': 'attr',
+        'attrib': 'attr',
+        'constant': 'const',
+        'module': 'mod', 
+        'object': 'obj',
+    
+    }.get(reftype, reftype)
 
 @attr.s(auto_attribs=True)
 class InventoryObject:
-    name:str
-    base_url:str
-    location:str
-    typ:InvObjectType = attr.ib(converter=_convert_typ)
+    invname: str
+    name: str
+    base_url: str
+    location: str
+    reftype: str
+    domain: Optional[str]
+    display: str
 
 class SphinxInventory:
     """
     Sphinx inventory handler.
     """
 
-    def __init__(
-            self,
-            logger: Callable[..., None],
-            project_name: Optional[str] = None
-            ):
-        """
-        @param project_name: Dummy argument to stay compatible with
-            L{twisted.python._pydoctor}. This will be used when we fix
-            U{#609 <https://github.com/twisted/pydoctor/issues/609>}.
-
-        """
-        self._links: Dict[str, InventoryObject] = {}
+    def __init__(self, logger: Callable[..., None],):
+        
+        self._links: Dict[str, List[InventoryObject]] = defaultdict(list)
+        self._inventories: Set[str] = set()
         self._logger = logger
 
     def error(self, where: str, message: str) -> None:
         self._logger(where, message, thresh=-1)
+    
+    def message(self, where: str, message: str) -> None:
+        self._logger(where, message, thresh=1)
 
-    def update(self, cache: CacheT, url: str) -> None:
+    def update(self, cache: CacheT, intersphinx: IntersphinxOption) -> None:
         """
-        Update inventory from URL.
+        Update inventory from an L{IntersphinxOption} instance.
         """
-        parts = url.rsplit('/', 1)
-        if len(parts) != 2:
-            self.error(
-                'sphinx', 'Failed to get remote base url for %s' % (url,))
+        url_or_path = intersphinx.url_or_path
+        invname = intersphinx.invname
+        base_url = intersphinx.base_url
+
+        if intersphinx.source is IntersphinxSource.URL:
+            # That's an URL.
+            data = cache.get(url_or_path)
+            if not data:
+                msg = f'Failed to get object inventory from url {url_or_path}'
+                if not url_or_path.startswith(('http://', 'https://')
+                                              ) and url_or_path.startswith(base_url):
+                    msg += ('. To load inventory from a file, '
+                            'the BASE_URL part of the intersphinx option is required.')
+
+                self.error('sphinx', msg)
+                return
+        else:
+            assert intersphinx.source is IntersphinxSource.FILE
+            # That's a file.
+            try:
+                data = Path(url_or_path).read_bytes()
+            except FileNotFoundError as e:
+                self.error('sphinx', 
+                        f'Inventory file {url_or_path} does not exist. '
+                        'To load inventory from an URL, please include the http(s) scheme.')
+            except Exception as e:
+                self.error('sphinx', 
+                        f'Failed to read inventory file {url_or_path}: {e}')
+                return
+
+        inventory_name = invname or str(hash(url_or_path))
+        if inventory_name in self._inventories:
+            if invname:
+                self.error('sphinx', 
+                        f'Duplicate inventory {invname!r} from {url_or_path}')
+            else:
+                self.error('sphinx', 
+                        f'Duplicate inventory from {url_or_path}')
             return
-
-        base_url = parts[0]
-
-        data = cache.get(url)
-
-        if not data:
-            self.error(
-                'sphinx', 'Failed to get object inventory from %s' % (url, ))
-            return
-
+        
+        self._inventories.add(inventory_name)
         payload = self._getPayload(base_url, data)
-        self._links.update(self._parseInventory(base_url, payload))
+        invdata = self._parseInventory(base_url, payload, 
+                                       invname=inventory_name)
+        # Update links
+        for k,v in invdata.items():
+            self._links[k].extend(v)
 
     def _getPayload(self, base_url: str, data: bytes) -> str:
         """
@@ -146,39 +197,90 @@ class SphinxInventory:
     def _parseInventory(
             self,
             base_url: str,
-            payload: str
-            ) -> Dict[str, InventoryObject]:
+            payload: str,
+            invname: str
+            ) -> Dict[str, List[InventoryObject]]:
         """
         Parse clear text payload and return a dict with module to link mapping.
         """
-        result = {}
+
+        result = defaultdict(list)
         for line in payload.splitlines():
             try:
                 name, typ, prio, location, display = _parseInventoryLine(line)
-            except ValueError:
+                domain, reftype = parse_domain_reftype(typ)
+            except ValueError as e:
                 self.error(
                     'sphinx',
-                    'Failed to parse line "%s" for %s' % (line, base_url),
+                    f'Failed to parse line {line!r} for {base_url}: {e}',
                     )
                 continue
-
-            if not typ.startswith('py:'):
-                # Non-Python references are ignored.
-                continue
-
-            result[name] = InventoryObject(name=name, typ=typ,
-                base_url=base_url, location=location)
+            
+            result[name].append(InventoryObject(
+                invname=invname, 
+                name=name,
+                base_url=base_url, 
+                location=location,
+                reftype=reftype, 
+                domain=domain, 
+                display=display))
         
         return result
 
-    def getInv(self, name) -> Optional[InventoryObject]:
-        return self._links.get(name)
+    def getInv(self, target: str, 
+               invname:Optional[str]=None, 
+               domain:Optional[str]=None, 
+               reftype:Optional[str]=None) -> Optional[InventoryObject]:
+        """
+        Get the inventory object instance matching the criteria.
+        """
+        
+        if target not in self._links:
+            return None
 
-    def getLink(self, name: str) -> Optional[str]:
+        options = self._links[target]
+        
+        def _filter(inv: InventoryObject) -> bool:
+            if invname and inv.invname != invname:
+                return False
+            if domain and inv.domain != domain:
+                return False
+            if reftype and inv.reftype != reftype:
+                return False
+            return True
+
+        # apply filters
+        options = list(filter(_filter, options))
+
+        if len(options) == 1:
+            return options[0]
+        elif not options:
+            return None
+
+        # We still have several options under consideration...
+        # If the domain is not specified, then the 'py' domain is assumed. 
+        # This typically happens for regular `links` that exists in several domains
+        # typically like the standard library 'list' (it exists in the terms and in the standard types).
+        if domain is None:
+            domain = 'py'
+            py_options = list(filter(_filter, options))
+            if py_options:
+                # TODO: We might want to leave a message in the case where several objects
+                # are still in consideration. But for now, we just pick the last one.
+                return py_options[-1]
+        
+        # Last, we fall back to the last matching object because our old version
+        # of the inventory would override names as they were parsed.
+        return options[-1]
+
+    def getLink(self, target: str,
+                invname:Optional[str]=None, 
+                domain:Optional[str]=None, 
+                reftype:Optional[str]=None) -> Optional[str]:
         """
-        Return link for `name` or None if no link is found.
+        Return link for ``target`` or None if no link is found.
         """
-        invobj = self.getInv(name)
+        invobj = self.getInv(target, invname, domain, reftype)
         if not invobj:
             return None
         
@@ -187,7 +289,7 @@ class SphinxInventory:
 
         # For links ending with $, replace it with full name.
         if relative_link.endswith('$'):
-            relative_link = relative_link[:-1] + name
+            relative_link = relative_link[:-1] + target
 
         return f'{base_url}/{relative_link}'
 
@@ -298,24 +400,24 @@ class SphinxInventoryWriter:
         url = obj.url
 
         display = '-'
-        objtype: InvObjectType
+        objtype: str
         if isinstance(obj, model.Module):
-            objtype = InvObjectType.MODULE
+            objtype = 'py:module'
         elif isinstance(obj, model.Class):
-            objtype = InvObjectType.CLASS
+            objtype = 'py:class'
         elif isinstance(obj, model.Function):
             if obj.kind is model.DocumentableKind.FUNCTION:
-                objtype = InvObjectType.FUNCTION
+                objtype = 'py:function'
             else:
-                objtype = InvObjectType.METHOD
+                objtype = 'py:method'
         elif isinstance(obj, model.Attribute):
-            objtype = InvObjectType.ATTRIBUTE
+            objtype = 'py:attribute'
         else:
-            objtype = InvObjectType.OBJECT
+            objtype = 'py:obj'
             self.error(
                 'sphinx', "Unknown type %r for %s." % (type(obj), full_name,))
 
-        return f'{full_name} py:{objtype.common_name()} -1 {url} {display}\n'
+        return f'{full_name} {objtype} -1 {url} {display}\n'
 
 
 USER_INTERSPHINX_CACHE = appdirs.user_cache_dir("pydoctor")
