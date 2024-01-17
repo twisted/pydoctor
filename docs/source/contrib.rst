@@ -73,6 +73,9 @@ Review process and requirements
 
 - Code changes and code added should have tests: untested code is buggy code. Except special cases, overall test coverage should be increased.
 - If your pull request is a work in progress, please mark it as draft such that reviewers do not loose time on a PR that is not ready yet.
+- There is no strict coding style standard. Since pydoctor is more than 20 years old and we have vendored some code from 
+  other packages as well (namely epydoc and sre_parse), so we can’t really enforce the same style everywhere. It's up to the reviewers
+  to request refactors when the code is too ugly.
 - All code changes must be reviewed by at least one person who is not an author of the code being added. 
   This helps prevent bugs from slipping through the net and gives another source for improvements.
   If the author of the PR is one of the core developers of pydoctor* and no one has reviewed their PR after 9 calendar days, they can review the code changes themselves and proceed with next steps. 
