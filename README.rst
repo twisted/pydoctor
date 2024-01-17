@@ -90,7 +90,7 @@ This is the last major release to support Python 3.7.
      ``BASE_URL`` is the base for the generated links, it is mandatory if loading the inventory from a file.
   - Pydoctor now supports linking to arbitrary intersphinx references with Sphinx role ``:external:``. 
   - Other common Sphinx reference roles like ``:ref:``, ``:any:``, ``:class:``, ``py:*``, etc are now 
-    properly interpreted (instead of stripping the with a regex).
+    properly interpreted (instead of being simply stripping from the docstring).
 
 pydoctor 23.9.1
 ^^^^^^^^^^^^^^^
