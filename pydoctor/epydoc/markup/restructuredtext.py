@@ -47,7 +47,7 @@ from docutils import nodes
 
 from docutils.core import publish_string
 from docutils.writers import Writer
-from docutils.parsers.rst.directives.admonitions import BaseAdmonition # type: ignore[import]
+from docutils.parsers.rst.directives.admonitions import BaseAdmonition # type: ignore[import-untyped]
 from docutils.readers.standalone import Reader as StandaloneReader
 from docutils.utils import Reporter
 from docutils.parsers.rst import Directive, directives
