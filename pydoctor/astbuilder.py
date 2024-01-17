@@ -180,6 +180,31 @@ def _is_property_decorator(dottedname:Sequence[str], ctx:model.Documentable) -> 
         return True
     return False
 
+
+def _get_inherited_property(dottedname:Sequence[str], parent: model.Documentable) -> Optional[model.Property]:
+    """
+    Fetch the inherited property that this new decorator overrides.
+    Returns C{None} if it doesn't exist in the inherited members or if it's already definied in the locals.
+    The dottedname must have at least three elements, else return C{None}.
+    """
+    # TODO: It would be best if this job was done in post-processing...
+
+    property_name = dottedname[:-1]
+    
+    if len(property_name) <= 1 or property_name[-1] in parent.contents:
+        # the property already exist
+        return None
+
+    # attr can be a getter/setter/deleter
+    # note: the class on which the property is defined does not have
+    # to be in the MRO of the parent
+    attr_def = parent.resolveName('.'.join(property_name))
+    
+    if not isinstance(attr_def, model.Property):
+        return None
+    
+    return attr_def
+
 def _get_property_function_kind(dottedname:Sequence[str]) -> Optional[model.Property.Kind]:
     """
     What kind of property function this decorator declares?
@@ -542,7 +567,7 @@ class ModuleVistor(NodeVisitor):
             attr.store_function(prop_kind, fn)
         
         doc = bound_args.arguments.get('doc')
-        if doc:
+        if isinstance(doc, astutils.Str):
             if attr.getter:
                 # the warning message in case of overriden docstrings makes
                 # more sens when relative to the getter docstring. so use that when available.
@@ -552,29 +577,6 @@ class ModuleVistor(NodeVisitor):
         
         self.builder.currentAttr = attr
         return True
-
-    def _warnsConstantAssigmentOverride(self, obj: model.Attribute, lineno_offset: int) -> None:
-        obj.report(f'Assignment to constant "{obj.name}" overrides previous assignment '
-                    f'at line {obj.linenumber}, the original value will not be part of the docs.', 
-                            section='ast', lineno_offset=lineno_offset)
-                            
-    def _warnsConstantReAssigmentInInstance(self, obj: model.Attribute, lineno_offset: int = 0) -> None:
-        obj.report(f'Assignment to constant "{obj.name}" inside an instance is ignored, this value will not be part of the docs.', 
-                        section='ast', lineno_offset=lineno_offset)
-
-    def _handleConstant(self, obj: model.Attribute, value: Optional[ast.expr], lineno: int) -> None:
-        """Must be called after obj.setLineNumber() to have the right line number in the warning."""
-        
-        if is_attribute_overridden(obj, value):
-            
-            if obj.kind in (model.DocumentableKind.CONSTANT, 
-                                model.DocumentableKind.VARIABLE, 
-                                model.DocumentableKind.CLASS_VARIABLE):
-                # Module/Class level warning, regular override.
-                self._warnsConstantAssigmentOverride(obj=obj, lineno_offset=lineno-obj.linenumber)
-            else:
-                # Instance level warning caught at the time of the constant detection.
-                self._warnsConstantReAssigmentInInstance(obj)
 
     @classmethod
     def _handleConstant(cls, obj:model.Attribute, 
@@ -877,7 +879,7 @@ class ModuleVistor(NodeVisitor):
     def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
         self._handleFunctionDef(node, is_async=False)
 
-    def _addProperty(self, name:str, parent:model.Documentable, lineno:int,) -> model.Property:
+    def _addProperty(self, name: str, parent:model.Documentable, lineno:int,) -> model.Property:
         attribute = self.builder.addAttribute(name, 
                                  model.DocumentableKind.PROPERTY, 
                                  parent)
@@ -951,15 +953,22 @@ class ModuleVistor(NodeVisitor):
         property_model: Optional[model.Property] = None
         is_new_property: bool = is_property
         
-        if property_deco:
-            if len(property_deco)==2:
-                # This is a property getter or deleter
-                # We don't support non local properties definitions (when len(property_deco)>2)
-                # I've only saw this in cpython test cases.
+        if property_deco is not None:
+            # Looks like inherited property
+            if len(property_deco)>2:
+                _inherited_property = _get_inherited_property(property_deco, parent)
+                if _inherited_property:
+                    property_model = self._addProperty(node.name, parent, lineno)
+                    # copy property defs info
+                    property_model.getter = _inherited_property.getter
+                    property_model.setter = _inherited_property.setter
+                    property_model.deleter = _inherited_property.deleter
+                    is_new_property = True
+            else:
+                # fetch property info to add this info to it
                 _maybe_prop = self.builder.current.contents.get(node.name)
                 if isinstance(_maybe_prop, model.Property):
                     property_model = _maybe_prop
-                # We don't report warnings if we can't figure out the property model.
         
         elif is_property:
             # This is a new property definition
