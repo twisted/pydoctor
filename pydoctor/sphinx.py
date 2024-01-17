@@ -36,10 +36,8 @@ else:
 
 logger = logging.getLogger(__name__)
 
-
-class IntersphinxSource(enum.Enum):
-    FILE = enum.auto()
-    URL = enum.auto()
+FILE = 1
+URL = 2
 
 @attr.s(auto_attribs=True)
 class IntersphinxOption:
@@ -47,7 +45,7 @@ class IntersphinxOption:
     Represent a single, parsed C{--intersphinx} option.
     """
     invname: Optional[str]
-    source: IntersphinxSource
+    source: object
     url_or_path: str
     base_url: str
 
@@ -121,20 +119,13 @@ class SphinxInventory:
         invname = intersphinx.invname
         base_url = intersphinx.base_url
 
-        if intersphinx.source is IntersphinxSource.URL:
+        if intersphinx.source is URL:
             # That's an URL.
             data = cache.get(url_or_path)
             if not data:
-                msg = f'Failed to get object inventory from url {url_or_path}'
-                if not url_or_path.startswith(('http://', 'https://')
-                                              ) and url_or_path.startswith(base_url):
-                    msg += ('. To load inventory from a file, '
-                            'the BASE_URL part of the intersphinx option is required.')
-
-                self.error('sphinx', msg)
+                self.error('sphinx', f'Failed to get object inventory from url {url_or_path}')
                 return
-        else:
-            assert intersphinx.source is IntersphinxSource.FILE
+        elif intersphinx.source is FILE:
             # That's a file.
             try:
                 data = Path(url_or_path).read_bytes()
@@ -142,10 +133,13 @@ class SphinxInventory:
                 self.error('sphinx', 
                         f'Inventory file {url_or_path} does not exist. '
                         'To load inventory from an URL, please include the http(s) scheme.')
+                return
             except Exception as e:
                 self.error('sphinx', 
                         f'Failed to read inventory file {url_or_path}: {e}')
                 return
+        else:
+            assert False
 
         inventory_name = invname or str(hash(url_or_path))
         if inventory_name in self._inventories:
@@ -583,3 +577,26 @@ def prepareCache(
             maxAgeDictionary,
         )
     return IntersphinxCache(sessionFactory())
+
+if __name__ == "__main__":
+    import sys
+    from pydoctor.options import Options
+
+    opt = Options.from_args(sys.argv[1:])
+
+    cache = prepareCache(clearCache=False, enableCache=True,
+                         cachePath=USER_INTERSPHINX_CACHE,
+                         maxAge=MAX_AGE_DEFAULT)
+    
+    inv = SphinxInventory(lambda section, msg, **kw: print(msg))
+    
+    for i in opt.intersphinx:
+        inv.update(cache, i)
+
+    for name, objs in inv._links.items():
+        for o in objs:
+            print(f'{name} '
+                  f'{(o.domain+":") if o.domain else ""}'
+                  f'{o.reftype} '
+                  f'{o.location} '
+                  f'{o.display} ')

@@ -6,7 +6,7 @@ from io import StringIO
 
 from pydoctor import model
 from pydoctor.options import (PydoctorConfigParser, Options, _split_intersphinx_parts, 
-                              _object_inv_url_and_base_url, IntersphinxOption, IntersphinxSource)
+                              _object_inv_url_and_base_url, IntersphinxOption, FILE, URL)
 
 from pydoctor.test import FixtureRequest, TempPathFactory
 
@@ -171,12 +171,12 @@ def test_config_parsers(project_conf:str, pydoctor_conf:str, tempDir:Path) -> No
     assert options.privacy == [(model.PrivacyClass.HIDDEN, 'pydoctor.test')]
     
     assert options.intersphinx[0] == IntersphinxOption(
-        invname=None, source=IntersphinxSource.URL, 
+        invname=None, source=URL, 
         url_or_path='https://docs.python.org/3/objects.inv', 
         base_url='https://docs.python.org/3')
     
     assert options.intersphinx[-1] == IntersphinxOption(
-        invname=None, source=IntersphinxSource.URL, 
+        invname=None, source=URL, 
         url_or_path='https://tristanlatr.github.io/apidocs/docutils/objects.inv', 
         base_url='https://tristanlatr.github.io/apidocs/docutils')
 
@@ -215,7 +215,7 @@ project-name = "Hello World!"
         assert options.verbosity == 1
         assert options.intersphinx == [IntersphinxOption(
                                         invname=None, 
-                                        source=IntersphinxSource.URL, 
+                                        source=URL, 
                                         url_or_path='https://docs.python.org/3/objects.inv', 
                                         base_url='https://docs.python.org/3'),]
         assert options.projectname == "Hello World!"
@@ -226,7 +226,7 @@ project-name = "Hello World!"
         assert options.verbosity == 3 
         assert options.intersphinx == [IntersphinxOption(
                                         invname=None, 
-                                        source=IntersphinxSource.URL, 
+                                        source=URL, 
                                         url_or_path='https://docs.python.org/3/objects.inv', 
                                         base_url='https://docs.python.org/3'),]
         assert options.projectname == "Hello World!"
@@ -239,13 +239,13 @@ project-name = "Hello World!"
         assert options.intersphinx == [
                                        IntersphinxOption(
                                         invname=None, 
-                                        source=IntersphinxSource.URL, 
+                                        source=URL, 
                                         url_or_path='https://twistedmatrix.com/documents/current/api/objects.inv', 
                                         base_url='https://twistedmatrix.com/documents/current/api'),
 
                                        IntersphinxOption(
                                         invname=None, 
-                                        source=IntersphinxSource.URL, 
+                                        source=URL, 
                                         url_or_path='https://urllib3.readthedocs.io/en/latest/objects.inv', 
                                         base_url='https://urllib3.readthedocs.io/en/latest'),
                                         ]

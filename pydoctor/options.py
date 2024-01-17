@@ -17,7 +17,7 @@ import attr
 from pydoctor import __version__
 from pydoctor.themes import get_themes
 from pydoctor.epydoc.markup import get_supported_docformats
-from pydoctor.sphinx import MAX_AGE_HELP, USER_INTERSPHINX_CACHE, IntersphinxOption, IntersphinxSource
+from pydoctor.sphinx import MAX_AGE_HELP, USER_INTERSPHINX_CACHE, IntersphinxOption, URL, FILE
 from pydoctor.utils import parse_path, findClassFromDottedName, parse_privacy_tuple, error
 from pydoctor._configparser import CompositeConfigParser, IniConfigParser, TomlConfigParser, ValidatorParser
 
@@ -288,16 +288,16 @@ def _convert_htmlwriter(s: str) -> Type['IWriter']:
 def _convert_privacy(l: List[str]) -> List[Tuple['model.PrivacyClass', str]]:
     return list(map(functools.partial(parse_privacy_tuple, opt='--privacy'), l))
 
-def _intersphinx_source(url_or_path:str) -> IntersphinxSource:
-    """
-    Infer the kind source this string refers to. 
+# def _intersphinx_source(url_or_path:str) -> object:
+#     """
+#     Infer the kind source this string refers to. 
 
-    """
-    if url_or_path.startswith(HTTP_SCHEMES):
-        return IntersphinxSource.URL
-    if not url_or_path.endswith('.inv'):
-        return IntersphinxSource.URL
-    return IntersphinxSource.FILE
+#     """
+#     if url_or_path.startswith(HTTP_SCHEMES):
+#         return URL
+#     if not url_or_path.endswith('.inv'):
+#         return URL
+#     return FILE
 
 def _object_inv_url_and_base_url(url:str) -> Tuple[str, str]:
     """
@@ -368,6 +368,7 @@ def _split_intersphinx_parts(s:str) -> List[str]:
 
 _RE_DRIVE_LIKE = re.compile(r':[a-z]:(\\|\/)', re.IGNORECASE)
 HTTP_SCHEMES = ('http://', 'https://')
+
 def _parse_intersphinx(s:str) -> IntersphinxOption:
     """
     Given a string like::
@@ -388,7 +389,7 @@ def _parse_intersphinx(s:str) -> IntersphinxOption:
             objects_inv_url, base_url = _object_inv_url_and_base_url(*parts)
             return IntersphinxOption(
                 invname=None, 
-                source=IntersphinxSource.URL, 
+                source=URL, 
                 url_or_path=objects_inv_url,
                 base_url=base_url
             )
@@ -402,13 +403,13 @@ def _parse_intersphinx(s:str) -> IntersphinxOption:
                 invname, url_or_path, base_url = None, p1, p2
                 _, base_url = _object_inv_url_and_base_url(base_url)
                 source = _intersphinx_source(url_or_path)
-                if source is IntersphinxSource.URL:
+                if source is URL:
                     url_or_path, _ = _object_inv_url_and_base_url(url_or_path)
             else:
                 # At this point we have: INVENTORY_NAME:URL_TO_OBJECTS.INV
                 invname, url_or_path = p1, p2
                 url_or_path, base_url = _object_inv_url_and_base_url(url_or_path)
-                source = IntersphinxSource.URL
+                source = URL
             
             return IntersphinxOption(
                 invname=invname, 
@@ -421,7 +422,7 @@ def _parse_intersphinx(s:str) -> IntersphinxOption:
             # we have INVENTORY_NAME:URL_OR_FILEPATH_TO_OBJECTS.INV:BASE_URL
             invname, url_or_path, base_url = parts
             source = _intersphinx_source(url_or_path)
-            if source is IntersphinxSource.URL:
+            if source is URL:
                 url_or_path, _ = _object_inv_url_and_base_url(url_or_path)
                 _, base_url = _object_inv_url_and_base_url(base_url)
             return IntersphinxOption(

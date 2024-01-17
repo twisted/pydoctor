@@ -418,7 +418,7 @@ def test_update_fail(inv_reader: InvReader) -> None:
 
     inv_reader.update(cast('sphinx.CacheT', {}), 
                       options.IntersphinxOption(
-                                None, options.IntersphinxSource.URL,
+                                None, options.URL,
                                 url, 'http://some.tld/', 
                             ))
 
