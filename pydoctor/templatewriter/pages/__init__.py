@@ -23,7 +23,7 @@ from pydoctor.epydoc.markup._pyval_repr import colorize_inline_pyval
 if TYPE_CHECKING:
     from typing_extensions import Final
     from twisted.web.template import Flattenable
-    from pydoctor.templatewriter.pages.attributechild import AttributeChild, PropertyChild
+    from pydoctor.templatewriter.pages.attributechild import AttributeChild
     from pydoctor.templatewriter.pages.functionchild import FunctionChild
 
 
