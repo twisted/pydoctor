@@ -205,21 +205,33 @@ def _get_inherited_property(dottedname:Sequence[str], parent: model.Documentable
     
     return attr_def
 
-def _get_property_function_kind(dottedname:Sequence[str]) -> Optional[model.Property.Kind]:
+def _get_property_function_kind(dottedname:Sequence[str]) -> model.Property.Kind:
     """
     What kind of property function this decorator declares?
     None if we can't make sens of the decorator.
 
-    @note: the dottedname must have at least two elements.
+    Returns a L{Property.Kind} instance only if the given dotted name ends
+    with C{setter}, C{deleter} or C{getter}
+
+
+    @note: The dottedname must have at least two elements.
     """
     if len(dottedname) >= 2:
-        if dottedname[-1] == 'setter':
+        last = dottedname[-1]
+        if last == 'setter':
             return model.Property.Kind.SETTER
-        if dottedname[-1] == 'getter':
+        if last == 'getter':
             return model.Property.Kind.GETTER
-        if dottedname[-1] == 'deleter':
+        if last == 'deleter':
             return model.Property.Kind.DELETER
-    return None
+    raise ValueError(f'This does not look like a property function decorator: {dottedname}')
+
+def _is_property_function(dottedname:Sequence[str]) -> bool:
+    try:
+        _get_property_function_kind(dottedname)
+    except ValueError:
+        return False
+    return True
 
 class ModuleVistor(NodeVisitor):
 
@@ -906,21 +918,25 @@ class ModuleVistor(NodeVisitor):
         doc_node = get_docstring_node(node)
         func_name = node.name
 
-        # determine the function's kind
-       
+        # Whether the function is derorated with @classmethod
         is_classmethod = False
+        # Whether the function is derorated with @staticmethod
         is_staticmethod = False
+        # Whether the function is derorated with @typing.overload
         is_overload_func = False
-
+        # Whether the function is derorated with @property
         is_property = False
-        property_deco: Optional[List[str]] = None
-        property_function_kind: Optional[model.Property.Kind] = None
+        # If the function is decorated with some @stuff.setter/deleter/getter property decorator: 
+        # stores the dotted name of the expression.
+        property_func_deco: Optional[List[str]] = None
 
+        parent_is_cls = isinstance(parent, model.Class)
         if node.decorator_list:
             for deco_name, _ in astutils.iter_decorator_list(node.decorator_list):
                 if deco_name is None:
                     continue
-                if isinstance(parent, model.Class):
+                # determine the function's kind
+                if parent_is_cls:
                     if _is_property_decorator(deco_name, parent):
                         is_property = True
                     elif deco_name == ['classmethod']:
@@ -929,8 +945,7 @@ class ModuleVistor(NodeVisitor):
                         is_staticmethod = True
                     else:
                         # Pre-handle property elements
-                        property_function_kind = _get_property_function_kind(deco_name)
-                        if property_function_kind:
+                        if _is_property_function(deco_name):
                             # Setters and deleters should have the same name as the property function,
                             # otherwise ignore it.
                             # This pollutes the namespace unnecessarily and is generally not recommended. 
@@ -942,7 +957,7 @@ class ModuleVistor(NodeVisitor):
                             # Rename the setter/deleter, so it doesn't replace
                             # the property object.
                             func_name = '.'.join(deco_name[-2:])
-                            property_deco = deco_name
+                            property_func_deco = deco_name
                 
                 # Determine if the function is decorated with overload
                 if parent.expandName('.'.join(deco_name)) in ('typing.overload', 
@@ -950,13 +965,14 @@ class ModuleVistor(NodeVisitor):
                     is_overload_func = True
 
         # Determine if this function is a property of some kind
+        property_func_kind: Optional[model.Property.Kind] = None
         property_model: Optional[model.Property] = None
         is_new_property: bool = is_property
         
-        if property_deco is not None:
+        if property_func_deco is not None:
             # Looks like inherited property
-            if len(property_deco)>2:
-                _inherited_property = _get_inherited_property(property_deco, parent)
+            if len(property_func_deco)>2:
+                _inherited_property = _get_inherited_property(property_func_deco, parent)
                 if _inherited_property:
                     property_model = self._addProperty(node.name, parent, lineno)
                     # copy property defs info
@@ -969,11 +985,12 @@ class ModuleVistor(NodeVisitor):
                 _maybe_prop = self.builder.current.contents.get(node.name)
                 if isinstance(_maybe_prop, model.Property):
                     property_model = _maybe_prop
+            property_func_kind = _get_property_function_kind(property_func_deco)
         
         elif is_property:
             # This is a new property definition
             property_model = self._addProperty(node.name, parent, lineno)
-            property_function_kind = model.Property.Kind.GETTER
+            property_func_kind = model.Property.Kind.GETTER
             # Rename the getter function as well, since both the Property and the Function will
             # live side by side until properties are post-processed.
             func_name = node.name + '.getter'
@@ -1075,6 +1092,7 @@ class ModuleVistor(NodeVisitor):
         else:
             func.signature = signature
         
+        # For properties, save the fact that this function implements one of the getter/setter/deleter
         if property_model is not None:
             
             if is_classmethod:
@@ -1082,9 +1100,8 @@ class ModuleVistor(NodeVisitor):
             if is_staticmethod:
                 property_model.report(f'{property_model.fullName()} is both property and staticmethod')
             
-            assert property_function_kind is not None
-            # Save the fact that this function implements one of the getter/setter/deleter
-            property_model.store_function(property_function_kind, func)
+            assert property_func_kind is not None
+            property_model.store_function(property_func_kind, func)
     
 
     def depart_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:
