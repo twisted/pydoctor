@@ -17,23 +17,65 @@ If you like the project and think you could help with making it better, there ar
 Any contribution would be of great help and I will highly appreciate it! If you have any questions, please create a new issue.
 
 
+Development process
+-------------------
+
+Create a fork of the git repository and checkout a new branch from ``master`` branch. 
+The branch name may start with an associated issue number so that we can easily 
+cross-reference them. For example, use ``1234-some-brach-name`` as the name of the branch working to fix issue ``1234``.
+Once you're ready to run a full batterie of tests to your changes, open a pull request.
+
+Don't forget to sync your fork once in while to work from the latest revision.
+
 Pre-commit checks
 -----------------
 
-Make sure all the tests pass and the code pass the coding standard checks::
+Make sure all the unit tests pass and the code pass the coding standard checks.
 
-    tox -p all
+We use `tox <https://tox.wiki/en/stable/>`_ for running our checks, but you can roughly do the same thing from your python environment. 
 
-That should be the minimum check to run on your local system.
+.. list-table:: Pre-commit checks
+   :widths: 10 45 45
+   :header-rows: 1
+   
+   * - \
+     - Using `tox`
+     - Using your environment
+   * - Run unit tests
+     - ``tox -e test``
+     - ``pip install '.[test]' && pytest pydoctor``
+   * - Run pyflakes
+     - ``tox -e pyflakes``
+     - ``pip install pyflakes && find pydoctor/ -name \*.py ! -path '*/testpackages/*' ! -path '*/sre_parse36.py' ! -path '*/sre_constants36.py' | xargs pyflakes``
+   * - Run mypy
+     - ``tox -e mypy``
+     - ``pip install '.[mypy]' && mypy pydoctor``
+   * - Run pydoctor on it's own source
+     - ``tox -e apidocs``
+     - ``pip install . && pydoctor --privacy "HIDDEN:pydoctor.test" -q -W pydoctor``
+
+These should be the minimum check to run on your local system.
 A pull request will trigger more tests and most probably there is a tox
 environment dedicated to that extra test.
 
+Other things hapenning when a PR is open
+----------------------------------------
+
+- System tests: these tests checks if pydoctor can generate the documentation for a few
+  specific packages that have been considered as problematic in the past.
+- Pydoctor primer: this is to pydoctor what ``mypy_primer`` is to ``mypy``. 
+  It runs pydoctor on a corpus of open source code and compares the output of the application before and after a modification in the code.
+  Then it reports in comments the result for a PR. The source code of this tool is here: https://github.com/twisted/pydoctor_primer.
+- Readthedocs build: For every PR, the sphinx documentation is built and available at ``https://pydoctor--{pr-number}.org.readthedocs.build/en/``.
 
 Review process and requirements
 -------------------------------
 
 - Code changes and code added should have tests: untested code is buggy code. Except special cases, overall test coverage should be increased.
 - If your pull request is a work in progress, please mark it as draft such that reviewers do not loose time on a PR that is not ready yet.
+- There is no strict coding style standard. Since pydoctor is more than 20 years old and we have vendored some code from 
+  other packages as well (namely epydoc and sre_parse), so we can’t really enforce the same style everywhere. It's up to the reviewers
+  to request refactors when the code is too ugly.
 - All code changes must be reviewed by at least one person who is not an author of the code being added. 
   This helps prevent bugs from slipping through the net and gives another source for improvements.
   If the author of the PR is one of the core developers of pydoctor* and no one has reviewed their PR after 9 calendar days, they can review the code changes themselves and proceed with next steps. 

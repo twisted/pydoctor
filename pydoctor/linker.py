@@ -1,6 +1,7 @@
 """
 This module provides implementations of epydoc's L{DocstringLinker} class.
 """
+from __future__ import annotations
 
 import contextlib
 from twisted.web.template import Tag, tags
@@ -258,7 +259,7 @@ def warn_ambiguous_annotation(mod:'model.Documentable',
     # report a low-level message about ambiguous annotation
     mod_ann = mod.expandName(target)
     obj_ann = obj.expandName(target)
-    if mod_ann != obj_ann:
+    if mod_ann != obj_ann and '.' in obj_ann and '.' in mod_ann:
         obj.report(
             f'ambiguous annotation {target!r}, could be interpreted as '
             f'{obj_ann!r} instead of {mod_ann!r}', section='annotation',
@@ -278,24 +279,24 @@ class _AnnotationLinker(DocstringLinker):
         self._scope = obj.parent or obj
         self._module_linker = self._module.docstring_linker
         self._scope_linker = self._scope.docstring_linker
-
-        self.switch_context(obj).__enter__()
     
     @property
     def obj(self) -> 'model.Documentable':
         return self._obj
     
     def link_to(self, target: str, label: "Flattenable") -> Tag:
-        if self._module.isNameDefined(target):
-            warn_ambiguous_annotation(self._module, self._obj, target)
-            return self._module_linker.link_to(target, label)
-        elif self._scope.isNameDefined(target):
-            return self._scope_linker.link_to(target, label)
-        else:
-            return self._module_linker.link_to(target, label)
+        with self.switch_context(self._obj):
+            if self._module.isNameDefined(target):
+                warn_ambiguous_annotation(self._module, self._obj, target)
+                return self._module_linker.link_to(target, label)
+            elif self._scope.isNameDefined(target):
+                return self._scope_linker.link_to(target, label)
+            else:
+                return self._module_linker.link_to(target, label)
     
     def link_xref(self, target: str, label: "Flattenable", lineno: int) -> Tag:
-        return self.obj.docstring_linker.link_xref(target, label, lineno)
+        with self.switch_context(self._obj):
+            return self.obj.docstring_linker.link_xref(target, label, lineno)
 
     @contextlib.contextmanager
     def switch_context(self, ob:Optional['model.Documentable']) -> Iterator[None]:

@@ -1,4 +1,6 @@
 """Render pydoctor data as HTML."""
+from __future__ import annotations
+
 from typing import Any, Iterable, Iterator, Optional, Union, TYPE_CHECKING
 if TYPE_CHECKING:
     from typing_extensions import Protocol, runtime_checkable
@@ -38,7 +40,6 @@ def parse_xml(text: str) -> minidom.Document:
     Create a L{minidom} representaton of the XML string.
     """
     try:
-        # TODO: submit a PR to typeshed to add a return type for parseString()
         return minidom.parseString(text)
     except Exception as e:
         raise ValueError(f"Failed to parse template as XML: {e}") from e

@@ -110,6 +110,7 @@ def test_generate_empty_functional() -> None:
     @contextmanager
     def openFileForWriting(path: str) -> Iterator[io.BytesIO]:
         yield output
+
     inv_writer._openFileForWriting = openFileForWriting # type:ignore
 
     inv_writer.generate(subjects=[], basepath='base-path')
