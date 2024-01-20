@@ -10,3 +10,5 @@ _trial_temp/
 apidocs/
 *.egg-info
 .eggs
+.hypothesis
+__pycache__

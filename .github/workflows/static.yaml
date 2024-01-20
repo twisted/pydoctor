@@ -44,3 +44,7 @@ jobs:
     - name: Run docs and check extensions
       run: |
         tox -e testdocs
+    
+    - name: Run sphinx extension tests
+      run: |
+        tox -e test-sphinx-ext
