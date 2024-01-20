@@ -1,4 +1,5 @@
 """Support for Zope interfaces."""
+from __future__ import annotations
 
 from typing import Iterable, Iterator, List, Optional, Union
 import ast
@@ -210,7 +211,7 @@ class ZopeInterfaceModuleVisitor(extensions.ModuleVisitorExt):
         if funcName == 'zope.interface.Attribute':
             attr.kind = model.DocumentableKind.ATTRIBUTE
             args = expr.args
-            if len(args) == 1 and isinstance(args[0], ast.Str):
+            if len(args) == 1 and isinstance(args[0], astutils.Str):
                 attr.setDocstring(args[0])
             else:
                 attr.report(
@@ -232,7 +233,7 @@ class ZopeInterfaceModuleVisitor(extensions.ModuleVisitorExt):
 
             keywords = {arg.arg: arg.value for arg in expr.keywords}
             descrNode = keywords.get('description')
-            if isinstance(descrNode, ast.Str):
+            if isinstance(descrNode, astutils.Str):
                 attr.setDocstring(descrNode)
             elif descrNode is not None:
                 attr.report(
