@@ -10,3 +10,9 @@ _trial_temp/
 apidocs/
 *.egg-info
 .eggs
+.hypothesis
+
+
+# Emacs temporary files
+\#*.py#
+.#*.py

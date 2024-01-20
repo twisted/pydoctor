@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import itertools
+import os
 from pathlib import Path
 from typing import IO, Iterable, Type, TYPE_CHECKING
 
@@ -108,7 +109,16 @@ class TemplateWriter(IWriter):
                 # not using missing_ok=True because that was only added in Python 3.8 and we still support Python 3.6
             except FileNotFoundError:
                 pass
-            root_module_path.symlink_to('index.html')
+
+            # When support for Python 3.9 and older is dropped use
+            # pathlib.Path.hardlink_to() instead.
+            x = list(root_module_path.parent.glob('*'))
+            print(f'TTTT\n{root_module_path=} {x=}')
+            print(f'{root_module_path.exists()=}')
+            os.link(
+                src=root_module_path,  # original
+                dst=root_module_path.parent / 'index.html'  # the hardlink
+            )
 
     def _writeDocsFor(self, ob: model.Documentable) -> None:
         if not ob.isVisible:

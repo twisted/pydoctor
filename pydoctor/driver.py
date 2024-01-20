@@ -86,6 +86,7 @@ def make(system: model.System) -> None:
     """
     Produce the html/intersphinx output, as configured in the system's options. 
     """
+    print('\n-- MAKE()')  # DEBUG
     options = system.options
     # step 4: make html, if desired
 
@@ -124,11 +125,23 @@ def make(system: model.System) -> None:
         subjects: Sequence[model.Documentable] = ()
         if options.htmlsubjects:
             subjects = [system.allobjects[fn] for fn in options.htmlsubjects]
+            writer.writeIndividualFiles(subjects)
         else:
+            writer.writeIndividualFiles(subjects)
             writer.writeSummaryPages(system)
+            print('X'*100)
+            print(system.rootobjects)  # DEBUG
             if not options.htmlsummarypages:
                 subjects = system.rootobjects
-        writer.writeIndividualFiles(subjects)
+                print('Q'*100)
+                print(system.rootobjects)  # DEBUG
+        # writer.writeIndividualFiles(subjects)
+
+        # os.link(
+        #     src=root_module_path,  # original
+        #     dst=root_module_path.parent / 'index.html'  # the hardlink
+        # )
+
         
     if options.makeintersphinx:
         if not options.makehtml:
