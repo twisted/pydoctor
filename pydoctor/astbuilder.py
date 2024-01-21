@@ -570,10 +570,9 @@ class ModuleVistor(NodeVisitor):
                               model.Property.Kind.DELETER),
                              ):
             definition = node2dottedname(bound_args.arguments.get(arg))
-            if not len(definition or ())==1:
+            if not definition:
                 continue
-            # the subscript indexing is safe since we've checked len(x)==1
-            fn = cls.contents.get(definition[0]) # type:ignore[index]
+            fn = cls.resolveName('.'.join(definition))
             if not isinstance(fn, model.Function):
                 continue
             attr.store_function(prop_kind, fn)
@@ -979,6 +978,17 @@ class ModuleVistor(NodeVisitor):
                     property_model.getter = _inherited_property.getter
                     property_model.setter = _inherited_property.setter
                     property_model.deleter = _inherited_property.deleter
+                    # Manually inherits documentation if not explicit in the definition.
+                    if doc_node is None:
+                        property_model.docstring = _inherited_property.docstring
+                        # We can transfert the line numbers only if the two prperties are in the same module. 
+                        # This ignores reparenting, but it's ok because the reparenting will soon hapen in post-process.
+                        if _inherited_property.module is property_model.module:
+                            property_model.docstring_lineno = _inherited_property.docstring_lineno
+                        else:
+                            # TODO: Wrap the docstring info into a new class Docstring. 
+                            # so we can transfert the filename information as well.
+                            property_model.docstring_lineno = -1
                     is_new_property = True
             else:
                 # fetch property info to add this info to it

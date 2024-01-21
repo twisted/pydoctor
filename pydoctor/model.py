@@ -165,8 +165,8 @@ class Documentable:
             msg = 'Existing docstring'
             if self.docstring_lineno:
                 msg += f' at line {self.docstring_lineno}'
-            msg += f' is overriden by docstring at line {lineno}'
-            self.report(msg)
+            msg += f' is overriden'
+            self.report(msg, 'docstring', lineno_offset=lineno-self.docstring_lineno)
 
         self.docstring = doc
         self.docstring_lineno = lineno
@@ -865,57 +865,59 @@ def init_property(attrib:'Property') -> Iterator['Function']:
 
     Returns the functions to remove from the tree.
     """
+    # avoid cyclic import
+    from pydoctor import epydoc2stan
+    
     getter = attrib.getter
     setter = attrib.setter
     deleter = attrib.deleter
 
-    if getter is None:
+    if getter is not None:
         # The getter should never be None, 
         # but it can execpitinally happend when
-        # one uses the property() call alone.
-        return ()
+        # one uses the property() call alone and dynamically sets the getter.
 
-    # avoid cyclic import
-    from pydoctor import epydoc2stan
-    
-    # Setup Attribute object for the property
-    if getter.docstring:
-        attrib._setDocstringValue(getter.docstring, 
-                                  getter.docstring_lineno)
-    if not attrib.annotation:
-        attrib.annotation = getter.annotations.get('return')
-    attrib.extra_info.extend(getter.extra_info)
+        # Setup Attribute object for the property
+        if getter.docstring:
+            attrib._setDocstringValue(getter.docstring, 
+                                    getter.docstring_lineno)
+        if not attrib.annotation:
+            attrib.annotation = getter.annotations.get('return')
+        attrib.extra_info.extend(getter.extra_info)
 
-    # Parse docstring now.
-    if epydoc2stan.ensure_parsed_docstring(getter):
-    
-        parsed_doc = getter.parsed_docstring
-        assert parsed_doc is not None
-
-        other_fields = []
-        # process fields such that :returns: clause docs takes the whole docs 
-        # if no global description is written.
-        for field in parsed_doc.fields:
-            tag = field.tag()
-            if tag == 'return':
-                if not parsed_doc.has_body:
-                    parsed_doc = field.body()
-            elif tag == 'rtype':
-                attrib.parsed_type = field.body()
-            else:
-                other_fields.append(field)
+        # Parse docstring now.
+        if epydoc2stan.ensure_parsed_docstring(getter):
         
-        parsed_doc.fields = other_fields
-        
-        # Set the new attribute parsed docstring
-        attrib.parsed_docstring = parsed_doc
+            parsed_doc = getter.parsed_docstring
+            assert parsed_doc is not None
 
-    # Yields the objects to remove from the Documentable tree
-    yield getter
-    if setter:
-        yield setter
-    if deleter:
-        yield deleter
+            other_fields = []
+            # process fields such that :returns: clause docs takes the whole docs 
+            # if no global description is written.
+            for field in parsed_doc.fields:
+                tag = field.tag()
+                if tag == 'return':
+                    if not parsed_doc.has_body:
+                        parsed_doc = field.body()
+                elif tag == 'rtype':
+                    attrib.parsed_type = field.body()
+                else:
+                    other_fields.append(field)
+            
+            parsed_doc.fields = other_fields
+            
+            # Set the new attribute parsed docstring
+            attrib.parsed_docstring = parsed_doc
+
+    # Yields the objects to remove from the Documentable tree.
+    # Ensures we delete only the function decorated with @stuff.getter/setter/deleter;
+    # We know these functions will be renamed with the function kind suffix.
+    for fn, expected_name in zip([getter, setter, deleter],
+                                 [f'{attrib.name}.getter', 
+                                  f'{attrib.name}.setter',
+                                  f'{attrib.name}.deleter']):
+        if fn and fn.name == expected_name and fn.parent is attrib.parent:
+            yield fn
 
 
 class Attribute(Inheritable):

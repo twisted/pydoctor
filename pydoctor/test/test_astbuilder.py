@@ -2176,27 +2176,58 @@ def test_property_old_school(systemcls: Type[model.System], capsys: CapSys) -> N
     """
     Old school property() decorator is recognized.
     """
-
+    src0 = '''
+    def get_spam2(self):
+        ...
+    class PropertyDocBase0(object):
+        @property
+        def spam3(self):
+            "spam3 docs"
+    '''
     src = '''
+    import t0
     class PropertyDocBase(object):
         _spam = 1
-        def _get_spam(self):
+        def get_spam(self):
             return self._spam
         # Old school property
-        spam = property(_get_spam, doc="spam spam spam")
+        spam = property(get_spam, doc="spam spam spam")
+        spam2 = property(t0.get_spam2, doc="spam2 spam2 spam2")
     class PropertyDocSub(PropertyDocBase):
         @PropertyDocBase.spam.getter
         def spam(self):
-            # The docstring is ignored since the property is defined with old school manner
-            """The decorator does not use this doc string"""
+            "This docstring overrides the other one in the property() call"
             return self._spam
+        @t0.PropertyDocBase0.spam3.getter
+        def spam3(self):
+            "This docstring overrides the other one in module t0"
+            
     '''
-    mod = fromText(src, modname='t', systemcls=systemcls)
-    assert capsys.readouterr().out == ('')
+    system = systemcls()
+    builder = system.systemBuilder(system)
+    builder.addModuleString(src0, modname='t0')
+    builder.addModuleString(src, modname='t')
+    builder.buildModules()
+    
+    mod = system.allobjects['t']
     s = mod.resolveName('PropertyDocBase.spam')
     s2 = mod.resolveName('PropertyDocSub.spam')
     assert isinstance(s, model.Property)
     assert isinstance(s2, model.Property)
+    # The get_spam() function has not been removed form the tree.
+    assert mod.resolveName('PropertyDocSub.get_spam')
+    assert s.docstring == "spam spam spam"
+    assert s2.docstring == "This docstring overrides the other one in the property() call"
+    spam2 = mod.resolveName('PropertyDocBase.spam2')
+    assert isinstance(spam2, model.Property)
+    assert spam2.getter
+    assert spam2.getter.fullName() == 't0.get_spam2'
+
+    spam3 = mod.resolveName('PropertyDocSub.spam3')
+    assert spam3.docstring == "This docstring overrides the other one in module t0"
+
+    assert system.allobjects['t0.get_spam2']
+    assert capsys.readouterr().out == ('')
 
 @systemcls_param
 def test_property_old_school_doc_is_not_str_crash(systemcls: Type[model.System], capsys: CapSys) -> None:
@@ -2263,7 +2294,7 @@ def test_property_getter_override(systemcls: Type[model.System], capsys: CapSys)
             return 8
     '''
     mod = fromText(src, modname='mod', systemcls=systemcls)
-    assert capsys.readouterr().out == 'mod:4: Existing docstring at line 6 is overriden by docstring at line 11\n'
+    assert capsys.readouterr().out == 'mod:11: Existing docstring at line 6 is overriden\n'
     attr = mod.contents['PropertyNewGetter'].contents['spam']
     # the parsed_docstring attribute gets initiated in post-processing
     assert node2stan.gettext(attr.parsed_docstring.to_node()) == ['new docstring'] # type:ignore
@@ -2282,13 +2313,16 @@ def test_mutilple_docstrings_on_property(systemcls: Type[model.System], capsys: 
         # Old school property
         spam = property(_get_spam, doc="Second doc")
         "Third doc"
+        spam2 = property(fset=None, doc='spam2 docs')
+        "ignored"
     '''
     mod = fromText(src, systemcls=systemcls)
     spam = mod.resolveName('PropertyOld.spam')
     assert isinstance(spam, model.Property)
     spam.docstring == "Second doc"
-    assert capsys.readouterr().out == ('<test>:3: Existing docstring at line 4 is overriden by docstring at line 6\n'
-                                       '<test>:6: Existing docstring at line 7 is overriden by docstring at line 6\n')
+    assert capsys.readouterr().out == ('<test>:6: Existing docstring at line 4 is overriden\n'
+                                       '<test>:9: Existing docstring at line 8 is overriden\n'
+                                       '<test>:6: Existing docstring at line 7 is overriden\n')
 
 @systemcls_param
 def test_property_corner_cases(systemcls: Type[model.System], capsys: CapSys) -> None:
