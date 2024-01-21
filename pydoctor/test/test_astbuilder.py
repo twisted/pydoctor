@@ -2087,7 +2087,7 @@ def test_module_level_attributes_and_aliases(systemcls: Type[model.System]) -> N
     assert isinstance(V, model.Attribute)
     assert V.value is not None
     assert ast.literal_eval(V.value)==1
-    assert V.kind == model.DocumentableKind.CONSTANT
+    assert V.kind == model.DocumentableKind.VARIABLE
 
     # Test looks like constant but actually an alias.
     assert mod.expandName('ALIAS')=="twisted.internet.ssl"
@@ -2171,7 +2171,7 @@ def test_module_level_attributes_and_aliases_orelse(systemcls: Type[model.System
     assert isinstance(V, model.Attribute)
     assert V.value is not None
     assert ast.literal_eval(V.value)==1
-    assert V.kind == model.DocumentableKind.CONSTANT
+    assert V.kind == model.DocumentableKind.VARIABLE
 
     # Test looks like constant but actually an alias.
     assert mod.expandName('ALIAS')=="twisted.internet.ssl"
