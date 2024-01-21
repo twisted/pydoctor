@@ -338,7 +338,8 @@ Branch priorities
 -----------------
 
 When pydoctor deals with try/except/else or if/else block, it makes sure that the names defined in 
-the "principal" branch do not get overriden by names defined in the except hanlders or ifs' else block. 
+the "principal" flow do not get overridden by names defined in the except handlers or ifs' else block. 
+New names defined in these block will be processed normally.
 
 Meaning that in the context of the code below, ``ssl`` would resolve to ``twisted.internet.ssl``:
 

@@ -4,11 +4,11 @@
 #
 # Created [04/10/01 12:00 AM]
 #
-
 """
 Parser for plaintext docstrings.  Plaintext docstrings are rendered as
 verbatim output, preserving all whitespace.
 """
+from __future__ import annotations
 __docformat__ = 'epytext en'
 
 from typing import List, Optional

@@ -1,6 +1,7 @@
 """
 This module provides implementations of epydoc's L{DocstringLinker} class.
 """
+from __future__ import annotations
 
 import contextlib
 from twisted.web.template import Tag, tags
@@ -45,6 +46,13 @@ def taglink(o: 'model.Documentable', page_url: str,
         ret(title=o.fullName())
     return ret
 
+def intersphinx_link(label:"Flattenable", url:str) -> Tag:
+    """
+    Create a intersphinx link. 
+    
+    It's special because it uses the 'intersphinx-link' CSS class.
+    """
+    return tags.a(label, href=url, class_='intersphinx-link')
 
 class _EpydocLinker(DocstringLinker):
     """
@@ -92,13 +100,6 @@ class _EpydocLinker(DocstringLinker):
         self._page_object = old_page_object
         self.reporting_obj = old_reporting_object
 
-    @staticmethod
-    def _create_intersphinx_link(label:"Flattenable", url:str) -> Tag:
-        """
-        Create a link with the special 'intersphinx-link' CSS class.
-        """
-        return tags.a(label, href=url, class_='intersphinx-link')
-
     def look_for_name(self,
             name: str,
             candidates: Iterable['model.Documentable'],
@@ -139,7 +140,7 @@ class _EpydocLinker(DocstringLinker):
 
         url = self.look_for_intersphinx(fullID)
         if url is not None:
-            return self._create_intersphinx_link(label, url=url)
+            return intersphinx_link(label, url=url)
 
         link = tags.transparent(label)
         return link
@@ -152,7 +153,7 @@ class _EpydocLinker(DocstringLinker):
             xref = label
         else:
             if isinstance(resolved, str):
-                xref = self._create_intersphinx_link(label, url=resolved)
+                xref = intersphinx_link(label, url=resolved)
             else:
                 xref = taglink(resolved, self.page_url, label)
                 
@@ -251,8 +252,6 @@ class _AnnotationLinker(DocstringLinker):
         self._scope = obj.parent or obj
         self._module_linker = self._module.docstring_linker
         self._scope_linker = self._scope.docstring_linker
-
-        self.switch_context(obj).__enter__()
     
     @property
     def obj(self) -> 'model.Documentable':
@@ -262,7 +261,7 @@ class _AnnotationLinker(DocstringLinker):
         # report a low-level message about ambiguous annotation
         mod_ann = self._module.expandName(target)
         obj_ann = self._scope.expandName(target)
-        if mod_ann != obj_ann:
+        if mod_ann != obj_ann and '.' in obj_ann and '.' in mod_ann:
             self.obj.report(
                 f'ambiguous annotation {target!r}, could be interpreted as '
                 f'{obj_ann!r} instead of {mod_ann!r}', section='annotation',
@@ -270,16 +269,18 @@ class _AnnotationLinker(DocstringLinker):
             )
     
     def link_to(self, target: str, label: "Flattenable") -> Tag:
-        if self._module.isNameDefined(target):
-            self.warn_ambiguous_annotation(target)
-            return self._module_linker.link_to(target, label)
-        elif self._scope.isNameDefined(target):
-            return self._scope_linker.link_to(target, label)
-        else:
-            return self._module_linker.link_to(target, label)
+        with self.switch_context(self._obj):
+            if self._module.isNameDefined(target):
+                self.warn_ambiguous_annotation(target)
+                return self._module_linker.link_to(target, label)
+            elif self._scope.isNameDefined(target):
+                return self._scope_linker.link_to(target, label)
+            else:
+                return self._module_linker.link_to(target, label)
     
     def link_xref(self, target: str, label: "Flattenable", lineno: int) -> Tag:
-        return self.obj.docstring_linker.link_xref(target, label, lineno)
+        with self.switch_context(self._obj):
+            return self.obj.docstring_linker.link_xref(target, label, lineno)
 
     @contextlib.contextmanager
     def switch_context(self, ob:Optional['model.Documentable']) -> Iterator[None]:

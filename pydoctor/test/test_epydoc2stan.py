@@ -696,6 +696,114 @@ def test_func_starargs_more(capsys: CapSys) -> None:
     captured = capsys.readouterr().out
     assert not captured
 
+def test_func_starargs_hidden_when_keywords_documented(capsys:CapSys) -> None:
+    """
+    When a function accept variable keywords (**kwargs) and keywords are specifically
+    documented and the **kwargs IS NOT documented: entry for **kwargs IS NOT presented at all.
+
+    In other words: They variable keywords argument documentation is optional when specific documentation
+    is given for each keyword, and when missing, no warning is raised.
+    """
+    # tests for issue https://github.com/twisted/pydoctor/issues/697
+
+    mod = fromText('''
+    __docformat__='restructuredtext'
+    def f(one, two, **kwa) -> None:
+        """
+        var-keyword arguments are specifically documented. 
+
+        :param one: some regular argument
+        :param two: some regular argument
+        :keyword something: An argument
+        :keyword another: Another
+        """
+    ''')
+
+    html = docstring2html(mod.contents['f'])
+    assert '**kwa' not in html
+    assert not capsys.readouterr().out
+
+def test_func_starargs_shown_when_documented(capsys:CapSys) -> None:
+    """
+    When a function accept variable keywords (**kwargs) and keywords are specifically
+    documented and the **kwargs IS documented: entry for **kwargs IS presented AFTER all keywords.
+
+    In other words: When a function has the keywords arguments, the keywords can have dedicated 
+    docstring, besides the separate documentation for each keyword.
+    """
+
+    mod = fromText('''
+    __docformat__='restructuredtext'
+    def f(one, two, **kwa) -> None:
+        """
+       var-keyword arguments are specifically documented as well as other extra keywords.
+
+        :param one: some regular argument
+        :param two: some regular argument
+        :param kwa: Other keywords are passed to ``parse`` function.
+        :keyword something: An argument
+        :keyword another: Another
+        """
+    ''')
+    html = docstring2html(mod.contents['f'])
+    # **kwa should be presented AFTER all other parameters
+    assert re.match('.+one.+two.+something.+another.+kwa', html, flags=re.DOTALL)
+    assert not capsys.readouterr().out
+
+def test_func_starargs_shown_when_undocumented(capsys:CapSys) -> None:
+    """
+    When a function accept variable keywords (**kwargs) and NO keywords are specifically
+    documented and the **kwargs IS NOT documented: entry for **kwargs IS presented as undocumented.
+    """
+
+    mod = fromText('''
+    __docformat__='restructuredtext'
+    def f(one, two, **kwa) -> None:
+        """
+        var-keyword arguments are not specifically documented
+
+        :param one: some regular argument
+        :param two: some regular argument
+        """
+    ''')
+
+    html = docstring2html(mod.contents['f'])
+    assert re.match('.+one.+two.+kwa', html, flags=re.DOTALL)
+    assert not capsys.readouterr().out
+
+def test_func_starargs_wrongly_documented(capsys: CapSys) -> None:
+    numpy_wrong = fromText('''
+    __docformat__='numpy'
+    def f(one, **kwargs):
+        """
+        var-keyword arguments are wrongly documented with the "Arguments" section.
+
+        Arguments
+        ---------
+        kwargs:
+            var-keyword arguments
+        stuff:
+            a var-keyword argument
+        """
+    ''', modname='numpy_wrong')
+
+    rst_wrong = fromText('''
+    __docformat__='restructuredtext'
+    def f(one, **kwargs):
+        """
+        var-keyword arguments are wrongly documented with the "param" field.
+
+        :param kwargs: var-keyword arguments
+        :param stuff: a var-keyword argument
+        """
+    ''', modname='rst_wrong')
+
+    docstring2html(numpy_wrong.contents['f'])
+    assert 'Documented parameter "stuff" does not exist, variable keywords should be documented with the "Keyword Arguments" section' in capsys.readouterr().out
+    
+    docstring2html(rst_wrong.contents['f'])
+    assert 'Documented parameter "stuff" does not exist, variable keywords should be documented with the "keyword" field' in capsys.readouterr().out
+
 def test_summary() -> None:
     mod = fromText('''
     def single_line_summary():
@@ -1374,6 +1482,9 @@ def test_module_docformat(capsys: CapSys) -> None:
     captured = capsys.readouterr().out
     assert not captured
 
+    system = model.System()
+    system.options.docformat = 'epytext'
+
     mod = fromText('''
     """
     Link to pydoctor: `pydoctor <https://github.com/twisted/pydoctor>`_.
@@ -1412,14 +1523,18 @@ def test_module_docformat_inheritence(capsys: CapSys) -> None:
 
     system = model.System()
     system.options.docformat = 'restructuredtext'
-    top = fromText(top_src, modname='top', is_package=True, system=system)
-    fromText(pkg_src, modname='pkg', parent_name='top', is_package=True,
-                   system=system)
-    mod = fromText(mod_src, modname='top.pkg.mod', parent_name='top.pkg', system=system)
+    builder = system.systemBuilder(system)
+    builder.addModuleString(top_src, modname='top', is_package=True)
+    builder.addModuleString(pkg_src, modname='pkg', parent_name='top', is_package=True)
+    builder.addModuleString(mod_src, modname='mod', parent_name='top.pkg')
+    builder.buildModules()
     
+    top = system.allobjects['top']
+    mod = system.allobjects['top.pkg.mod']
+    assert isinstance(mod, model.Module)
+    assert mod.docformat == 'epytext'
     captured = capsys.readouterr().out
     assert not captured
-
     assert ''.join(docstring2html(top.contents['f']).splitlines()) == ''.join(docstring2html(mod.contents['f']).splitlines())
     
 
@@ -1445,10 +1560,14 @@ def test_module_docformat_with_docstring_inheritence(capsys: CapSys) -> None:
     '''
 
     system = model.System()
+    builder = system.systemBuilder(system)
     system.options.docformat = 'epytext'
 
-    mod = fromText(mod_src, modname='mod', system=system)
-    mod2 = fromText(mod2_src, modname='mod2', system=system)
+    builder.addModuleString(mod_src, modname='mod',)
+    builder.addModuleString(mod2_src, modname='mod2',)
+    builder.buildModules()
+    mod = system.allobjects['mod']
+    mod2 = system.allobjects['mod2']
     
     captured = capsys.readouterr().out
     assert not captured
@@ -1502,11 +1621,14 @@ def test_constant_values_rst(capsys: CapSys) -> None:
     '''
 
     system = model.System()
+    builder = system.systemBuilder(system)
     system.options.docformat = 'restructuredtext'
 
-    fromText("", modname='pack', system=system, is_package=True)
-    fromText(mod1, modname='mod1', system=system, parent_name='pack')
-    mod = fromText(mod2, modname='mod2', system=system, parent_name='pack')
+    builder.addModuleString("", modname='pack', is_package=True)
+    builder.addModuleString(mod1, modname='mod1',parent_name='pack')    
+    builder.addModuleString(mod2, modname='mod2', parent_name='pack')
+    builder.buildModules()
+    mod = system.allobjects['pack.mod2']
     
     captured = capsys.readouterr().out
     assert not captured
@@ -1998,3 +2120,46 @@ Hello
     assert docstring2html(mod.contents['func'], docformat='plaintext') == expected
     captured = capsys.readouterr().out
     assert captured == ''
+
+def test_regression_not_found_linenumbers(capsys: CapSys) -> None:
+    """
+    Test for issue https://github.com/twisted/pydoctor/issues/745
+    """
+    code = '''
+    __docformat__ = 'restructuredtext'
+    class Settings:
+        """
+        Object that manages the configuration for Twine.
+
+        This object can only be instantiated with keyword arguments.
+
+        For example,
+
+        .. code-block:: python
+
+            Settings(True, username='fakeusername')
+
+        Will raise a :class:`TypeError`. Instead, you would want
+
+        .. code-block:: python
+
+            Settings(sign=True, username='fakeusername')
+        """
+
+        def check_repository_url(self) -> None:
+            """
+            Verify we are not using legacy PyPI.
+            """
+            ...
+
+        def create_repository(self) -> repository.Repository:
+            """
+            Create a new repository for uploading.
+            """
+            ...
+    '''
+
+    mod = fromText(code, )
+    docstring2html(mod.contents['Settings'])
+    captured = capsys.readouterr().out
+    assert captured == '<test>:15: Cannot find link target for "TypeError"\n'

@@ -76,10 +76,45 @@ What's New?
 in development
 ^^^^^^^^^^^^^^
 
+This is the last major release to support Python 3.7.
+
+* Drop support for Python 3.6
+* Add support for Python 3.12
+* `ExtRegistrar.register_post_processor()` now supports a `priority` argument that is an int.
+  Highest priority callables will be called first during post-processing.
+* Fix too noisy ``--verbose`` mode (suppres some ambiguous annotations warnings).
+
+pydoctor 23.9.1
+^^^^^^^^^^^^^^^
+
+* Fix regression in link not found warnings' line numbers.
+
+pydoctor 23.9.0
+^^^^^^^^^^^^^^^
+
+This is the last major release to support Python 3.6.
+
+* Do not show `**kwargs` when keywords are specifically documented with the `keyword` field
+  and no specific documentation is given for the `**kwargs` entry.
 * Fix annotation resolution edge cases: names are resolved in the context of the module 
   scope when possible, when impossible, the theoretical runtime scopes are used. A warning can
   be reported when an annotation name is ambiguous (can be resolved to different names 
   depending on the scope context) with option ``-v``.
+* Ensure that explicit annotation are honored when there are multiple declarations of the same name.
+* Use stricter verification before marking an attribute as constant: 
+   - instance variables are never marked as constant
+   - a variable that has several definitions will not be marked as constant
+   - a variable declaration under any kind of control flow block will not be marked as constant
+* Do not trigger warnings when pydoctor cannot make sense of a potential constant attribute 
+  (pydoctor is not a static checker).
+* Fix presentation of type aliases in string form.
+* Improve the AST colorizer to output less parenthesis when it's not required.
+* Fix colorization of dictionary unpacking.
+* Improve the class hierarchy such that it links top level names with intersphinx when possible.
+* Add highlighting when clicking on "View In Hierarchy" link from class page.
+* Recognize variadic generics type variables (PEP 646).
+* Fix support for introspection of cython3 generated modules.
+* Instance variables are marked as such across subclasses.
 
 pydoctor 23.4.1
 ^^^^^^^^^^^^^^^

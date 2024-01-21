@@ -13,7 +13,7 @@ import pytest
 from twisted.web.template import Tag
 
 from pydoctor.options import Options
-from pydoctor import model, stanutils
+from pydoctor import model, stanutils, extensions
 from pydoctor.templatewriter import pages
 from pydoctor.utils import parse_privacy_tuple
 from pydoctor.sphinx import CacheT
@@ -548,3 +548,28 @@ def test_name_defined() -> None:
     assert not innerFn.isNameDefined('F')
     assert not innerFn.isNameDefined('var')
     assert innerFn.isNameDefined('f')
+
+def test_priority_processor(capsys:CapSys) -> None:
+    system = model.System()
+    r = extensions.ExtRegistrar(system)
+    processor = system._post_processor
+    processor._post_processors.clear()
+
+    r.register_post_processor(lambda s:print('priority 200'), priority=200)
+    r.register_post_processor(lambda s:print('priority 100'))
+    r.register_post_processor(lambda s:print('priority 25'), priority=25)
+    r.register_post_processor(lambda s:print('priority 150'), priority=150)
+    r.register_post_processor(lambda s:print('priority 100 (bis)'))
+    r.register_post_processor(lambda s:print('priority 200 (bis)'), priority=200)
+
+    assert len(processor._post_processors)==6
+    processor.apply_processors()
+    assert len(processor.applied)==6
+    
+    assert capsys.readouterr().out.strip().splitlines() == ['priority 200', 
+                                                            'priority 200 (bis)',
+                                                            'priority 150',
+                                                            'priority 100',
+                                                            'priority 100 (bis)',
+                                                            'priority 25',
+                                                            ]

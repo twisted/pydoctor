@@ -1,5 +1,5 @@
 """Badly named module that contains the driving code for the rendering."""
-
+from __future__ import annotations
 
 import itertools
 from pathlib import Path
