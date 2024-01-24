@@ -188,6 +188,7 @@ class ModuleVistor(NodeVisitor):
         """
         ctx = self.builder.current
         while not isinstance(ctx, model.CanContainImportsDocumentable):
+            assert ctx.parent
             ctx = ctx.parent
         ignore_override_init = self._override_guard_state
         # we list names only once to ignore new names added inside the block,
