@@ -3,8 +3,7 @@ import ast
 
 import astor
 
-
-from pydoctor import astbuilder, model, astutils, names
+from pydoctor import astbuilder, model, astutils, names, epydoc2stan
 from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring
 from pydoctor.options import Options
 from pydoctor.stanutils import flatten, html2stan, flatten_text
@@ -121,6 +120,9 @@ def type2str(type_expr: Optional[ast.expr]) -> Optional[str]:
         return src.strip()
 
 def type2html(obj: model.Documentable) -> str:
+    """
+    Uses the NotFoundLinker. 
+    """
     parsed_type = get_parsed_type(obj)
     assert parsed_type is not None
     return to_html(parsed_type).replace('<wbr></wbr>', '').replace('<wbr>\n</wbr>', '')
@@ -377,9 +379,9 @@ def test_relative_import_past_top(
     ''', modname='mod', parent_name='pkg', system=system)
     captured = capsys.readouterr().out
     if level == 1:
-        assert not captured
+        assert 'relative import level' not in captured
     else:
-        assert f'pkg.mod:2: relative import level ({level}) too high\n' == captured
+        assert f'pkg.mod:2: relative import level ({level}) too high\n' in captured
 
 @systemcls_param
 def test_class_with_base_from_module(systemcls: Type[model.System]) -> None:
@@ -2161,6 +2163,43 @@ def test_ignore_function_contents(systemcls: Type[model.System]) -> None:
     assert not outer.contents
 
 @systemcls_param
+def test_overload(systemcls: Type[model.System], capsys: CapSys) -> None:
+    # Confirm decorators retained on overloads, docstring ignored for overloads,
+    # and that overloads after the primary function are skipped
+    mod = fromText("""
+        from typing import overload, Union
+        def dec(fn):
+            pass
+        @dec
+        @overload
+        def parse(s:str)->str:
+            ...
+        @overload
+        def parse(s:bytes)->bytes:
+            '''Ignored docstring'''
+            ...
+        def parse(s:Union[str, bytes])->Union[str, bytes]:
+            pass
+        @overload
+        def parse(s:str)->bytes:
+            ...
+        """, systemcls=systemcls)
+    func = mod.contents['parse']
+    assert isinstance(func, model.Function)
+    # Work around different space arrangements in Signature.__str__ between python versions
+    assert flatten_text(html2stan(str(func.signature).replace(' ', ''))) == '(s:Union[str,bytes])->Union[str,bytes]'
+    assert [astbuilder.node2dottedname(d) for d in (func.decorators or ())] == []
+    assert len(func.overloads) == 2
+    assert [astbuilder.node2dottedname(d) for d in func.overloads[0].decorators] == [['dec'], ['overload']]
+    assert [astbuilder.node2dottedname(d) for d in func.overloads[1].decorators] == [['overload']]
+    assert flatten_text(html2stan(str(func.overloads[0].signature).replace(' ', ''))) == '(s:str)->str'
+    assert flatten_text(html2stan(str(func.overloads[1].signature).replace(' ', ''))) == '(s:bytes)->bytes'
+    assert capsys.readouterr().out.splitlines() == [
+        '<test>:11: <test>.parse overload has docstring, unsupported',
+        '<test>:15: <test>.parse overload appeared after primary function',
+    ]
+
+@systemcls_param
 def test_constant_module(systemcls: Type[model.System]) -> None:
     """
     Module variables with all-uppercase names are recognized as constants.
@@ -2331,9 +2370,9 @@ def test_all_caps_variable_in_instance_is_not_a_constant(systemcls: Type[model.S
     assert not captured
 
 @systemcls_param
-def test_constant_override_in_instace_warns(systemcls: Type[model.System], capsys: CapSys) -> None:
+def test_constant_override_in_instace(systemcls: Type[model.System], capsys: CapSys) -> None:
     """
-    It warns when a constant is beeing re defined in instance. But it ignores it's value. 
+    When an instance variable overrides a CONSTANT, it's flagged as INSTANCE_VARIABLE and no warning is raised.
     """
     mod = fromText('''
     class Clazz:
@@ -2344,18 +2383,13 @@ def test_constant_override_in_instace_warns(systemcls: Type[model.System], capsy
     ''', systemcls=systemcls, modname="mod")
     attr = mod.resolveName('Clazz.LANG')
     assert isinstance(attr, model.Attribute)
-    assert attr.kind == model.DocumentableKind.CONSTANT
-    assert attr.value is not None
-    assert ast.literal_eval(attr.value) == 'EN'
-
-    captured = capsys.readouterr().out
-    assert "mod:6: Assignment to constant \"LANG\" inside an instance is ignored, this value will not be part of the docs.\n" == captured
+    assert attr.kind == model.DocumentableKind.INSTANCE_VARIABLE
+    assert not capsys.readouterr().out
 
 @systemcls_param
-def test_constant_override_in_instace_warns2(systemcls: Type[model.System], capsys: CapSys) -> None:
+def test_constant_override_in_instace_bis(systemcls: Type[model.System], capsys: CapSys) -> None:
     """
-    It warns when a constant is beeing re defined in instance. But it ignores it's value. 
-    Even if the actual constant definition is detected after the instance variable of the same name.
+    When an instance variable overrides a CONSTANT, it's flagged as INSTANCE_VARIABLE and no warning is raised.
     """
     mod = fromText('''
     class Clazz:
@@ -2366,15 +2400,13 @@ def test_constant_override_in_instace_warns2(systemcls: Type[model.System], caps
     ''', systemcls=systemcls, modname="mod")
     attr = mod.resolveName('Clazz.LANG')
     assert isinstance(attr, model.Attribute)
-    assert attr.kind == model.DocumentableKind.CONSTANT
+    assert attr.kind == model.DocumentableKind.INSTANCE_VARIABLE
     assert attr.value is not None
     assert ast.literal_eval(attr.value) == 'EN'
-
-    captured = capsys.readouterr().out
-    assert "mod:5: Assignment to constant \"LANG\" inside an instance is ignored, this value will not be part of the docs.\n" == captured
+    assert not capsys.readouterr().out
 
 @systemcls_param
-def test_constant_override_in_module_warns(systemcls: Type[model.System], capsys: CapSys) -> None:
+def test_constant_override_in_module(systemcls: Type[model.System], capsys: CapSys) -> None:
 
     mod = fromText('''
     """Mod."""
@@ -2385,12 +2417,10 @@ def test_constant_override_in_module_warns(systemcls: Type[model.System], capsys
     ''', systemcls=systemcls, modname="mod")
     attr = mod.resolveName('IS_64BITS')
     assert isinstance(attr, model.Attribute)
-    assert attr.kind == model.DocumentableKind.CONSTANT
+    assert attr.kind == model.DocumentableKind.VARIABLE
     assert attr.value is not None
     assert ast.literal_eval(attr.value) == True
-
-    captured = capsys.readouterr().out
-    assert "mod:6: Assignment to constant \"IS_64BITS\" overrides previous assignment at line 4, the original value will not be part of the docs.\n" == captured
+    assert not capsys.readouterr().out
 
 @systemcls_param
 def test_constant_override_do_not_warns_when_defined_in_class_docstring(systemcls: Type[model.System], capsys: CapSys) -> None:
@@ -2428,6 +2458,39 @@ def test_constant_override_do_not_warns_when_defined_in_module_docstring(systemc
     assert ast.literal_eval(attr.value) == 99
     captured = capsys.readouterr().out
     assert not captured
+
+@systemcls_param
+def test_not_a_constant_module(systemcls: Type[model.System], capsys:CapSys) -> None:
+    """
+    If the constant assignment has any kind of constraint or there are multiple assignments in the scope, 
+    then it's not flagged as a constant.
+    """
+    mod = fromText('''
+    while False:
+        LANG = 'FR'
+    if True:
+        THING = 'EN'
+    OTHER = 1
+    OTHER += 1
+    E: typing.Final = 2
+    E = 4
+    LIST = [2.14]
+    LIST.insert(0,0)
+    ''', systemcls=systemcls)
+    assert mod.contents['LANG'].kind is model.DocumentableKind.VARIABLE
+    assert mod.contents['THING'].kind is model.DocumentableKind.VARIABLE
+    assert mod.contents['OTHER'].kind is model.DocumentableKind.VARIABLE
+    assert mod.contents['E'].kind is model.DocumentableKind.VARIABLE
+
+    # all-caps mutables variables are flagged as constant: this is a trade-off
+    # in between our weeknesses in terms static analysis (that is we don't recognized list modifications) 
+    # and our will to do the right thing and display constant values.
+    # This issue could be overcome by showing the value of variables with only one assigment no matter
+    # their kind and restrict the checks to immutable types for a attribute to be flagged as constant.
+    assert mod.contents['LIST'].kind is model.DocumentableKind.CONSTANT
+
+    # we could warn when a constant is beeing overriden, but we don't: pydoctor is not a checker.
+    assert not capsys.readouterr().out 
 
 @systemcls_param
 def test__name__equals__main__is_skipped(systemcls: Type[model.System]) -> None:
@@ -2815,6 +2878,19 @@ def test_type_alias(systemcls: Type[model.System]) -> None:
     assert mod.contents['F'].contents['Q'].kind == model.DocumentableKind.INSTANCE_VARIABLE
 
 @systemcls_param
+def test_typevartuple(systemcls: Type[model.System]) -> None:
+    """
+    Variadic type variables are recognized.
+    """
+
+    mod = fromText('''
+    from typing import TypeVarTuple
+    Shape = TypeVarTuple('Shape')
+    ''', systemcls=systemcls)
+
+    assert mod.contents['Shape'].kind == model.DocumentableKind.TYPE_VARIABLE
+
+@systemcls_param
 def test_prepend_package(systemcls: Type[model.System]) -> None:
     """
    Option --prepend-package option relies simply on the L{ISystemBuilder} interface, 
@@ -2850,4 +2926,531 @@ def test_prepend_package_real_path(systemcls: Type[model.System]) -> None:
     
     finally:
         systemcls.systemBuilder = _builderT_init
+
+def getConstructorsText(cls: model.Documentable) -> str:
+    assert isinstance(cls, model.Class)
+    return '\n'.join(
+        epydoc2stan.format_constructor_short_text(c, cls) for c in cls.public_constructors)
+
+@systemcls_param
+def test_crash_type_inference_unhashable_type(systemcls: Type[model.System], capsys:CapSys) -> None:
+    """
+    This test is about not crashing.
+
+    A TypeError is raised by ast.literal_eval() in some cases, when we're trying to do a set of lists or a dict with list keys.
+    We do not bother reporting it because pydoctor is not a checker.
+    """
+
+    src = '''
+    # Unhashable type, will raise an error in ast.literal_eval()
+    x = {[1, 2]}
+    class C:
+        v = {[1,2]:1}
+        def __init__(self):
+            self.y = [{'str':2}, {[1,2]:1}]
+    Y = [{'str':2}, {{[1, 2]}:1}]
+    '''
+
+    mod = fromText(src, systemcls=systemcls, modname='m')
+    for obj in ['m.x', 'm.C.v', 'm.C.y', 'm.Y']:
+        o = mod.system.allobjects[obj]
+        assert isinstance(o, model.Attribute)
+        assert o.annotation is None
+    assert not capsys.readouterr().out
+
+
+@systemcls_param
+def test_constructor_signature_init(systemcls: Type[model.System]) -> None:
+    
+    src = '''\
+    class Person(object):
+        # pydoctor can infer the constructor to be: "Person(name, age)"
+        def __init__(self, name, age):
+            self.name = name
+            self.age = age
+
+    class Citizen(Person):
+        # pydoctor can infer the constructor to be: "Citizen(nationality, *args, **kwargs)"
+        def __init__(self, nationality, *args, **kwargs):
+            self.nationality = nationality
+            super(Citizen, self).__init__(*args, **kwargs)
+        '''
+    mod = fromText(src, systemcls=systemcls)
+
+    # Like "Available constructor: ``Person(name, age)``" that links to Person.__init__ documentation.
+    assert getConstructorsText(mod.contents['Person']) == "Person(name, age)"
+    
+    # Like "Available constructor: ``Citizen(nationality, *args, **kwargs)``" that links to Citizen.__init__ documentation.
+    assert getConstructorsText(mod.contents['Citizen']) == "Citizen(nationality, *args, **kwargs)"
+
+@systemcls_param
+def test_constructor_signature_new(systemcls: Type[model.System]) -> None:
+    src = '''\
+    class Animal(object):
+        # pydoctor can infer the constructor to be: "Animal(name)"
+        def __new__(cls, name):
+            obj = super().__new__(cls)
+            # assignation not recognized by pydoctor, attribute 'name' will not be documented
+            obj.name = name 
+            return obj
+    '''
+
+    mod = fromText(src, systemcls=systemcls)
+
+    assert getConstructorsText(mod.contents['Animal']) == "Animal(name)"
+
+@systemcls_param
+def test_constructor_signature_init_and_new(systemcls: Type[model.System]) -> None:
+    """
+    Pydoctor can't infer the constructor signature when both __new__ and __init__ are defined. 
+    __new__ takes the precedence over __init__ because it's called first. Trying to infer what are the complete 
+    constructor signature when __new__ is defined might be very hard because the method can return an instance of 
+    another class, calling another __init__ method. We're not there yet in term of static analysis.
+    """
+
+    src = '''\
+    class Animal(object):
+        # both __init__ and __new__ are defined, pydoctor only looks at the __new__ method
+        # pydoctor infers the constructor to be: "Animal(*args, **kw)"
+        def __new__(cls, *args, **kw):
+            print('__new__() called.')
+            print('args: ', args, ', kw: ', kw)
+            return super().__new__(cls)
+
+        def __init__(self, name):
+            print('__init__() called.')
+            self.name = name
+            
+    class Cat(Animal):
+        # Idem, but __new__ is inherited.
+        # pydoctor infers the constructor to be: "Cat(*args, **kw)"
+        # This is why it's important to still document __init__ as a regular method.
+        def __init__(self, name, owner):
+            super().__init__(name)
+            self.owner = owner
+    '''
+
+    mod = fromText(src, systemcls=systemcls)
+
+    assert getConstructorsText(mod.contents['Animal']) == "Animal(*args, **kw)"
+    assert getConstructorsText(mod.contents['Cat']) == "Cat(*args, **kw)"
+
+@systemcls_param
+def test_constructor_signature_classmethod(systemcls: Type[model.System]) -> None:
+
+    src = '''\
+    
+    def get_default_options() -> 'Options':
+        """
+        This is another constructor for class 'Options'. 
+        But it's not recognized by pydoctor because it's not defined in the locals of Options.
+        """
+        return Options()
+
+    class Options:
+        a,b,c = None, None, None
+
+        @classmethod
+        def create_no_hints(cls):
+            """
+            Pydoctor can't deduce that this method is a constructor as well,
+            because there is no type annotation.
+            """
+            return cls()
+        
+        # thanks to type hints, 
+        # pydoctor can infer the constructor to be: "Options.create()"
+        @staticmethod
+        def create(important_arg) -> 'Options':
+            # the fictional constructor is not detected by pydoctor, because it doesn't exists actually.
+            return Options(1,2,3)
+        
+        # thanks to type hints, 
+        # pydoctor can infer the constructor to be: "Options.create_from_num(num)"
+        @classmethod
+        def create_from_num(cls, num) -> 'Options':
+            c = cls.create()
+            c.a = num
+            return c
+        '''
+
+    mod = fromText(src, systemcls=systemcls)
+
+    assert getConstructorsText(mod.contents['Options']) == "Options.create(important_arg)\nOptions.create_from_num(num)"
+
+@systemcls_param
+def test_constructor_inner_class(systemcls: Type[model.System]) -> None:
+    src = '''\
+    from typing import Self
+    class Animal(object):
+        class Bar(object):
+            # pydoctor can infer the constructor to be: "Animal.Bar(name)"
+            def __new__(cls, name):
+                ...
+            class Foo(object):
+                # pydoctor can infer the constructor to be: "Animal.Bar.Foo.create(name)"
+                @classmethod
+                def create(cls, name) -> 'Self':
+                    c = cls.create()
+                    c.a = num
+                    return c
+    '''
+    mod = fromText(src, systemcls=systemcls)
+    assert getConstructorsText(mod.contents['Animal'].contents['Bar']) == "Animal.Bar(name)"
+    assert getConstructorsText(mod.contents['Animal'].contents['Bar'].contents['Foo']) == "Animal.Bar.Foo.create(name)"
+
+@systemcls_param
+def test_constructor_many_parameters(systemcls: Type[model.System]) -> None:
+    src = '''\
+    class Animal(object):
+        def __new__(cls, name, lastname, age, spec, extinct, group, friends):
+            ...
+    '''
+    mod = fromText(src, systemcls=systemcls)
+
+    assert getConstructorsText(mod.contents['Animal']) == "Animal(name, lastname, age, spec, ...)"
+
+@systemcls_param
+def test_constructor_five_paramters(systemcls: Type[model.System]) -> None:
+    src = '''\
+    class Animal(object):
+        def __new__(cls, name, lastname, age, spec, extinct):
+            ...
+    '''
+    mod = fromText(src, systemcls=systemcls)
+
+    assert getConstructorsText(mod.contents['Animal']) == "Animal(name, lastname, age, spec, extinct)"
+
+@systemcls_param
+def test_default_constructors(systemcls: Type[model.System]) -> None:
+    src = '''\
+    class Animal(object):
+        def __init__(self):
+            ...
+        def __new__(cls):
+            ...
+        @classmethod
+        def new(cls) -> 'Animal':
+            ...
+        '''
+
+    mod = fromText(src, systemcls=systemcls)
+    assert getConstructorsText(mod.contents['Animal']) == "Animal.new()"
+
+    src = '''\
+    class Animal(object):
+        def __init__(self):
+            ...
+        '''
+
+    mod = fromText(src, systemcls=systemcls)
+    assert getConstructorsText(mod.contents['Animal']) == ""
+
+    src = '''\
+    class Animal(object):
+        def __init__(self):
+            "thing"
+        '''
+
+    mod = fromText(src, systemcls=systemcls)
+    assert getConstructorsText(mod.contents['Animal']) == "Animal()"
+
+@systemcls_param
+def test_class_var_override(systemcls: Type[model.System]) -> None:
+
+    src = '''\
+    from number import Number
+    class Thing(object):
+        def __init__(self):
+            self.var: Number = 1
+    class Stuff(Thing):
+        var:float
+        '''
+
+    mod = fromText(src, systemcls=systemcls, modname='mod')
+    var = mod.system.allobjects['mod.Stuff.var']
+    assert var.kind == model.DocumentableKind.INSTANCE_VARIABLE
+
+@systemcls_param
+def test_class_var_override_traverse_subclasses(systemcls: Type[model.System]) -> None:
+
+    src = '''\
+    from number import Number
+    class Thing(object):
+        def __init__(self):
+            self.var: Number = 1
+    class _Stuff(Thing):
+        ...
+    class Stuff(_Stuff):
+        var:float
+        '''
+
+    mod = fromText(src, systemcls=systemcls, modname='mod')
+    var = mod.system.allobjects['mod.Stuff.var']
+    assert var.kind == model.DocumentableKind.INSTANCE_VARIABLE
+
+    src = '''\
+    from number import Number
+    class Thing(object):
+        def __init__(self):
+            self.var: Optional[Number] = 0
+    class _Stuff(Thing):
+        var = None
+    class Stuff(_Stuff):
+        var: float
+        '''
+
+    mod = fromText(src, systemcls=systemcls, modname='mod')
+    var = mod.system.allobjects['mod._Stuff.var']
+    assert var.kind == model.DocumentableKind.INSTANCE_VARIABLE
+    
+    mod = fromText(src, systemcls=systemcls, modname='mod')
+    var = mod.system.allobjects['mod.Stuff.var']
+    assert var.kind == model.DocumentableKind.INSTANCE_VARIABLE
+
+def test_class_var_override_attrs() -> None:
+
+    systemcls = AttrsSystem
+
+    src = '''\
+    import attr
+    @attr.s
+    class Thing(object):
+        var = attr.ib()
+    class Stuff(Thing):
+        var: float
+        '''
+
+    mod = fromText(src, systemcls=systemcls, modname='mod')
+    var = mod.system.allobjects['mod.Stuff.var']
+    assert var.kind == model.DocumentableKind.INSTANCE_VARIABLE
+
+@systemcls_param
+def test_explicit_annotation_wins_over_inferred_type(systemcls: Type[model.System]) -> None:
+    """
+    Explicit annotations are the preffered way of presenting the type of an attribute.
+    """
+    src = '''\
+    class Stuff(object):
+        thing: List[Tuple[Thing, ...]]
+        def __init__(self):
+            self.thing = []
+        '''
+    mod = fromText(src, systemcls=systemcls, modname='mod')
+    thing = mod.system.allobjects['mod.Stuff.thing']
+    assert flatten_text(epydoc2stan.type2stan(thing)) == "List[Tuple[Thing, ...]]" #type:ignore
+
+    src = '''\
+    class Stuff(object):
+        thing = []
+        def __init__(self):
+            self.thing: List[Tuple[Thing, ...]] = []
+        '''
+    mod = fromText(src, systemcls=systemcls, modname='mod')
+    thing = mod.system.allobjects['mod.Stuff.thing']
+    assert flatten_text(epydoc2stan.type2stan(thing)) == "List[Tuple[Thing, ...]]" #type:ignore
+
+@systemcls_param
+def test_explicit_inherited_annotation_looses_over_inferred_type(systemcls: Type[model.System]) -> None:
+    """
+    Annotation are of inherited.
+    """
+    src = '''\
+    class _Stuff(object):
+        thing: List[Tuple[Thing, ...]]
+    class Stuff(_Stuff):
+        def __init__(self):
+            self.thing = []
+        '''
+    mod = fromText(src, systemcls=systemcls, modname='mod')
+    thing = mod.system.allobjects['mod.Stuff.thing']
+    assert flatten_text(epydoc2stan.type2stan(thing)) == "list" #type:ignore
+
+@systemcls_param
+def test_inferred_type_override(systemcls: Type[model.System]) -> None:
+    """
+    The last visited value will be used to infer the type annotation
+    of an unnanotated attribute.
+    """
+    src = '''\
+    class Stuff(object):
+        thing = 1
+        def __init__(self):
+            self.thing = (1,2)
+        '''
+    mod = fromText(src, systemcls=systemcls, modname='mod')
+    thing = mod.system.allobjects['mod.Stuff.thing']
+    assert flatten_text(epydoc2stan.type2stan(thing)) == "tuple[int, ...]" #type:ignore
+
+@systemcls_param
+def test_inferred_type_is_not_propagated_to_subclasses(systemcls: Type[model.System]) -> None:
+    """
+    Inferred type annotation should not be propagated to subclasses.
+    """
+    src = '''\
+    class _Stuff(object):
+        def __init__(self):
+            self.thing = []
+    class Stuff(_Stuff):
+        def __init__(self, thing):
+            self.thing = thing
+        '''
+    mod = fromText(src, systemcls=systemcls, modname='mod')
+    thing = mod.system.allobjects['mod.Stuff.thing']
+    assert epydoc2stan.type2stan(thing) is None
+
+
+@systemcls_param
+def test_inherited_type_is_not_propagated_to_subclasses(systemcls: Type[model.System]) -> None:
+    """
+    We can't repliably propage the annotations from one class to it's subclass because of 
+    issue https://github.com/twisted/pydoctor/issues/295.
+    """
+    src1 = '''\
+    class _s:...
+    class _Stuff(object):
+        def __init__(self):
+            self.thing:_s = []
+    '''
+    src2 = '''\
+    from base import _Stuff, _s
+    class Stuff(_Stuff):
+        def __init__(self, thing):
+            self.thing = thing
+    __all__=['Stuff', '_s']
+        '''
+    system = systemcls()
+    builder = system.systemBuilder(system)
+    builder.addModuleString(src1, 'base')
+    builder.addModuleString(src2, 'mod')
+    builder.buildModules()
+    thing = system.allobjects['mod.Stuff.thing']
+    assert epydoc2stan.type2stan(thing) is None
+
+@systemcls_param
+def test_augmented_assignment(systemcls: Type[model.System]) -> None:
+    mod = fromText('''
+    var = 1
+    var += 3
+    ''', systemcls=systemcls)
+    attr = mod.contents['var']
+    assert isinstance(attr, model.Attribute)
+    assert attr.value
+    assert astor.to_source(attr.value).strip() == '(1 + 3)'
+
+@systemcls_param
+def test_augmented_assignment_in_class(systemcls: Type[model.System]) -> None:
+    mod = fromText('''
+    class c:
+        var = 1
+        var += 3
+    ''', systemcls=systemcls)
+    attr = mod.contents['c'].contents['var']
+    assert isinstance(attr, model.Attribute)
+    assert attr.value
+    assert astor.to_source(attr.value).strip() == '(1 + 3)'
+
+
+@systemcls_param
+def test_augmented_assignment_conditionnal_else_ignored(systemcls: Type[model.System]) -> None:
+    """
+    The If.body branch is the only one in use.
+    """
+    mod = fromText('''
+    var = 1
+    if something():
+        var += 3
+    else:
+        var += 4
+    ''', systemcls=systemcls)
+    attr = mod.contents['var']
+    assert isinstance(attr, model.Attribute)
+    assert attr.value
+    assert astor.to_source(attr.value).strip() == '(1 + 3)'
+
+@systemcls_param
+def test_augmented_assignment_conditionnal_multiple_assignments(systemcls: Type[model.System]) -> None:
+    """
+    The If.body branch is the only one in use, but several Ifs which have  
+    theoritical exclusive conditions might be wrongly interpreted.
+    """
+    mod = fromText('''
+    var = 1
+    if something():
+        var += 3
+    if not_something():
+        var += 4
+    ''', systemcls=systemcls)
+    attr = mod.contents['var']
+    assert isinstance(attr, model.Attribute)
+    assert attr.value
+    assert astor.to_source(attr.value).strip() == '(1 + 3 + 4)'
+
+@systemcls_param
+def test_augmented_assignment_instance_var(systemcls: Type[model.System]) -> None:
+    """
+    Augmented assignments in instance var are not analyzed.
+    """
+    mod = fromText('''
+    class c:
+        def __init__(self, var):
+            self.var = 1
+            self.var += var
+        ''')
+    attr = mod.contents['c'].contents['var']
+    assert isinstance(attr, model.Attribute)
+    assert attr.value
+    assert astor.to_source(attr.value).strip() == '(1)'
+
+@systemcls_param
+def test_augmented_assignment_not_suitable_for_inline_docstring(systemcls: Type[model.System]) -> None:
+    """
+    Augmented assignments cannot have docstring attached.
+    """
+    mod = fromText('''
+    var = 1
+    var += 1
+    """
+    this is not a docstring
+    """
+    class c:
+        var = 1
+        var += 1
+        """
+        this is not a docstring
+        """
+        ''')
+    attr = mod.contents['var']
+    assert not attr.docstring
+    attr = mod.contents['c'].contents['var']
+    assert not attr.docstring
+
+@systemcls_param
+def test_augmented_assignment_alone_is_not_documented(systemcls: Type[model.System]) -> None:
+    mod = fromText('''
+    var += 1
+    class c:
+        var += 1
+        ''')
+
+    assert 'var' not in mod.contents
+    assert 'var' not in mod.contents['c'].contents
+
+@systemcls_param
+def test_typealias_unstring(systemcls: Type[model.System]) -> None:
+    """
+    The type aliases are unstringed by the astbuilder
+    """
+    
+    mod = fromText('''
+    from typing import Callable
+    ParserFunction = Callable[[str, List['ParseError']], 'ParsedDocstring']
+    ''', modname='pydoctor.epydoc.markup', systemcls=systemcls)
+
+    typealias = mod.contents['ParserFunction']
+    assert isinstance(typealias, model.Attribute)
+    assert typealias.value
+    with pytest.raises(StopIteration):
+        # there is not Constant nodes in the type alias anymore
+        next(n for n in ast.walk(typealias.value) if isinstance(n, ast.Constant))
 

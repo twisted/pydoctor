@@ -9,6 +9,7 @@ from pydoctor.test.test_astbuilder import fromText
 from pydoctor.stanutils import flatten
 from pydoctor.napoleon.docstring import TokenType
 from pydoctor.epydoc.markup._types import ParsedTypeDocstring
+import pydoctor.epydoc.markup
 from pydoctor import model
 from twisted.web.template import Tag
 
@@ -57,7 +58,7 @@ def test_parsed_type_convert_obj_tokens_to_stan() -> None:
 
 def typespec2htmlvianode(s: str, markup: str) -> str:
     err: List[ParseError] = []
-    parsed_doc = get_parser_by_name(markup)(s, err, False)
+    parsed_doc = get_parser_by_name(markup)(s, err)
     assert not err
     ann = ParsedTypeDocstring(parsed_doc.to_node(), warns_on_unknown_tokens=True)
     html = flatten(ann.to_stan(NotFoundLinker()))
@@ -313,7 +314,7 @@ def test_processtypes_warning_unexpected_element(capsys: CapSys) -> None:
     
     # Test epytext
     epy_errors: List[ParseError] = []
-    epy_parsed = get_parser_by_name('epytext')(epy_string, epy_errors, True)
+    epy_parsed = pydoctor.epydoc.markup.processtypes(get_parser_by_name('epytext'))(epy_string, epy_errors)
 
     assert len(epy_errors)==1
     assert "Unexpected element in type specification field: element 'doctest_block'" in epy_errors.pop().descr()
@@ -322,7 +323,7 @@ def test_processtypes_warning_unexpected_element(capsys: CapSys) -> None:
     
     # Test restructuredtext
     rst_errors: List[ParseError] = []
-    rst_parsed = get_parser_by_name('restructuredtext')(rst_string, rst_errors, True)
+    rst_parsed = pydoctor.epydoc.markup.processtypes(get_parser_by_name('restructuredtext'))(rst_string, rst_errors)
 
     assert len(rst_errors)==1
     assert "Unexpected element in type specification field: element 'doctest_block'" in rst_errors.pop().descr()

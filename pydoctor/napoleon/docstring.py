@@ -8,6 +8,8 @@ Forked from ``sphinx.ext.napoleon.docstring``.
     :copyright: Copyright 2007-2021 by the Sphinx team, see AUTHORS.
     :license: BSD, see LICENSE for details.
 """
+from __future__ import annotations
+
 import collections
 from enum import Enum, auto
 import re
@@ -27,8 +29,10 @@ _google_typed_arg_regex = re.compile(r"(.+?)\(\s*(.*[^\s]+)\s*\)")
 _numpy_section_regex = re.compile(r'^[=\-`:\'"~^_*+#<>]{2,}\s*$')
 _single_colon_regex = re.compile(r"(?<!:):(?!:)")
 _xref_or_code_regex = re.compile(
-    r"((?::(?:[a-zA-Z0-9]+[\-_+:.])*[a-zA-Z0-9]+:`.+?`)|" r"(?:``.+?``))"
-)
+    r'((?::(?:[a-zA-Z0-9]+[\-_+:.])*[a-zA-Z0-9]+:`.+?`)|'
+    r'(?:``.+?``)|'
+    # r'(?::meta .+:.*)|' # 'meta' is not a supported field by pydoctor at the moment.
+    r'(?:`.+?\s*(?<!\x00)<.*?>`))')
 _xref_regex = re.compile(r"(?:(?::(?:[a-zA-Z0-9]+[\-_+:.])*[a-zA-Z0-9]+:)?`.+?`)")
 _bullet_list_regex = re.compile(r"^(\*|\+|\-)(\s+\S|\s*$)")
 _enumerated_list_regex = re.compile(

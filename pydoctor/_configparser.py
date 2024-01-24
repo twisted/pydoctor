@@ -20,6 +20,8 @@ L{CompositeConfigParser} usage:
 >>> parser = ArgumentParser(..., default_config_files=['./pyproject.toml', 'setup.cfg', 'my_super_tool.ini'], config_file_parser_class=MixedParser)
 
 """
+from __future__ import annotations
+
 import argparse
 from collections import OrderedDict
 import re

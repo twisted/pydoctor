@@ -1,7 +1,7 @@
-
 """
-Support for L{attrs <attr>}.
+Support for L{attrs}.
 """
+from __future__ import annotations
 
 import ast
 import inspect
@@ -108,7 +108,7 @@ def annotation_from_attrib(
             return astutils.unstring_annotation(typ, ctx)
         default = args.arguments.get('default')
         if default is not None:
-            return astbuilder._infer_type(default)
+            return astutils.infer_type(default)
     return None
 
 class ModuleVisitor(extensions.ModuleVisitorExt):
@@ -165,7 +165,7 @@ class AttrsClass(extensions.ClassMixin, model.Class):
         super().setup()
         self.auto_attribs: bool = False
         """
-        L{True} if this class uses the C{auto_attribs} feature of the L{attrs <attr>}
+        L{True} if this class uses the C{auto_attribs} feature of the L{attrs}
         library to automatically convert annotated fields into attributes.
         """
 

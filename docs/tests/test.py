@@ -35,7 +35,7 @@ def test_rtd_pydoctor_multiple_call():
     With the pydoctor Sphinx extension can call pydoctor for more than one
     API doc source.
     """
-    with open(BASE_DIR / 'docformat' / 'epytext' / 'index.html', 'r') as stream:
+    with open(BASE_DIR / 'docformat' / 'epytext_demo' / 'index.html', 'r') as stream:
         page = stream.read()
         assert '<a href="../epytext.html" class="projecthome">pydoctor-epytext-demo</a>' in page, page
 
@@ -76,7 +76,7 @@ def test_sphinx_object_inventory_version_epytext_demo():
     The Sphinx inventory for demo/showcase code has a fixed version and name,
     passed via docs/source/conf.py.
     """
-    with open(BASE_DIR / 'docformat' / 'epytext' / 'objects.inv', 'rb') as stream:
+    with open(BASE_DIR / 'docformat' / 'epytext_demo' / 'objects.inv', 'rb') as stream:
         page = stream.read()
         assert page.startswith(
             b'# Sphinx inventory version 2\n'

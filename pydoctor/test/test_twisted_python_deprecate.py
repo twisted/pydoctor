@@ -73,7 +73,7 @@ def test_twisted_python_deprecate(capsys: CapSys, systemcls: Type[model.System])
     assert len(_class.extra_info)==1
     assert re.match(_html_template_with_replacement.format(
         name='Baz', package='Twisted', version=r'14\.2\.3', replacement='stuff'
-    ), flatten_text(_class.extra_info[0].to_stan(mod.docstring_linker, False)).strip(), re.DOTALL)
+    ), flatten_text(_class.extra_info[0].to_stan(mod.docstring_linker)).strip(), re.DOTALL)
 
     assert re.match(_html_template_with_replacement.format(
         name='Baz', package='Twisted', version=r'14\.2\.3', replacement='stuff'

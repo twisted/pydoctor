@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import TYPE_CHECKING, List
 
 from twisted.web.iweb import ITemplateLoader
@@ -19,7 +21,7 @@ class AttributeChild(TemplateElement):
     def __init__(self,
             docgetter: util.DocGetter,
             ob: Attribute,
-            extras: List[Tag],
+            extras: List["Flattenable"],
             loader: ITemplateLoader
             ):
         super().__init__(loader)
@@ -67,7 +69,7 @@ class AttributeChild(TemplateElement):
             return ()
 
     @renderer
-    def objectExtras(self, request: object, tag: Tag) -> List[Tag]:
+    def objectExtras(self, request: object, tag: Tag) -> List["Flattenable"]:
         return self._functionExtras
 
     @renderer

@@ -13,8 +13,13 @@ def epytext2html(s: str, linker: DocstringLinker = NotFoundLinker()) -> str:
 
 
 def parse(s: str) -> str:
-    # this strips off the <epytext>...</epytext>
-    return ''.join(str(n) for n in epytext.parse(s).children)
+    errors: List[ParseError] = []
+    element = epytext.parse(s, errors)
+    if element is None:
+        raise errors[0]
+    else:
+        # this strips off the <epytext>...</epytext>
+        return ''.join(str(n) for n in element.children)
 
 
 def test_basic_list() -> None:

@@ -1,4 +1,5 @@
 import ast
+from functools import partial
 import sys
 from textwrap import dedent
 from typing import Any, Union
@@ -6,7 +7,7 @@ import xml.sax
 
 import pytest
 
-from pydoctor.epydoc.markup._pyval_repr import PyvalColorizer
+from pydoctor.epydoc.markup._pyval_repr import PyvalColorizer, colorize_inline_pyval
 from pydoctor.test import NotFoundLinker
 from pydoctor.stanutils import flatten, flatten_text, html2stan
 from pydoctor.node2stan import gettext
@@ -19,7 +20,7 @@ def color(v: Any, linebreakok:bool=True, maxlines:int=5, linelen:int=40) -> str:
 def colorhtml(v: Any, linebreakok:bool=True, maxlines:int=5, linelen:int=40) -> str:
     colorizer = PyvalColorizer(linelen=linelen, linebreakok=linebreakok, maxlines=maxlines)
     parsed_doc = colorizer.colorize(v)
-    return flatten(parsed_doc.to_stan(NotFoundLinker(), compact=True))
+    return flatten(parsed_doc.to_stan(NotFoundLinker()))
 
 def test_simple_types() -> None:
     """
@@ -35,7 +36,7 @@ def test_simple_types() -> None:
     assert color(1./4) == """<document source="pyval_repr">
     0.25\n"""
     assert color(None) == """<document source="pyval_repr">
-    <obj_reference refuid="None">
+    <obj_reference refuri="None">
         None\n"""
 
 def test_long_numbers() -> None:
@@ -518,63 +519,6 @@ def test_tuples_one_value() -> None:
     ,)
 """
 
-def test_dictionaries() -> None:
-    """Dicts are treated just like lists, except that the ":" is also tagged as
-    "op"."""
-
-    assert color({'1':33, '2':[1,2,3,{7:'oo'*20}]}) == """<document source="pyval_repr">
-    {
-    <wbr>
-    <inline classes="variable-quote">
-        '
-    <inline classes="variable-string">
-        1
-    <inline classes="variable-quote">
-        '
-    : 
-    33
-    ,
-    
-     
-    <wbr>
-    <inline classes="variable-quote">
-        '
-    <inline classes="variable-string">
-        2
-    <inline classes="variable-quote">
-        '
-    : 
-    [
-    <wbr>
-    1
-    ,
-    
-           
-    <wbr>
-    2
-    ,
-    
-           
-    <wbr>
-    3
-    ,
-    
-           
-    <wbr>
-    {
-    <wbr>
-    7
-    : 
-    <inline classes="variable-quote">
-        '
-    <inline classes="variable-string">
-        oooooooooooooooooooooooooooo
-    <inline classes="variable-linewrap">
-        ↵
-    
-    <inline classes="variable-ellipsis">
-        ...\n"""
-
 def extract_expr(_ast: ast.Module) -> ast.AST:
     elem = _ast.body[0]
     assert isinstance(elem, ast.Expr)
@@ -596,7 +540,7 @@ def test_ast_unary_op() -> None:
     not True
     """)))) == """<document source="pyval_repr">
     not 
-    <obj_reference refuid="True">
+    <obj_reference refuri="True">
         True\n"""
 
     assert color(extract_expr(ast.parse(dedent("""
@@ -685,10 +629,10 @@ def test_ast_bin_op() -> None:
     assert color(extract_expr(ast.parse(dedent("""
     H @ beta
     """)))) == """<document source="pyval_repr">
-    <obj_reference refuid="H">
+    <obj_reference refuri="H">
         H
     @
-    <obj_reference refuid="beta">
+    <obj_reference refuri="beta">
         beta\n"""
 
 def test_operator_precedences() -> None:
@@ -719,14 +663,12 @@ def test_operator_precedences() -> None:
     (1 + 2) * 3 / 4
     """)))) == """<document source="pyval_repr">
     (
-    (
     1
     +
     2
     )
     *
     3
-    )
     /
     4\n"""
 
@@ -734,19 +676,17 @@ def test_operator_precedences() -> None:
     ((1 + 2) * 3) / 4
     """)))) == """<document source="pyval_repr">
     (
-    (
     1
     +
     2
     )
     *
     3
-    )
     /
     4\n"""
 
     assert color(extract_expr(ast.parse(dedent("""
-    (1 + 2) * (3 / 4)
+    (1 + 2) * 3 / 4
     """)))) == """<document source="pyval_repr">
     (
     1
@@ -754,26 +694,20 @@ def test_operator_precedences() -> None:
     2
     )
     *
-    (
     3
     /
-    4
-    )\n"""
+    4\n"""
 
     assert color(extract_expr(ast.parse(dedent("""
-    (1 + (2 * 3) / 4) - 1
+    1 + 2 * 3 / 4 - 1
     """)))) == """<document source="pyval_repr">
-    (
     1
     +
-    (
     2
     *
     3
-    )
     /
     4
-    )
     -
     1\n"""
 
@@ -781,7 +715,7 @@ def test_ast_bool_op() -> None:
     assert color(extract_expr(ast.parse(dedent("""
     True and 9
     """)))) == """<document source="pyval_repr">
-    <obj_reference refuid="True">
+    <obj_reference refuri="True">
         True
      and 
     9\n"""
@@ -908,6 +842,9 @@ def test_ast_list_tuple() -> None:
     )\n"""
 
 def test_ast_dict() -> None:
+    """
+    Dictionnaries are treated just like lists.
+    """
     assert color(extract_expr(ast.parse(dedent("""
     {'1':33, '2':[1,2,3,{7:'oo'*20}]}
     """)))) == """<document source="pyval_repr">
@@ -961,23 +898,23 @@ def test_ast_annotation() -> None:
     assert color(extract_expr(ast.parse(dedent("""
     bar[typing.Sequence[dict[str, bytes]]]
     """))), linelen=999) == """<document source="pyval_repr">
-    <obj_reference refuid="bar">
+    <obj_reference refuri="bar">
         bar
     [
     <wbr>
-    <obj_reference refuid="typing.Sequence">
+    <obj_reference refuri="typing.Sequence">
         typing.Sequence
     [
     <wbr>
-    <obj_reference refuid="dict">
+    <obj_reference refuri="dict">
         dict
     [
     <wbr>
-    <obj_reference refuid="str">
+    <obj_reference refuri="str">
         str
     , 
     <wbr>
-    <obj_reference refuid="bytes">
+    <obj_reference refuri="bytes">
         bytes
     ]
     ]
@@ -987,11 +924,11 @@ def test_ast_call() -> None:
     assert color(extract_expr(ast.parse(dedent("""
     list(range(100))
     """)))) == """<document source="pyval_repr">
-    <obj_reference refuid="list">
+    <obj_reference refuri="list">
         list
     (
     <wbr>
-    <obj_reference refuid="range">
+    <obj_reference refuri="range">
         range
     (
     <wbr>
@@ -1003,11 +940,11 @@ def test_ast_call_args() -> None:
     assert color(extract_expr(ast.parse(dedent("""
     list(func(1, *two, three=2, **args))
     """)))) == """<document source="pyval_repr">
-    <obj_reference refuid="list">
+    <obj_reference refuri="list">
         list
     (
     <wbr>
-    <obj_reference refuid="func">
+    <obj_reference refuri="func">
         func
     (
     <wbr>
@@ -1015,7 +952,7 @@ def test_ast_call_args() -> None:
     , 
     <wbr>
     *
-    <obj_reference refuid="two">
+    <obj_reference refuri="two">
         two
     , 
     <wbr>
@@ -1025,7 +962,7 @@ def test_ast_call_args() -> None:
     , 
     <wbr>
     **
-    <obj_reference refuid="args">
+    <obj_reference refuri="args">
         args
     )
     )\n"""
@@ -1052,7 +989,7 @@ def test_ast_set() -> None:
     assert color(extract_expr(ast.parse(dedent("""
     set([1, 2])
     """)))) == """<document source="pyval_repr">
-    <obj_reference refuid="set">
+    <obj_reference refuri="set">
         set
     (
     <wbr>
@@ -1069,7 +1006,7 @@ def test_ast_slice() -> None:
     assert color(extract_expr(ast.parse(dedent("""
     o[x:y]
     """)))) == """<document source="pyval_repr">
-    <obj_reference refuid="o">
+    <obj_reference refuri="o">
         o
     [
     <wbr>
@@ -1079,20 +1016,20 @@ def test_ast_slice() -> None:
     assert color(extract_expr(ast.parse(dedent("""
     o[x:y,z]
     """)))) == """<document source="pyval_repr">
-    <obj_reference refuid="o">
+    <obj_reference refuri="o">
         o
     [
     <wbr>
     x:y, (z)
     ]\n""" if sys.version_info < (3,9) else """<document source="pyval_repr">
-    <obj_reference refuid="o">
+    <obj_reference refuri="o">
         o
     [
     <wbr>
     x:y
     ,
     <wbr>
-    <obj_reference refuid="z">
+    <obj_reference refuri="z">
         z
     ]\n"""
 
@@ -1100,7 +1037,7 @@ def test_ast_attribute() -> None:
     assert color(extract_expr(ast.parse(dedent("""
     mod.attr
     """)))) == ("""<document source="pyval_repr">
-    <obj_reference refuid="mod.attr">
+    <obj_reference refuri="mod.attr">
         mod.attr\n""")
 
     # ast.Attribute nodes that contains something else as ast.Name nodes are not handled explicitely.
@@ -1114,7 +1051,7 @@ def test_ast_regex() -> None:
     assert color(extract_expr(ast.parse(dedent(r"""
     re.compile(invalidarg='[A-Za-z0-9]+')
     """)))) == """<document source="pyval_repr">
-    <obj_reference refuid="re.compile">
+    <obj_reference refuri="re.compile">
         re.compile
     (
     <wbr>
@@ -1132,7 +1069,7 @@ def test_ast_regex() -> None:
     assert color(extract_expr(ast.parse(dedent("""
     re.compile()
     """)))) == """<document source="pyval_repr">
-    <obj_reference refuid="re.compile">
+    <obj_reference refuri="re.compile">
         re.compile
     (
     )\n"""
@@ -1141,11 +1078,11 @@ def test_ast_regex() -> None:
     assert color(extract_expr(ast.parse(dedent("""
     re.compile(None)
     """)))) == """<document source="pyval_repr">
-    <obj_reference refuid="re.compile">
+    <obj_reference refuri="re.compile">
         re.compile
     (
     <wbr>
-    <obj_reference refuid="None">
+    <obj_reference refuri="None">
         None
     )\n"""
 
@@ -1153,11 +1090,11 @@ def test_ast_regex() -> None:
     assert color(extract_expr(ast.parse(dedent("""
     re.compile(get_re())
     """)))) == """<document source="pyval_repr">
-    <obj_reference refuid="re.compile">
+    <obj_reference refuri="re.compile">
         re.compile
     (
     <wbr>
-    <obj_reference refuid="get_re">
+    <obj_reference refuri="get_re">
         get_re
     (
     )
@@ -1167,7 +1104,7 @@ def test_ast_regex() -> None:
     assert color(extract_expr(ast.parse(dedent("""
     re.compile(r"[.*")
     """)))) == """<document source="pyval_repr">
-    <obj_reference refuid="re.compile">
+    <obj_reference refuri="re.compile">
         re.compile
     (
     <wbr>
@@ -1183,7 +1120,7 @@ def test_ast_regex() -> None:
     assert color(extract_expr(ast.parse(dedent("""
     re.compile(r"[A-Za-z0-9]+", re.X)
     """)))) == """<document source="pyval_repr">
-    <obj_reference refuid="re.compile">
+    <obj_reference refuri="re.compile">
         re.compile
     (
     r
@@ -1212,7 +1149,7 @@ def test_ast_regex() -> None:
     ,
     
                
-    <obj_reference refuid="re.X">
+    <obj_reference refuri="re.X">
         re.X
     )\n"""
 
@@ -1223,17 +1160,32 @@ def color_re(s: Union[bytes, str],
     val = colorizer.colorize(extract_expr(ast.parse(f"re.compile({repr(s)})")))
 
     if check_roundtrip:
-
+        raw_text = ''.join(gettext(val.to_node()))
         re_begin = 13
+        raw_string = True
+
+        if raw_text[11] != 'r':
+            # the regex has failed to be colorized since we can't find the r prefix
+            # meaning the string has been rendered as plaintext instead.
+            raw_string = False
+            re_begin -= 1
+        
         if isinstance(s, bytes):
             re_begin += 1
         re_end = -2
 
-        round_trip: Union[bytes, str] = ''.join(gettext(val.to_node()))[re_begin:re_end]
+        round_trip: Union[bytes, str] = raw_text[re_begin:re_end]
         if isinstance(s, bytes):
             assert isinstance(round_trip, str)
             round_trip = bytes(round_trip, encoding='utf-8')
-        assert round_trip == s, "%s != %s" % (repr(round_trip), repr(s))
+        
+        expected = s
+        if not raw_string:
+            assert isinstance(expected, str) 
+            # we only test invalid regexes with strings currently
+            expected = expected.replace('\\', '\\\\')
+        
+        assert round_trip == expected, "%s != %s" % (repr(round_trip), repr(s))
     
     return flatten(val.to_stan(NotFoundLinker()))[17:-8]
 
@@ -1344,6 +1296,27 @@ def test_re_flags() -> None:
      
     assert color_re(r"(?x)This   is   verbose", False) == """r<span class="rst-variable-quote">'</span><span class="rst-re-flags">(?ux)</span>Thisisverbose<span class="rst-variable-quote">'</span>"""
 
+def test_unsupported_regex_features() -> None:
+    """
+    Because pydoctor uses the regex engine of python 3.6, it does not support the 
+    latest features introduced in python3.11 like atomic groupping and possesive qualifiers.
+
+    But still, we should not crash.
+    """
+    regexes = ['e*+e',
+        '(e?){2,4}+a',
+        r"^(\w){1,2}+$",
+        # "^x{}+$", this one fails to round-trip :/
+        r'a++',
+        r'(?:ab)++',
+        r'(?:ab){1,3}+',
+        r'(?>x++)x',
+        r'(?>a{1,3})',
+        r'(?>(?:ab){1,3})',
+        ]
+    for r in regexes:
+        color_re(r)
+
 def test_re_not_literal() -> None:
 
     assert color_re(r"[^0-9]") == """r<span class="rst-variable-quote">'</span><span class="rst-re-group">[</span><span class="rst-re-op">^</span>0<span class="rst-re-op">-</span>9<span class="rst-re-group">]</span><span class="rst-variable-quote">'</span>"""
@@ -1360,7 +1333,7 @@ def test_re_multiline() -> None:
     assert color(extract_expr(ast.parse(dedent(r'''re.compile(r"""\d +  # the integral part
         \.    # the decimal point
         \d *  # some fractional digits""")''')))) == r"""<document source="pyval_repr">
-    <obj_reference refuid="re.compile">
+    <obj_reference refuri="re.compile">
         re.compile
     (
     <inline classes="variable-quote">
@@ -1384,7 +1357,7 @@ def test_re_multiline() -> None:
     assert color(extract_expr(ast.parse(dedent(r'''re.compile(rb"""\d +  # the integral part
         \.    # the decimal point
         \d *  # some fractional digits""")'''))), linelen=70) == r"""<document source="pyval_repr">
-    <obj_reference refuid="re.compile">
+    <obj_reference refuri="re.compile">
         re.compile
     (
     b
@@ -1505,3 +1478,87 @@ def test_summary() -> None:
     assert summarize(list(range(100))) == "[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16..."
     assert summarize('hello\nworld') == r"'hello\nworld'"
     assert summarize('hello\nworld'*100) == r"'hello\nworldhello\nworldhello\nworldhello\nworldhello\nw..."
+
+def test_refmap_explicit() -> None:
+    """
+    The refmap argument allow to change the target of some links 
+    before the linker resolves them.
+    """
+    
+    doc = colorize_inline_pyval(extract_expr(ast.parse('Type[MyInt, str]')), 
+        refmap = {
+            'Type':'typing.Type', 
+            'MyInt': '<mymod>.MyInt'})
+    tree = doc.to_node()
+    dump = tree.pformat()
+    assert '<obj_reference refuri="typing.Type">' in dump
+    assert '<obj_reference refuri="<mymod>.MyInt">' in dump
+    assert '<obj_reference refuri="str">' in dump
+
+def check_src_roundtrip(src:str, subtests:Any) -> None:
+    # from cpython/Lib/test/test_unparse.py
+    with subtests.test(msg="round trip", src=src):
+        mod = ast.parse(src)
+        assert len(mod.body)==1
+        expr = mod.body[0]
+        assert isinstance(expr, ast.Expr)
+        code = color2(expr.value)
+        assert code==src
+
+def test_expressions_parens(subtests:Any) -> None:
+    check_src = partial(check_src_roundtrip, subtests=subtests)
+    check_src("1<<(10|1)<<1")
+    check_src("int|float|complex|None")
+    check_src("1+1")
+    check_src("1+2/3")
+    check_src("(1+2)/3")
+    check_src("(1+2)*3+4*(5+2)")
+    check_src("(1+2)*3+4*(5+2)**2")
+    check_src("~x")
+    check_src("x and y")
+    check_src("x and y and z")
+    check_src("x and (y and x)")
+    check_src("(x and y) and z")
+    # cpython tests expected '(x**y)**z**q', 
+    # but too much reasonning is needed to obtain this result,
+    # because the power operator is reassociative...
+    check_src("(x**y)**(z**q)")
+    check_src("((x**y)**z)**q")
+    check_src("x>>y")
+    check_src("x<<y")
+    check_src("x>>y and x>>z")
+    check_src("x+y-z*q^t**k")
+    
+    check_src("flag&(other|foo)")
+    
+    # with astor (which adds a lot of parenthesis :/)
+    if sys.version_info>=(3,8):
+        check_src("(a := b)")
+    if sys.version_info>=(3,7):
+        check_src("(await x)")
+    check_src("(x if x else y)")
+    check_src("(lambda x: x)")
+    check_src("(lambda : int)()")
+    check_src("not (x == y)")
+    check_src("(x == (not y))")
+    check_src("(P * V if P and V else n * R * T)")
+    check_src("(lambda P, V, n: P * V == n * R * T)")
+    
+    check_src("f(**x)")
+    check_src("{**x}")
+
+    check_src("(-1)**7")
+    check_src("(-1.0)**8")
+    check_src("(-1j)**6")
+    check_src("not True or False")
+    check_src("True or not False")
+
+    check_src("(3).__abs__()")
+
+    check_src("f(**([] or 5))")
+    check_src("{**([] or 5)}")
+    check_src("{**(~{})}")
+    check_src("{**(not {})}")
+    check_src("{**({} == {})}")
+    check_src("{**{'y': 2}, 'x': 1, None: True}")
+    check_src("{**{'y': 2}, **{'x': 1}}")

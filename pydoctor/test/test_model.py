@@ -13,7 +13,7 @@ import pytest
 from twisted.web.template import Tag
 
 from pydoctor.options import Options
-from pydoctor import model, stanutils
+from pydoctor import model, stanutils, extensions
 from pydoctor.templatewriter import pages
 from pydoctor.utils import parse_privacy_tuple
 from pydoctor.sphinx import CacheT
@@ -238,6 +238,21 @@ def test_constructor_params_inherited() -> None:
     assert isinstance(C, model.Class)
     assert C.constructor_params.keys() == {'self', 'a', 'b'}
 
+def test_constructor_params_new() -> None:
+    src = '''
+    class A:
+        def __new__(cls, **kwargs):
+            pass
+    class B:
+        def __init__(self, a: int, b: str):
+            pass
+    class C(A, B):
+        pass
+    '''
+    mod = fromText(src)
+    C = mod.contents['C']
+    assert isinstance(C, model.Class)
+    assert C.constructor_params.keys() == {'cls', 'kwargs'}
 
 def test_docstring_lineno() -> None:
     src = '''
@@ -475,3 +490,86 @@ def test_privacy_reparented() -> None:
     assert mod_export.resolveName("MyClass") == base
 
     assert base.privacyClass == model.PrivacyClass.PUBLIC
+
+def test_name_defined() -> None:
+    src = '''
+    # module 'm'
+    import pydoctor
+    import twisted.web
+
+    class c:
+        class F:
+            def f():...
+
+        var:F = True
+    '''
+
+    mod = fromText(src, modname='m')
+
+    # builtins are not considered by isNameDefined()
+    assert not mod.isNameDefined('bool')
+
+    assert mod.isNameDefined('pydoctor')
+    assert mod.isNameDefined('twisted.web')
+    assert mod.isNameDefined('twisted')
+    assert not mod.isNameDefined('m')
+    assert mod.isNameDefined('c')
+    assert mod.isNameDefined('c.anything')
+
+    cls = mod.contents['c']
+    assert isinstance(cls, model.Class)
+
+    assert cls.isNameDefined('pydoctor')
+    assert cls.isNameDefined('twisted.web')
+    assert cls.isNameDefined('twisted')
+    assert not mod.isNameDefined('m')
+    assert cls.isNameDefined('c')
+    assert cls.isNameDefined('c.anything')
+    assert cls.isNameDefined('var')
+
+    var = cls.contents['var']
+    assert isinstance(var, model.Attribute)
+
+    assert var.isNameDefined('c')
+    assert var.isNameDefined('var')
+    assert var.isNameDefined('F')
+    assert not var.isNameDefined('m')
+    assert var.isNameDefined('pydoctor')
+    assert var.isNameDefined('twisted.web')
+
+    innerCls = cls.contents['F']
+    assert isinstance(innerCls, model.Class)
+    assert not innerCls.isNameDefined('F')
+    assert not innerCls.isNameDefined('var')
+    assert innerCls.isNameDefined('f')
+
+    innerFn = innerCls.contents['f']
+    assert isinstance(innerFn, model.Function)
+    assert not innerFn.isNameDefined('F')
+    assert not innerFn.isNameDefined('var')
+    assert innerFn.isNameDefined('f')
+
+def test_priority_processor(capsys:CapSys) -> None:
+    system = model.System()
+    r = extensions.ExtRegistrar(system)
+    processor = system._post_processor
+    processor._post_processors.clear()
+
+    r.register_post_processor(lambda s:print('priority 200'), priority=200)
+    r.register_post_processor(lambda s:print('priority 100'))
+    r.register_post_processor(lambda s:print('priority 25'), priority=25)
+    r.register_post_processor(lambda s:print('priority 150'), priority=150)
+    r.register_post_processor(lambda s:print('priority 100 (bis)'))
+    r.register_post_processor(lambda s:print('priority 200 (bis)'), priority=200)
+
+    assert len(processor._post_processors)==6
+    processor.apply_processors()
+    assert len(processor.applied)==6
+    
+    assert capsys.readouterr().out.strip().splitlines() == ['priority 200', 
+                                                            'priority 200 (bis)',
+                                                            'priority 150',
+                                                            'priority 100',
+                                                            'priority 100 (bis)',
+                                                            'priority 25',
+                                                            ]

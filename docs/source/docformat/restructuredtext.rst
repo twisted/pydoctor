@@ -4,7 +4,7 @@ reStructuredText
 .. toctree::
     :maxdepth: 1
 
-    restructuredtext/restructuredtext_demo
+    restructuredtext_demo/index
 
 For the language syntax documentation, read the `ReST docutils syntax reference <https://docutils.sourceforge.io/docs/user/rst/quickref.html>`_.
 
