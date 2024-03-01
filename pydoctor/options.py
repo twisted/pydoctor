@@ -315,6 +315,17 @@ def _object_inv_url_and_base_url(url:str) -> Tuple[str, str]:
         url += 'objects.inv'
     return url, base_url
 
+def _is_identifier_like(s:str) -> bool:
+    """
+    Examples of identifier-like strings:
+
+        identifier
+        identifier_thing
+        zope.interface
+        identifier-like
+    """
+    return s.replace('-', '_').replace('.', '_').isidentifier()
+
 # So these are the cases that we should handle: 
 # --intersphinx=http://something.org/
 # --intersphinx=something.org
@@ -333,6 +344,7 @@ def _object_inv_url_and_base_url(url:str) -> Tuple[str, str]:
 # --intersphinx=pydoctor:inventories/pack.inv:http://something.org/
 # --intersphinx=pydoctor:c:/data/inventories/pack.inv:http://something.org/
 
+_RE_DRIVE_LIKE = re.compile(r':[a-z]:(\\|\/)', re.IGNORECASE)
 def _split_intersphinx_parts(s:str, option:str='--intersphinx') -> List[str]:
     """
     This replies on the fact the filename does not contain a colon. 
@@ -352,17 +364,15 @@ def _split_intersphinx_parts(s:str, option:str='--intersphinx') -> List[str]:
                 # Still not a separator, a windows drive :c:/
                 pass
             elif len(parts) == 3:
-                raise ValueError(f'Malformed {option} option, too many parts, beware that colons in filenames are not supported')
+                raise ValueError(f'Malformed {option} option {s!r}: too many parts, beware that colons in filenames are not supported')
             elif not parts[part_nb]:
-                raise ValueError(f'Malformed {option} option, two consecutive colons is not valid')
+                raise ValueError(f'Malformed {option} option {s!r}: two consecutive colons is not valid')
             else:
                 parts.append('')
                 part_nb += 1
                 continue
         parts[part_nb] += c
     return parts
-
-_RE_DRIVE_LIKE = re.compile(r':[a-z]:(\\|\/)', re.IGNORECASE)
 
 IntersphinxOption: TypeAlias = Tuple[Optional[str], str, str]
 
@@ -382,7 +392,8 @@ def _parse_intersphinx_file(s:str) -> IntersphinxOption:
     nb_parts = len(parts)
     
     if nb_parts == 1:
-        error('Invalid --intesphinx-file option: Missing base URL')
+        error(f'Malformed --intesphinx-file option {s!r}: Missing base URL')
+    
     elif nb_parts == 2:
         path, base_url = parts
         _, base_url = _object_inv_url_and_base_url(base_url)
@@ -395,8 +406,8 @@ def _parse_intersphinx_file(s:str) -> IntersphinxOption:
     else:
         assert False
     
-    if invname and not invname.replace('-', '_').isidentifier():
-            error('Invalid --intersphinx option: The inventory name must be an indentifier-like name')
+    if invname and not _is_identifier_like(invname):
+            error(f'Malformed --intersphinx option {s!r}: The inventory name must be an indentifier-like name')
     
     return invname, path, base_url
 
@@ -417,8 +428,7 @@ def _parse_intersphinx(s:str) -> IntersphinxOption:
         nb_parts = len(parts)
         
         if nb_parts == 1:
-            # Just URL_TO_OBJECTS.INV, it cannot be a filepath because a filepath must be
-            # followed by a base URL.
+            # Just URL
             url, base_url = _object_inv_url_and_base_url(*parts)
             invname = None
         
@@ -431,6 +441,11 @@ def _parse_intersphinx(s:str) -> IntersphinxOption:
                 invname, url, base_url = None, p1, p2
                 _, base_url = _object_inv_url_and_base_url(base_url)
                 url, _ = _object_inv_url_and_base_url(url)
+            
+            elif not p2.startswith(('http://', 'https://')):
+                # This is ambiguous, so raise an error.
+                error(f'Ambiguous --intersphinx option {s!r}: Please include the HTTP scheme on all URLs')
+            
             else:
                 # At this point we have: INVENTORY_NAME:URL
                 invname, url = p1, p2
@@ -445,8 +460,8 @@ def _parse_intersphinx(s:str) -> IntersphinxOption:
         else:
             assert False
         
-        if invname and not invname.replace('-', '_').isidentifier():
-            error('Invalid --intersphinx option: The inventory name must be an indentifier-like name')
+        if invname and not _is_identifier_like(invname):
+            error(f'Malformed --intersphinx option {s!r}: The inventory name must be an indentifier-like name')
         
         return invname, url, base_url
     
