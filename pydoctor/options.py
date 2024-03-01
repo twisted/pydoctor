@@ -317,7 +317,7 @@ def _object_inv_url_and_base_url(url:str) -> Tuple[str, str]:
 
 def _is_identifier_like(s:str) -> bool:
     """
-    Examples of identifier-like strings:
+    Examples of identifier-like strings::
 
         identifier
         identifier_thing
