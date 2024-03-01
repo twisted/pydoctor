@@ -1080,6 +1080,29 @@ def test_EpydocLinker_look_for_intersphinx_no_link() -> None:
 
     assert None is result
 
+def test_EpydocLinker_look_for_intersphinx_with_spaces() -> None:
+    """
+    Return the link from inventory based on first package name.
+    """
+    system = model.System()
+    inventory = SphinxInventory(system.msg)
+    inventory._links['base.module.other'] = [
+        InventoryObject(
+            invname='xxx',
+            name='base.module.other', 
+            base_url='http://tm.tld', 
+            location='some.html', 
+            domain='py',
+            reftype='mod',
+            display='-')]
+    system.intersphinx = inventory
+    target = model.Module(system, 'ignore-name')
+    sut = target.docstring_linker
+    assert isinstance(sut, linker._EpydocLinker)
+
+    result = sut.look_for_intersphinx('base .module .other')
+
+    assert 'http://tm.tld/some.html' == result
 
 def test_EpydocLinker_look_for_intersphinx_hit() -> None:
     """
