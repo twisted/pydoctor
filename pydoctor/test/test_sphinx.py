@@ -403,8 +403,7 @@ def test_update_bad_url(inv_reader: InvReader) -> None:
 
     assert inv_reader._links == {}
     expected_log = [(
-        'sphinx', ('Failed to get object inventory from url really.bad.url/objects.inv. '
-                   'To load inventory from a file, the BASE_URL part of the intersphinx option is required.'), -1
+        'sphinx', ('Failed to get object inventory from url really.bad.url/objects.inv'), -1
         )]
     assert expected_log == inv_reader._logger.messages
 
@@ -417,10 +416,7 @@ def test_update_fail(inv_reader: InvReader) -> None:
     url = 'http://some.tld/o.inv'
 
     inv_reader.update(cast('sphinx.CacheT', {}), 
-                      options.IntersphinxOption(
-                                None, options.URL,
-                                url, 'http://some.tld/', 
-                            ))
+                      (None, url, 'http://some.tld/', ))
 
     assert inv_reader._links == {}
     expected_log = [(

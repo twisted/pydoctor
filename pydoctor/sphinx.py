@@ -26,6 +26,7 @@ from cachecontrol.heuristics import ExpiresAfter
 if TYPE_CHECKING:
     from pydoctor.model import Documentable
     from typing_extensions import Protocol
+    from pydoctor.options import IntersphinxOption
 
     class CacheT(Protocol):
         def get(self, url: str) -> Optional[bytes]: ...
@@ -35,19 +36,6 @@ else:
     CacheT = object
 
 logger = logging.getLogger(__name__)
-
-FILE = 1
-URL = 2
-
-@attr.s(auto_attribs=True)
-class IntersphinxOption:
-    """
-    Represent a single, parsed C{--intersphinx} option.
-    """
-    invname: Optional[str]
-    source: object
-    url_or_path: str
-    base_url: str
 
 def parse_domain_reftype(name: str) -> Tuple[Optional[str], str]:
     """
@@ -110,54 +98,64 @@ class SphinxInventory:
     
     def message(self, where: str, message: str) -> None:
         self._logger(where, message, thresh=1)
-
-    def update(self, cache: CacheT, intersphinx: IntersphinxOption) -> None:
-        """
-        Update inventory from an L{IntersphinxOption} instance.
-        """
-        url_or_path = intersphinx.url_or_path
-        invname = intersphinx.invname
-        base_url = intersphinx.base_url
-
-        if intersphinx.source is URL:
-            # That's an URL.
-            data = cache.get(url_or_path)
-            if not data:
-                self.error('sphinx', f'Failed to get object inventory from url {url_or_path}')
-                return
-        elif intersphinx.source is FILE:
-            # That's a file.
-            try:
-                data = Path(url_or_path).read_bytes()
-            except FileNotFoundError as e:
-                self.error('sphinx', 
-                        f'Inventory file {url_or_path} does not exist. '
-                        'To load inventory from an URL, please include the http(s) scheme.')
-                return
-            except Exception as e:
-                self.error('sphinx', 
-                        f'Failed to read inventory file {url_or_path}: {e}')
-                return
-        else:
-            assert False
-
+    
+    def _add_inventory(self, invname:str|None, url_or_path: str) -> str|None:
         inventory_name = invname or str(hash(url_or_path))
         if inventory_name in self._inventories:
+            # We now trigger warning when the same inventory has been loaded twice.
             if invname:
                 self.error('sphinx', 
                         f'Duplicate inventory {invname!r} from {url_or_path}')
             else:
                 self.error('sphinx', 
                         f'Duplicate inventory from {url_or_path}')
-            return
-        
+            return None
         self._inventories.add(inventory_name)
+        return inventory_name
+    
+    def _update(self, data: bytes, 
+                base_url:str, 
+                inventory_name: str, ) -> None:
         payload = self._getPayload(base_url, data)
         invdata = self._parseInventory(base_url, payload, 
                                        invname=inventory_name)
         # Update links
         for k,v in invdata.items():
             self._links[k].extend(v)
+
+    def update(self, cache: CacheT, intersphinx: IntersphinxOption) -> None:
+        """
+        Update inventory from an L{IntersphinxOption} tuple that is URL-based.
+        """
+        invname, url, base_url = intersphinx
+
+        # That's an URL.
+        data = cache.get(url)
+        if not data:
+            self.error('sphinx', f'Failed to get object inventory from url {url}')
+            return
+        
+        inventory_name = self._add_inventory(invname, url)
+        if inventory_name:
+            self._update(data, base_url, inventory_name)        
+
+    def update_from_file(self, intersphinx: IntersphinxOption) -> None:
+        """
+        Update inventory from an L{IntersphinxOption} tuple that is File-based.
+        """
+        invname, path, base_url = intersphinx
+        
+        # That's a file.
+        try:
+            data = Path(path).read_bytes()
+        except Exception as e:
+            self.error('sphinx', 
+                    f'Failed to read inventory file {path}: {e}')
+            return
+
+        inventory_name = self._add_inventory(invname, path)
+        if inventory_name:
+            self._update(data, base_url, inventory_name)
 
     def _getPayload(self, base_url: str, data: bytes) -> str:
         """

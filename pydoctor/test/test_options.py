@@ -6,7 +6,7 @@ from io import StringIO
 
 from pydoctor import model
 from pydoctor.options import (PydoctorConfigParser, Options, _split_intersphinx_parts, 
-                              _object_inv_url_and_base_url, IntersphinxOption, FILE, URL)
+                              _object_inv_url_and_base_url )
 
 from pydoctor.test import FixtureRequest, TempPathFactory
 
@@ -170,15 +170,13 @@ def test_config_parsers(project_conf:str, pydoctor_conf:str, tempDir:Path) -> No
     assert options.warnings_as_errors == True
     assert options.privacy == [(model.PrivacyClass.HIDDEN, 'pydoctor.test')]
     
-    assert options.intersphinx[0] == IntersphinxOption(
-        invname=None, source=URL, 
-        url_or_path='https://docs.python.org/3/objects.inv', 
-        base_url='https://docs.python.org/3')
+    assert options.intersphinx[0] == (None,
+        'https://docs.python.org/3/objects.inv', 
+        'https://docs.python.org/3')
     
-    assert options.intersphinx[-1] == IntersphinxOption(
-        invname=None, source=URL, 
-        url_or_path='https://tristanlatr.github.io/apidocs/docutils/objects.inv', 
-        base_url='https://tristanlatr.github.io/apidocs/docutils')
+    assert options.intersphinx[-1] == (None,
+        'https://tristanlatr.github.io/apidocs/docutils/objects.inv', 
+        'https://tristanlatr.github.io/apidocs/docutils')
 
 def test_repeatable_options_multiple_configs_and_args(tempDir:Path) -> None:
     config1 = """
@@ -213,22 +211,18 @@ project-name = "Hello World!"
         options = Options.defaults()
 
         assert options.verbosity == 1
-        assert options.intersphinx == [IntersphinxOption(
-                                        invname=None, 
-                                        source=URL, 
-                                        url_or_path='https://docs.python.org/3/objects.inv', 
-                                        base_url='https://docs.python.org/3'),]
+        assert options.intersphinx == [(None, 
+                                        'https://docs.python.org/3/objects.inv', 
+                                        'https://docs.python.org/3'),]
         assert options.projectname == "Hello World!"
         assert options.projectversion == "2050.4C"
 
         options = Options.from_args(['-vv'])
 
         assert options.verbosity == 3 
-        assert options.intersphinx == [IntersphinxOption(
-                                        invname=None, 
-                                        source=URL, 
-                                        url_or_path='https://docs.python.org/3/objects.inv', 
-                                        base_url='https://docs.python.org/3'),]
+        assert options.intersphinx == [(None, 
+                                        'https://docs.python.org/3/objects.inv', 
+                                        'https://docs.python.org/3'),]
         assert options.projectname == "Hello World!"
         assert options.projectversion == "2050.4C"
 
@@ -237,17 +231,13 @@ project-name = "Hello World!"
 
         assert options.verbosity == 3
         assert options.intersphinx == [
-                                       IntersphinxOption(
-                                        invname=None, 
-                                        source=URL, 
-                                        url_or_path='https://twistedmatrix.com/documents/current/api/objects.inv', 
-                                        base_url='https://twistedmatrix.com/documents/current/api'),
+                                       (None, 
+                                        'https://twistedmatrix.com/documents/current/api/objects.inv', 
+                                        'https://twistedmatrix.com/documents/current/api'),
 
-                                       IntersphinxOption(
-                                        invname=None, 
-                                        source=URL, 
-                                        url_or_path='https://urllib3.readthedocs.io/en/latest/objects.inv', 
-                                        base_url='https://urllib3.readthedocs.io/en/latest'),
+                                       (None, 
+                                        'https://urllib3.readthedocs.io/en/latest/objects.inv', 
+                                        'https://urllib3.readthedocs.io/en/latest'),
                                         ]
         assert options.projectname == "Hello World!"
         assert options.projectversion == "2050.4C"
@@ -290,7 +280,7 @@ not-found = 423
     assert options.warnings_as_errors == False
     assert options.htmloutput == '1'
 
-def test_intersphinx_split_on_colon():
+def test_intersphinx_split_on_colon() -> None:
     
     assert _split_intersphinx_parts('http://something.org/')==['http://something.org/']
     assert _split_intersphinx_parts('something.org')==['something.org']
@@ -309,7 +299,7 @@ def test_intersphinx_split_on_colon():
     with pytest.raises(ValueError, match='Malformed --intersphinx option, too many parts'):
         _split_intersphinx_parts('pydoctor:a:b:c:d')
 
-def test_intersphinx_base_url_deductions():
+def test_intersphinx_base_url_deductions() -> None:
     assert _object_inv_url_and_base_url('http://some.url/api/objects.inv')==('http://some.url/api/objects.inv', 'http://some.url/api')
     assert _object_inv_url_and_base_url('http://some.url/api')==('http://some.url/api/objects.inv', 'http://some.url/api')
     assert _object_inv_url_and_base_url('http://some.url/api/')==('http://some.url/api/objects.inv', 'http://some.url/api')

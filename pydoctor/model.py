@@ -1447,6 +1447,8 @@ class System:
         """
         for i in self.options.intersphinx:
             self.intersphinx.update(cache, i)
+        for i in self.options.intersphinx_files:
+            self.intersphinx.update_from_file(i)
 
 def defaultPostProcess(system:'System') -> None:
     for cls in system.objectsOfType(Class):

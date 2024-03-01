@@ -5,7 +5,7 @@ from __future__ import annotations
 import enum
 
 import re
-from typing import Sequence, List, Optional, Type, Tuple, TYPE_CHECKING
+from typing import Sequence, List, Optional, Type, Tuple, TYPE_CHECKING, TypeAlias
 import sys
 import functools
 from pathlib import Path
@@ -17,7 +17,7 @@ import attr
 from pydoctor import __version__
 from pydoctor.themes import get_themes
 from pydoctor.epydoc.markup import get_supported_docformats
-from pydoctor.sphinx import MAX_AGE_HELP, USER_INTERSPHINX_CACHE, IntersphinxOption, URL, FILE
+from pydoctor.sphinx import MAX_AGE_HELP, USER_INTERSPHINX_CACHE
 from pydoctor.utils import parse_path, findClassFromDottedName, parse_privacy_tuple, error
 from pydoctor._configparser import CompositeConfigParser, IniConfigParser, TomlConfigParser, ValidatorParser
 
@@ -175,10 +175,17 @@ def get_parser() -> ArgumentParser:
 
     parser.add_argument(
         '--intersphinx', action='append', dest='intersphinx',
-        metavar='[INVENTORY_NAME:]URL_OR_PATH[:BASE_URL]', default=[],
+        metavar='[INVENTORY_NAME:]URL[:BASE_URL]', default=[],
         help=(
-            "Use Sphinx objects inventory to generate links to external "
+            "Load Sphinx objects inventory from URLs to generate links to external "
             "documentation. Can be repeated."))
+
+    parser.add_argument(
+        '--intersphinx-file', action='append', dest='intersphinx_files',
+        metavar='[INVENTORY_NAME:]PATH:BASE_URL', default=[],
+        help=(
+            "Load Sphinx objects inventory from a local file to generate links to external "
+            "documentation. Can be repeated. Note that the base URL must be given."))
 
     parser.add_argument(
         '--enable-intersphinx-cache',
@@ -288,17 +295,6 @@ def _convert_htmlwriter(s: str) -> Type['IWriter']:
 def _convert_privacy(l: List[str]) -> List[Tuple['model.PrivacyClass', str]]:
     return list(map(functools.partial(parse_privacy_tuple, opt='--privacy'), l))
 
-# def _intersphinx_source(url_or_path:str) -> object:
-#     """
-#     Infer the kind source this string refers to. 
-
-#     """
-#     if url_or_path.startswith(HTTP_SCHEMES):
-#         return URL
-#     if not url_or_path.endswith('.inv'):
-#         return URL
-#     return FILE
-
 def _object_inv_url_and_base_url(url:str) -> Tuple[str, str]:
     """
     Given a base url OR an url to objects.inv file.
@@ -337,9 +333,10 @@ def _object_inv_url_and_base_url(url:str) -> Tuple[str, str]:
 # --intersphinx=pydoctor:inventories/pack.inv:http://something.org/
 # --intersphinx=pydoctor:c:/data/inventories/pack.inv:http://something.org/
 
-def _split_intersphinx_parts(s:str) -> List[str]:
+def _split_intersphinx_parts(s:str, option:str='--intersphinx') -> List[str]:
     """
     This replies on the fact the filename does not contain a colon. 
+    # TODO: find a manner to lift this limitation.
     """
     parts = ['']
     part_nb = 0
@@ -355,27 +352,63 @@ def _split_intersphinx_parts(s:str) -> List[str]:
                 # Still not a separator, a windows drive :c:/
                 pass
             elif len(parts) == 3:
-                raise ValueError(f'Malformed --intersphinx option, too many parts, beware that colons in filenames are not supported')
+                raise ValueError(f'Malformed {option} option, too many parts, beware that colons in filenames are not supported')
             elif not parts[part_nb]:
-                raise ValueError(f'Malformed --intersphinx option, two consecutive colons is not valid')
+                raise ValueError(f'Malformed {option} option, two consecutive colons is not valid')
             else:
                 parts.append('')
                 part_nb += 1
                 continue
         parts[part_nb] += c
-    
     return parts
 
 _RE_DRIVE_LIKE = re.compile(r':[a-z]:(\\|\/)', re.IGNORECASE)
-HTTP_SCHEMES = ('http://', 'https://')
+
+IntersphinxOption: TypeAlias = Tuple[Optional[str], str, str]
+
+def _parse_intersphinx_file(s:str) -> IntersphinxOption:
+    """
+    Given a string like::
+
+        [INVENTORY_NAME:]PATH:BASE_URL
+    
+    Returns a L{IntersphinxOption} tuple.
+    """
+    try:
+        parts = _split_intersphinx_parts(s, '--intersphinx-file')
+    except ValueError as e:
+        error(str(e))
+
+    nb_parts = len(parts)
+    
+    if nb_parts == 1:
+        error('Invalid --intesphinx-file option: Missing base URL')
+    elif nb_parts == 2:
+        path, base_url = parts
+        _, base_url = _object_inv_url_and_base_url(base_url)
+        invname = None
+
+    elif nb_parts == 3:
+        invname, path, base_url = parts
+        _, base_url = _object_inv_url_and_base_url(base_url)
+
+    else:
+        assert False
+    
+    if invname and not invname.replace('-', '_').isidentifier():
+            error('Invalid --intersphinx option: The inventory name must be an indentifier-like name')
+    
+    return invname, path, base_url
+
+    
 
 def _parse_intersphinx(s:str) -> IntersphinxOption:
     """
     Given a string like::
 
-        [INVENTORY_NAME:]URL_OR_FILEPATH_TO_OBJECTS.INV[:BASE_URL]
+        [INVENTORY_NAME:]URL[:BASE_URL]
 
-    Returns a L{IntersphinxOption} instance.
+    Returns a L{IntersphinxOption} tuple.
     """
     try:
 
@@ -386,53 +419,36 @@ def _parse_intersphinx(s:str) -> IntersphinxOption:
         if nb_parts == 1:
             # Just URL_TO_OBJECTS.INV, it cannot be a filepath because a filepath must be
             # followed by a base URL.
-            objects_inv_url, base_url = _object_inv_url_and_base_url(*parts)
-            return IntersphinxOption(
-                invname=None, 
-                source=URL, 
-                url_or_path=objects_inv_url,
-                base_url=base_url
-            )
+            url, base_url = _object_inv_url_and_base_url(*parts)
+            invname = None
         
         elif nb_parts == 2:
             # If there is only one ':', the first part might
-            # been either the invname or the url or file path.
+            # be either the invname or the url, so we need to use some heuristics
             p1, p2 = parts
-            if p1.endswith('.inv') or p1.startswith(HTTP_SCHEMES):
-                # So at this point we have: URL_OR_FILEPATH_TO_OBJECTS.INV:BASE_URL
-                invname, url_or_path, base_url = None, p1, p2
+            if p1.startswith(('http://', 'https://')):
+                # So at this point we have: URL:BASE_URL
+                invname, url, base_url = None, p1, p2
                 _, base_url = _object_inv_url_and_base_url(base_url)
-                source = _intersphinx_source(url_or_path)
-                if source is URL:
-                    url_or_path, _ = _object_inv_url_and_base_url(url_or_path)
+                url, _ = _object_inv_url_and_base_url(url)
             else:
-                # At this point we have: INVENTORY_NAME:URL_TO_OBJECTS.INV
-                invname, url_or_path = p1, p2
-                url_or_path, base_url = _object_inv_url_and_base_url(url_or_path)
-                source = URL
-            
-            return IntersphinxOption(
-                invname=invname, 
-                source=source, 
-                url_or_path=url_or_path,
-                base_url=base_url
-            )
+                # At this point we have: INVENTORY_NAME:URL
+                invname, url = p1, p2
+                url, base_url = _object_inv_url_and_base_url(url)
         
         elif nb_parts == 3:
-            # we have INVENTORY_NAME:URL_OR_FILEPATH_TO_OBJECTS.INV:BASE_URL
-            invname, url_or_path, base_url = parts
-            source = _intersphinx_source(url_or_path)
-            if source is URL:
-                url_or_path, _ = _object_inv_url_and_base_url(url_or_path)
-                _, base_url = _object_inv_url_and_base_url(base_url)
-            return IntersphinxOption(
-                invname=invname, 
-                source=source, 
-                url_or_path=url_or_path,
-                base_url=base_url
-            )
+            # we have INVENTORY_NAME:URL:BASE_URL
+            invname, url, base_url = parts
+            url, _ = _object_inv_url_and_base_url(url)
+            _, base_url = _object_inv_url_and_base_url(base_url)
+        
         else:
             assert False
+        
+        if invname and not invname.replace('-', '_').isidentifier():
+            error('Invalid --intersphinx option: The inventory name must be an indentifier-like name')
+        
+        return invname, url, base_url
     
     except ValueError as e:
         error(str(e))
@@ -443,6 +459,11 @@ def _convert_intersphinx(l: List[str]) -> List[IntersphinxOption]:
     """
     return list(map(_parse_intersphinx, l))
 
+def _convert_intersphinx_files(l: List[str]) -> List[IntersphinxOption]:
+    """
+    Returns list of tuples: (INVENTORY_NAME, URL_OR_FILEPATH_TO_OBJECTS.INV, BASE_URL)
+    """
+    return list(map(_parse_intersphinx_file, l))
 
 _RECOGNIZED_SOURCE_HREF = {
         # Sourceforge
@@ -513,6 +534,7 @@ class Options:
     quietness:              int                                     = attr.ib()
     introspect_c_modules:   bool                                    = attr.ib()
     intersphinx:            List[IntersphinxOption]                 = attr.ib(converter=_convert_intersphinx)
+    intersphinx_files:      List[IntersphinxOption]                 = attr.ib(converter=_convert_intersphinx_files)
     enable_intersphinx_cache:   bool                                = attr.ib()
     intersphinx_cache_path:     str                                 = attr.ib()
     clear_intersphinx_cache:    bool                                = attr.ib()
