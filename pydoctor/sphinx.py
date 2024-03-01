@@ -258,12 +258,13 @@ class SphinxInventory:
             py_options = list(filter(_filter, options))
             if py_options:
                 # TODO: We might want to leave a message in the case where several objects
-                # are still in consideration. But for now, we just pick the last one.
+                # are still in consideration. But for now, we just pick the last one because our old version
+                # of the inventory (that only dealing with the 'py' domain) would override names as they were parsed.
                 return py_options[-1]
         
-        # Last, we fall back to the last matching object because our old version
-        # of the inventory would override names as they were parsed.
-        return options[-1]
+        # If it hasn't been found in the 'py' domain, then we use the first mathing object because it makes 
+        # more sens in the case of the `std` domain of the standard library.
+        return options[0]
 
     def getLink(self, target: str,
                 invname:Optional[str]=None, 
