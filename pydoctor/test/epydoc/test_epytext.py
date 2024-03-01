@@ -21,6 +21,20 @@ def parse(s: str) -> str:
         # this strips off the <epytext>...</epytext>
         return ''.join(str(n) for n in element.children)
 
+def test_links() -> None:
+    L1 = 'L{link}'
+    L2 = 'L{something.link}'
+    L3 = 'L{any kind of text since intersphinx name can contain spaces}'
+    L4 = 'L{looks-like-identifier}'
+    L5 = 'L{this stuff <any kind of text>}'
+    L6 = 'L{this stuff <looks-like-identifier>}'
+
+    assert parse(L1) == "<para><link><name>link</name><target lineno='0'>link</target></link></para>"
+    assert parse(L2) == "<para><link><name>something.link</name><target lineno='0'>something.link</target></link></para>"
+    assert parse(L3) == "<para><link><name>any kind of text since intersphinx name can contain spaces</name><target lineno='0'>any kind of text since intersphinx name can contain spaces</target></link></para>"
+    assert parse(L4) == "<para><link><name>looks-like-identifier</name><target lineno='0'>looks-like-identifier</target></link></para>"
+    assert parse(L5) == "<para><link><name>this stuff</name><target lineno='0'>any kind of text</target></link></para>"
+    assert parse(L6) == "<para><link><name>this stuff</name><target lineno='0'>looks-like-identifier</target></link></para>"
 
 def test_basic_list() -> None:
     P1 = "This is a paragraph."

@@ -3,6 +3,7 @@ This module provides implementations of epydoc's L{DocstringLinker} class.
 """
 from __future__ import annotations
 
+import re
 import contextlib
 from twisted.web.template import Tag, tags
 from typing import  (
@@ -54,6 +55,9 @@ def intersphinx_link(label:"Flattenable", url:str) -> Tag:
     """
     return tags.a(label, href=url, class_='intersphinx-link')
 
+
+_CONTAINS_SPACE_RE = re.compile(r'.*\s.*')
+_SPACE_RE = re.compile(r'\s')
 class _EpydocLinker(DocstringLinker):
     """
     This linker implements the xref lookup logic.
@@ -273,6 +277,17 @@ class _EpydocLinker(DocstringLinker):
             if intersphinx_target_url_unfiltered:
                 message += f' (your link role filters {intersphinx_target_url_unfiltered!r}, is it by design?)'
         
+        # To cope with the fact that we're not striping spaces from epytext parsed target anymore, 
+        # some target that span over multiple lines will be misinterpreted with having a space
+        # So we check if the taget has spaces, and if it does we try again without the spaces.
+        if _CONTAINS_SPACE_RE.match(identifier):
+            try:
+                return self._resolve_identifier_xref(_SPACE_RE.sub('', identifier), 
+                                                     lineno, invname=invname, domain=domain, 
+                                                     reftype=reftype, external=external)
+            except LookupError:
+                pass
+
         if self.reporting_obj:
             self.reporting_obj.report(message, 'resolve_identifier_xref', lineno)
         raise LookupError(identifier)

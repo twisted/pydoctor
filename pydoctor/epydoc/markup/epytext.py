@@ -1181,8 +1181,10 @@ def _colorize_link(link: Element, token: Token, end: int, errors: List[ParseErro
 
     # Clean up the target.  For URIs, assume http or mailto if they
     # don't specify (no relative urls)
-    target = re.sub(r'\s', '', target)
+    # we used to stip spaces from the target here but that's no good 
+    # since intersphinx targets can contain spaces.
     if link.tag=='uri':
+        target = re.sub(r'\s', '', target)
         if not re.match(r'\w+:', target):
             if re.match(r'\w+@(\w+)(\.\w+)*', target):
                 target = 'mailto:' + target
@@ -1191,10 +1193,8 @@ def _colorize_link(link: Element, token: Token, end: int, errors: List[ParseErro
     elif link.tag=='link':
         # Remove arg lists for functions (e.g., L{_colorize_link()})
         target = re.sub(r'\(.*\)$', '', target)
-        if not re.match(r'^[a-zA-Z_]\w*(\.[a-zA-Z_]\w*)*$', target):
-            estr = "Bad link target."
-            errors.append(ColorizingError(estr, token, end))
-            return
+        # We used to validate the link target against the following regex: r'^[a-zA-Z_]\w*(\.[a-zA-Z_]\w*)*$'
+        # but we don;t do that anymore since the intersphinx taget names can contain any kind of text.
 
     # Construct the target element.
     target_elt = Element('target', target, lineno=str(token.startline))
