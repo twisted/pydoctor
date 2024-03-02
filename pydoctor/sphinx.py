@@ -285,7 +285,7 @@ class SphinxInventory:
                invname:Optional[str], 
                domain:Optional[str], 
                reftype:Optional[str],
-               options: Sequence[InventoryObject]):
+               options: Sequence[InventoryObject]) -> None:
 
         # Build the taget string
         target_str = target

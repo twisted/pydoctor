@@ -147,7 +147,7 @@ class _EpydocLinker(DocstringLinker):
             link = self.obj.system.intersphinx.getLink(name, 
                         invname=invname, domain=domain, 
                         reftype=reftype)
-            if lineno is not None:
+            if self.reporting_obj is not None and lineno is not None:
                 self.reporting_obj.report(str(e), 'resolve_identifier_xref', lineno, thresh=1)
             return link
 
