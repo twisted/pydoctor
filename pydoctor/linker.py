@@ -192,7 +192,8 @@ class _EpydocLinker(DocstringLinker):
             invname: Optional[str] = None,
             domain: Optional[str] = None,
             reftype: Optional[str] = None,
-            external: bool = False
+            external: bool = False,
+            no_warnings: bool = False, 
             ) -> Union[str, 'model.Documentable']:
         """
         Resolve a crossreference link to a Python identifier.
@@ -307,12 +308,13 @@ class _EpydocLinker(DocstringLinker):
             try:
                 return self._resolve_identifier_xref(_SPACE_RE.sub('', identifier), 
                                                      lineno, invname=invname, domain=domain, 
-                                                     reftype=reftype, external=external)
+                                                     reftype=reftype, external=external, no_warnings=True)
             except LookupError:
                 pass
 
-        if self.reporting_obj:
+        if self.reporting_obj and no_warnings is False:
             self.reporting_obj.report(message, 'resolve_identifier_xref', lineno)
+        
         raise LookupError(identifier)
 
 
