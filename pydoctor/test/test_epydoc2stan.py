@@ -1100,9 +1100,10 @@ def test_EpydocLinker_look_for_intersphinx_with_spaces() -> None:
     sut = target.docstring_linker
     assert isinstance(sut, linker._EpydocLinker)
 
-    result = sut.look_for_intersphinx('base .module .other')
+    result = sut.link_xref('base .module .other', 'thing', 0)
+    assert 'http://tm.tld/some.html' in flatten(result)
 
-    assert 'http://tm.tld/some.html' == result
+# TODO: Test filtering look_for_intersphinx(name, invname, domain, reftype)
 
 def test_EpydocLinker_look_for_intersphinx_hit() -> None:
     """

@@ -12,6 +12,7 @@ from typing import  (
 )
 
 from pydoctor.epydoc.markup import DocstringLinker
+from pydoctor.sphinx import SUPPORTED_PY_DOMAINS, SUPPORTED_EXTERNAL_STD_REFTYPES
 
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable
@@ -130,15 +131,25 @@ class _EpydocLinker(DocstringLinker):
     def look_for_intersphinx(self, name: str, *, 
                              invname: Optional[str] = None,
                              domain: Optional[str] = None,
-                             reftype: Optional[str] = None) -> Optional[str]:
+                             reftype: Optional[str] = None,
+                             lineno: Optional[int] = None) -> Optional[str]:
         """
         Return link for `name` based on intersphinx inventory.
 
         Return None if link is not found.
         """
-        return self.obj.system.intersphinx.getLink(name, 
+        try:
+            return self.obj.system.intersphinx.getLink(name, 
                     invname=invname, domain=domain, 
-                    reftype=reftype)
+                    reftype=reftype, strict=True)
+        
+        except ValueError as e:
+            link = self.obj.system.intersphinx.getLink(name, 
+                        invname=invname, domain=domain, 
+                        reftype=reftype)
+            if lineno is not None:
+                self.reporting_obj.report(str(e), 'resolve_identifier_xref', lineno, thresh=1)
+            return link
 
     def link_to(self, identifier: str, label: "Flattenable") -> Tag:
         fullID = self.obj.expandName(identifier)
@@ -200,8 +211,12 @@ class _EpydocLinker(DocstringLinker):
             an external target (found via Intersphinx).
         @raise LookupError: If C{identifier} could not be resolved.
         """
-        if invname: assert external
-        might_be_local_python_ref = not external and domain in ('py', None) and reftype not in ('doc', )
+        if invname: 
+            assert external
+
+        # Wether to try to resolve the target as a local python object
+        might_be_local_python_ref = (not external 
+                                     and domain in (*SUPPORTED_PY_DOMAINS, None))
 
         # There is a lot of DWIM here. Look for a global match first,
         # to reduce the chance of a false positive.
@@ -214,17 +229,25 @@ class _EpydocLinker(DocstringLinker):
 
         # Check if the fullID exists in an intersphinx inventory.
         fullID = self.obj.expandName(identifier)
-        target_url = self.look_for_intersphinx(fullID, invname=invname, 
-                                               domain=domain, reftype=reftype)
+        target_url = self.look_for_intersphinx(fullID, 
+                                               invname=invname,
+                                               domain=domain, 
+                                               reftype=reftype, 
+                                               # passing lineno here enabled the reporting of the ambiguous intersphinx ref
+                                               lineno=lineno)
         intersphinx_target_url_unfiltered = self.look_for_intersphinx(fullID)
         if not target_url:
             # FIXME: https://github.com/twisted/pydoctor/issues/125
             # expandName is unreliable so in the case fullID fails, we
             # try our luck with 'identifier'.
-            target_url = self.look_for_intersphinx(identifier, invname=invname, 
-                                               domain=domain, reftype=reftype)
+            target_url = self.look_for_intersphinx(identifier, 
+                                                   invname=invname, 
+                                                   domain=domain, 
+                                                   reftype=reftype,
+                                                   lineno=lineno)
             if not intersphinx_target_url_unfiltered:
                 intersphinx_target_url_unfiltered = self.look_for_intersphinx(identifier)
+        
         if target_url:
             return target_url
         

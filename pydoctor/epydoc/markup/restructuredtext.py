@@ -62,7 +62,9 @@ from pydoctor.epydoc.markup import Field, ParseError, ParsedDocstring, ParserFun
 from pydoctor.epydoc.markup.plaintext import ParsedPlaintextDocstring
 from pydoctor.epydoc.docutils import new_document, set_node_attributes
 from pydoctor.model import Documentable
-from pydoctor.sphinx import parse_domain_reftype
+from pydoctor.sphinx import (ALL_SUPPORTED_ROLES, SUPPORTED_DEFAULT_REFTYPES, 
+                             SUPPORTED_DOMAINS, SUPPORTED_EXTERNAL_DOMAINS, 
+                             SUPPORTED_EXTERNAL_STD_REFTYPES, parse_domain_reftype)
 
 #: A dictionary whose keys are the "consolidated fields" that are
 #: recognized by epydoc; and whose values are the corresponding epydoc
@@ -99,7 +101,7 @@ def parse_docstring(docstring: str,
     """
     writer = _DocumentPseudoWriter()
     reader = _EpydocReader(errors) # Outputs errors to the list.
-    with patch_docutils_role_function():
+    with patch_docutils_role_function(errors):
         publish_string(docstring, writer=writer, reader=reader,
                        settings_overrides={'report_level':10000,
                                            'halt_level':10000,
@@ -529,115 +531,66 @@ def parse_external(name: str) -> Tuple[Optional[str], Optional[str]]:
         raise ValueError(msg)
     return None, None
 
-# roles._RoleFn
-def link_role(role: str, rawtext: str, text: str, lineno: int, 
-              inliner: docutils.parsers.rst.states.Inliner,
-              options:Any=None, content:Any=None) -> 'tuple[list[nodes.Node], list[nodes.Node]]':
+class LinkRole:
+    def __init__(self, errors: List[ParseError]) -> None:
+        self.errors = errors
     
-    # See https://www.sphinx-doc.org/en/master/usage/referencing.htm
-    # and https://www.sphinx-doc.org/en/master/usage/extensions/intersphinx.html
-    invname: Optional[str] = None
-    domain: Optional[str] = None
-    reftype: Optional[str] = None
-    external: bool = False
-    if role.startswith('external'):
-        try:
-            invname, suffix = parse_external(role)
-            if suffix is not None:
-                domain, reftype = parse_domain_reftype(suffix)
-        except ValueError as e:
-            print(f'{lineno}: {e}')
-            return [], [] # TODO: report the error
-        else:
-            external = True
-    elif role:
-        try:
-            domain, reftype = parse_domain_reftype(role)
-        except ValueError as e:
-            print(f'{lineno}: {e}')
+    # roles._RoleFn
+    def __call__(self, role: str, rawtext: str, text: str, lineno: int, 
+                inliner: docutils.parsers.rst.states.Inliner,
+                options:Any=None, content:Any=None) -> 'tuple[list[nodes.Node], list[nodes.Node]]':
+        
+        # See https://www.sphinx-doc.org/en/master/usage/referencing.html
+        # and https://www.sphinx-doc.org/en/master/usage/extensions/intersphinx.html
+        invname: Optional[str] = None
+        domain: Optional[str] = None
+        reftype: Optional[str] = None
+        external: bool = False
+        if role.startswith('external'):
+            try:
+                invname, suffix = parse_external(role)
+                if suffix is not None:
+                    domain, reftype = parse_domain_reftype(suffix)
+            except ValueError as e:
+                self.errors.append(ParseError(str(e), lineno, is_fatal=False))
+                return [], []
+            else:
+                external = True
+        elif role:
+            try:
+                domain, reftype = parse_domain_reftype(role)
+            except ValueError as e:
+                self.errors.append(ParseError(str(e), lineno, is_fatal=False))
+                return [], []
+        
+        if reftype in SUPPORTED_DOMAINS and domain is None:
+            self.errors.append(ParseError('Malformed role name, domain is missing reference type', 
+                                          lineno, is_fatal=False))
             return [], []
-    
-    if reftype in SUPPORTED_DOMAINS and domain is None:
-        print(f'{lineno}: Malformed role name, domain is missing reference type')
-        return [], []
 
-    if reftype in SUPPORTED_DEFAULT_REFTYPES:
-        reftype = None
-    
-    if reftype in SUPPORTED_EXTERNAL_STD_REFTYPES and domain is None:
-        external = True
-        domain = 'std'
-    
-    if domain in SUPPORTED_EXTERNAL_DOMAINS:
-        external = True
-    
-    text_node = nodes.Text(text)
-    node = nodes.title_reference(rawtext, '', 
-                                 invname=invname,
-                                 domain=domain,
-                                 reftype=reftype,
-                                 external=external,
-                                 lineno=lineno)
-    set_node_attributes(node, children=[text_node], document=inliner.document) # type: ignore
-    return [node], []
-
-SUPPORTED_LOCAL_DOMAINS = set((
-    # When using a domain specification, one must also give the reftype.
-    # links like :py:`something` will trigger an error.
-    # python domain references
-    'py',
-))
-
-SUPPORTED_EXTERNAL_DOMAINS = set((
-    # domain of other languages, complement this list as necessary
-    'c', 'cpp', 'js', 'rust', 
-    'erl', 'php', 'rb', 'go', 
-    # the standard domain
-    'std', 
-))
-
-SUPPORTED_DOMAINS = SUPPORTED_LOCAL_DOMAINS | SUPPORTED_EXTERNAL_DOMAINS
-
-SUPPORTED_PY_REFTYPES = set((
-    # Specific objects types in the 'py' domains.
-    'mod', 'module',
-    'func', 'function', 
-    'meth', 'method', 
-    'data', 
-    'const', 'constant', 
-    'class', 'cls', 
-    'attr', 'attrib', 'attribute', 
-    'exc', 'exception', 
-    # py:obj doesn't exists in cpython sphinx docs, 
-    # so it's not listed here: it's listed down there.
-))
-
-SUPPORTED_EXTERNAL_STD_REFTYPES = set((
-    # Narrative documentation refs and other standard domain
-    # present in cpython documentation. These roles are always
-    # implicitely external. Stuff not explicitely listed here
-    # might still be linked to with an :external: role.
-    # These reftypes also implicitely belong to the 'std' domain.
-    'doc', 'cmdoption', 'option', 'envvar', 
-    'label', 'opcode', 'term', 'token'
-))
-
-SUPPORTED_DEFAULT_REFTYPES = set((
-    # equivalent to None.
-    'ref', 'any', 'obj', 'object', 
-))
-
-ALL_SUPPORTED_ROLES = set((
-    # external references
-    'external', 
-    *SUPPORTED_DOMAINS, 
-    *SUPPORTED_PY_REFTYPES, 
-    *SUPPORTED_EXTERNAL_STD_REFTYPES,
-    *SUPPORTED_DEFAULT_REFTYPES
-    ))
+        if reftype in SUPPORTED_DEFAULT_REFTYPES:
+            reftype = None
+        
+        if reftype in SUPPORTED_EXTERNAL_STD_REFTYPES and domain is None:
+            external = True
+            domain = 'std'
+        
+        if domain in SUPPORTED_EXTERNAL_DOMAINS:
+            external = True
+        
+        text_node = nodes.Text(text)
+        node = nodes.title_reference(rawtext, '', 
+                                    invname=invname,
+                                    domain=domain,
+                                    reftype=reftype,
+                                    external=external,
+                                    lineno=lineno)
+        
+        set_node_attributes(node, children=[text_node], document=inliner.document) # type: ignore
+        return [node], []
 
 @contextmanager
-def patch_docutils_role_function() -> Iterator[None]:
+def patch_docutils_role_function(errors:List[ParseError]) -> Iterator[None]:
     r"""
     Like sphinx, we are patching the L{docutils.parsers.rst.roles.role} function. 
     This function is a factory for role handlers functions. In order to handle any kind
@@ -658,7 +611,8 @@ def patch_docutils_role_function() -> Iterator[None]:
         if role_name in ALL_SUPPORTED_ROLES or any(
             role_name.startswith(f'{n}:') for n in ALL_SUPPORTED_ROLES) or \
             role_name.startswith('external+'): # 'external+' is a special case
-            return link_role, []
+            return LinkRole(errors), []
+        
         return old_role(role_name, language_module, lineno, reporter) # type: ignore
 
     roles.role = new_role
@@ -666,7 +620,9 @@ def patch_docutils_role_function() -> Iterator[None]:
     roles.role = old_role
 
 # https://docutils.sourceforge.io/docs/ref/rst/directives.html#default-role
-roles.register_local_role('default-role', link_role)
+# there is no possible code path that triggers messages from the default role, 
+# so that's ok to use an anonymous list here
+roles.register_local_role('default-role', LinkRole([]))
 
 directives.register_directive('python', PythonCodeDirective)
 directives.register_directive('code', DocutilsAndSphinxCodeBlockAdapter)

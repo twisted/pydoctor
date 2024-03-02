@@ -4,6 +4,7 @@ Support for Sphinx compatibility.
 from __future__ import annotations
 from collections import defaultdict
 import enum
+from itertools import product
 
 import logging
 import os
@@ -13,7 +14,7 @@ import textwrap
 import zlib
 from typing import (
     TYPE_CHECKING, Callable, ContextManager, Dict, IO, Iterable, List, Mapping,
-    Optional, Set, Tuple
+    Optional, Sequence, Set, Tuple
 )
 
 import appdirs
@@ -36,6 +37,70 @@ else:
     CacheT = object
 
 logger = logging.getLogger(__name__)
+
+
+SUPPORTED_PY_DOMAINS = set((
+    # When using a domain specification, one must also give the reftype.
+    # links like :py:`something` will trigger an error.
+    # python domain references
+    'py',
+))
+
+SUPPORTED_EXTERNAL_DOMAINS = set((
+    # domain of other languages, complement this list as necessary
+    'c', 'cpp', 'js', 'rust', 
+    'erl', 'php', 'rb', 'go', 
+    # the standard domain
+    'std', 
+))
+
+SUPPORTED_DOMAINS = SUPPORTED_PY_DOMAINS | SUPPORTED_EXTERNAL_DOMAINS
+
+SUPPORTED_PY_REFTYPES = set((
+    # Specific objects types in the 'py' domains.
+    'mod', 'module',
+    'func', 'function', 
+    'meth', 'method', 
+    'data', 
+    'const', 'constant', 
+    'class', 'cls', 
+    'attr', 'attrib', 'attribute', 
+    'exc', 'exception', 
+    # py:obj doesn't exists in cpython sphinx docs, 
+    # so it's not listed here: it's listed down there.
+))
+
+SUPPORTED_EXTERNAL_STD_REFTYPES = set((
+    # Narrative documentation refs and other standard domain
+    # present in cpython documentation. These roles are always
+    # implicitely external. Stuff not explicitely listed here
+    # might still be linked to with an :external: role.
+    # These reftypes also implicitely belong to the 'std' domain.
+    'doc', 'cmdoption', 'option', 'envvar', 
+    'label', 'opcode', 'term', 'token'
+))
+
+SUPPORTED_DEFAULT_REFTYPES = set((
+    # equivalent to None.
+    'ref', 'any', 'obj', 'object', 
+))
+
+for i,j in product(*[(SUPPORTED_PY_DOMAINS, 
+                    SUPPORTED_EXTERNAL_DOMAINS, 
+                    SUPPORTED_PY_REFTYPES, 
+                    SUPPORTED_EXTERNAL_STD_REFTYPES,
+                    SUPPORTED_DEFAULT_REFTYPES),]*2):
+    if i!=j:
+        assert not i.intersection(j)
+
+ALL_SUPPORTED_ROLES = set((
+    # external references
+    'external', 
+    *SUPPORTED_DOMAINS, 
+    *SUPPORTED_PY_REFTYPES, 
+    *SUPPORTED_EXTERNAL_STD_REFTYPES,
+    *SUPPORTED_DEFAULT_REFTYPES
+    ))
 
 def parse_domain_reftype(name: str) -> Tuple[Optional[str], str]:
     """
@@ -95,9 +160,6 @@ class SphinxInventory:
 
     def error(self, where: str, message: str) -> None:
         self._logger(where, message, thresh=-1)
-    
-    def message(self, where: str, message: str) -> None:
-        self._logger(where, message, thresh=1)
     
     def _add_inventory(self, invname:str|None, url_or_path: str) -> str|None:
         inventory_name = invname or str(hash(url_or_path))
@@ -219,10 +281,40 @@ class SphinxInventory:
         
         return result
 
+    def _raise_ambiguous_ref(self, target: str, 
+               invname:Optional[str], 
+               domain:Optional[str], 
+               reftype:Optional[str],
+               options: Sequence[InventoryObject]):
+
+        # Build the taget string
+        target_str = target
+        if invname or domain or reftype:
+            parts = []
+            for name, value in zip(['invname', 'domain', 'reftype'], 
+                                   [invname, domain, reftype]):
+                if value:
+                    parts.append(f'{name}={value}')
+            target_str += f' ({", ".join(parts)})'
+        
+        missing_filters = list(filter(None, [invname, domain, reftype]))
+        options_urls = [self._getLinkFromObj(o) for o in options]
+
+        if not missing_filters:
+            # there is a problem with this inventory...
+            msg = f'complete intersphinx ref is still ambiguous {target_str}, could be {",".join(options_urls)}'
+            msg += ', this is likely an issue with the inventory'
+        else:
+            msg = f'ambiguous intersphinx ref to {target_str}, could be {",".join(options_urls)}'
+            msg += f', try adding one of {", ".join(missing_filters)} filter to your RST role'
+        raise ValueError(msg)
+
     def getInv(self, target: str, 
                invname:Optional[str]=None, 
                domain:Optional[str]=None, 
-               reftype:Optional[str]=None) -> Optional[InventoryObject]:
+               reftype:Optional[str]=None,
+               *,
+               strict:bool=False) -> Optional[InventoryObject]:
         """
         Get the inventory object instance matching the criteria.
         """
@@ -245,8 +337,10 @@ class SphinxInventory:
         options = list(filter(_filter, options))
 
         if len(options) == 1:
+            # Exact match
             return options[0]
         elif not options:
+            # No match
             return None
 
         # We still have several options under consideration...
@@ -257,34 +351,46 @@ class SphinxInventory:
             domain = 'py'
             py_options = list(filter(_filter, options))
             if py_options:
-                # TODO: We might want to leave a message in the case where several objects
+                if len(py_options)>1 and strict:
+                    self._raise_ambiguous_ref(target, invname, domain, reftype, options=options)
+                
                 # are still in consideration. But for now, we just pick the last one because our old version
                 # of the inventory (that only dealing with the 'py' domain) would override names as they were parsed.
                 return py_options[-1]
         
         # If it hasn't been found in the 'py' domain, then we use the first mathing object because it makes 
         # more sens in the case of the `std` domain of the standard library.
+        if strict:
+            self._raise_ambiguous_ref(target, invname, domain, reftype, options=options)
         return options[0]
+    
+    def _getLinkFromObj(self, inv: InventoryObject) -> str:
+        base_url = inv.base_url
+        relative_link = inv.location
+
+        # For links ending with $, replace it with full name.
+        if relative_link.endswith('$'):
+            relative_link = relative_link[:-1] + inv.name
+
+        return f'{base_url}/{relative_link}'
 
     def getLink(self, target: str,
                 invname:Optional[str]=None, 
                 domain:Optional[str]=None, 
-                reftype:Optional[str]=None) -> Optional[str]:
+                reftype:Optional[str]=None,
+                *,
+                strict:bool=False) -> Optional[str]:
         """
         Return link for ``target`` or None if no link is found.
         """
-        invobj = self.getInv(target, invname, domain, reftype)
+        invobj = self.getInv(target, 
+                             invname, 
+                             domain, 
+                             reftype, 
+                             strict=strict)
         if not invobj:
             return None
-        
-        base_url = invobj.base_url
-        relative_link = invobj.location
-
-        # For links ending with $, replace it with full name.
-        if relative_link.endswith('$'):
-            relative_link = relative_link[:-1] + target
-
-        return f'{base_url}/{relative_link}'
+        return self._getLinkFromObj(invobj)
 
 
 def _parseInventoryLine(line: str) -> Tuple[str, str, int, str, str]:

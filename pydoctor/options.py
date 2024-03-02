@@ -331,18 +331,13 @@ def _is_identifier_like(s:str) -> bool:
 # --intersphinx=something.org
 # --intersphinx=http://something.org/objects.inv
 # --intersphinx=http://cnd.abc.something.org/objects.inv:http://something.org/
-# --intersphinx=inventories/pack.inv:http://something.org/
-
-# --intersphinx=file.inv:http://something.org/ 
-# ok so this one and the next one are hard to differenciate...
-# we have to require the file to have the extension '.inv' but what about a project 
-# called 'project.inv' ? So for these cases we should check if the file exists or not.
-
 # --intersphinx=pydoctor:http://something.org/
 # --intersphinx=pydoctor:http://something.org/objects.inv
 # --intersphinx=pydoctor:http://cnd.abc.something.org/objects.inv:http://something.org/
-# --intersphinx=pydoctor:inventories/pack.inv:http://something.org/
-# --intersphinx=pydoctor:c:/data/inventories/pack.inv:http://something.org/
+# --intersphinx-file=inventories/pack.inv:http://something.org/
+# --intersphinx-file=file.inv:http://something.org/ 
+# --intersphinx-file=pydoctor:inventories/pack.inv:http://something.org/
+# --intersphinx-file=pydoctor:c:/data/inventories/pack.inv:http://something.org/
 
 _RE_DRIVE_LIKE = re.compile(r':[a-z]:(\\|\/)', re.IGNORECASE)
 def _split_intersphinx_parts(s:str, option:str='--intersphinx') -> List[str]:
