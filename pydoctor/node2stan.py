@@ -58,6 +58,8 @@ def gettext(node: Union[nodes.Node, List[nodes.Node]]) -> List[str]:
 
 _TARGET_RE = re.compile(r'^(.*?)\s*<(?:URI:|URL:)?([^<>]+)>$')
 _VALID_IDENTIFIER_RE = re.compile('[^0-9a-zA-Z_]')
+_CALLABLE_RE = re.compile(r'^[a-zA-Z_]\w*(\.[a-zA-Z_]\w*)*$')
+_CALLABLE_ARGS_RE = re.compile(r'\(.*\)$')
 
 @attr.s(auto_attribs=True)
 class Reference:
@@ -67,7 +69,6 @@ class Reference:
     domain: Optional[str] = None
     reftype: Optional[str] = None
     external: bool = False
-
 
 def parse_reference(node:nodes.Node) -> Reference:
     """
@@ -85,10 +86,15 @@ def parse_reference(node:nodes.Node) -> Reference:
         else:
             label = target = node.astext()
     # Support linking to functions and methods with parameters
-    if target.endswith(')'):
-        # Remove arg lists for functions (e.g., L{_colorize_link()})
-        target = re.sub(r'\(.*\)$', '', target)
-    
+    try:
+        begin_parameters = target.index('(')
+    except ValueError:
+        pass
+    else:
+        if target.endswith(')') and _CALLABLE_RE.match(target, endpos=begin_parameters):
+            # Remove arg lists for functions (e.g., L{_colorize_link()})
+            target = _CALLABLE_ARGS_RE.sub('', target)
+        
     return Reference(label, target, 
                      invname=node.attributes.get('invname'), 
                      domain=node.attributes.get('domain'),

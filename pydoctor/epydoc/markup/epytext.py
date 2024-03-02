@@ -1191,10 +1191,10 @@ def _colorize_link(link: Element, token: Token, end: int, errors: List[ParseErro
             else:
                 target = 'http://'+target
     elif link.tag=='link':
-        # Remove arg lists for functions (e.g., L{_colorize_link()})
-        target = re.sub(r'\(.*\)$', '', target)
-        # We used to validate the link target against the following regex: r'^[a-zA-Z_]\w*(\.[a-zA-Z_]\w*)*$'
-        # but we don;t do that anymore since the intersphinx taget names can contain any kind of text.
+        # Here we used to process the target in order to remove arg lists for functions
+        # and validate it. But now this happens in node2stan.parse_reference().
+        # The target is not validated anymore since the intersphinx taget names can contain any kind of text.
+        pass
 
     # Construct the target element.
     target_elt = Element('target', target, lineno=str(token.startline))
