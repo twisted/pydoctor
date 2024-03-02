@@ -5,7 +5,7 @@ from __future__ import annotations
 import enum
 
 import re
-from typing import Sequence, List, Optional, Type, Tuple, TYPE_CHECKING, TypeAlias
+from typing import Sequence, List, Optional, Type, Tuple, TYPE_CHECKING
 import sys
 import functools
 from pathlib import Path
@@ -22,6 +22,7 @@ from pydoctor.utils import parse_path, findClassFromDottedName, parse_privacy_tu
 from pydoctor._configparser import CompositeConfigParser, IniConfigParser, TomlConfigParser, ValidatorParser
 
 if TYPE_CHECKING:
+    from typing import TypeAlias
     from pydoctor import model
     from pydoctor.templatewriter import IWriter
 
@@ -369,7 +370,7 @@ def _split_intersphinx_parts(s:str, option:str='--intersphinx') -> List[str]:
         parts[part_nb] += c
     return parts
 
-IntersphinxOption: TypeAlias = Tuple[Optional[str], str, str]
+IntersphinxOption: 'TypeAlias' = Tuple[Optional[str], str, str]
 
 def _parse_intersphinx_file(s:str) -> IntersphinxOption:
     """
