@@ -80,11 +80,13 @@ def parse_reference(node:nodes.Node) -> Reference:
         label, target = node.children, node.attributes['refuri']
     else:
         # RST parsed.
-        m = _TARGET_RE.match(node.astext())
+        # Sanitize links spaning over multiple lines
+        node_text = re.sub(r'\s', ' ', node.astext())
+        m = _TARGET_RE.match(node_text)
         if m:
             label, target = m.groups()
         else:
-            label = target = node.astext()
+            label = target = node_text
     # Support linking to functions and methods with parameters
     try:
         begin_parameters = target.index('(')

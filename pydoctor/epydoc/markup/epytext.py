@@ -1194,7 +1194,8 @@ def _colorize_link(link: Element, token: Token, end: int, errors: List[ParseErro
         # Here we used to process the target in order to remove arg lists for functions
         # and validate it. But now this happens in node2stan.parse_reference().
         # The target is not validated anymore since the intersphinx taget names can contain any kind of text.
-        pass
+        # We simply normalize it.
+        target = re.sub(r'\s', ' ', target)
 
     # Construct the target element.
     target_elt = Element('target', target, lineno=str(token.startline))
