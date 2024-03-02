@@ -19,7 +19,7 @@ from hypothesis import assume, given, settings
 from hypothesis import strategies as st
 
 from . import CapLog, FixtureRequest, MonkeyPatch, TempPathFactory
-from pydoctor import model, sphinx
+from pydoctor import model, sphinx, options
 
 
 
@@ -334,7 +334,14 @@ def test_getLink_found(inv_reader_nolog: sphinx.SphinxInventory) -> None:
     Return the link from internal state.
     """
 
-    inv_reader_nolog._links['some.name'] = ('http://base.tld', 'some/url.php')
+    inv_reader_nolog._links['some.name'] = [sphinx.InventoryObject(
+        invname='xxx',
+        name='some.name', 
+        base_url='http://base.tld', 
+        location='some/url.php', 
+        domain='py',
+        reftype='mod',
+        display='-')]
 
     assert 'http://base.tld/some/url.php' == inv_reader_nolog.getLink('some.name')
 
@@ -344,7 +351,14 @@ def test_getLink_self_anchor(inv_reader_nolog: sphinx.SphinxInventory) -> None:
     Return the link with anchor as target name when link end with $.
     """
 
-    inv_reader_nolog._links['some.name'] = ('http://base.tld', 'some/url.php#$')
+    inv_reader_nolog._links['some.name'] = [sphinx.InventoryObject(
+            invname='xxx',
+            name='some.name', 
+            base_url='http://base.tld', 
+            location='some/url.php#$', 
+            reftype='mod', 
+            domain='py', 
+            display='-')]
 
     assert 'http://base.tld/some/url.php#some.name' == inv_reader_nolog.getLink('some.name')
 
@@ -365,9 +379,12 @@ def test_update_functional(inv_reader_nolog: sphinx.SphinxInventory) -> None:
 # The rest of this file is compressed with zlib.
 """ + zlib.compress(payload)
 
+
     url = 'http://some.url/api/objects.inv'
 
-    inv_reader_nolog.update(cast('sphinx.CacheT', {url: content}), url)
+    opt = options.Options.from_args([f'--intersphinx={url}'])
+
+    inv_reader_nolog.update(cast('sphinx.CacheT', {url: content}), *opt.intersphinx)
 
     assert 'http://some.url/api/module1.html' == inv_reader_nolog.getLink('some.module1')
     assert 'http://some.url/api/module2.html' == inv_reader_nolog.getLink('other.module2')
@@ -375,14 +392,18 @@ def test_update_functional(inv_reader_nolog: sphinx.SphinxInventory) -> None:
 
 def test_update_bad_url(inv_reader: InvReader) -> None:
     """
-    Log an error when failing to get base url from url.
+    Log an error when failing to get objects.inv.
     """
 
-    inv_reader.update(cast('sphinx.CacheT', {}), 'really.bad.url')
+    url = 'really.bad.url'
+
+    opt = options.Options.from_args([f'--intersphinx={url}'])
+
+    inv_reader.update(cast('sphinx.CacheT', {}), *opt.intersphinx)
 
     assert inv_reader._links == {}
     expected_log = [(
-        'sphinx', 'Failed to get remote base url for really.bad.url', -1
+        'sphinx', ('Failed to get object inventory from url really.bad.url/objects.inv'), -1
         )]
     assert expected_log == inv_reader._logger.messages
 
@@ -392,12 +413,15 @@ def test_update_fail(inv_reader: InvReader) -> None:
     Log an error when failing to get content from url.
     """
 
-    inv_reader.update(cast('sphinx.CacheT', {}), 'http://some.tld/o.inv')
+    url = 'http://some.tld/o.inv'
+
+    inv_reader.update(cast('sphinx.CacheT', {}), 
+                      (None, url, 'http://some.tld/', ))
 
     assert inv_reader._links == {}
     expected_log = [(
         'sphinx',
-        'Failed to get object inventory from http://some.tld/o.inv',
+        'Failed to get object inventory from url http://some.tld/o.inv',
         -1,
         )]
     assert expected_log == inv_reader._logger.messages
@@ -408,7 +432,7 @@ def test_parseInventory_empty(inv_reader_nolog: sphinx.SphinxInventory) -> None:
     Return empty dict for empty input.
     """
 
-    result = inv_reader_nolog._parseInventory('http://base.tld', '')
+    result = inv_reader_nolog._parseInventory('http://base.tld', '', 'xxx')
 
     assert {} == result
 
@@ -419,9 +443,16 @@ def test_parseInventory_single_line(inv_reader_nolog: sphinx.SphinxInventory) ->
     """
 
     result = inv_reader_nolog._parseInventory(
-        'http://base.tld', 'some.attr py:attr -1 some.html De scription')
+        'http://base.tld', 'some.attr py:attr -1 some.html De scription', 'xxx')
 
-    assert {'some.attr': ('http://base.tld', 'some.html')} == result
+    assert {'some.attr': [sphinx.InventoryObject(
+        invname='xxx',
+        name='some.attr', 
+        base_url='http://base.tld', 
+        location='some.html', 
+        reftype='attr', 
+        domain='py', 
+        display='De scription')]} == result
 
 
 def test_parseInventory_spaces() -> None:
@@ -468,31 +499,46 @@ def test_parseInventory_invalid_lines(inv_reader: InvReader) -> None:
         'good.again py:module 0 again.html -\n'
         )
 
-    result = inv_reader._parseInventory(base_url, content)
+    result = inv_reader._parseInventory(base_url, content, 'xxx')
 
     assert {
-        'good.attr': (base_url, 'some.html'),
-        'good.again': (base_url, 'again.html'),
+        'good.attr': [sphinx.InventoryObject(
+            invname='xxx',
+            name='good.attr', 
+            base_url='http://tm.tld', 
+            location='some.html', 
+            reftype='attr', # reftypes are normalized
+            domain='py',
+            display='-')],
+        'good.again': [sphinx.InventoryObject(
+            invname='xxx',
+            name='good.again', 
+            base_url='http://tm.tld', 
+            location='again.html', 
+            reftype='mod', # reftypes are normalized
+            domain='py',
+            display='-')],
         } == result
+    
     assert [
         (
             'sphinx',
-            'Failed to parse line "missing.display.name py:attribute 1 some.html" for http://tm.tld',
+            'Failed to parse line \'missing.display.name py:attribute 1 some.html\' for http://tm.tld: Display name column cannot be empty',
             -1,
             ),
         (
             'sphinx',
-            'Failed to parse line "bad.attr bad format" for http://tm.tld',
+            'Failed to parse line \'bad.attr bad format\' for http://tm.tld: Could not find priority column',
             -1,
             ),
-        ('sphinx', 'Failed to parse line "very.bad" for http://tm.tld', -1),
-        ('sphinx', 'Failed to parse line "" for http://tm.tld', -1),
+        ('sphinx', 'Failed to parse line \'very.bad\' for http://tm.tld: Could not find priority column', -1),
+        ('sphinx', 'Failed to parse line \'\' for http://tm.tld: Could not find priority column', -1),
         ] == inv_reader._logger.messages
 
 
-def test_parseInventory_type_filter(inv_reader: InvReader) -> None:
+def test_parseInventory_all_kinds(inv_reader: InvReader) -> None:
     """
-    Ignore entries that don't have a 'py:' type field.
+    All inventory entries are parsed, the one in the 'py' domain as well as others.
     """
 
     base_url = 'https://docs.python.org/3'
@@ -500,13 +546,50 @@ def test_parseInventory_type_filter(inv_reader: InvReader) -> None:
         'dict std:label -1 reference/expressions.html#$ Dictionary displays\n'
         'dict py:class 1 library/stdtypes.html#$ -\n'
         'dict std:2to3fixer 1 library/2to3.html#2to3fixer-$ -\n'
+        'py:attribute:value rst:directive:option 1 usage/domains/python.html#directive-option-py-attribute-value -\n'
         )
 
-    result = inv_reader._parseInventory(base_url, content)
+    result = inv_reader._parseInventory(base_url, content, 'python')
 
     assert {
-        'dict': (base_url, 'library/stdtypes.html#$'),
+        'dict': [
+        sphinx.InventoryObject(
+            invname='python',
+            name='dict', 
+            base_url='https://docs.python.org/3', 
+            location='reference/expressions.html#$', 
+            reftype='label',
+            domain='std', 
+            display='Dictionary displays'),
+        sphinx.InventoryObject(
+            invname='python',
+            name='dict', 
+            base_url='https://docs.python.org/3', 
+            location='library/stdtypes.html#$', 
+            reftype='class',
+            domain='py', 
+            display='-'),
+        sphinx.InventoryObject(
+            invname='python',
+            name='dict', 
+            base_url='https://docs.python.org/3', 
+            location='library/2to3.html#2to3fixer-$', 
+            reftype='2to3fixer',
+            domain='std', 
+            display='-'),],
+
+        'py:attribute:value':[
+        sphinx.InventoryObject(
+            invname='python',
+            name='py:attribute:value', 
+            base_url='https://docs.python.org/3', 
+            location='usage/domains/python.html#directive-option-py-attribute-value', 
+            reftype='directive:option',
+            domain='rst', 
+            display='-'),
+            ],
         } == result
+    
     assert [] == inv_reader._logger.messages
 
 
@@ -757,3 +840,12 @@ def test_prepareCache(
 
     if clearCache:
         assert not cacheDirectory.exists()
+
+def test_inv_object_reftyp() -> None:
+    obj = sphinx.InventoryObject(invname='abc',
+                                 name='dict', 
+                                 base_url='https://docs.python.org/3', 
+                                 location='library/stdtypes.html#$', 
+                                 domain='py', 
+                                 reftype='class', 
+                                 display='-')

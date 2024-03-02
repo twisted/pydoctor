@@ -297,7 +297,11 @@ class DocstringLinker(Protocol):
         @return: The link, or just the label if the target was not found.
         """
 
-    def link_xref(self, target: str, label: "Flattenable", lineno: int) -> Tag:
+    def link_xref(self, target: str, label: "Flattenable", lineno: int, *, 
+                  invname: Optional[str] = None,
+                  domain: Optional[str] = None,
+                  reftype: Optional[str] = None,
+                  external: bool = False) -> Tag:
         """
         Format a cross-reference link to a Python identifier.
         This will resolve the identifier to any reasonable target,
@@ -308,6 +312,14 @@ class DocstringLinker(Protocol):
         @param label: The label to show for the link.
         @param lineno: The line number within the docstring at which the
             crossreference is located.
+        @param invname: In the case of an intersphinx resolution, filters by
+            inventory name. 
+        @param domain: In the case of an intersphinx resolution, filters by
+            domain. 
+        @param reftype: In the case of an intersphinx resolution, filters by
+            reference type.
+        @param external: If True, forces the lookup to use intersphinx and 
+            ingnore local names.  
         @return: The link, or just the label if the target was not found.
             In either case, the returned top-level tag will be C{<code>}.
         """

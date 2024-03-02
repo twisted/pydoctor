@@ -3,14 +3,16 @@ This module provides implementations of epydoc's L{DocstringLinker} class.
 """
 from __future__ import annotations
 
+import re
 import contextlib
 from twisted.web.template import Tag, tags
 from typing import  (
-     TYPE_CHECKING, Iterable, Iterator, 
+     TYPE_CHECKING, Any, Iterable, Iterator, 
      Optional, Union
 )
 
 from pydoctor.epydoc.markup import DocstringLinker
+from pydoctor.sphinx import SUPPORTED_PY_DOMAINS, SUPPORTED_EXTERNAL_STD_REFTYPES
 
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable
@@ -54,6 +56,9 @@ def intersphinx_link(label:"Flattenable", url:str) -> Tag:
     """
     return tags.a(label, href=url, class_='intersphinx-link')
 
+
+_CONTAINS_SPACE_RE = re.compile(r'.*\s.*')
+_SPACE_RE = re.compile(r'\s')
 class _EpydocLinker(DocstringLinker):
     """
     This linker implements the xref lookup logic.
@@ -123,13 +128,28 @@ class _EpydocLinker(DocstringLinker):
                 'resolve_identifier_xref', lineno)
         return None
 
-    def look_for_intersphinx(self, name: str) -> Optional[str]:
+    def look_for_intersphinx(self, name: str, *, 
+                             invname: Optional[str] = None,
+                             domain: Optional[str] = None,
+                             reftype: Optional[str] = None,
+                             lineno: Optional[int] = None) -> Optional[str]:
         """
         Return link for `name` based on intersphinx inventory.
 
         Return None if link is not found.
         """
-        return self.obj.system.intersphinx.getLink(name)
+        try:
+            return self.obj.system.intersphinx.getLink(name, 
+                    invname=invname, domain=domain, 
+                    reftype=reftype, strict=True)
+        
+        except ValueError as e:
+            link = self.obj.system.intersphinx.getLink(name, 
+                        invname=invname, domain=domain, 
+                        reftype=reftype)
+            if self.reporting_obj is not None and lineno is not None:
+                self.reporting_obj.report(str(e), 'resolve_identifier_xref', lineno, thresh=1)
+            return link
 
     def link_to(self, identifier: str, label: "Flattenable") -> Tag:
         fullID = self.obj.expandName(identifier)
@@ -145,10 +165,16 @@ class _EpydocLinker(DocstringLinker):
         link = tags.transparent(label)
         return link
 
-    def link_xref(self, target: str, label: "Flattenable", lineno: int) -> Tag:
+    def link_xref(self, target: str, label: "Flattenable", lineno: int, *, 
+                    invname: Optional[str] = None,
+                    domain: Optional[str] = None,
+                    reftype: Optional[str] = None,
+                    external: bool = False) -> Tag:
         xref: "Flattenable"
         try:
-            resolved = self._resolve_identifier_xref(target, lineno)
+            resolved = self._resolve_identifier_xref(target, lineno, 
+                        invname=invname, domain=domain, 
+                        reftype=reftype, external=external)
         except LookupError:
             xref = label
         else:
@@ -161,7 +187,13 @@ class _EpydocLinker(DocstringLinker):
 
     def _resolve_identifier_xref(self,
             identifier: str,
-            lineno: int
+            lineno: int, 
+            *,
+            invname: Optional[str] = None,
+            domain: Optional[str] = None,
+            reftype: Optional[str] = None,
+            external: bool = False,
+            no_warnings: bool = False, 
             ) -> Union[str, 'model.Documentable']:
         """
         Resolve a crossreference link to a Python identifier.
@@ -172,72 +204,119 @@ class _EpydocLinker(DocstringLinker):
             should be linked to.
         @param lineno: The line number within the docstring at which the
             crossreference is located.
+        @param invname: Filters by inventory name, implies external=True.
+        @param domain: Filters by domain.
+        @param reftype: Filters by reference type.
+        @param external: Forces the lookup to happen with interspinx.
         @return: The referenced object within our system, or the URL of
             an external target (found via Intersphinx).
         @raise LookupError: If C{identifier} could not be resolved.
         """
+        if invname: 
+            assert external
+
+        # Wether to try to resolve the target as a local python object
+        might_be_local_python_ref = (not external 
+                                     and domain in (*SUPPORTED_PY_DOMAINS, None))
 
         # There is a lot of DWIM here. Look for a global match first,
         # to reduce the chance of a false positive.
 
         # Check if 'identifier' is the fullName of an object.
-        target = self.obj.system.objForFullName(identifier)
-        if target is not None:
-            return target
+        if might_be_local_python_ref:
+            target = self.obj.system.objForFullName(identifier)
+            if target is not None:
+                return target
 
         # Check if the fullID exists in an intersphinx inventory.
         fullID = self.obj.expandName(identifier)
-        target_url = self.look_for_intersphinx(fullID)
+        target_url = self.look_for_intersphinx(fullID, 
+                                               invname=invname,
+                                               domain=domain, 
+                                               reftype=reftype, 
+                                               # passing lineno here enabled the reporting of the ambiguous intersphinx ref
+                                               lineno=lineno)
+        intersphinx_target_url_unfiltered = self.look_for_intersphinx(fullID)
         if not target_url:
             # FIXME: https://github.com/twisted/pydoctor/issues/125
             # expandName is unreliable so in the case fullID fails, we
             # try our luck with 'identifier'.
-            target_url = self.look_for_intersphinx(identifier)
+            target_url = self.look_for_intersphinx(identifier, 
+                                                   invname=invname, 
+                                                   domain=domain, 
+                                                   reftype=reftype,
+                                                   lineno=lineno)
+            if not intersphinx_target_url_unfiltered:
+                intersphinx_target_url_unfiltered = self.look_for_intersphinx(identifier)
+        
         if target_url:
             return target_url
+        
+        if might_be_local_python_ref:
+            # Since there was no global match, go look for the name in the
+            # context where it was used.
 
-        # Since there was no global match, go look for the name in the
-        # context where it was used.
+            # Check if 'identifier' refers to an object by Python name resolution
+            # in our context. Walk up the object tree and see if 'identifier' refers
+            # to an object by Python name resolution in each context.
+            src: Optional['model.Documentable'] = self.obj
+            while src is not None:
+                target = src.resolveName(identifier)
+                if target is not None:
+                    return target
+                src = src.parent
 
-        # Check if 'identifier' refers to an object by Python name resolution
-        # in our context. Walk up the object tree and see if 'identifier' refers
-        # to an object by Python name resolution in each context.
-        src: Optional['model.Documentable'] = self.obj
-        while src is not None:
-            target = src.resolveName(identifier)
+            # Walk up the object tree again and see if 'identifier' refers to an
+            # object in an "uncle" object.  (So if p.m1 has a class C, the
+            # docstring for p.m2 can say L{C} to refer to the class in m1).
+            # If at any level 'identifier' refers to more than one object, complain.
+            src = self.obj
+            while src is not None:
+                target = self.look_for_name(identifier, src.contents.values(), lineno)
+                if target is not None:
+                    return target
+                src = src.parent
+
+            # Examine every module and package in the system and see if 'identifier'
+            # names an object in each one.  Again, if more than one object is
+            # found, complain.
+            target = self.look_for_name(
+                # System.objectsOfType now supports passing the type as string.
+                identifier, self.obj.system.objectsOfType('pydoctor.model.Module'), lineno)
             if target is not None:
                 return target
-            src = src.parent
 
-        # Walk up the object tree again and see if 'identifier' refers to an
-        # object in an "uncle" object.  (So if p.m1 has a class C, the
-        # docstring for p.m2 can say L{C} to refer to the class in m1).
-        # If at any level 'identifier' refers to more than one object, complain.
-        src = self.obj
-        while src is not None:
-            target = self.look_for_name(identifier, src.contents.values(), lineno)
-            if target is not None:
-                return target
-            src = src.parent
+            message = f'Cannot find link target for "{fullID}"'
+            if identifier != fullID:
+                message = f'{message}, resolved from "{identifier}"'
+            if intersphinx_target_url_unfiltered:
+                message += f' (your link role filters {intersphinx_target_url_unfiltered!r}, is it by design?)'
+            else:
+                root_idx = fullID.find('.')
+                if root_idx != -1 and fullID[:root_idx] not in self.obj.system.root_names:
+                    message += ' (you can link to external docs with --intersphinx)'
+            
+        else:
+            message = f'Cannot find intersphinx link target for "{fullID}"'
+            if intersphinx_target_url_unfiltered:
+                message += f' (your link role filters {intersphinx_target_url_unfiltered!r}, is it by design?)'
+        
+        # To cope with the fact that we're not striping spaces from epytext parsed target anymore, 
+        # some target that span over multiple lines will be misinterpreted with having a space
+        # So we check if the taget has spaces, and if it does we try again without the spaces.
+        if _CONTAINS_SPACE_RE.match(identifier):
+            try:
+                return self._resolve_identifier_xref(_SPACE_RE.sub('', identifier), 
+                                                     lineno, invname=invname, domain=domain, 
+                                                     reftype=reftype, external=external, no_warnings=True)
+            except LookupError:
+                pass
 
-        # Examine every module and package in the system and see if 'identifier'
-        # names an object in each one.  Again, if more than one object is
-        # found, complain.
-        target = self.look_for_name(
-            # System.objectsOfType now supports passing the type as string.
-            identifier, self.obj.system.objectsOfType('pydoctor.model.Module'), lineno)
-        if target is not None:
-            return target
-
-        message = f'Cannot find link target for "{fullID}"'
-        if identifier != fullID:
-            message = f'{message}, resolved from "{identifier}"'
-        root_idx = fullID.find('.')
-        if root_idx != -1 and fullID[:root_idx] not in self.obj.system.root_names:
-            message += ' (you can link to external docs with --intersphinx)'
-        if self.reporting_obj:
+        if self.reporting_obj and no_warnings is False:
             self.reporting_obj.report(message, 'resolve_identifier_xref', lineno)
+        
         raise LookupError(identifier)
+
 
 class _AnnotationLinker(DocstringLinker):
     """
@@ -278,9 +357,9 @@ class _AnnotationLinker(DocstringLinker):
             else:
                 return self._module_linker.link_to(target, label)
     
-    def link_xref(self, target: str, label: "Flattenable", lineno: int) -> Tag:
+    def link_xref(self, target: str, label: "Flattenable", lineno: int, **kw: Any) -> Tag:
         with self.switch_context(self._obj):
-            return self.obj.docstring_linker.link_xref(target, label, lineno)
+            return self.obj.docstring_linker.link_xref(target, label, lineno, **kw)
 
     @contextlib.contextmanager
     def switch_context(self, ob:Optional['model.Documentable']) -> Iterator[None]:

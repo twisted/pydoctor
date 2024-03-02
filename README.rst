@@ -83,6 +83,17 @@ This is the last major release to support Python 3.7.
 * `ExtRegistrar.register_post_processor()` now supports a `priority` argument that is an int.
   Highest priority callables will be called first during post-processing.
 * Fix too noisy ``--verbose`` mode (suppres some ambiguous annotations warnings).
+* Major improvements of the intersphinx integration:
+  - Pydoctor now supports linking to arbitrary intersphinx references with Sphinx role ``:external:``. 
+  - Other common Sphinx reference roles like ``:ref:``, ``:any:``, ``:class:``, ``py:*``, etc are now 
+    properly interpreted (instead of being simply stripping from the docstring).
+  - The ``--intersphinx`` option now supports the following format: ``[INVENTORY_NAME:]URL[:BASE_URL]``.
+    Where ``INVENTORY_NAME`` is a an arbitrary name used to filter ``:external:`` references, 
+    ``URL`` is an URL pointing to a ``objects.inv`` file (it can also be the base URL, ``/objects.inv`` will be added to the URL in this case).
+    It is recommended to always include the HTTP scheme in the intersphinx URLs. 
+  - The ``--intersphinx-file`` option has been added in order to load a local inventory file, this option
+    support the following format: ``[INVENTORY_NAME:]PATH:BASE_URL``. 
+    ``BASE_URL`` is the base for the generated links, it is mandatory if loading the inventory from a file.
 
 pydoctor 23.9.1
 ^^^^^^^^^^^^^^^

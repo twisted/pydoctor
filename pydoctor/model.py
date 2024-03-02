@@ -1445,8 +1445,10 @@ class System:
         """
         Download and parse intersphinx inventories based on configuration.
         """
-        for url in self.options.intersphinx:
-            self.intersphinx.update(cache, url)
+        for i in self.options.intersphinx:
+            self.intersphinx.update(cache, i)
+        for i in self.options.intersphinx_files:
+            self.intersphinx.update_from_file(i)
 
 def defaultPostProcess(system:'System') -> None:
     for cls in system.objectsOfType(Class):

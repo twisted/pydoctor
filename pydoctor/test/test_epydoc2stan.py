@@ -1,4 +1,4 @@
-from typing import List, Optional, Type, cast, TYPE_CHECKING
+from typing import Any, List, Optional, Type, cast, TYPE_CHECKING
 import re
 
 from pytest import mark, raises
@@ -9,7 +9,7 @@ from pydoctor import epydoc2stan, model, linker
 from pydoctor.epydoc.markup import get_supported_docformats
 from pydoctor.stanutils import flatten, flatten_text
 from pydoctor.epydoc.markup.epytext import ParsedEpytextDocstring
-from pydoctor.sphinx import SphinxInventory
+from pydoctor.sphinx import SphinxInventory, InventoryObject
 from pydoctor.test.test_astbuilder import fromText, unwrap
 from pydoctor.test import CapSys, NotFoundLinker
 from pydoctor.templatewriter.search import stem_identifier
@@ -168,7 +168,15 @@ def test_xref_link_intersphinx() -> None:
 
     system = mod.system
     inventory = SphinxInventory(system.msg)
-    inventory._links['external.func'] = ('https://example.net', 'lib.html#func')
+    inventory._links['external.func'] = [
+        InventoryObject(
+            invname='xxx',
+            name='external.func', 
+            base_url='https://example.net', 
+            location='lib.html#func', 
+            domain='py',
+            reftype='func',
+            display='-')]
     system.intersphinx = inventory
 
     html = docstring2html(mod.contents['func'])
@@ -1072,6 +1080,30 @@ def test_EpydocLinker_look_for_intersphinx_no_link() -> None:
 
     assert None is result
 
+def test_EpydocLinker_look_for_intersphinx_with_spaces() -> None:
+    """
+    Return the link from inventory based on first package name.
+    """
+    system = model.System()
+    inventory = SphinxInventory(system.msg)
+    inventory._links['base.module.other'] = [
+        InventoryObject(
+            invname='xxx',
+            name='base.module.other', 
+            base_url='http://tm.tld', 
+            location='some.html', 
+            domain='py',
+            reftype='mod',
+            display='-')]
+    system.intersphinx = inventory
+    target = model.Module(system, 'ignore-name')
+    sut = target.docstring_linker
+    assert isinstance(sut, linker._EpydocLinker)
+
+    result = sut.link_xref('base .module .other', 'thing', 0)
+    assert 'http://tm.tld/some.html' in flatten(result)
+
+# TODO: Test filtering look_for_intersphinx(name, invname, domain, reftype)
 
 def test_EpydocLinker_look_for_intersphinx_hit() -> None:
     """
@@ -1079,7 +1111,15 @@ def test_EpydocLinker_look_for_intersphinx_hit() -> None:
     """
     system = model.System()
     inventory = SphinxInventory(system.msg)
-    inventory._links['base.module.other'] = ('http://tm.tld', 'some.html')
+    inventory._links['base.module.other'] = [
+        InventoryObject(
+            invname='xxx',
+            name='base.module.other', 
+            base_url='http://tm.tld', 
+            location='some.html', 
+            domain='py',
+            reftype='mod',
+            display='-')]
     system.intersphinx = inventory
     target = model.Module(system, 'ignore-name')
     sut = target.docstring_linker
@@ -1095,7 +1135,15 @@ def test_EpydocLinker_adds_intersphinx_link_css_class() -> None:
     """
     system = model.System()
     inventory = SphinxInventory(system.msg)
-    inventory._links['base.module.other'] = ('http://tm.tld', 'some.html')
+    inventory._links['base.module.other'] = [
+        InventoryObject(
+            invname='xxx',
+            name='base.module.other', 
+            base_url='http://tm.tld', 
+            location='some.html', 
+            domain='py',
+            reftype='mod',
+            display='-')]
     system.intersphinx = inventory
     target = model.Module(system, 'ignore-name')
     sut = target.docstring_linker
@@ -1116,7 +1164,15 @@ def test_EpydocLinker_resolve_identifier_xref_intersphinx_absolute_id() -> None:
     """
     system = model.System()
     inventory = SphinxInventory(system.msg)
-    inventory._links['base.module.other'] = ('http://tm.tld', 'some.html')
+    inventory._links['base.module.other'] = [
+        InventoryObject(
+            invname='xxx',
+            name='base.module.other', 
+            base_url='http://tm.tld', 
+            location='some.html', 
+            domain='py',
+            reftype='mod',
+            display='-')]
     system.intersphinx = inventory
     target = model.Module(system, 'ignore-name')
     sut = target.docstring_linker
@@ -1136,7 +1192,16 @@ def test_EpydocLinker_resolve_identifier_xref_intersphinx_relative_id() -> None:
     """
     system = model.System()
     inventory = SphinxInventory(system.msg)
-    inventory._links['ext_package.ext_module'] = ('http://tm.tld', 'some.html')
+    inventory._links['ext_package.ext_module'] = [
+        InventoryObject(
+            invname='xxx',
+            name='ext_package.ext_module', 
+            base_url='http://tm.tld', 
+            location='some.html',
+            domain='py',
+            reftype='mod', 
+            display='-',
+            )]
     system.intersphinx = inventory
     target = model.Module(system, 'ignore-name')
     # Here we set up the target module as it would have this import.
@@ -1197,7 +1262,7 @@ class InMemoryInventory:
         'socket.socket': 'https://docs.python.org/3/library/socket.html#socket.socket',
         }
 
-    def getLink(self, name: str) -> Optional[str]:
+    def getLink(self, name: str, **kw:Any) -> Optional[str]:
         return self.INVENTORY.get(name)
 
 def test_EpydocLinker_resolve_identifier_xref_order(capsys: CapSys) -> None:
@@ -1418,7 +1483,7 @@ class RecordingAnnotationLinker(NotFoundLinker):
         self.requests.append(target)
         return tags.transparent(label)
 
-    def link_xref(self, target: str, label: "Flattenable", lineno: int) -> Tag:
+    def link_xref(self, target: str, label: "Flattenable", lineno: int, **kw:Any) -> Tag:
         assert False
 
 @mark.parametrize('annotation', (
