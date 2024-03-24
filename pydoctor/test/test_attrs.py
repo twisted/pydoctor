@@ -20,8 +20,8 @@ attrs_systemcls_param = pytest.mark.parametrize(
 
 def assert_constructor(cls:model.Documentable, sig:str, 
                        shortsig:Optional[str]=None) -> None:
-    assert isinstance(cls, attrs.AttrsClass)
-    assert cls.dataclassLike == attrs.ModuleVisitor.DATACLASS_LIKE_KIND
+    assert isinstance(cls, attrs.AttrsLikeClass)
+    assert cls._al_class_type == attrs.ModuleVisitor.DATACLASS_LIKE_KIND
     constructor = cls.contents['__init__']
     assert isinstance(constructor, model.Function)
     assert flatten_text(pages.format_signature(constructor)).replace(' ','') == sig.replace(' ','')
@@ -105,8 +105,8 @@ def test_attrs_auto_instance(systemcls: Type[model.System]) -> None:
         d = 123  # ignored by auto_attribs because no annotation
     ''', modname='test', systemcls=systemcls)
     C = mod.contents['C']
-    assert isinstance(C, attrs.AttrsClass)
-    assert C.attrs_options['auto_attribs'] == True
+    assert isinstance(C, attrs.AttrsLikeClass)
+    assert C._al_options['auto_attribs'] == True
     assert C.contents['a'].kind is model.DocumentableKind.INSTANCE_VARIABLE
     assert C.contents['b'].kind is model.DocumentableKind.INSTANCE_VARIABLE
     assert C.contents['c'].kind is model.DocumentableKind.CLASS_VARIABLE
@@ -160,11 +160,11 @@ def test_attrs_constructor_method_infer_arg_types(systemcls: Type[model.System],
     mod = fromText(src, systemcls=systemcls)
     assert capsys.readouterr().out == ''
     C = mod.contents['C']
-    assert isinstance(C, attrs.AttrsClass)
-    assert C.attrs_options['init'] is None
+    assert isinstance(C, attrs.AttrsLikeClass)
+    assert C._al_options['init'] is None
     D = mod.contents['D']
-    assert isinstance(D, attrs.AttrsClass)
-    assert D.attrs_options['init'] is False
+    assert isinstance(D, attrs.AttrsLikeClass)
+    assert D._al_options['init'] is False
 
     assert_constructor(C, '(self, c: int = 100, x: int = 1, b: int = 23)', 'C(c, x, b)')
 
@@ -193,9 +193,9 @@ def test_attrs_constructor_kw_only(systemcls: Type[model.System]) -> None:
     '''
     mod = fromText(src, systemcls=systemcls)
     C = mod.contents['C']
-    assert isinstance(C, attrs.AttrsClass)
-    assert C.attrs_options['kw_only'] is True
-    assert C.attrs_options['init'] is None
+    assert isinstance(C, attrs.AttrsLikeClass)
+    assert C._al_options['kw_only'] is True
+    assert C._al_options['init'] is None
     assert_constructor(C, '(self, *, a, b: str)')
 
 # Test case for default factory
@@ -638,3 +638,206 @@ def test_define_type_comment_not_auto_attribs(systemcls: Type[model.System]) -> 
         a = 0 #type:int'''
     mod = fromText(src, systemcls=systemcls)
     assert_constructor(mod.contents['A'], '(self)')
+
+@attrs_systemcls_param
+def test_dataclass_basic(systemcls: Type[model.System]) -> None:
+    src = '''\
+    import dataclasses
+
+    @dataclasses.dataclass
+    class C:
+        x: int
+        y: int
+    '''
+    mod = fromText(src, systemcls=systemcls)
+    assert_constructor(mod.contents['C'], '(self, x: int, y: int)')
+
+@attrs_systemcls_param
+def test_dataclass_defaults(systemcls: Type[model.System]) -> None:
+    src = '''\
+    from dataclasses import dataclass
+
+    @dataclass
+    class C:
+        name: str
+        age: int = 30
+    '''
+    mod = fromText(src, systemcls=systemcls)
+    assert_constructor(mod.contents['C'], '(self, name: str, age: int = 30)')
+
+@attrs_systemcls_param
+def test_dataclass_kw_only(systemcls: Type[model.System]) -> None:
+    src = '''\
+    import dataclasses
+
+    @dataclasses.dataclass(kw_only=True)
+    class C:
+        title: str
+        author: str
+        year: int
+        price: float
+        total_pages: int = 0
+    '''
+    mod = fromText(src, systemcls=systemcls)
+    assert_constructor(mod.contents['C'], '(self, *, title: str, author: str, year: int, price: float, total_pages: int = 0)')
+
+@attrs_systemcls_param
+def test_dataclass_kw_only_flag(systemcls: Type[model.System]) -> None:
+    src = '''\
+    import dataclasses
+
+    @dataclasses.dataclass
+    class C:
+        _: dataclasses.KY_ONLY
+        title: str
+        author: str
+        year: int
+        price: float
+        total_pages: int = 0
+    '''
+    mod = fromText(src, systemcls=systemcls)
+    assert_constructor(mod.contents['C'], '(self, *, title: str, author: str, year: int, price: float, total_pages: int = 0)')
+
+@attrs_systemcls_param
+def test_dataclass_factory(systemcls: Type[model.System]) -> None:
+    src = '''\
+    import dataclasses
+
+    @dataclasses.dataclass
+    class C:
+        width: int
+        height: int
+    '''
+    mod = fromText(src, systemcls=systemcls)
+    assert_constructor(mod.contents['C'], '(self, width: int, height: int)')
+
+@attrs_systemcls_param
+def test_dataclass_no_constructor(systemcls: Type[model.System]) -> None:
+    src = '''\
+    import dataclasses
+    @dataclasses.dataclass(init=False)
+    class C:
+        a: int
+        b: str
+    '''
+    mod = fromText(src, systemcls=systemcls)
+    C = mod.contents['C']
+    assert 'def __init__' not in C.source_code
+
+# Test case for dataclass with single inheritance:
+@attrs_systemcls_param
+def test_dataclass_constructor_single_inheritance(systemcls: Type[model.System]) -> None:
+    src = '''\
+    import dataclasses
+    @dataclasses.dataclass
+    class Base:
+        a: int
+    @dataclasses.dataclass
+    class Derived(Base):
+        b: str
+    '''
+    mod = fromText(src, systemcls=systemcls)
+    assert_constructor(mod.contents['Derived'], '(self, a: int, b: str)', 'Derived(a, b)')
+
+# Test case for dataclass with multiple inheritance:
+@attrs_systemcls_param
+def test_dataclass_constructor_multiple_inheritance(systemcls: Type[model.System]) -> None:
+    src = '''\
+    import dataclasses
+    @dataclasses.dataclass
+    class Base1:
+        a: int
+    @dataclasses.dataclass
+    class Base2:
+        b: str
+    @dataclasses.dataclass
+    class Derived(Base1, Base2):
+        c: float
+    '''
+    mod = fromText(src, systemcls=systemcls)
+    assert_constructor(mod.contents['Derived'], '(self, a: int, b: str, c: float)', 'Derived(a, b, c)')
+
+# Test case for dataclass with overridden attributes:
+@attrs_systemcls_param
+def test_dataclass_constructor_single_inheritance_overridden_attribute(systemcls: Type[model.System]) -> None:
+    src = '''\
+    import dataclasses
+    @dataclasses.dataclass
+    class Base:
+        a: int
+        b: str = "default"
+    @dataclasses.dataclass
+    class Derived(Base):
+        b: str = "overridden"
+        c: float = 3.14
+    '''
+    mod = fromText(src, systemcls=systemcls)
+    assert_constructor(mod.contents['Derived'], '(self, a: int, b: str = \'overridden\', c: float = 3.14)', 'Derived(a, b, c)')
+
+@attrs_systemcls_param
+def test_dataclass_constructor_single_inheritance_traverse_subclasses(systemcls: Type[model.System]) -> None:
+    src = '''\
+    import dataclasses
+    @dataclasses.dataclass
+    class FieldDesc:
+        name: Optional[str] = None
+        type: Optional[Tag] = None
+        body: Optional[Tag] = None
+    @dataclasses.dataclass
+    class _SignatureDesc(FieldDesc):
+        type_origin: Optional[object] = None
+    @dataclasses.dataclass
+    class ReturnDesc(_SignatureDesc):...
+    '''
+
+    mod = fromText(src, systemcls=systemcls)
+    assert_constructor(mod.contents['ReturnDesc'], 
+                       '(self, name: Optional[str] = None, type: Optional[Tag] = None, body: Optional[Tag] = None, type_origin: Optional[object] = None)',
+                       'ReturnDesc(name, type, body, type_origin)')
+
+# Test case with dataclass field having init=False:
+@attrs_systemcls_param
+def test_dataclass_constructor_attribute_init_False(systemcls: Type[model.System]) -> None:
+    src = '''\
+    import dataclasses
+    @dataclasses.dataclass
+    class MyClass:
+        a: int
+        b: str = dataclasses.field(init=False)
+    '''
+    mod = fromText(src, systemcls=systemcls)
+    assert_constructor(mod.contents['MyClass'], '(self, a: int)')
+
+# Test case with dataclass field having kw_only=True:
+@attrs_systemcls_param
+def test_dataclass_constructor_attribute_kw_only_reorder(systemcls: Type[model.System], capsys:CapSys) -> None:
+    src = '''\
+    import dataclasses
+    @dataclasses.dataclass
+    class MyClass:
+        a: int
+        b: str = dataclasses.field(kw_only=True)
+        c: float
+    '''
+    mod = fromText(src, systemcls=systemcls)
+    assert not capsys.readouterr().out
+    assert_constructor(mod.contents['MyClass'], '(self, a: int, c: float, *, b: str)')
+
+@attrs_systemcls_param
+def test_dataclass_constructor_kw_only_reordering_with_inheritence(systemcls: Type[model.System], capsys:CapSys) -> None:
+    # see https://docs.python.org/3/library/dataclasses.html#re-ordering-of-keyword-only-parameters-in-init
+    src = '''\
+    @dataclass
+    class Base:
+        x: Any = 15.0
+        y: int = field(kw_only=True, default=0)
+        w: int = field(kw_only=True, default=1)
+
+    @dataclass
+    class D(Base):
+        z: int = 10
+        t: int = field(kw_only=True, default=0)
+    '''
+    mod = fromText(src, systemcls=systemcls)
+    assert not capsys.readouterr().out
+    assert_constructor(mod.contents['MyClass'], '(self, x: Any = 15.0, z: int = 10, *, y: int = 0, w: int = 1, t: int = 0)')

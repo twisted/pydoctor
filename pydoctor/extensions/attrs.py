@@ -1,61 +1,171 @@
 """
 Support for L{attrs} and other similar idioms, including L{dataclasses}, 
-L{typing.NamedTuple} and L{pydantic} models.
+L{typing.NamedTuple} and L{pydantic} models. Later called "AL" for 'Attrs Like' classes.
 """
+# Implementation of these utilities have been regouped in a single module in
+# order to minimize code duplication; as a side effect the code has a greater complexity.
+
 from __future__ import annotations
 
 import ast
+from abc import abstractmethod, ABC
 import enum
 import inspect
 import copy
+import dataclasses
 
-from typing import Any, Dict, List, Optional, Sequence, Tuple, Type, Union
+from typing import Any, Dict, List, Optional, Sequence, Tuple, Type, Union, TYPE_CHECKING
+if TYPE_CHECKING:
+    from typing import NotRequired
+    from typing_extensions import TypedDict
+else:
+    TypedDict = dict
 
 import attr
 
 from pydoctor import astbuilder, model, astutils, extensions, epydoc2stan
-from pydoctor.extensions._dataclass_like import DataclasLikeClass, DataclassLikeVisitor
 from pydoctor.epydoc.markup import ParsedDocstring, Field
 from pydoctor.epydoc.markup.plaintext import ParsedPlaintextDocstring
 from pydoctor.epydoc.markup._pyval_repr import colorize_inline_pyval
+from pydoctor.extensions import ModuleVisitorExt, ClassMixin
 
 from pydoctor.epydoc2stan import parse_docstring
 
-
-
+# TODO: insted of actually using signature() we should built the Signature manually from
+# Parameter objects.
 attrs_decorator_signature = inspect.signature(attr.s)
 """Signature of the L{attr.s} class decorator."""
-
 attrib_signature = inspect.signature(attr.ib)
 """Signature of the L{attr.ib} function for defining class attributes."""
+dataclass_decorator_signature = inspect.signature(dataclasses.dataclass)
+dataclass_field_signature = inspect.signature(dataclasses.field)
 
+# This list is rather incomplete :/
 builtin_types = frozenset(('frozenset', 'int', 'bytes', 
                            'complex', 'list', 'tuple', 
                            'set', 'dict', 'range'))
 
-class AttrsDeco(enum.Enum):
-    CLASSIC = 1
+# The common process
+
+class AlOptions(TypedDict):
     """
-    attr.s like
+    Dictionary that may contain the following keys:
+
+        - auto_attribs: bool|None
+
+        L{True} if this class uses the C{auto_attribs} feature of the L{attrs}
+        library to automatically convert annotated fields into attributes.
+
+        - kw_only: bool
+        
+        C{True} is this class uses C{kw_only} feature of L{attrs <attr>} library.
+
+        - init: bool|None
+        
+        False if L{attrs <attr>} is not generating an __init__ method for this class.
+
+        - auto_detect:bool
+    """
+    auto_attribs: NotRequired[bool|None]
+    kw_only: NotRequired[bool]
+    init: NotRequired[bool|None]
+    auto_detect: NotRequired[bool]
+
+class AttrsLikeClass( model.Class):
+    def setup(self) -> None:
+        super().setup()
+        self._al_class_type: AlClassType = AlClassType.NOT_ATTRS_LIKE_CLASS
+        self._al_options = AlOptions()
+
+        # these two attributes helps us infer the signature of the __init__ function
+        self._al_constructor_parameters: List[inspect.Parameter] = []
+        self._al_constructor_annotations: Dict[str, Optional[ast.expr]] = {}
+
+    # @abstractmethod
+    # def get_al_type(self, cls:ast.ClassDef, mod:model.Module) -> AlClassType:
+    #     """
+    #     If this classdef adopts dataclass-like behaviour, returns an non-zero int, otherwise returns None.
+    #     Returned value is directly stored in the C{dataclassLike} attribute of the visited class.
+    #     Used to determine whether L{handleField} method should be called for each class variables
+    #     in this class.
+
+    #     The int value should be a constant representing the kind of dataclass-like this class implements.
+    #     Class decorated with @dataclass and @attr.s will have different non-zero C{dataclassLike} attribute.
+    #     """
+
+    # @abstractmethod
+    # def handle_field(self, cls:model.Class, attr:model.Attribute, 
+    #                       annotation:Optional[ast.expr],
+    #                       value:Optional[ast.expr]) -> None:
+    #     """
+    #     Transform this class variable into a instance variable.
+    #     This method is left abstract because it's not as simple as setting::
+    #         attr.kind = model.DocumentableKind.INSTANCE_VARIABLE
+    #     """
+
+class AlClassType(enum.Enum):
+
+    NOT_ATTRS_LIKE_CLASS = 0
+    """
+    This class is just a regular class.
+    """
+    
+    ATTRS_CLASSIC = 1
+    """
+    L{attr.s} like.
     """
 
-    NEW = 2
+    ATTRS_NEW = 2
     """
-    attrs.define like
+    L{attrs.define} like.
     """
 
-def attrs_deco_kind(deco: ast.AST, module: model.Module) -> Optional[AttrsDeco]:
-    if isinstance(deco, ast.Call):
-        deco = deco.func
-    if astutils.node2fullname(deco, module) in (
-        'attr.s', 'attr.attrs', 'attr.attributes'):
-        return AttrsDeco.CLASSIC
-    elif astutils.node2fullname(deco, module) in (
-        'attr.mutable', 'attr.frozen', 'attr.define', 
-        'attrs.mutable', 'attrs.frozen', 'attrs.define',
-    ):
-        return AttrsDeco.NEW
-    return None
+    DATACLASS = 3
+    """
+    L{dataclasses.dataclass} like.
+    """
+
+    NAMEDTUPLE = 3
+    """
+    L{typing.NamedTuple} like.
+    """
+
+    PYDANTIC_MODEL = 4
+    """
+    L{pydantic.BaseModel} like.
+    """
+
+def get_attrs_like_type(cls: ast.ClassDef, module: model.Module) -> AlClassType:
+    
+    types = []
+    for dottedname, _ in astutils.iter_decorators(cls, module):
+        if dottedname in (
+            'attr.s', 'attr.attrs', 'attr.attributes'):
+            types.append(AlClassType.ATTRS_CLASSIC)
+        elif dottedname in (
+            'attr.mutable', 'attr.frozen', 'attr.define', 
+            'attrs.mutable', 'attrs.frozen', 'attrs.define',
+        ):
+            types.append(AlClassType.ATTRS_NEW)
+        elif dottedname in ('dataclasses.dataclass',):
+            types.append(AlClassType.DATACLASS)
+
+    for basenode in cls.bases:
+        base_fullname = astutils.node2fullname(basenode, module)
+        if base_fullname in ('pydantic.BaseModel',):
+            types.append(AlClassType.PYDANTIC_MODEL)
+        elif base_fullname in ('typing.NamedTuple', 
+                               'typing_extensions.NamedTuple'):
+            types.append(AlClassType.NAMEDTUPLE)
+    
+    if len(types)==1:
+        return types[0]
+    elif len(types)==0:
+        return AlClassType.NOT_ATTRS_LIKE_CLASS
+    
+    # TODO: warns because this class is detected as being of several distinct attrs like types :/
+    return types[0]
+
 
 def is_attrib(expr: Optional[ast.expr], ctx: model.Documentable) -> bool:
     """Does this expression return an C{attr.ib}?"""
@@ -87,7 +197,7 @@ def _callable_return_type(dname:List[str], ctx:model.Documentable) -> Optional[a
     resolvable in the new context since it can come from other modules. 
 
     This is not type inference, we're simply looking up the name and. If it's 
-    a function, we use the return annotation as is. 
+    a function, we use the return annotation as is (potentially with unresolved type variables). 
     """
     r = ctx.resolveName('.'.join(dname))
     if isinstance(r, model.Class):
@@ -208,35 +318,67 @@ _fallback_attrs_call = ast.Call(func=ast.Name(id='define', ctx=ast.Load()),
                                 args=[], keywords=[], lineno=0,)
 _nothing = object()
 
-class ModuleVisitor(DataclassLikeVisitor):
+class ModuleVisitor(ModuleVisitorExt):
 
-    DATACLASS_LIKE_KIND = 'attrs class'
+    # def visit_ClassDef(self, node: ast.ClassDef) -> None:
+        # if dataclassLikeKind:
+        #     if not cls._al_class_type:
+        #         cls._al_class_type = dataclassLikeKind
+        #     else:
+        #         cls.report(f'class is both {cls._al_class_type} and {dataclassLikeKind}')
+    
+    def visit_Assign(self, node: Union[ast.Assign, ast.AnnAssign]) -> None:
+        current = self.visitor.builder.current
+
+        for dottedname in astutils.iterassign(node):
+            if dottedname and len(dottedname)==1:
+                # We consider single name assignment only
+                if not isinstance(current, model.Class):
+                    continue
+                assert isinstance(current, AttrsLikeClass)
+                if current._al_class_type == AlClassType.NOT_ATTRS_LIKE_CLASS:
+                    continue
+                target, = dottedname
+                attr: Optional[model.Documentable] = current.contents.get(target)
+                if not isinstance(attr, model.Attribute) or \
+                    astutils.is_using_typing_classvar(attr.annotation, current):
+                    continue
+                annotation = node.annotation if isinstance(node, ast.AnnAssign) else None
+                self.handle_field(current, attr, annotation, node.value)
+    
+    visit_AnnAssign = visit_Assign
     
     def visit_ClassDef(self, node:ast.ClassDef) -> None:
         """
         Called when a class definition is visited.
         """
-        super().visit_ClassDef(node)
-
         cls = self.visitor.builder._stack[-1].contents.get(node.name)
-        if not isinstance(cls, AttrsClass) or cls.dataclassLike != self.DATACLASS_LIKE_KIND:
-            # not an attrs class
+        if not isinstance(cls, model.Class):
             return
+        assert isinstance(cls, AttrsLikeClass)
+        al_type,  al_options = self.get_al_type_and_options(node, cls.module)
+        
+        cls._al_class_type = al_type
+        cls._al_options = al_options
+        
+        if al_type == AlClassType.NOT_ATTRS_LIKE_CLASS:
+            # not an attrs like class
+            return
+        
         mod = cls.module
         try:
             attrs_deco = next(decnode for decnode in node.decorator_list 
-                              if attrs_deco_kind(decnode, mod))
+                              if get_attrs_like_type(decnode, mod))
         except StopIteration:
             return
         
         # init the self argument
-        cls.attrs_constructor_parameters.append(
+        cls._al_constructor_parameters.append(
             inspect.Parameter('self', 
                               inspect.Parameter.POSITIONAL_OR_KEYWORD)
         )
-        cls.attrs_constructor_annotations['self'] = None
+        cls._al_constructor_annotations['self'] = None
         
-        kind = attrs_deco_kind(attrs_deco, mod)
         attrs_args = astutils.safe_bind_args(attrs_decorator_signature, attrs_deco, mod)
         
         # init attrs options based on arguments and whether the devs are using
@@ -247,31 +389,31 @@ class ModuleVisitor(DataclassLikeVisitor):
                     'kw_only': (False, bool),
                     'auto_detect': (False, bool), }
         
-        if kind == AttrsDeco.NEW:
+        if al_type == AlClassType.ATTRS_NEW:
             attrs_param_spec['auto_attribs'] = (None, (bool, type(None)))
             attrs_param_spec['auto_detect'] = (True, bool)
         
         if not attrs_args:
             attrs_args = astutils.bind_args(attrs_decorator_signature, _fallback_attrs_call)
 
-        cls.attrs_options.update({name: astutils.get_literal_arg(attrs_args, name, default, 
+        cls._al_options.update({name: astutils.get_literal_arg(attrs_args, name, default, 
                                 typecheck, attrs_deco.lineno, mod
                                 ) for name, (default, typecheck) in 
                                 attrs_param_spec.items()})
 
-        if kind is AttrsDeco.NEW and cls.attrs_options['auto_attribs'] is None:
+        if al_type is AlClassType.ATTRS_NEW and cls._al_options['auto_attribs'] is None:
             fields = collect_fields(node, cls)
             # auto detect auto_attrib value
-            cls.attrs_options['auto_attribs'] = len(fields)>0 and \
+            cls._al_options['auto_attribs'] = len(fields)>0 and \
                 not any(isinstance(a, ast.Assign) for a in fields)
     
-    def transformClassVar(self, cls: model.Class, 
+    def handle_field(self, cls: model.Class, 
                           attr: model.Attribute, 
                           annotation:Optional[ast.expr],
                           value:Optional[ast.expr]) -> None:
-        assert isinstance(cls, AttrsClass)
+        assert isinstance(cls, AttrsLikeClass)
         is_attrs_attrib = is_attrib(value, cls)
-        is_attrs_auto_attrib = cls.attrs_options.get('auto_attribs') and \
+        is_attrs_auto_attrib = cls._al_options.get('auto_attribs') and \
             not is_attrs_attrib and annotation is not None
         
         if not (is_attrs_attrib or is_attrs_auto_attrib):
@@ -294,11 +436,11 @@ class ModuleVisitor(DataclassLikeVisitor):
                                         ('kw_only', False, bool),)}
     
         # Handle the auto-creation of the __init__ method.
-        if cls.attrs_options.get('init', _nothing) in (True, None) and \
+        if cls._al_options.get('init', _nothing) in (True, None) and \
             is_attrs_auto_attrib or attrib_args_value.get('init'):    
 
             kind:inspect._ParameterKind = inspect.Parameter.POSITIONAL_OR_KEYWORD
-            if cls.attrs_options.get('kw_only') or attrib_args_value.get('kw_only'):
+            if cls._al_options.get('kw_only') or attrib_args_value.get('kw_only'):
                 kind = inspect.Parameter.KEYWORD_ONLY
 
             attrs_default:Optional[ast.expr] = ast.Constant(value=..., lineno=attr.linenumber)
@@ -320,6 +462,7 @@ class ModuleVisitor(DataclassLikeVisitor):
             
             # attrs strips the leading underscores from the parameter names,
             # since there is not such thing as a private parameter.
+            # This is not true for dataclasses and others!
             init_param_name = attr.name.lstrip('_')
 
             if attrib_args:
@@ -330,8 +473,8 @@ class ModuleVisitor(DataclassLikeVisitor):
             else:
                 constructor_annotation = attr.annotation
             
-            cls.attrs_constructor_annotations[init_param_name] = constructor_annotation
-            cls.attrs_constructor_parameters.append(
+            cls._al_constructor_annotations[init_param_name] = constructor_annotation
+            cls._al_constructor_parameters.append(
                 inspect.Parameter(
                     init_param_name, kind=kind, 
                     default=astbuilder._ValueFormatter(attrs_default, cls) 
@@ -339,56 +482,35 @@ class ModuleVisitor(DataclassLikeVisitor):
                     annotation=astbuilder._AnnotationValueFormatter(constructor_annotation, cls) 
                         if constructor_annotation else inspect.Parameter.empty))
     
-    def isDataclassLike(self, cls:ast.ClassDef, mod:model.Module) -> Optional[object]:
-        if any(attrs_deco_kind(dec, mod) for dec in cls.decorator_list):
-            return self.DATACLASS_LIKE_KIND
-        return None
+    def get_al_type_and_options(self, cls:ast.ClassDef, mod:model.Module) -> Tuple[AlClassType, AlOptions]:
 
-class AttrsOptions(Dict[str, object]):
-    """
-    Dictionary that may contain the following keys:
+        try:
+            attrs_deco = next(decnode for decnode in cls.decorator_list 
+                              if get_attrs_like_type(decnode, mod))
+        except StopIteration:
+            return
 
-        - auto_attribs: bool|None
+        # if any(get_attrs_like_type(dec, mod) for dec in cls.decorator_list):
+        #     return self.DATACLASS_LIKE_KIND
+        # return None
 
-        L{True} if this class uses the C{auto_attribs} feature of the L{attrs}
-        library to automatically convert annotated fields into attributes.
-
-        - kw_only: bool
-        
-        C{True} is this class uses C{kw_only} feature of L{attrs <attr>} library.
-
-        - init: bool|None
-        
-        False if L{attrs <attr>} is not generating an __init__ method for this class.
-
-        - auto_detect:bool
-    """
-
-class AttrsClass(DataclasLikeClass, model.Class):
-    def setup(self) -> None:
-        super().setup()
-
-        self.attrs_options = AttrsOptions()
-        self.attrs_constructor_parameters: List[inspect.Parameter] = []
-        self.attrs_constructor_annotations: Dict[str, Optional[ast.expr]] = {}
-
-def collect_inherited_constructor_params(cls:AttrsClass) -> Tuple[List[inspect.Parameter], 
+def collect_inherited_constructor_params(cls:AttrsLikeClass) -> Tuple[List[inspect.Parameter], 
                                                     Dict[str, Optional[ast.expr]]]:
     # see https://github.com/python-attrs/attrs/pull/635/files
 
     base_attrs:List[inspect.Parameter] = []
     base_annotations:Dict[str, Optional[ast.expr]] = {}
-    own_param_names = cls.attrs_constructor_annotations
+    own_param_names = cls._al_constructor_annotations
 
     # Traverse the MRO and collect attributes.
     for base_cls in reversed(cls.mro(include_external=False, include_self=False)):
-        assert isinstance(base_cls, AttrsClass)
-        for p in base_cls.attrs_constructor_parameters[1:]:
+        assert isinstance(base_cls, AttrsLikeClass)
+        for p in base_cls._al_constructor_parameters[1:]:
             if p.name in own_param_names:
                 continue
 
             base_attrs.append(p)
-            base_annotations[p.name] = base_cls.attrs_constructor_annotations[p.name]
+            base_annotations[p.name] = base_cls._al_constructor_annotations[p.name]
 
     # For each name, only keep the freshest definition i.e. the furthest at the
     # back.  base_annotations is fine because it gets overwritten with every new
@@ -403,7 +525,7 @@ def collect_inherited_constructor_params(cls:AttrsClass) -> Tuple[List[inspect.P
 
     return filtered, base_annotations
 
-def attrs_constructor_docstring(cls:AttrsClass, constructor_signature:inspect.Signature) -> ParsedDocstring:
+def attrs_constructor_docstring(cls:AttrsLikeClass, constructor_signature:inspect.Signature) -> ParsedDocstring:
     """
     Get a docstring for the attrs generated constructor method
     """
@@ -430,13 +552,13 @@ def attrs_constructor_docstring(cls:AttrsClass, constructor_signature:inspect.Si
 
 def postProcess(system:model.System) -> None:
 
-    for cls in list(system.objectsOfType(AttrsClass)):
+    for cls in list(system.objectsOfType(AttrsLikeClass)):
         # by default attr.s() overrides any defined __init__ mehtod, whereas dataclasses.
-        if cls.dataclassLike == ModuleVisitor.DATACLASS_LIKE_KIND:
+        if cls._al_class_type != AlClassType.NOT_ATTRS_LIKE_CLASS:
             
-            if cls.attrs_options.get('init') is False or \
-                cls.attrs_options.get('init', _nothing) is None and \
-                cls.attrs_options.get('auto_detect') is True and \
+            if cls._al_options.get('init') is False or \
+                cls._al_options.get('init', _nothing) is None and \
+                cls._al_options.get('auto_detect') is True and \
                 cls.contents.get('__init__'):
                 continue
 
@@ -452,14 +574,15 @@ def postProcess(system:model.System) -> None:
             # collect arguments from super classes attributes definitions.  
             inherited_params, inherited_annotations = collect_inherited_constructor_params(cls)
             # don't forget to set the KEYWORD_ONLY flag on inherited parameters
-            if cls.attrs_options.get('kw_only') is True:
+            if cls._al_options.get('kw_only') is True:
                 for p in inherited_params:
-                    p._kind = inspect.Parameter.KEYWORD_ONLY #type:ignore[attr-defined]
+                    p._kind = inspect.Parameter.KEYWORD_ONLY # type:ignore[attr-defined]
             # make sure that self is kept first.
-            parameters = [cls.attrs_constructor_parameters[0], 
-                *inherited_params, *cls.attrs_constructor_parameters[1:]]
-            annotations:Dict[str, Optional[ast.expr]] = {'self': None, **inherited_annotations, 
-                           **cls.attrs_constructor_annotations}
+            parameters = [cls._al_constructor_parameters[0], 
+                *inherited_params, *cls._al_constructor_parameters[1:]]
+            annotations: Dict[str, Optional[ast.expr]] = {'self': None, 
+                                                          **inherited_annotations, 
+                                                          **cls._al_constructor_annotations}
             
             # Re-ordering kw_only arguments at the end of the list
             for param in tuple(parameters):
@@ -482,5 +605,5 @@ def postProcess(system:model.System) -> None:
             
 def setup_pydoctor_extension(r:extensions.ExtRegistrar) -> None:
     r.register_astbuilder_visitor(ModuleVisitor)
-    r.register_mixin(AttrsClass)
+    r.register_mixin(AttrsLikeClass)
     r.register_post_processor(postProcess)
