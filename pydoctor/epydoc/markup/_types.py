@@ -63,7 +63,7 @@ class ParsedTypeDocstring(TypeDocstring, ParsedDocstring):
 
         tokens: List[Union[str, nodes.Node]] = []
         # Determine if the content is nested inside a paragraph
-        # this is generally the case, expect for consolidated fields generate documents.
+        # this is generally the case, except for consolidated fields generate documents.
         if spec.children and isinstance(spec.children[0], nodes.paragraph):
             if len(spec.children)>1:
                 _warn_not_supported(spec.children[1])
