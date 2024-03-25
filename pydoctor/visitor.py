@@ -6,6 +6,7 @@ from __future__ import annotations
 from collections import defaultdict
 import enum
 import abc
+from itertools import chain
 from typing import Dict, Generic, Iterable, List, Optional, Type, TypeVar
 
 T = TypeVar("T")
@@ -53,7 +54,7 @@ class Visitor(_BaseVisitor[T], abc.ABC):
   Each class has corresponding methods, doing nothing by
   default; override individual methods for specific and useful
   behaviour.  The `visit()` method is called by
-  `walk()` upon entering a object.  `walkabout()` also calls
+  `walkabout()`  upon entering a object, it also calls
   the `depart()` method before exiting a object.
 
   The generic methods call "``visit_`` + objet class name" or
@@ -78,56 +79,26 @@ class Visitor(_BaseVisitor[T], abc.ABC):
     Base class for `Visitor`-related tree pruning exceptions.
 
     Raise subclasses from within ``visit_...`` or ``depart_...`` methods
-    called from `Visitor.walk()` and `Visitor.walkabout()` tree traversals to prune
+    called from `Visitor.walkabout()` tree traversals to prune
     the tree traversed.
     """
+    skip_extensions = False
   class SkipChildren(_TreePruningException):
     """
     Do not visit any children of the current node.  The current node's
     siblings and ``depart_...`` method are not affected.
-    """
-  class SkipSiblings(_TreePruningException):
-    """
-    Do not visit any more siblings (to the right) of the current node.  The
-    current node's children and its ``depart_...`` method are not affected.
     """
   class SkipNode(_TreePruningException):
     """
     Do not visit the current node's children, and do not call the current
     node's ``depart_...`` method.
     """
-  class SkipDeparture(_TreePruningException):
-    """
-    Do not call the current node's ``depart_...`` method.  The current node's
-    children and siblings are not affected.
-    """
-  
-  def walk(self, ob: T) -> None:
-    """
-    Traverse a tree of objects, calling the
-    `visit()` method of `visitor` when entering each
-    node.  (The `walkabout()` method is similar, except it also
-    calls the `depart()` method before exiting each objects.)
-
-    This tree traversal supports limited in-place tree
-    modifications.  Replacing one node with one or more nodes is
-    OK, as is removing an element.  However, if the node removed
-    or replaced occurs after the current node, the old node will
-    still be traversed, and any new nodes will not.
-
-    :param ob: An object to walk.
-    """
-    try:
-      self.visit(ob)
-    except (self.SkipChildren, self.SkipNode):
-      return
-    except self.SkipDeparture:           
-      pass # not applicable; ignore
-    try:
-      for child in self.get_children(ob):
-          self.walk(child)
-    except self.SkipSiblings:
-      pass
+    def __init__(self, skip_extensions:bool=False) -> None:
+       """
+       :param skip_extensions: Whether to skip visitor extentions as well.
+       """
+       super().__init__()
+       self.skip_extensions = skip_extensions
     
   def visit(self, ob: T) -> None:
     """Extend the base visit with extensions.
@@ -135,64 +106,64 @@ class Visitor(_BaseVisitor[T], abc.ABC):
     Parameters:
         node: The node to visit.
     """
-    for v in self.extensions.before_visit + self.extensions.outter_visit:
+    for v in chain(self.extensions.before_visit, self.extensions.outter_visit):
       v.visit(ob)
     
     pruning = None
     try:
       super().visit(ob)
     except self._TreePruningException as ex:
+      if ex.skip_extensions:
+        # this exception should be raised right away since it means
+        # not visiting the extension visitors.
+        raise
       pruning = ex
 
-    for v in self.extensions.after_visit + self.extensions.inner_visit:
+    for v in chain(self.extensions.after_visit, self.extensions.inner_visit):
       v.visit(ob)
     
     if pruning:
       raise pruning
   
-  def depart(self, ob: T, extensions_only:bool=False) -> None:
+  def depart(self, ob: T, call_depart:bool) -> None:
     """Extend the base depart with extensions."""
     
-    for v in self.extensions.before_visit + self.extensions.inner_visit:
+    for v in chain(self.extensions.before_visit, self.extensions.inner_visit):
       v.depart(ob)
     
-    if not extensions_only:
+    if call_depart:
       super().depart(ob)
 
-    for v in self.extensions.after_visit + self.extensions.outter_visit:
+    for v in chain(self.extensions.after_visit, self.extensions.outter_visit):
       v.depart(ob)
 
   def walkabout(self, ob: T) -> None:
     """
-    Perform a tree traversal similarly to `walk()` (which
-    see), except also call the `depart()` method before exiting each node.
+    Perform a tree traversal, calling `visit()` method when entering a 
+    node and the `depart()` method before exiting each node.
 
     Takes special care to handle  L{_TreePruningException} the following way:
 
-    - If a L{SkipNode} or L{SkipDeparture} exception is raised inside the main visitor C{visit()} method,
+    - If a L{SkipNode} exception is raised inside the main visitor C{visit()} method,
       the C{depart_*} method on the extensions will still be called. 
 
     :param ob: An object to walk.
     """
     call_depart = True
-    skip_node = False
     try:
       try:
         self.visit(ob)
-      except self.SkipNode:
-        skip_node = True
-        call_depart = False
-      except self.SkipDeparture:           
-        call_depart = False
-      if not skip_node:
-        try:
-          for child in self.get_children(ob):
-              self.walkabout(child)
-        except self.SkipSiblings:
-          pass
+      except self.SkipNode as e:
+        if e.skip_extensions:
+          return
+        else:
+          call_depart = False
+      else:
+        for child in self.get_children(ob):
+          self.walkabout(child)
     except self.SkipChildren:
       pass
-    self.depart(ob, extensions_only=not call_depart)
+    self.depart(ob, call_depart)
 
 # Adapted from https://github.com/pawamoy/griffe
 # Copyright (c) 2021, Timothée Mazzucotelli
@@ -298,8 +269,8 @@ class VisitorExt(_BaseVisitor[T]):
     Meaning:
       - If the main module visitor raises `SkipNode`, the extension visitor set to run ``AFTER`` will still visit this node, but not it's children.
       - If your extension visitor is set to run ``BEFORE`` the main visitor and it raises `SkipNode`, the main visitor will not visit this node.
-      - If a L{SkipNode} or L{SkipDeparture} exception is raised inside the main visitor C{visit()} method,
-        the C{depart_*} method on the extensions will still be called.
+      - If a `SkipNode` exception is raised inside the main visitor `Visitor.visit()` method,
+        the ``depart_*`` method on the extensions will still be called.
     
     See: `When` 
     """

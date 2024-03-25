@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import ast
+import contextlib
 import sys
 
 from functools import partial
@@ -10,7 +11,7 @@ from itertools import chain
 from pathlib import Path
 from typing import (
     Any, Callable, Collection, Dict, Iterable, Iterator, List, Mapping, Optional, Sequence, Tuple,
-    Type, TypeVar, Union, cast
+    Type, TypeVar, Union, Set, cast
 )
 
 import astor
@@ -174,6 +175,36 @@ class ModuleVistor(NodeVisitor):
         self.builder = builder
         self.system = builder.system
         self.module = module
+        self._override_guard_state: Tuple[Optional[model.Documentable], Set[str]] = (None, set())
+    
+    @contextlib.contextmanager
+    def override_guard(self) -> Iterator[None]:
+        """
+        Returns a context manager that will make the builder ignore any new 
+        assigments to existing names within the same context.  Currently used to visit C{If.orelse} and C{Try.handlers}.
+        
+        @note: The list of existing names is generated at the moment of
+            calling the function, such that new names defined inside these blocks follows the usual override rules.
+        """
+        ctx = self.builder.current
+        while not isinstance(ctx, model.CanContainImportsDocumentable):
+            assert ctx.parent
+            ctx = ctx.parent
+        ignore_override_init = self._override_guard_state
+        # we list names only once to ignore new names added inside the block,
+        # they should be overriden as usual.
+        self._override_guard_state = (ctx, set(chain(ctx.contents, 
+                                                     ctx._localNameToFullName_map)))
+        yield
+        self._override_guard_state = ignore_override_init
+    
+    def _ignore_name(self, ob: model.Documentable, name:str) -> bool:
+        """
+        Should this C{name} be ignored because it matches 
+        the override guard in the context of C{ob}?
+        """
+        ctx, names = self._override_guard_state
+        return ctx is ob and name in names
 
     def _infer_attr_annotations(self, scope: model.Documentable) -> None:
         # Infer annotation when leaving scope so explicit
@@ -193,7 +224,29 @@ class ModuleVistor(NodeVisitor):
                 # skip if __name__ == '__main__': blocks since
                 # whatever is declared in them cannot be imported
                 # and thus is not part of the API
-                raise self.SkipNode()
+                raise self.SkipChildren()
+    
+    def depart_If(self, node: ast.If) -> None:
+        # At this point the body of the Try node has already been visited
+        # Visit the 'orelse' block of the If node, with override guard
+        with self.override_guard():
+            for n in node.orelse:
+                self.walkabout(n)
+    
+    def depart_Try(self, node: ast.Try) -> None:
+        # At this point the body of the Try node has already been visited
+        # Visit the 'orelse' and 'finalbody' blocks of the Try node.
+        
+        for n in node.orelse:
+            self.walkabout(n)
+        for n in node.finalbody:
+            self.walkabout(n)
+        
+        # Visit the handlers with override guard 
+        with self.override_guard():
+            for h in node.handlers:
+                for n in h.body:
+                    self.walkabout(n)
 
     def visit_Module(self, node: ast.Module) -> None:
         assert self.module.docstring is None
@@ -214,6 +267,9 @@ class ModuleVistor(NodeVisitor):
         parent = self.builder.current
         if isinstance(parent, model.Function):
             raise self.SkipNode()
+        # Ignore in override guard
+        if self._ignore_name(parent, node.name):
+            raise self.SkipNode(skip_extensions=True)
 
         rawbases = []
         initialbases = []
@@ -335,6 +391,11 @@ class ModuleVistor(NodeVisitor):
     def _importAll(self, modname: str) -> None:
         """Handle a C{from <modname> import *} statement."""
 
+        # Always ignore import * in override guard
+        if self._override_guard_state[0]:
+            self.builder.current.report(f"ignored import * from {modname}", thresh=1)
+            return
+
         mod = self.system.getProcessedModule(modname)
         if mod is None:
             # We don't have any information about the module, so we don't know
@@ -427,6 +488,11 @@ class ModuleVistor(NodeVisitor):
             orgname, asname = al.name, al.asname
             if asname is None:
                 asname = orgname
+            
+            # Ignore in override guard
+            if self._ignore_name(current, asname):
+                continue
+            
             # If we're importing from a package, make sure imported modules
             # are processed (getProcessedModule() ignores non-modules).
             if isinstance(mod, model.Package):
@@ -453,11 +519,15 @@ class ModuleVistor(NodeVisitor):
             # processing import statement in odd context
             return
         _localNameToFullName = self.builder.current._localNameToFullName_map
+        current = self.builder.current
         for al in node.names:
             targetname, asname = al.name, al.asname
             if asname is None:
                 # we're keeping track of all defined names
                 asname = targetname = targetname.split('.')[0]
+            # Ignore in override guard
+            if self._ignore_name(current, asname):
+                continue
             _localNameToFullName[asname] = targetname
 
     def _handleOldSchoolMethodDecoration(self, target: str, expr: Optional[ast.expr]) -> bool:
@@ -649,6 +719,8 @@ class ModuleVistor(NodeVisitor):
             return
         if not _maybeAttribute(cls, name):
             return
+        if self._ignore_name(cls, name):
+            return
 
         # Class variables can only be Attribute, so it's OK to cast because we used _maybeAttribute() above.
         obj = cast(Optional[model.Attribute], cls.contents.get(name))
@@ -733,6 +805,8 @@ class ModuleVistor(NodeVisitor):
         if isinstance(targetNode, ast.Name):
             target = targetNode.id
             scope = self.builder.current
+            if self._ignore_name(scope, target):
+                return
             if isinstance(scope, model.Module):
                 self._handleAssignmentInModule(target, annotation, expr, lineno, augassign=augassign)
             elif isinstance(scope, model.Class):
@@ -796,6 +870,9 @@ class ModuleVistor(NodeVisitor):
         parent = self.builder.current
         if isinstance(parent, model.Function):
             raise self.SkipNode()
+        # Ignore in override guard
+        if self._ignore_name(parent, node.name):
+            raise self.SkipNode(skip_extensions=True)
 
         lineno = node.lineno
 

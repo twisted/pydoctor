@@ -15,6 +15,8 @@ def dump(node: nodes.Node, text:str='') -> None:
 class DocutilsNodeVisitor(visitor.Visitor[nodes.Node]):
     def unknown_visit(self, ob: nodes.Node) -> None:
         pass
+    def unknown_departure(self, ob: nodes.Node) -> None:
+        pass
     
     @classmethod
     def get_children(cls, ob:nodes.Node) -> Iterable[nodes.Node]:
@@ -134,7 +136,7 @@ bla blab balba.
 ''')
     doc = parsed_doc.to_node()
 
-    MainVisitor(visitor.ExtList(TitleReferenceDumpAfter)).walk(doc)
+    MainVisitor(visitor.ExtList(TitleReferenceDumpAfter)).walkabout(doc)
     assert capsys.readouterr().out == r'''title_reference line: None, rawsource: `notfound`
 title_reference line: None, rawsource: `notfound`
 title_reference line: None, rawsource: `another link <notfound>`
@@ -143,7 +145,7 @@ title_reference line: None, rawsource: `link <notfound>`
     
     vis = MainVisitor()
     vis.extensions.add(ParagraphDump, TitleReferenceDumpAfter)
-    vis.walk(doc)
+    vis.walkabout(doc)
     assert capsys.readouterr().out == r'''paragraph       line: 4, rawsource: Lorem ipsum `notfound`.
 title_reference line: None, rawsource: `notfound`
 paragraph       line: 9, rawsource: Lorem ``ipsum``
