@@ -82,6 +82,12 @@ This is the last major release to support Python 3.7.
 * Add support for Python 3.12
 * `ExtRegistrar.register_post_processor()` now supports a `priority` argument that is an int.
   Highest priority callables will be called first during post-processing.
+* Better ``attrs`` support: generate precise ``__init__`` method from analyzed fields, supports 
+  principal ``attrs`` idioms: 
+   - ``attr.s(auto_attribs, kw_only, auto_detect, init)``/``attrs.define(...)``
+   - ``attr.ib(init, default, factory, converter, type, kw_only)``/``attrs.field(...)``
+   - ``attr.Factory(list)``
+  It does not support the decorators based syntax for setting the validator/factory/default or converter.
 * Fix too noisy ``--verbose`` mode (suppres some ambiguous annotations warnings).
 * Fix type processing inside restructuredtext consolidated fields.
 

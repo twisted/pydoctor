@@ -10,9 +10,8 @@ from itertools import chain
 from pathlib import Path
 from typing import (
     Any, Callable, Collection, Dict, Iterable, Iterator, List, Mapping, Optional, Sequence, Tuple,
-    Type, TypeVar, Union, cast
+    Type, TypeVar, Union, cast, TYPE_CHECKING
 )
-
 import astor
 from pydoctor import epydoc2stan, model, node2stan, extensions, linker
 from pydoctor.epydoc.markup._pyval_repr import colorize_inline_pyval
@@ -20,6 +19,12 @@ from pydoctor.astutils import (is_none_literal, is_typing_annotation, is_using_a
                                is__name__equals__main__, unstring_annotation, iterassign, extract_docstring_linenum, infer_type, get_parents,
                                get_docstring_node, NodeVisitor, Parentage, Str)
 
+
+
+if TYPE_CHECKING:
+    from typing import Protocol
+else:
+    Protocol = object
 
 def parseFile(path: Path) -> ast.Module:
     """Parse the contents of a Python source file."""
@@ -877,52 +882,7 @@ class ModuleVistor(NodeVisitor):
         elif is_classmethod:
             func.kind = model.DocumentableKind.CLASS_METHOD
 
-        # Position-only arguments were introduced in Python 3.8.
-        posonlyargs: Sequence[ast.arg] = getattr(node.args, 'posonlyargs', ())
-
-        num_pos_args = len(posonlyargs) + len(node.args.args)
-        defaults = node.args.defaults
-        default_offset = num_pos_args - len(defaults)
-        annotations = self._annotations_from_function(node)
-
-        def get_default(index: int) -> Optional[ast.expr]:
-            assert 0 <= index < num_pos_args, index
-            index -= default_offset
-            return None if index < 0 else defaults[index]
-
-        parameters: List[Parameter] = []
-        def add_arg(name: str, kind: Any, default: Optional[ast.expr]) -> None:
-            default_val = Parameter.empty if default is None else _ValueFormatter(default, ctx=func)
-                                                                               # this cast() is safe since we're checking if annotations.get(name) is None first
-            annotation = Parameter.empty if annotations.get(name) is None else _AnnotationValueFormatter(cast(ast.expr, annotations[name]), ctx=func)
-            parameters.append(Parameter(name, kind, default=default_val, annotation=annotation))
-
-        for index, arg in enumerate(posonlyargs):
-            add_arg(arg.arg, Parameter.POSITIONAL_ONLY, get_default(index))
-
-        for index, arg in enumerate(node.args.args, start=len(posonlyargs)):
-            add_arg(arg.arg, Parameter.POSITIONAL_OR_KEYWORD, get_default(index))
-
-        vararg = node.args.vararg
-        if vararg is not None:
-            add_arg(vararg.arg, Parameter.VAR_POSITIONAL, None)
-
-        assert len(node.args.kwonlyargs) == len(node.args.kw_defaults)
-        for arg, default in zip(node.args.kwonlyargs, node.args.kw_defaults):
-            add_arg(arg.arg, Parameter.KEYWORD_ONLY, default)
-
-        kwarg = node.args.kwarg
-        if kwarg is not None:
-            add_arg(kwarg.arg, Parameter.VAR_KEYWORD, None)
-
-        return_type = annotations.get('return')
-        return_annotation = Parameter.empty if return_type is None or is_none_literal(return_type) else _AnnotationValueFormatter(return_type, ctx=func)
-        try:
-            signature = Signature(parameters, return_annotation=return_annotation)
-        except ValueError as ex:
-            func.report(f'{func.fullName()} has invalid parameters: {ex}')
-            signature = Signature()
-
+        annotations, signature = signature_from_functiondef(node, func)
         func.annotations = annotations
 
         # Only set main function signature if it is a non-overload
@@ -974,46 +934,47 @@ class ModuleVistor(NodeVisitor):
 
         return attr
 
-    def _annotations_from_function(
-            self, func: Union[ast.AsyncFunctionDef, ast.FunctionDef]
-            ) -> Mapping[str, Optional[ast.expr]]:
-        """Get annotations from a function definition.
-        @param func: The function definition's AST.
-        @return: Mapping from argument name to annotation.
-            The name C{return} is used for the return type.
-            Unannotated arguments are omitted.
-        """
-        def _get_all_args() -> Iterator[ast.arg]:
-            base_args = func.args
-            # New on Python 3.8 -- handle absence gracefully
-            try:
-                yield from base_args.posonlyargs
-            except AttributeError:
-                pass
-            yield from base_args.args
-            varargs = base_args.vararg
-            if varargs:
-                varargs.arg = epydoc2stan.VariableArgument(varargs.arg)
-                yield varargs
-            yield from base_args.kwonlyargs
-            kwargs = base_args.kwarg
-            if kwargs:
-                kwargs.arg = epydoc2stan.KeywordArgument(kwargs.arg)
-                yield kwargs
-        def _get_all_ast_annotations() -> Iterator[Tuple[str, Optional[ast.expr]]]:
-            for arg in _get_all_args():
-                yield arg.arg, arg.annotation
-            returns = func.returns
-            if returns:
-                yield 'return', returns
-        return {
-            # Include parameter names even if they're not annotated, so that
-            # we can use the key set to know which parameters exist and warn
-            # when non-existing parameters are documented.
-            name: None if value is None else unstring_annotation(value, self.builder.current)
-            for name, value in _get_all_ast_annotations()
-            }
-    
+def _annotations_from_function(
+        func: Union[ast.AsyncFunctionDef, ast.FunctionDef],
+        ctx: model.Documentable, 
+        ) -> Mapping[str, Optional[ast.expr]]:
+    """Get annotations from a function definition.
+    @param func: The function definition's AST.
+    @return: Mapping from argument name to annotation.
+        The name C{return} is used for the return type.
+        Unannotated arguments are omitted.
+    """
+    def _get_all_args() -> Iterator[ast.arg]:
+        base_args = func.args
+        # New on Python 3.8 -- handle absence gracefully
+        try:
+            yield from base_args.posonlyargs
+        except AttributeError:
+            pass
+        yield from base_args.args
+        varargs = base_args.vararg
+        if varargs:
+            varargs.arg = epydoc2stan.VariableArgument(varargs.arg)
+            yield varargs
+        yield from base_args.kwonlyargs
+        kwargs = base_args.kwarg
+        if kwargs:
+            kwargs.arg = epydoc2stan.KeywordArgument(kwargs.arg)
+            yield kwargs
+    def _get_all_ast_annotations() -> Iterator[Tuple[str, Optional[ast.expr]]]:
+        for arg in _get_all_args():
+            yield arg.arg, arg.annotation
+        returns = func.returns
+        if returns:
+            yield 'return', returns
+    return {
+        # Include parameter names even if they're not annotated, so that
+        # we can use the key set to know which parameters exist and warn
+        # when non-existing parameters are documented.
+        name: None if value is None else unstring_annotation(value, ctx)
+        for name, value in _get_all_ast_annotations()
+        }
+
 class _ValueFormatter:
     """
     Class to encapsulate a python value and translate it to HTML when calling L{repr()} on the L{_ValueFormatter}.
@@ -1041,11 +1002,61 @@ class _ValueFormatter:
         # but potential XML parser errors caused by XMLString needs to be handled later.
         return ''.join(node2stan.node2html(self._colorized.to_node(), self._linker))
 
+def signature_from_functiondef(node: Union[ast.AsyncFunctionDef, ast.FunctionDef], 
+                               ctx: model.Function) -> Tuple[Mapping[str, Optional[ast.expr]], Signature]:
+    # Position-only arguments were introduced in Python 3.8.
+    posonlyargs: Sequence[ast.arg] = getattr(node.args, 'posonlyargs', ())
+
+    num_pos_args = len(posonlyargs) + len(node.args.args)
+    defaults = node.args.defaults
+    default_offset = num_pos_args - len(defaults)
+    annotations = _annotations_from_function(node, ctx)
+
+    def get_default(index: int) -> Optional[ast.expr]:
+        assert 0 <= index < num_pos_args, index
+        index -= default_offset
+        return None if index < 0 else defaults[index]
+
+    parameters: List[Parameter] = []
+    def add_arg(name: str, kind: Any, default: Optional[ast.expr]) -> None:
+        default_val = Parameter.empty if default is None else _ValueFormatter(default, ctx=ctx)
+                                                                            # this cast() is safe since we're checking if annotations.get(name) is None first
+        annotation = Parameter.empty if annotations.get(name) is None else _AnnotationValueFormatter(cast(ast.expr, annotations[name]), ctx=ctx)
+        parameters.append(Parameter(name, kind, default=default_val, annotation=annotation))
+
+    for index, arg in enumerate(posonlyargs):
+        add_arg(arg.arg, Parameter.POSITIONAL_ONLY, get_default(index))
+
+    for index, arg in enumerate(node.args.args, start=len(posonlyargs)):
+        add_arg(arg.arg, Parameter.POSITIONAL_OR_KEYWORD, get_default(index))
+
+    vararg = node.args.vararg
+    if vararg is not None:
+        add_arg(vararg.arg, Parameter.VAR_POSITIONAL, None)
+
+    assert len(node.args.kwonlyargs) == len(node.args.kw_defaults)
+    for arg, default in zip(node.args.kwonlyargs, node.args.kw_defaults):
+        add_arg(arg.arg, Parameter.KEYWORD_ONLY, default)
+
+    kwarg = node.args.kwarg
+    if kwarg is not None:
+        add_arg(kwarg.arg, Parameter.VAR_KEYWORD, None)
+
+    return_type = annotations.get('return')
+    return_annotation = Parameter.empty if return_type is None or is_none_literal(return_type) else _AnnotationValueFormatter(return_type, ctx=ctx)
+    try:
+        signature = Signature(parameters, return_annotation=return_annotation)
+    except ValueError as ex:
+        ctx.report(f'{ctx.fullName()} has invalid parameters: {ex}')
+        signature = Signature()
+    
+    return annotations, signature
+
 class _AnnotationValueFormatter(_ValueFormatter):
     """
     Special L{_ValueFormatter} for function annotations.
     """
-    def __init__(self, value: ast.expr, ctx: model.Function):
+    def __init__(self, value: ast.expr, ctx: model.Documentable):
         super().__init__(value, ctx)
         self._linker = linker._AnnotationLinker(ctx)
     

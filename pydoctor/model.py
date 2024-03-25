@@ -607,6 +607,41 @@ def _find_dunder_constructor(cls:'Class') -> Optional['Function']:
             return _init
     return None
 
+def get_constructors(cls:'Class') -> Iterator['Function']:
+    """
+    Look for python language powered constructors or classmethod constructors.
+
+    A constructor MUST be a method accessible in the locals of the class.
+    """
+    # Look for python language powered constructors.
+    # If __new__ is defined, then it takes precedence over __init__
+    # Blind spot: we don't understand when a Class is using a metaclass that overrides __call__.
+    dunder_constructor = _find_dunder_constructor(cls)
+    if dunder_constructor:
+        yield dunder_constructor
+    
+    # Then look for staticmethod/classmethod constructors,
+    # This only happens at the local scope level (i.e not looking in super-classes).
+    for fun in cls.contents.values():
+        if not isinstance(fun, Function):
+            continue
+        # Only static methods and class methods can be recognized as constructors
+        if not fun.kind in (DocumentableKind.STATIC_METHOD, DocumentableKind.CLASS_METHOD):
+            continue
+        # get return annotation, if it returns the same type as self, it's a constructor method.
+        if not 'return' in fun.annotations:
+            # we currently only support constructor detection trought explicit annotations.
+            continue 
+        
+        # annotation should be resolved at the module scope
+        return_ann = astutils.node2fullname(fun.annotations['return'], cls.module)
+        
+        # pydoctor understand explicit annotation as well as the Self-Type.
+        if return_ann == cls.fullName() or \
+            return_ann in ('typing.Self', 'typing_extensions.Self'):
+            yield fun
+
+
 class Class(CanContainImportsDocumentable):
     kind = DocumentableKind.CLASS
     parent: CanContainImportsDocumentable
@@ -622,7 +657,6 @@ class Class(CanContainImportsDocumentable):
         self.rawbases: Sequence[Tuple[str, ast.expr]] = []
         self.raw_decorators: Sequence[ast.expr] = []
         self.subclasses: List[Class] = []
-        self.constructors: List[Function] = []
         """
         List of constructors.
 
@@ -643,42 +677,6 @@ class Class(CanContainImportsDocumentable):
             self.report(str(e), 'mro')
             self._mro = list(self.allbases(True))
     
-    def _init_constructors(self) -> None:
-        """
-        Initiate the L{Class.constructors} list. A constructor MUST be a method accessible 
-        in the locals of the class.
-        """
-        # Look for python language powered constructors.
-        # If __new__ is defined, then it takes precedence over __init__
-        # Blind spot: we don't understand when a Class is using a metaclass that overrides __call__.
-        dunder_constructor = _find_dunder_constructor(self)
-        if dunder_constructor:
-            self.constructors.append(dunder_constructor)
-        
-        # Then look for staticmethod/classmethod constructors,
-        # This only happens at the local scope level (i.e not looking in super-classes).
-        for fun in self.contents.values():
-            if not isinstance(fun, Function):
-                continue
-            # Only static methods and class methods can be recognized as constructors
-            if not fun.kind in (DocumentableKind.STATIC_METHOD, DocumentableKind.CLASS_METHOD):
-                continue
-            # get return annotation, if it returns the same type as self, it's a constructor method.
-            if not 'return' in fun.annotations:
-                # we currently only support constructor detection trought explicit annotations.
-                continue 
-            
-            # annotation should be resolved at the module scope
-            return_ann = astutils.node2fullname(fun.annotations['return'], self.module)
-            
-            # pydoctor understand explicit annotation as well as the Self-Type.
-            if return_ann == self.fullName() or \
-               return_ann in ('typing.Self', 'typing_extensions.Self'):
-                self.constructors.append(fun)
-        
-        from pydoctor import epydoc2stan
-        epydoc2stan.populate_constructors_extra_info(self)
-
     @overload
     def mro(self, include_external:'Literal[True]', include_self:bool=True) -> Sequence[Union['Class', str]]:...
     @overload
@@ -731,7 +729,7 @@ class Class(CanContainImportsDocumentable):
         arguments or have a docstring.
         """
         r = []
-        for c in self.constructors:
+        for c in get_constructors(self):
             if not c.isVisible:
                 continue
             args = list(c.annotations)
@@ -821,6 +819,7 @@ class Function(Inheritable):
     annotations: Mapping[str, Optional[ast.expr]]
     decorators: Optional[Sequence[ast.expr]]
     signature: Optional[Signature]
+    parent: CanContainImportsDocumentable
     overloads: List['FunctionOverload']
 
     def setup(self) -> None:
@@ -1452,8 +1451,6 @@ def defaultPostProcess(system:'System') -> None:
     for cls in system.objectsOfType(Class):
         # Initiate the MROs
         cls._init_mro()
-        # Lookup of constructors
-        cls._init_constructors()
 
         # Compute subclasses
         for b in cls.baseobjects:
