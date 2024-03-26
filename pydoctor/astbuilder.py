@@ -208,6 +208,7 @@ class ModuleVistor(NodeVisitor):
     def depart_Module(self, node: ast.Module) -> None:
         self._infer_attr_annotations(self.builder.current)
         self.builder.pop(self.module)
+        epydoc2stan.transform_parsed_names(self.module)
 
     def visit_ClassDef(self, node: ast.ClassDef) -> None:
         # Ignore classes within functions.
@@ -1021,12 +1022,12 @@ class _ValueFormatter:
     """
 
     def __init__(self, value: ast.expr, ctx: model.Documentable):
-        self._colorized = colorize_inline_pyval(value)
+        self.parsed = colorize_inline_pyval(value)
         """
         The colorized value as L{ParsedDocstring}.
         """
 
-        self._linker = ctx.docstring_linker
+        self.linker = ctx.docstring_linker
         """
         Linker.
         """
@@ -1039,7 +1040,7 @@ class _ValueFormatter:
         # Using node2stan.node2html instead of flatten(to_stan()). 
         # This avoids calling flatten() twice, 
         # but potential XML parser errors caused by XMLString needs to be handled later.
-        return ''.join(node2stan.node2html(self._colorized.to_node(), self._linker))
+        return ''.join(node2stan.node2html(self.parsed.to_node(), self.linker))
 
 class _AnnotationValueFormatter(_ValueFormatter):
     """
@@ -1047,7 +1048,7 @@ class _AnnotationValueFormatter(_ValueFormatter):
     """
     def __init__(self, value: ast.expr, ctx: model.Function):
         super().__init__(value, ctx)
-        self._linker = linker._AnnotationLinker(ctx)
+        self.linker = linker._AnnotationLinker(ctx)
     
     def __repr__(self) -> str:
         """
@@ -1060,6 +1061,8 @@ DocumentableT = TypeVar('DocumentableT', bound=model.Documentable)
 class ASTBuilder:
     """
     Keeps tracks of the state of the AST build, creates documentable and adds objects to the system.
+
+    One ASTBuilder instance is only suitable to build one Module.
     """
     ModuleVistor = ModuleVistor
 

@@ -112,6 +112,19 @@ class DocumentableKind(Enum):
     PROPERTY            = 150
     VARIABLE            = 100
 
+def walk(node:'Documentable') -> Iterator['Documentable']:
+    """
+    Recursively yield all descendant nodes in the tree starting at *node*
+    (including *node* itself), in no specified order.  This is useful if you
+    only want to modify nodes in place and don't care about the context.
+    """
+    from collections import deque
+    todo = deque([node])
+    while todo:
+        node = todo.popleft()
+        todo.extend(node.contents.values())
+        yield node
+
 class Documentable:
     """An object that can be documented.
 
@@ -272,7 +285,7 @@ class Documentable:
     def _localNameToFullName(self, name: str) -> str:
         raise NotImplementedError(self._localNameToFullName)
     
-    def isNameDefined(self, name:str) -> bool:
+    def isNameDefined(self, name:str, only_locals:bool=False) -> bool:
         """
         Is the given name defined in the globals/locals of self-context?
         Only the first name of a dotted name is checked.
@@ -368,7 +381,8 @@ class Documentable:
 
     def report(self, descr: str, section: str = 'parsing', lineno_offset: int = 0, thresh:int=-1) -> None:
         """
-        Log an error or warning about this documentable object.
+        Log an error or warning about this documentable object. 
+        A reported message will only be printed once.
 
         @param descr: The error/warning string
         @param section: What the warning is about.
@@ -393,7 +407,8 @@ class Documentable:
         self.system.msg(
             section,
             f'{self.description}:{linenumber}: {descr}',
-            thresh=thresh)
+            # some warnings can be reported more that once.
+            thresh=thresh, once=True)
 
     @property
     def docstring_linker(self) -> 'linker.DocstringLinker':
@@ -412,13 +427,13 @@ class CanContainImportsDocumentable(Documentable):
         super().setup()
         self._localNameToFullName_map: Dict[str, str] = {}
     
-    def isNameDefined(self, name: str) -> bool:
+    def isNameDefined(self, name: str, only_locals:bool=False) -> bool:
         name = name.split('.')[0]
         if name in self.contents:
             return True
         if name in self._localNameToFullName_map:
             return True
-        if not isinstance(self, Module):
+        if not isinstance(self, Module) and not only_locals:
             return self.module.isNameDefined(name)
         else:
             return False
@@ -632,7 +647,9 @@ class Class(CanContainImportsDocumentable):
         """
         self._initialbases: List[str] = []
         self._initialbaseobjects: List[Optional['Class']] = []
-    
+
+        self.parsed_bases:Optional[List[ParsedDocstring]] = None
+
     def _init_mro(self) -> None:
         """
         Compute the correct value of the method resolution order returned by L{mro()}.
@@ -812,8 +829,8 @@ class Inheritable(Documentable):
     def _localNameToFullName(self, name: str) -> str:
         return self.parent._localNameToFullName(name)
     
-    def isNameDefined(self, name: str) -> bool:
-        return self.parent.isNameDefined(name)
+    def isNameDefined(self, name: str, only_locals:bool=False) -> bool:
+        return self.parent.isNameDefined(name, only_locals=only_locals)
 
 class Function(Inheritable):
     kind = DocumentableKind.FUNCTION
@@ -829,6 +846,8 @@ class Function(Inheritable):
             self.kind = DocumentableKind.METHOD
         self.signature = None
         self.overloads = []
+        self.parsed_decorators:Optional[Sequence[ParsedDocstring]] = None
+        self.parsed_annotations:Optional[Dict[str, Optional[ParsedDocstring]]] = None
 
 @attr.s(auto_attribs=True)
 class FunctionOverload:
@@ -838,6 +857,7 @@ class FunctionOverload:
     primary: Function
     signature: Signature
     decorators: Sequence[ast.expr]
+    parsed_decorators:Optional[Sequence[ParsedDocstring]] = None
 
 class Attribute(Inheritable):
     kind: Optional[DocumentableKind] = DocumentableKind.ATTRIBUTE
@@ -849,6 +869,8 @@ class Attribute(Inheritable):
 
     None value means the value is not initialized at the current point of the the process. 
     """
+    parsed_decorators:Optional[Sequence[ParsedDocstring]] = None
+    parsed_value:Optional[ParsedDocstring] = None
 
 # Work around the attributes of the same name within the System class.
 _ModuleT = Module

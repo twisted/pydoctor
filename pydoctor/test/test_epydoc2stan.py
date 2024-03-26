@@ -1029,21 +1029,22 @@ def test_EpydocLinker_switch_context_is_reentrant(linkercls:Type[linker._EpydocL
     mod.parsed_docstring.get_summary().to_stan(mod.docstring_linker) # type:ignore
 
     warnings = ['test:2: Cannot find link target for "thing.notfound" (you can link to external docs with --intersphinx)']
-    if linkercls is linker._EpydocLinker:
-        warnings = warnings * 2
     assert capsys.readouterr().out.strip().splitlines() == warnings
-
+    
+    # reset warnings
+    mod.system.once_msgs = set()
+    
     # This is wrong:
     Klass.parsed_docstring.to_stan(mod.docstring_linker) # type:ignore
     Klass.parsed_docstring.get_summary().to_stan(mod.docstring_linker) # type:ignore
     
     # Because the warnings will be reported on line 2
     warnings = ['test:2: Cannot find link target for "thing.notfound" (you can link to external docs with --intersphinx)']
-    warnings = warnings * 2
     
     assert capsys.readouterr().out.strip().splitlines() == warnings
 
-    # assert capsys.readouterr().out == ''
+    # reset warnings
+    mod.system.once_msgs = set()
 
     # Reset stan and summary, because they are supposed to be cached.
     Klass.parsed_docstring._stan = None # type:ignore
@@ -1054,9 +1055,7 @@ def test_EpydocLinker_switch_context_is_reentrant(linkercls:Type[linker._EpydocL
         Klass.parsed_docstring.to_stan(mod.docstring_linker) # type:ignore
         Klass.parsed_docstring.get_summary().to_stan(mod.docstring_linker) # type:ignore
 
-    warnings = ['test:5: Cannot find link target for "thing.notfound" (you can link to external docs with --intersphinx)']
-    warnings = warnings * 2
-    
+    warnings = ['test:5: Cannot find link target for "thing.notfound" (you can link to external docs with --intersphinx)']    
     assert capsys.readouterr().out.strip().splitlines() == warnings
     
 def test_EpydocLinker_look_for_intersphinx_no_link() -> None:
@@ -1188,6 +1187,43 @@ def test_EpydocLinker_resolve_identifier_xref_intersphinx_link_not_found(capsys:
     assert expected == captured
 
 
+def test_EpydocLinker_link_not_found_show_original(capsys: CapSys) -> None:
+    n = ''
+    m = '''\
+    from n import Stuff
+    S = Stuff
+    '''
+    src = '''\
+    """
+    L{S}
+    """
+    class Cls:
+        """
+        L{Stuff <m.S>}
+        """
+    from m import S
+    '''
+    system = model.System()
+    builder = system.systemBuilder(system)
+    builder.addModuleString(n, 'n')
+    builder.addModuleString(m, 'm')
+    builder.addModuleString(src, 'src')
+    builder.buildModules()
+    docstring2html(system.allobjects['src'])
+    captured = capsys.readouterr().out
+    # TODO: shoud say resolved from "S"
+    expected = (
+        'src:2: Cannot find link target for "n.Stuff", resolved from "m.S"\n'
+        )
+    assert expected == captured
+
+    docstring2html(system.allobjects['src.Cls'])
+    captured = capsys.readouterr().out
+    expected = (
+        'src:6: Cannot find link target for "n.Stuff", resolved from "m.S"\n'
+        )
+    assert expected == captured
+
 class InMemoryInventory:
     """
     A simple inventory implementation which has an in-memory API link mapping.
@@ -1291,8 +1327,6 @@ def test_EpydocLinker_warnings(capsys: CapSys) -> None:
     # The rationale about xref warnings is to warn when the target cannot be found.
 
     assert captured == ('module:3: Cannot find link target for "notfound"'
-                        '\nmodule:3: Cannot find link target for "notfound"'
-                        '\nmodule:5: Cannot find link target for "notfound"'
                         '\nmodule:5: Cannot find link target for "notfound"\n')
 
     assert 'href="index.html#base"' in summary2html(mod)
@@ -1324,6 +1358,61 @@ def test_AnnotationLinker_xref(capsys: CapSys) -> None:
     url = flatten(_linker.link_xref('var', 'var', 0))
     assert 'href="#var"' in url
     assert not capsys.readouterr().out
+
+def test_EpydocLinker_xref_look_for_name_multiple_candidates(capsys:CapSys) -> None:
+    """
+    When the linker use look_for_name(), if 'identifier' refers to more than one object, it complains.
+    """
+    system = model.System()
+    builder = system.systemBuilder(system)
+    builder.addModuleString('class C:...', modname='_one')
+    builder.addModuleString('class C:...', modname='_two')
+    builder.addModuleString('"L{C}"', modname='top')  
+    builder.buildModules()
+    docstring2html(system.allobjects['top'])
+    assert capsys.readouterr().out == (
+        'top:1: ambiguous ref to C, could be _one.C, _two.C\n'
+        'top:1: Cannot find link target for "C"\n')
+
+def test_EpydocLinker_xref_look_for_name_into_uncle_objects(capsys:CapSys) -> None:
+    """
+    The linker walk up the object tree and see if 'identifier' refers to an
+    object in an "uncle" object.
+    """
+    system = model.System()
+    builder = system.systemBuilder(system)
+    builder.addModuleString('', modname='pack', is_package=True)
+    builder.addModuleString('class C:...', modname='mod2', parent_name='pack')
+    builder.addModuleString('class I:\n var=1;"L{C}"', modname='mod1', parent_name='pack')
+    builder.buildModules()
+    assert 'href="pack.mod2.C.html"' in docstring2html(system.allobjects['pack.mod1.I.var'])
+    assert capsys.readouterr().out == ''
+
+def test_EpydocLinker_xref_look_for_name_into_all_modules(capsys:CapSys) -> None:
+    """
+    The linker examine every module and package in the system and see if 'identifier'
+    names an object in each one.
+    """
+    system = model.System()
+    builder = system.systemBuilder(system)
+    builder.addModuleString('class C:...', modname='_one')
+    builder.addModuleString('"L{C}"', modname='top')  
+    builder.buildModules()
+    assert 'href="_one.C.html"' in docstring2html(system.allobjects['top'])
+    assert capsys.readouterr().out == ''
+
+def test_EpydocLinker_xref_walk_up_the_object_tree(capsys:CapSys) -> None:
+    """
+    The linker walks up the object tree and see if 'identifier' refers
+    to an object by Python name resolution in each context.
+    """
+    system = model.System()
+    builder = system.systemBuilder(system)
+    builder.addModuleString('class C:...', modname='pack', is_package=True)
+    builder.addModuleString('class I:\n var=1;"L{C}"', modname='mod1', parent_name='pack')
+    builder.buildModules()
+    assert 'href="pack.C.html"' in docstring2html(system.allobjects['pack.mod1.I.var'])
+    assert capsys.readouterr().out == ''
 
 def test_xref_not_found_epytext(capsys: CapSys) -> None:
     """
@@ -1415,6 +1504,8 @@ class RecordingAnnotationLinker(NotFoundLinker):
         self.requests: List[str] = []
 
     def link_to(self, target: str, label: "Flattenable") -> Tag:
+        if target.startswith('builtins.'):
+            target = target[len('builtins.'):]
         self.requests.append(target)
         return tags.transparent(label)
 
@@ -2013,7 +2104,6 @@ def test_top_level_type_alias_wins_over_class_level(capsys:CapSys) -> None:
 
     assert capsys.readouterr().out == """\
 m:5: ambiguous annotation 'typ', could be interpreted as 'm.C.typ' instead of 'm.typ'
-m:5: ambiguous annotation 'typ', could be interpreted as 'm.C.typ' instead of 'm.typ'
 m:7: ambiguous annotation 'typ', could be interpreted as 'm.C.typ' instead of 'm.typ'
 """
 
@@ -2121,6 +2211,181 @@ Hello
     captured = capsys.readouterr().out
     assert captured == ''
 
+def test_parsed_names_partially_resolved_early() -> None:
+    """
+    Test for issue #295
+
+    Annotations are first locally resolved when we reach the end of the module, 
+    then again when we actually resolve the name when generating the stan for the annotation.
+    """
+    typing = '''\
+    List = ClassVar = TypeVar = object()
+    '''
+
+    base = '''\
+    import ast
+    class Vis(ast.NodeVisitor):
+        ...
+    '''
+    src = '''\
+    from typing import List
+    import typing as t
+
+    from .base import Vis
+    
+    class Cls(Vis, t.Generic['_T']):
+        """
+        L{Cls}
+        """
+        clsvar:List[str]
+        clsvar2:t.ClassVar[List[str]]
+
+        def __init__(self, a:'_T'):
+            self._a:'_T' = a
+    
+    C = Cls
+    _T = t.TypeVar('_T')
+    unknow: i|None|list
+    ann:Cls
+    '''
+
+    top = '''\
+    # the order matters here
+    from .src import C, Cls, Vis
+    __all__ = ['Cls', 'C', 'Vis']
+    '''
+
+    system = model.System()
+    builder = system.systemBuilder(system)
+    builder.addModuleString(top, 'top', is_package=True)
+    builder.addModuleString(base, 'base', 'top')
+    builder.addModuleString(src, 'src', 'top')
+    builder.addModuleString(typing, 'typing')
+    builder.buildModules()
+
+    Cls = system.allobjects['top.Cls']
+    clsvar = Cls.contents['clsvar']
+    clsvar2 = Cls.contents['clsvar2']
+    a = Cls.contents['_a']
+    assert clsvar.expandName('typing.List')=='typing.List'
+    assert 'refuri="typing.List"' in clsvar.parsed_type.to_node().pformat() #type: ignore
+    assert 'href="typing.html#List"' in flatten(clsvar.parsed_type.to_stan(clsvar.docstring_linker)) #type: ignore
+    assert 'href="typing.html#ClassVar"' in flatten(clsvar2.parsed_type.to_stan(clsvar2.docstring_linker)) #type: ignore
+    assert 'href="top.src.html#_T"' in flatten(a.parsed_type.to_stan(clsvar.docstring_linker)) #type: ignore
+
+    # the reparenting/alias issue
+    ann = system.allobjects['top.src.ann']
+    assert 'href="top.Cls.html"' in  flatten(ann.parsed_type.to_stan(ann.docstring_linker)) #type: ignore
+    assert 'href="top.Cls.html"' in flatten(Cls.parsed_docstring.to_stan(Cls.docstring_linker)) #type: ignore
+    
+    unknow = system.allobjects['top.src.unknow']
+    assert flatten_text(unknow.parsed_type.to_stan(unknow.docstring_linker)) == 'i|None|list' #type: ignore
+
+    # test the __init__ signature
+    assert 'href="top.src.html#_T"' in flatten(format_signature(Cls.contents['__init__'])) #type: ignore
+
+def test_reparented_ambiguous_annotation_confusion() -> None:
+    """
+    Like L{test_top_level_type_alias_wins_over_class_level} but with reparented class.
+    """
+    src = '''
+    typ = object()
+    class C:
+        typ = int|str
+        var: typ
+    '''
+    system = model.System()
+    builder = system.systemBuilder(system)
+    builder.addModuleString(src, modname='_m')
+    builder.addModuleString('from _m import C; __all__=["C"]', 'm')            
+    builder.buildModules()
+    var = system.allobjects['m.C.var']
+    assert 'href="_m.html#typ"' in flatten(var.parsed_type.to_stan(var.docstring_linker)) #type: ignore
+
+def test_reparented_builtins_confusion() -> None:
+    """
+    - builtin links are resolved as such even when the new parent 
+      declares a name shadowing a builtin.
+    """
+    src = '''
+    class C(int):
+        var: list
+        C = print('one')
+        @stuff(auto=object)
+        def __init__(self, v:bytes=bytes):
+            "L{str}"
+    '''
+    top = '''
+    list = object = int = print = str = bytes = True
+
+    from src import C
+    __all__=["C"]
+    '''
+    system = model.System()
+    builder = system.systemBuilder(system)
+    builder.addModuleString(src, modname='src')
+    builder.addModuleString(top, modname='top')  
+    builder.buildModules()
+    clsvar = system.allobjects['top.C.var']
+    C = system.allobjects['top.C']
+    Ci = system.allobjects['top.C.C']
+    __init__ = system.allobjects['top.C.__init__']
+
+    assert 'refuri="builtins.list"' in clsvar.parsed_type.to_node().pformat() #type: ignore
+    assert 'refuri="builtins.print"' in Ci.parsed_value.to_node().pformat() #type: ignore
+    assert 'refuri="builtins.int"' in C.parsed_bases[0].to_node().pformat() #type: ignore
+    assert 'refuri="builtins.object"' in __init__.parsed_decorators[0].to_node().pformat() #type: ignore
+    assert 'refuri="builtins.bytes"' in __init__.signature.parameters['v'].default.parsed.to_node().pformat() #type: ignore
+    assert 'refuri="builtins.bytes"' in __init__.signature.parameters['v'].annotation.parsed.to_node().pformat() #type: ignore
+    assert 'refuri="builtins.bytes"' in __init__.parsed_annotations['v'].to_node().pformat() #type: ignore
+    assert __init__.parsed_docstring is None # should not be none, actually :/
+    # assert 'refuri="builtins.bytes"' in __init__.parsed_docstring.to_node().pformat() #type: ignore
+
+def test_link_resolving_unbound_names() -> None:
+    """
+    - unbdound names are not touched, and does not stop the process.
+    """
+    src = '''
+    class C:
+        var: unknown|list
+    '''
+    system = model.System()
+    builder = system.systemBuilder(system)
+    builder.addModuleString(src, modname='src') 
+    builder.buildModules()
+    clsvar = system.allobjects['src.C.var']
+
+    assert 'refuri="builtins.list"' in clsvar.parsed_type.to_node().pformat() #type: ignore
+    assert 'refuri="unknown"' in clsvar.parsed_type.to_node().pformat() #type: ignore
+    # does not work for constant values at the moment
+
+def test_reference_transform_in_type_docstring() -> None:
+    """
+    It will fail with ParsedTypeDocstring at the moment.
+    """
+    src = '''
+    __docformat__='google'
+    class C:
+        """
+        Args:
+            a (list): the list
+        """
+    '''
+    system = model.System()
+    builder = system.systemBuilder(system)
+    builder.addModuleString(src, modname='src') 
+    builder.addModuleString('from src import C;__all__=["C"];list=True', modname='top') 
+    builder.buildModules()
+    clsvar = system.allobjects['top.C']
+
+    with pytest.raises(NotImplementedError):
+        assert 'refuri="builtins.list"' in clsvar.parsed_docstring.fields[1].body().to_node().pformat() #type: ignore
+
+# what to do with inherited documentation of reparented class attribute part of an
+# import cycle? We can't set the value of parsed_docstring from the astbuilder because
+# we havnen't resolved the mro yet.
+
+
 def test_regression_not_found_linenumbers(capsys: CapSys) -> None:
     """
     Test for issue https://github.com/twisted/pydoctor/issues/745
@@ -2163,3 +2428,4 @@ def test_regression_not_found_linenumbers(capsys: CapSys) -> None:
     docstring2html(mod.contents['Settings'])
     captured = capsys.readouterr().out
     assert captured == '<test>:15: Cannot find link target for "TypeError"\n'
+

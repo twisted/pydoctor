@@ -134,9 +134,13 @@ class _EpydocLinker(DocstringLinker):
     def link_to(self, identifier: str, label: "Flattenable") -> Tag:
         fullID = self.obj.expandName(identifier)
 
-        target = self.obj.system.objForFullName(fullID)
-        if target is not None:
-            return taglink(target, self.page_url, label)
+        try:
+            target = self.obj.system.find_object(fullID)
+        except LookupError:
+            pass
+        else:
+            if target is not None:
+                return taglink(target, self.page_url, label)
 
         url = self.look_for_intersphinx(fullID)
         if url is not None:
@@ -185,8 +189,18 @@ class _EpydocLinker(DocstringLinker):
         if target is not None:
             return target
 
-        # Check if the fullID exists in an intersphinx inventory.
         fullID = self.obj.expandName(identifier)
+
+        # Try fetching the name with it's outdated fullname
+        try:
+            target = self.obj.system.find_object(fullID)
+        except LookupError:
+            pass
+        else:
+            if target is not None:
+                return target
+        
+        # Check if the fullID exists in an intersphinx inventory.
         target_url = self.look_for_intersphinx(fullID)
         if not target_url:
             # FIXME: https://github.com/twisted/pydoctor/issues/125
@@ -239,6 +253,19 @@ class _EpydocLinker(DocstringLinker):
             self.reporting_obj.report(message, 'resolve_identifier_xref', lineno)
         raise LookupError(identifier)
 
+def warn_ambiguous_annotation(mod:'model.Documentable', 
+                              obj:'model.Documentable', 
+                              target:str) -> None:
+    # report a low-level message about ambiguous annotation
+    mod_ann = mod.expandName(target)
+    obj_ann = obj.expandName(target)
+    if mod_ann != obj_ann and '.' in obj_ann and '.' in mod_ann:
+        obj.report(
+            f'ambiguous annotation {target!r}, could be interpreted as '
+            f'{obj_ann!r} instead of {mod_ann!r}', section='annotation',
+            thresh=1
+        )
+
 class _AnnotationLinker(DocstringLinker):
     """
     Specialized linker to resolve annotations attached to the given L{Documentable}. 
@@ -256,22 +283,11 @@ class _AnnotationLinker(DocstringLinker):
     @property
     def obj(self) -> 'model.Documentable':
         return self._obj
-
-    def warn_ambiguous_annotation(self, target:str) -> None:
-        # report a low-level message about ambiguous annotation
-        mod_ann = self._module.expandName(target)
-        obj_ann = self._scope.expandName(target)
-        if mod_ann != obj_ann and '.' in obj_ann and '.' in mod_ann:
-            self.obj.report(
-                f'ambiguous annotation {target!r}, could be interpreted as '
-                f'{obj_ann!r} instead of {mod_ann!r}', section='annotation',
-                thresh=1
-            )
     
     def link_to(self, target: str, label: "Flattenable") -> Tag:
         with self.switch_context(self._obj):
             if self._module.isNameDefined(target):
-                self.warn_ambiguous_annotation(target)
+                warn_ambiguous_annotation(self._module, self._obj, target)
                 return self._module_linker.link_to(target, label)
             elif self._scope.isNameDefined(target):
                 return self._scope_linker.link_to(target, label)
