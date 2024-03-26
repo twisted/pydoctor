@@ -715,7 +715,6 @@ def test_change_member_order() -> None:
                      'process_table', 
                      'end']
 
-# FIXME!
 def test_ivar_field_order_precedence(capsys: CapSys) -> None:
     """
     When an attribute is documented in a docstring field like ivar, 
@@ -746,14 +745,16 @@ def test_ivar_field_order_precedence(capsys: CapSys) -> None:
     assert Foo.parsed_docstring.fields[0].lineno == 0 # type:ignore
     assert Foo.parsed_docstring.fields[1].lineno == 1 # type:ignore
 
-    # we get the linenumber from the docstring fields, currently
-    assert Foo.contents['a'].linenumber == 7
-    assert Foo.contents['b'].linenumber == 8
+    assert Foo.contents['a'].linenumber == 12
+    assert Foo.contents['b'].linenumber == 11
+
+    # assert Foo.contents['a'].docstring_lineno == 7
+    # assert Foo.contents['b'].docstring_lineno == 8
 
     _sorted = sorted(Foo.contents.values(), key=system.membersOrder(Foo))
     names = [s.name for s in _sorted]
     
-    assert names == ['a', 'b'] # should probably be 'b', 'a'!
+    assert names == ['b', 'a'] # should be 'b', 'a'.
 
 
 src_crash_xml_entities = '''\

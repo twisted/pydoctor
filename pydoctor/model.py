@@ -59,6 +59,11 @@ _string_lineno_is_end = sys.version_info < (3,8) \
 line in the string, rather than the first line.
 """
 
+class LineFromAst(int):
+    "Simple L{int} wrapper for linenumbers coming from ast analysis."
+
+class LineFromDocstringField(int):
+    "Simple L{int} wrapper for linenumbers coming from docstrings."
 
 class DocLocation(Enum):
     OWN_PAGE = 1
@@ -126,7 +131,7 @@ class Documentable:
     parsed_summary: Optional[ParsedDocstring] = None
     parsed_type: Optional[ParsedDocstring] = None
     docstring_lineno = 0
-    linenumber = 0
+    linenumber: LineFromAst | LineFromDocstringField | Literal[0] = 0
     sourceHref: Optional[str] = None
     kind: Optional[DocumentableKind] = None
 
@@ -164,8 +169,24 @@ class Documentable:
         self.docstring = doc
         self.docstring_lineno = lineno
 
-    def setLineNumber(self, lineno: int) -> None:
-        if not self.linenumber:
+    def setLineNumber(self, lineno: LineFromDocstringField | LineFromAst | int) -> None:
+        """
+        Save the linenumber of this object.
+
+        If the linenumber is already set from a ast analysis, this is an no-op.
+        If the linenumber is already set from docstring fields and the new linenumber
+        if not from docstring fields as well, the old docstring based linumber will be replaced
+        with the one from ast analysis since this takes precedence.
+
+        @param lineno: The linenumber. 
+            If the given linenumber is simply an L{int} we'll assume it's coming from the ast builder 
+            and it will be converted to an L{LineFromAst} instance.
+        """
+        if not self.linenumber or (
+            isinstance(self.linenumber, LineFromDocstringField) 
+                and not isinstance(lineno, LineFromDocstringField)):
+            if not isinstance(lineno, (LineFromAst, LineFromDocstringField)):
+                lineno = LineFromAst(lineno)
             self.linenumber = lineno
             parentMod = self.parentMod
             if parentMod is not None:
