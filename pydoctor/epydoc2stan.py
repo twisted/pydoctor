@@ -934,7 +934,10 @@ def extract_fields(obj: model.CanContainImportsDocumentable) -> None:
                 attrobj.kind = None
                 attrobj.parentMod = obj.parentMod
                 obj.system.addObject(attrobj)
-            attrobj.setLineNumber(obj.docstring_lineno + field.lineno)
+            lineno = model.LineFromDocstringField(obj.docstring_lineno + field.lineno)
+            attrobj.setLineNumber(lineno)
+            if not attrobj.docstring_lineno:
+                attrobj.docstring_lineno = lineno
             if tag == 'type':
                 attrobj.parsed_type = field.body()
             else:
@@ -1137,10 +1140,12 @@ def populate_constructors_extra_info(cls:model.Class) -> None:
     if constructors:
         plural = 's' if len(constructors)>1 else ''
         extra_epytext = f'Constructor{plural}: '
-        for i, c in enumerate(sorted(constructors, key=util.objects_order)):
+        for i, c in enumerate(sorted(constructors, 
+                        key=util.alphabetical_order_func)):
             if i != 0:
                 extra_epytext += ', '
             short_text = format_constructor_short_text(c, cls)
             extra_epytext += '`%s <%s>`' % (short_text, c.fullName())
         
-        cls.extra_info.append(parse_docstring(cls, extra_epytext, cls, 'restructuredtext', section='constructor extra'))
+        cls.extra_info.append(parse_docstring(
+            cls, extra_epytext, cls, 'restructuredtext', section='constructor extra'))

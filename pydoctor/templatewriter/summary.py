@@ -10,8 +10,8 @@ from typing import (
 from twisted.web.template import Element, Tag, TagLoader, renderer, tags
 
 from pydoctor import epydoc2stan, model, linker
-from pydoctor.templatewriter import TemplateLookup
-from pydoctor.templatewriter.pages import Page, objects_order
+from pydoctor.templatewriter import TemplateLookup, util
+from pydoctor.templatewriter.pages import Page
 
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable
@@ -36,7 +36,7 @@ def moduleSummary(module: model.Module, page_url: str) -> Tag:
         # If there are more than 50 modules and no submodule has
         # further submodules we use a more compact presentation.
         li = tags.li(class_='compact-modules')
-        for m in sorted(contents, key=objects_order):
+        for m in sorted(contents, key=util.alphabetical_order_func):
             span = tags.span()
             span(tags.code(linker.taglink(m, m.url, label=m.name)))
             span(', ')
@@ -47,7 +47,7 @@ def moduleSummary(module: model.Module, page_url: str) -> Tag:
         li.children[-1].children.pop() # type: ignore
         ul(li)
     else:
-        for m in sorted(contents, key=objects_order):
+        for m in sorted(contents, key=util.alphabetical_order_func):
             ul(moduleSummary(m, page_url))
     r(ul)
     return r

@@ -21,7 +21,7 @@ from enum import Enum
 from inspect import signature, Signature
 from pathlib import Path
 from typing import (
-    TYPE_CHECKING, Any, Collection, Dict, Iterator, List, Mapping,
+    TYPE_CHECKING, Any, Collection, Dict, Iterator, List, Mapping, Callable, 
     Optional, Sequence, Set, Tuple, Type, TypeVar, Union, cast, overload
 )
 from urllib.parse import quote
@@ -59,6 +59,11 @@ _string_lineno_is_end = sys.version_info < (3,8) \
 line in the string, rather than the first line.
 """
 
+class LineFromAst(int):
+    "Simple L{int} wrapper for linenumbers coming from ast analysis."
+
+class LineFromDocstringField(int):
+    "Simple L{int} wrapper for linenumbers coming from docstrings."
 
 class DocLocation(Enum):
     OWN_PAGE = 1
@@ -126,7 +131,7 @@ class Documentable:
     parsed_summary: Optional[ParsedDocstring] = None
     parsed_type: Optional[ParsedDocstring] = None
     docstring_lineno = 0
-    linenumber = 0
+    linenumber: LineFromAst | LineFromDocstringField | Literal[0] = 0
     sourceHref: Optional[str] = None
     kind: Optional[DocumentableKind] = None
 
@@ -164,8 +169,24 @@ class Documentable:
         self.docstring = doc
         self.docstring_lineno = lineno
 
-    def setLineNumber(self, lineno: int) -> None:
-        if not self.linenumber:
+    def setLineNumber(self, lineno: LineFromDocstringField | LineFromAst | int) -> None:
+        """
+        Save the linenumber of this object.
+
+        If the linenumber is already set from a ast analysis, this is an no-op.
+        If the linenumber is already set from docstring fields and the new linenumber
+        if not from docstring fields as well, the old docstring based linumber will be replaced
+        with the one from ast analysis since this takes precedence.
+
+        @param lineno: The linenumber. 
+            If the given linenumber is simply an L{int} we'll assume it's coming from the ast builder 
+            and it will be converted to an L{LineFromAst} instance.
+        """
+        if not self.linenumber or (
+            isinstance(self.linenumber, LineFromDocstringField) 
+                and not isinstance(lineno, LineFromDocstringField)):
+            if not isinstance(lineno, (LineFromAst, LineFromDocstringField)):
+                lineno = LineFromAst(lineno)
             self.linenumber = lineno
             parentMod = self.parentMod
             if parentMod is not None:
@@ -1133,6 +1154,20 @@ class System:
         self._privacyClassCache[ob_fullName] = privacy
         return privacy
 
+    def membersOrder(self, ob: Documentable) -> Callable[[Documentable], Tuple[Any, ...]]:
+        """
+        Returns a callable suitable to be used with L{sorted} function. 
+        Used to sort the given object's members for presentation.
+
+        Users can customize class and module members order independently, or can override this method
+        with a custom system class for further tweaks.
+        """
+        from pydoctor.templatewriter.util import objects_order
+        if isinstance(ob, Class):
+            return objects_order(self.options.cls_member_order)
+        else:
+            return objects_order(self.options.mod_member_order)
+           
     def addObject(self, obj: Documentable) -> None:
         """Add C{object} to the system."""
 

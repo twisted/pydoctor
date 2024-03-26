@@ -644,7 +644,8 @@ def test_index_contains_infos(tmp_path: Path) -> None:
         for i in infos:
             assert i in page, page
 
-def test_objects_order_mixed_modules_and_packages() -> None:
+@pytest.mark.parametrize('_order', ["alphabetical", "source"])
+def test_objects_order_mixed_modules_and_packages(_order:str) -> None:
     """
     Packages and modules are mixed when sorting with objects_order.
     """
@@ -655,10 +656,103 @@ def test_objects_order_mixed_modules_and_packages() -> None:
     fromText('', parent_name='top', modname='bbb', system=system)
     fromText('', parent_name='top', modname='aba', system=system, is_package=True)
     
-    _sorted = sorted(top.contents.values(), key=pages.objects_order)
+    _sorted = sorted(top.contents.values(), key=util.objects_order(_order)) # type:ignore
     names = [s.name for s in _sorted]
 
     assert names == ['aaa', 'aba', 'bbb']
+
+def test_change_member_order() -> None:
+    """
+    Default behaviour is to sort everything by privacy, kind and then by name.
+    But we allow to customize the class and modules members independendly, 
+    the reason for this is to permit to match rustdoc behaviour, 
+    that is to sort class members by source, the rest by name.
+    """
+    system = model.System()
+    assert system.options.cls_member_order == system.options.mod_member_order == "alphabetical"
+    
+    mod = fromText('''\
+    class Foo:
+        def start():...
+        def process_link():...
+        def process_emphasis():...
+        def process_blockquote():...
+        def process_table():...
+        def end():...
+    
+    class Bar:...
+
+    b,a = 1,2
+    ''', system=system)
+
+    _sorted = sorted(mod.contents.values(), key=system.membersOrder(mod))
+    assert [s.name for s in _sorted] == ['Bar', 'Foo', 'a', 'b'] # default ordering is alphabetical
+
+    system.options.mod_member_order = 'source'
+    _sorted = sorted(mod.contents.values(), key=system.membersOrder(mod))
+    assert [s.name for s in _sorted] == ['Foo', 'Bar', 'b', 'a']
+    
+    Foo = mod.contents['Foo']
+
+    _sorted = sorted(Foo.contents.values(), key=system.membersOrder(Foo))
+    names = [s.name for s in _sorted]
+    
+    assert names ==['end',
+                    'process_blockquote',
+                    'process_emphasis',
+                    'process_link',
+                    'process_table',
+                    'start',]
+
+    system.options.cls_member_order = "source"
+    _sorted = sorted(Foo.contents.values(), key=system.membersOrder(Foo))
+    names = [s.name for s in _sorted]
+    
+    assert names == ['start', 
+                     'process_link', 
+                     'process_emphasis', 
+                     'process_blockquote', 
+                     'process_table', 
+                     'end']
+
+def test_ivar_field_order_precedence(capsys: CapSys) -> None:
+    """
+    We special case the linen umber coming from docstring fields such that they can get overriden
+    by AST linenumber.
+    """
+    system = model.System(model.Options.from_args(['--cls-member-order=source']))
+    mod = fromText('''
+    import attr
+    __docformat__ = 'restructuredtext'
+    @attr.s
+    class Foo:
+        """
+        :ivar a: `broken1 <>`_ Thing.
+        :ivar b: `broken2 <>`_ Stuff.
+        """
+
+        b = attr.ib()
+        a = attr.ib()
+    ''', system=system)
+    
+    Foo = mod.contents['Foo']
+    getHTMLOf(Foo)
+    assert Foo.docstring_lineno == 7
+    
+    assert Foo.parsed_docstring.fields[0].lineno == 0 # type:ignore
+    assert Foo.parsed_docstring.fields[1].lineno == 1 # type:ignore
+
+    assert Foo.contents['a'].linenumber == 12
+    assert Foo.contents['b'].linenumber == 11
+
+    assert Foo.contents['a'].docstring_lineno == 7
+    assert Foo.contents['b'].docstring_lineno == 8
+
+    _sorted = sorted(Foo.contents.values(), key=system.membersOrder(Foo))
+    names = [s.name for s in _sorted]
+    
+    assert names == ['b', 'a'] # should be 'b', 'a'.
+
 
 src_crash_xml_entities = '''\
 """

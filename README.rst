@@ -84,6 +84,10 @@ This is the last major release to support Python 3.7.
   Highest priority callables will be called first during post-processing.
 * Fix too noisy ``--verbose`` mode (suppres some ambiguous annotations warnings).
 * Fix type processing inside restructuredtext consolidated fields.
+* Add options ``--cls-member-order`` and ``--mod-member-order`` to customize the presentation
+  order of class members and module/package members, the supported values are "alphabetical" or "source".
+  The default behavior is to sort all members alphabetically.
+* Make sure the line number coming from ast analysis has precedence over the line of a ``ivar`` field.
 
 pydoctor 23.9.1
 ^^^^^^^^^^^^^^^
