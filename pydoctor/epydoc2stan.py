@@ -1137,10 +1137,12 @@ def populate_constructors_extra_info(cls:model.Class) -> None:
     if constructors:
         plural = 's' if len(constructors)>1 else ''
         extra_epytext = f'Constructor{plural}: '
-        for i, c in enumerate(sorted(constructors, key=util.objects_order)):
+        for i, c in enumerate(sorted(constructors, 
+                        key=util.alphabetical_order_func)):
             if i != 0:
                 extra_epytext += ', '
             short_text = format_constructor_short_text(c, cls)
             extra_epytext += '`%s <%s>`' % (short_text, c.fullName())
         
-        cls.extra_info.append(parse_docstring(cls, extra_epytext, cls, 'restructuredtext', section='constructor extra'))
+        cls.extra_info.append(parse_docstring(
+            cls, extra_epytext, cls, 'restructuredtext', section='constructor extra'))
