@@ -185,7 +185,7 @@ def test_lunr_index() -> None:
             ['pydoctor.model.Class', 
              'pydoctor.factory.Factory.Class',
              'pydoctor.model.DocumentableKind.CLASS',
-             'pydoctor.model.System.Class'])
+             'pydoctor.model.System.Class'], order_is_important=False)
         
         to_stan_results = [
                     'pydoctor.epydoc.markup.ParsedDocstring.to_stan', 

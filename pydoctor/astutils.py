@@ -193,6 +193,14 @@ def is_using_annotations(expr: Optional[ast.AST],
                 return True
     return False
 
+def iter_decorator_list(decorator_list:Iterable[ast.expr]) -> Iterator[Tuple[Optional[List[str]], ast.expr]]:
+    for d in decorator_list:
+        if isinstance(d, ast.Call):
+            deco_name = node2dottedname(d.func)
+        else:
+            deco_name = node2dottedname(d)
+        yield deco_name,d
+
 def is_none_literal(node: ast.expr) -> bool:
     """Does this AST node represent the literal constant None?"""
     if sys.version_info >= (3,8):

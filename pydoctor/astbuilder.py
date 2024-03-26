@@ -14,7 +14,7 @@ from typing import (
 )
 
 import astor
-from pydoctor import epydoc2stan, model, node2stan, extensions, linker
+from pydoctor import epydoc2stan, model, node2stan, extensions, astutils, linker
 from pydoctor.epydoc.markup._pyval_repr import colorize_inline_pyval
 from pydoctor.astutils import (is_none_literal, is_typing_annotation, is_using_annotations, is_using_typing_final, node2dottedname, node2fullname, 
                                is__name__equals__main__, unstring_annotation, iterassign, extract_docstring_linenum, infer_type, get_parents,
@@ -32,6 +32,10 @@ if sys.version_info >= (3,8):
 else:
     _parse = ast.parse
 
+_property_signature = Signature((Parameter('fget', Parameter.POSITIONAL_OR_KEYWORD, default=None),
+                                 Parameter('fset', Parameter.POSITIONAL_OR_KEYWORD, default=None),
+                                 Parameter('fdel', Parameter.POSITIONAL_OR_KEYWORD, default=None),
+                                 Parameter('doc', Parameter.POSITIONAL_OR_KEYWORD, default=None)))
 
 def _maybeAttribute(cls: model.Class, name: str) -> bool:
     """Check whether a name is a potential attribute of the given class.
@@ -166,6 +170,68 @@ def extract_final_subscript(annotation: ast.Subscript) -> ast.expr:
     else:
         assert isinstance(ann_slice, ast.expr)
         return ann_slice
+
+def _is_property_decorator(dottedname:Sequence[str], ctx:model.Documentable) -> bool:
+    """
+    Whether the last element of the list of names finishes by "property" or "Property".
+    """
+    if len(dottedname) >= 1 and (dottedname[-1].endswith('property') or dottedname[-1].endswith('Property')):
+        # TODO: Support property subclasses.
+        return True
+    return False
+
+
+def _get_inherited_property(dottedname:Sequence[str], parent: model.Documentable) -> Optional[model.Property]:
+    """
+    Fetch the inherited property that this new decorator overrides.
+    Returns C{None} if it doesn't exist in the inherited members or if it's already definied in the locals.
+    The dottedname must have at least three elements, else return C{None}.
+    """
+    # TODO: It would be best if this job was done in post-processing...
+
+    property_name = dottedname[:-1]
+    
+    if len(property_name) <= 1 or property_name[-1] in parent.contents:
+        # the property already exist
+        return None
+
+    # attr can be a getter/setter/deleter
+    # note: the class on which the property is defined does not have
+    # to be in the MRO of the parent
+    attr_def = parent.resolveName('.'.join(property_name))
+    
+    if not isinstance(attr_def, model.Property):
+        return None
+    
+    return attr_def
+
+def _get_property_function_kind(dottedname:Sequence[str]) -> model.Property.Kind:
+    """
+    What kind of property function this decorator declares?
+    None if we can't make sens of the decorator.
+
+    Returns a L{Property.Kind} instance only if the given dotted name ends
+    with C{setter}, C{deleter} or C{getter}
+
+
+    @note: The dottedname must have at least two elements.
+    """
+    if len(dottedname) >= 2:
+        last = dottedname[-1]
+        if last == 'setter':
+            return model.Property.Kind.SETTER
+        if last == 'getter':
+            return model.Property.Kind.GETTER
+        if last == 'deleter':
+            return model.Property.Kind.DELETER
+    raise ValueError(f'This does not look like a property function decorator: {dottedname}')
+
+def _is_property_function(dottedname:Sequence[str]) -> bool:
+    try:
+        _get_property_function_kind(dottedname)
+    except ValueError:
+        return False
+    return True
 
 class ModuleVistor(NodeVisitor):
 
@@ -467,6 +533,8 @@ class ModuleVistor(NodeVisitor):
         if not isinstance(func, ast.Name):
             return False
         func_name = func.id
+        if func_name == 'property':
+            return self._handleOldSchoolPropertyDecoration(target, expr)
         args = expr.args
         if len(args) != 1:
             return False
@@ -486,6 +554,40 @@ class ModuleVistor(NodeVisitor):
                     target_obj.kind = model.DocumentableKind.CLASS_METHOD
                 return True
         return False
+    
+    def _handleOldSchoolPropertyDecoration(self, target: str, expr: ast.Call) -> bool:
+        try:
+            bound_args = astutils.bind_args(_property_signature, expr)
+        except:
+            return False
+        
+        cls = self.builder.current
+
+        attr = self._addProperty(target, cls, expr.lineno)
+        for arg, prop_kind in zip(('fget', 'fset', 'fdel'),
+                             (model.Property.Kind.GETTER, 
+                              model.Property.Kind.SETTER, 
+                              model.Property.Kind.DELETER),
+                             ):
+            definition = node2dottedname(bound_args.arguments.get(arg))
+            if not definition:
+                continue
+            fn = cls.resolveName('.'.join(definition))
+            if not isinstance(fn, model.Function):
+                continue
+            attr.store_function(prop_kind, fn)
+        
+        doc = bound_args.arguments.get('doc')
+        if isinstance(doc, astutils.Str):
+            if attr.getter:
+                # the warning message in case of overriden docstrings makes
+                # more sens when relative to the getter docstring. so use that when available.
+                attr.getter.setDocstring(doc)
+            else:
+                attr.setDocstring(doc)
+        
+        self.builder.currentAttr = attr
+        return True
 
     @classmethod
     def _handleConstant(cls, obj:model.Attribute, 
@@ -788,6 +890,14 @@ class ModuleVistor(NodeVisitor):
     def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
         self._handleFunctionDef(node, is_async=False)
 
+    def _addProperty(self, name: str, parent:model.Documentable, lineno:int,) -> model.Property:
+        attribute = self.builder.addAttribute(name, 
+                                 model.DocumentableKind.PROPERTY, 
+                                 parent)
+        attribute.setLineNumber(lineno)
+        assert isinstance(attribute, model.Property)
+        return attribute
+
     def _handleFunctionDef(self,
             node: Union[ast.AsyncFunctionDef, ast.FunctionDef],
             is_async: bool
@@ -807,42 +917,95 @@ class ModuleVistor(NodeVisitor):
         doc_node = get_docstring_node(node)
         func_name = node.name
 
-        # determine the function's kind
-        is_property = False
+        # Whether the function is derorated with @classmethod
         is_classmethod = False
+        # Whether the function is derorated with @staticmethod
         is_staticmethod = False
+        # Whether the function is derorated with @typing.overload
         is_overload_func = False
+        # Whether the function is derorated with @property
+        is_property = False
+        # If the function is decorated with some @stuff.setter/deleter/getter property decorator: 
+        # stores the dotted name of the expression.
+        property_func_deco: Optional[List[str]] = None
+
+        parent_is_cls = isinstance(parent, model.Class)
         if node.decorator_list:
-            for d in node.decorator_list:
-                if isinstance(d, ast.Call):
-                    deco_name = node2dottedname(d.func)
-                else:
-                    deco_name = node2dottedname(d)
+            for deco_name, _ in astutils.iter_decorator_list(node.decorator_list):
                 if deco_name is None:
                     continue
-                if isinstance(parent, model.Class):
-                    if deco_name[-1].endswith('property') or deco_name[-1].endswith('Property'):
+                # determine the function's kind
+                if parent_is_cls:
+                    if _is_property_decorator(deco_name, parent):
                         is_property = True
                     elif deco_name == ['classmethod']:
                         is_classmethod = True
                     elif deco_name == ['staticmethod']:
                         is_staticmethod = True
-                    elif len(deco_name) >= 2 and deco_name[-1] in ('setter', 'deleter'):
-                        # Rename the setter/deleter, so it doesn't replace
-                        # the property object.
-                        func_name = '.'.join(deco_name[-2:])
+                    else:
+                        # Pre-handle property elements
+                        if _is_property_function(deco_name):
+                            # Setters and deleters should have the same name as the property function,
+                            # otherwise ignore it.
+                            # This pollutes the namespace unnecessarily and is generally not recommended. 
+                            # Therefore it makes sense to stick to a single name, 
+                            # which is consistent with the former property definition.
+                            if not deco_name[-2] == func_name:
+                                continue 
+                            
+                            # Rename the setter/deleter, so it doesn't replace
+                            # the property object.
+                            func_name = '.'.join(deco_name[-2:])
+                            property_func_deco = deco_name
+                
                 # Determine if the function is decorated with overload
-                if parent.expandName('.'.join(deco_name)) in ('typing.overload', 'typing_extensions.overload'):
+                if parent.expandName('.'.join(deco_name)) in ('typing.overload', 
+                                                              'typing_extensions.overload'):
                     is_overload_func = True
 
-        if is_property:
-            # handle property and skip child nodes.
-            attr = self._handlePropertyDef(node, doc_node, lineno)
-            if is_classmethod:
-                attr.report(f'{attr.fullName()} is both property and classmethod')
-            if is_staticmethod:
-                attr.report(f'{attr.fullName()} is both property and staticmethod')
-            raise self.SkipNode()
+        # Determine if this function is a property of some kind
+        property_func_kind: Optional[model.Property.Kind] = None
+        property_model: Optional[model.Property] = None
+        is_new_property: bool = is_property
+        
+        if property_func_deco is not None:
+            # Looks like inherited property
+            if len(property_func_deco)>2:
+                _inherited_property = _get_inherited_property(property_func_deco, parent)
+                if _inherited_property:
+                    property_model = self._addProperty(node.name, parent, lineno)
+                    # copy property defs info
+                    property_model.getter = _inherited_property.getter
+                    property_model.setter = _inherited_property.setter
+                    property_model.deleter = _inherited_property.deleter
+                    # Manually inherits documentation if not explicit in the definition.
+                    if doc_node is None:
+                        property_model.docstring = _inherited_property.docstring
+                        # We can transfert the line numbers only if the two prperties are in the same module. 
+                        # This ignores reparenting, but it's ok because the reparenting will soon hapen in post-process.
+                        if _inherited_property.module is property_model.module:
+                            property_model.docstring_lineno = _inherited_property.docstring_lineno
+                        else:
+                            # TODO: Wrap the docstring info into a new class Docstring. 
+                            # so we can transfert the filename information as well.
+                            property_model.docstring_lineno = -1
+                    is_new_property = True
+            else:
+                # fetch property info to add this info to it
+                _maybe_prop = self.builder.current.contents.get(node.name)
+                if isinstance(_maybe_prop, model.Property):
+                    property_model = _maybe_prop
+            property_func_kind = _get_property_function_kind(property_func_deco)
+        
+        elif is_property:
+            # This is a new property definition
+            property_model = self._addProperty(node.name, parent, lineno)
+            property_func_kind = model.Property.Kind.GETTER
+            # Rename the getter function as well, since both the Property and the Function will
+            # live side by side until properties are post-processed.
+            func_name = node.name + '.getter'
+        
+        # Push and analyse function 
 
         # Check if it's a new func or exists with an overload
         existing_func = parent.contents.get(func_name)
@@ -852,12 +1015,20 @@ class ModuleVistor(NodeVisitor):
             # which we do not allow. This also ensures that func will have
             # properties set for the primary function and not overloads.
             if existing_func.signature and is_overload_func:
-                existing_func.report(f'{existing_func.fullName()} overload appeared after primary function', lineno_offset=lineno-existing_func.linenumber)
+                existing_func.report(f'{existing_func.fullName()} overload appeared after primary function', 
+                                     lineno_offset=lineno-existing_func.linenumber)
                 raise self.SkipNode()
             # Do not recreate function object, just re-push it
             self.builder.push(existing_func, lineno)
             func = existing_func
+        elif isinstance(existing_func, model.Function) and property_model is not None and not is_new_property:
+            # Check if this property function is overriding a previously defined
+            # property function on the same scope before pushing the new function
+            # If it does override something, just re-push the function, do not override it.
+            self.builder.push(existing_func, lineno)
+            func = existing_func
         else:
+            # create new function
             func = self.builder.pushFunction(func_name, lineno)
 
         func.is_async = is_async
@@ -930,49 +1101,24 @@ class ModuleVistor(NodeVisitor):
             func.overloads.append(model.FunctionOverload(primary=func, signature=signature, decorators=node.decorator_list))
         else:
             func.signature = signature
+        
+        # For properties, save the fact that this function implements one of the getter/setter/deleter
+        if property_model is not None:
+            
+            if is_classmethod:
+                property_model.report(f'{property_model.fullName()} is both property and classmethod')
+            if is_staticmethod:
+                property_model.report(f'{property_model.fullName()} is both property and staticmethod')
+            
+            assert property_func_kind is not None
+            property_model.store_function(property_func_kind, func)
+    
 
     def depart_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:
         self.builder.popFunction()
 
     def depart_FunctionDef(self, node: ast.FunctionDef) -> None:
         self.builder.popFunction()
-
-    def _handlePropertyDef(self,
-            node: Union[ast.AsyncFunctionDef, ast.FunctionDef],
-            doc_node: Optional[Str],
-            lineno: int
-            ) -> model.Attribute:
-
-        attr = self.builder.addAttribute(name=node.name, 
-                                         kind=model.DocumentableKind.PROPERTY, 
-                                         parent=self.builder.current)
-        attr.setLineNumber(lineno)
-
-        if doc_node is not None:
-            attr.setDocstring(doc_node)
-            assert attr.docstring is not None
-            pdoc = epydoc2stan.parse_docstring(attr, attr.docstring, attr)
-            other_fields = []
-            for field in pdoc.fields:
-                tag = field.tag()
-                if tag == 'return':
-                    if not pdoc.has_body:
-                        pdoc = field.body()
-                        # Avoid format_summary() going back to the original
-                        # empty-body docstring.
-                        attr.docstring = ''
-                elif tag == 'rtype':
-                    attr.parsed_type = field.body()
-                else:
-                    other_fields.append(field)
-            pdoc.fields = other_fields
-            attr.parsed_docstring = pdoc
-
-        if node.returns is not None:
-            attr.annotation = unstring_annotation(node.returns, attr)
-        attr.decorators = node.decorator_list
-
-        return attr
 
     def _annotations_from_function(
             self, func: Union[ast.AsyncFunctionDef, ast.FunctionDef]
@@ -1149,13 +1295,16 @@ class ASTBuilder:
         """
         system = self.system
         parentMod = self.currentMod
-        attr = system.Attribute(system, name, parent)
-        attr.kind = kind
+        if kind is model.DocumentableKind.PROPERTY:
+            attr:model.Attribute = system.Property(system, name, parent)
+            assert attr.kind is model.DocumentableKind.PROPERTY
+        else:
+            attr = system.Attribute(system, name, parent)
+            attr.kind = kind
         attr.parentMod = parentMod
         system.addObject(attr)
         self.currentAttr = attr
         return attr
-
 
     def processModuleAST(self, mod_ast: ast.Module, mod: model.Module) -> None:
 

@@ -14,7 +14,8 @@ from pydoctor.templatewriter import (FailedToCreateTemplate, StaticTemplate, pag
                                      HtmlTemplate, UnsupportedTemplateVersion, 
                                      OverrideTemplateNotAllowed)
 from pydoctor.templatewriter.pages.table import ChildTable
-from pydoctor.templatewriter.pages.attributechild import AttributeChild
+from pydoctor.templatewriter.pages.attributechild import AttributeChild, PropertyChild
+from pydoctor.templatewriter.pages.functionchild import FunctionChild
 from pydoctor.templatewriter.summary import isClassNodePrivate, isPrivate, moduleSummary, ClassIndexPage
 from pydoctor.test.test_astbuilder import fromText, systemcls_param
 from pydoctor.test.test_packages import processPackage, testpackages
@@ -57,11 +58,16 @@ def getHTMLOf(ob: model.Documentable) -> str:
     wr._writeDocsForOne(ob, f)
     return f.getvalue().decode()
 
-def getHTMLOfAttribute(ob: model.Attribute) -> str:
+def getHTMLOfAttribute(ob: model.Documentable) -> str:
     assert isinstance(ob, model.Attribute)
     tlookup = TemplateLookup(template_dir)
-    stan = AttributeChild(util.DocGetter(), ob, [], 
-        AttributeChild.lookup_loader(tlookup),)
+    if isinstance(ob, model.Property):
+        stan: "Flattenable" = PropertyChild(util.DocGetter(), ob, [], 
+            PropertyChild.lookup_loader(tlookup), 
+            FunctionChild.lookup_loader(tlookup))
+    else:
+        stan = AttributeChild(util.DocGetter(), ob, [], 
+            AttributeChild.lookup_loader(tlookup))
     return flatten(stan)
 
 def test_sidebar() -> None:
@@ -659,6 +665,103 @@ def test_objects_order_mixed_modules_and_packages() -> None:
     names = [s.name for s in _sorted]
 
     assert names == ['aaa', 'aba', 'bbb']
+
+def test_property_getter_setter_docs() -> None:
+    
+    src1 = '''
+    class A:
+        @property
+        def data(self):
+            "getter doc"
+        @data.setter
+        def data(self):
+            "setter doc"
+        @data.deleter
+        def data(self):
+            "deleter doc"
+    '''
+    mod1 = fromText(src1, modname='propt')
+
+    # We can only see the property object, the functions got removed.
+    assert list(mod1.contents['A'].contents)==['data']
+    assert not list(mod1.system.objectsOfType(model.Function))
+    attr = mod1.contents['A'].contents['data']
+    
+    html = getHTMLOfAttribute(attr)
+    assert all([part in html for part in ['getter doc','setter doc','deleter doc']]), html
+
+def test_property_getter_setter_no_undocumented() -> None:
+
+    src2 = '''
+    class A:
+        @property
+        def data(self):
+            """
+            @returns: the data
+            """
+        @data.setter
+        def data(self, data):
+            """
+            @param data: the new data
+            """
+        @data.deleter
+        def data(self):
+            ...
+    '''
+    mod2 = fromText(src2, modname='propt')
+    attr = mod2.contents['A'].contents['data']
+    
+    html = getHTMLOfAttribute(attr)
+    # asserts that no 'Undocumented' shows up!
+    assert 'Undocumented' not in html
+
+def test_property_getter_inherits_docs() -> None:
+
+    src4 = '''
+    class Base:
+        data: int
+        "getter docs"
+    class A(Base):
+        @property
+        def data(self): # inherits docs
+            return 0
+    '''
+    mod = fromText(src4, modname='propt')
+    attr = mod.contents['A'].contents['data']
+    
+    html = getHTMLOfAttribute(attr)
+    assert 'getter docs' in html
+
+    src5 = '''
+    class Base:
+        @property
+        def data(self):
+            "getter docs"
+        @data.setter
+        def data(self):
+            "setter docs"
+        @data.deleter
+        def data(self):
+            "deleter docs"
+    
+    class A(Base):
+        # Inherits docs, but not for setter and deleters,
+        # This is because overriding the property name also overrides 
+        # the setters and deleters, so they should be given explicit docs, or nothing.
+        @property
+        def data(self): # inherits docs
+            return 0
+        @data.deleter
+        def data(self): # doesn't inherits docs
+            pass
+    '''
+
+    mod = fromText(src5, modname='propt')
+    attr = mod.contents['A'].contents['data']
+    
+    html = getHTMLOfAttribute(attr)
+    assert 'getter docs' in html
+    assert 'deleter docs' not in html
 
 src_crash_xml_entities = '''\
 """

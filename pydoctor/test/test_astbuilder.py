@@ -3,9 +3,7 @@ import ast
 
 import astor
 
-
-from pydoctor import astbuilder, astutils, model
-from pydoctor import epydoc2stan
+from pydoctor import astbuilder, astutils, model, node2stan, epydoc2stan
 from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring
 from pydoctor.options import Options
 from pydoctor.stanutils import flatten, html2stan, flatten_text
@@ -1536,16 +1534,15 @@ def test_property_setter(systemcls: Type[model.System], capsys: CapSys) -> None:
     C = mod.contents['C']
 
     getter = C.contents['prop']
-    assert isinstance(getter, model.Attribute)
-    assert getter.kind is model.DocumentableKind.PROPERTY
+    assert isinstance(getter, model.Property)
     assert getter.docstring == """Getter."""
 
-    setter = C.contents['prop.setter']
+    setter = getter.setter
     assert isinstance(setter, model.Function)
     assert setter.kind is model.DocumentableKind.METHOD
     assert setter.docstring == """Setter."""
 
-    deleter = C.contents['prop.deleter']
+    deleter = getter.deleter
     assert isinstance(deleter, model.Function)
     assert deleter.kind is model.DocumentableKind.METHOD
     assert deleter.docstring == """Deleter."""
@@ -2040,6 +2037,432 @@ def test_reexport_wildcard(systemcls: Type[model.System]) -> None:
     assert all(n in system.allobjects['top'].contents for n in  ['f', 'g', 'h', 'i', 'j'])
 
 @systemcls_param
+def test_instance_var_override(systemcls: Type[model.System]) -> None:
+    src = '''
+    class A:
+        _data=None
+        def data(self):
+            if self._data is None:
+                self._data = Data(self)
+            return self._data
+    '''
+    mod = fromText(src, modname='test', systemcls=systemcls)
+    assert mod.contents['A'].contents['data'].kind is model.DocumentableKind.METHOD
+    assert mod.contents['A'].contents['_data'].kind is model.DocumentableKind.INSTANCE_VARIABLE
+
+    src = '''
+    class A:
+        def data(self):
+            if self._data is None:
+                self._data = Data(self)
+            return self._data
+        _data=None
+    '''
+    mod = fromText(src, modname='test', systemcls=systemcls)
+    assert mod.contents['A'].contents['data'].kind is model.DocumentableKind.METHOD
+    assert mod.contents['A'].contents['_data'].kind is model.DocumentableKind.INSTANCE_VARIABLE
+
+@systemcls_param
+def test_instance_var_override_in_property(systemcls: Type[model.System]) -> None:
+    src = '''
+    class A:
+        _data=None
+        @property
+        def data(self):
+            if self._data is None:
+                self._data = Data(self)
+            return self._data
+    '''
+
+    mod = fromText(src, modname='propt', systemcls=systemcls)
+    assert mod.contents['A'].contents['data'].kind is model.DocumentableKind.PROPERTY
+    assert mod.contents['A'].contents['_data'].kind is model.DocumentableKind.INSTANCE_VARIABLE
+
+@systemcls_param
+def test_property_inherited(systemcls: Type[model.System], capsys: CapSys) -> None:
+    """
+    Properties can be inherited.
+    """
+    # source from cpython test_property.py
+    src = '''
+    class BaseClass(object):
+        @property
+        def spam(self):
+            """BaseClass.getter"""
+            pass
+        @spam.setter
+        def spam(self, value):
+            """BaseClass.setter"""
+            pass
+        @spam.deleter
+        def spam(self):
+            """BaseClass.setter"""
+            pass
+    
+    class SubClass(BaseClass):
+        # inherited property
+        @BaseClass.spam.getter
+        def spam(self):
+            """SubClass.getter"""
+            pass
+    
+    class SubClass2(BaseClass):
+        # inherited property
+        @BaseClass.spam.setter
+        def spam(self):
+            """SubClass.setter"""
+            pass
+    
+    class SubClass3(BaseClass):
+        # inherited property
+        @BaseClass.spam.deleter
+        def spam(self):
+            """SubClass.deleter"""
+            pass
+    '''
+    mod = fromText(src, modname='mod', systemcls=systemcls)
+    assert not capsys.readouterr().out
+
+    spam0 = mod.contents['BaseClass'].contents['spam']
+    spam1 = mod.contents['SubClass'].contents['spam']
+    spam2 = mod.contents['SubClass2'].contents['spam']
+    spam3 = mod.contents['SubClass3'].contents['spam']
+
+    assert list(mod.contents['BaseClass'].contents) == \
+        list(mod.contents['SubClass'].contents) == \
+        list(mod.contents['SubClass2'].contents) == \
+        list(mod.contents['SubClass3'].contents) == ['spam']
+
+    assert isinstance(spam0, model.Property)
+    assert isinstance(spam1, model.Property)
+    assert isinstance(spam2, model.Property)
+    assert isinstance(spam3, model.Property)
+
+    assert spam0.kind is model.DocumentableKind.PROPERTY
+    assert spam1.kind is model.DocumentableKind.PROPERTY
+    assert spam2.kind is model.DocumentableKind.PROPERTY
+    assert spam3.kind is model.DocumentableKind.PROPERTY
+
+    assert isinstance(spam0.setter, model.Function)
+    assert isinstance(spam1.setter, model.Function)
+    assert isinstance(spam2.setter, model.Function)
+    assert isinstance(spam3.setter, model.Function)
+
+    assert isinstance(spam0.deleter, model.Function)
+    assert isinstance(spam1.deleter, model.Function)
+    assert isinstance(spam2.deleter, model.Function)
+    assert isinstance(spam3.deleter, model.Function)
+
+    assert spam0.getter.fullName() == 'mod.BaseClass.spam.getter' #type:ignore[union-attr]
+    assert spam0.setter.fullName() == 'mod.BaseClass.spam.setter'
+    assert spam0.deleter.fullName() == 'mod.BaseClass.spam.deleter'
+
+    assert spam1.getter.fullName() == 'mod.SubClass.spam.getter' #type:ignore[union-attr]
+    assert spam1.setter.fullName() == 'mod.BaseClass.spam.setter'
+    assert spam1.deleter.fullName() == 'mod.BaseClass.spam.deleter'
+
+    assert spam2.getter.fullName() == 'mod.BaseClass.spam.getter' #type:ignore[union-attr]
+    assert spam2.setter.fullName() == 'mod.SubClass2.spam.setter'
+    assert spam2.deleter.fullName() == 'mod.BaseClass.spam.deleter'
+
+    assert spam3.getter.fullName() == 'mod.BaseClass.spam.getter' #type:ignore[union-attr]
+    assert spam3.setter.fullName() == 'mod.BaseClass.spam.setter'
+    assert spam3.deleter.fullName() == 'mod.SubClass3.spam.deleter'
+
+    assert spam1.getter is not spam0.getter
+
+@systemcls_param
+def test_property_old_school(systemcls: Type[model.System], capsys: CapSys) -> None:
+    """
+    Old school property() decorator is recognized.
+    """
+    src0 = '''
+    def get_spam2(self):
+        ...
+    class PropertyDocBase0(object):
+        @property
+        def spam3(self):
+            "spam3 docs"
+    '''
+    src = '''
+    import t0
+    class PropertyDocBase(object):
+        _spam = 1
+        def get_spam(self):
+            return self._spam
+        # Old school property
+        spam = property(get_spam, doc="spam spam spam")
+        spam2 = property(t0.get_spam2, doc="spam2 spam2 spam2")
+    class PropertyDocSub(PropertyDocBase):
+        @PropertyDocBase.spam.getter
+        def spam(self):
+            "This docstring overrides the other one in the property() call"
+            return self._spam
+        @t0.PropertyDocBase0.spam3.getter
+        def spam3(self):
+            "This docstring overrides the other one in module t0"
+            
+    '''
+    system = systemcls()
+    builder = system.systemBuilder(system)
+    builder.addModuleString(src0, modname='t0')
+    builder.addModuleString(src, modname='t')
+    builder.buildModules()
+    
+    mod = system.allobjects['t']
+    s = mod.resolveName('PropertyDocBase.spam')
+    s2 = mod.resolveName('PropertyDocSub.spam')
+    assert isinstance(s, model.Property)
+    assert isinstance(s2, model.Property)
+    # The get_spam() function has not been removed form the tree.
+    assert mod.resolveName('PropertyDocSub.get_spam')
+    assert s.docstring == "spam spam spam"
+    assert s2.docstring == "This docstring overrides the other one in the property() call"
+    spam2 = mod.resolveName('PropertyDocBase.spam2')
+    assert isinstance(spam2, model.Property)
+    assert spam2.getter
+    assert spam2.getter.fullName() == 't0.get_spam2'
+
+    spam3 = mod.resolveName('PropertyDocSub.spam3')
+    assert spam3.docstring == "This docstring overrides the other one in module t0"
+
+    assert system.allobjects['t0.get_spam2']
+    assert capsys.readouterr().out == ('')
+
+@systemcls_param
+def test_property_old_school_doc_is_not_str_crash(systemcls: Type[model.System], capsys: CapSys) -> None:
+    """
+    It does not crash when the doc argument is not a string.
+    """
+    src = '''
+    class PropertyDocBase(object):
+        def _get_spam(self):...
+        spam = property(_get_spam, doc=None)
+    '''
+    mod = fromText(src, modname='t', systemcls=systemcls)
+    assert capsys.readouterr().out == ('')
+    s = mod.resolveName('PropertyDocBase.spam')
+    assert isinstance(s, model.Property)
+
+@systemcls_param
+def test_property_call_alone(systemcls:Type[model.System], capsys:CapSys) -> None:
+    """
+    property() can be used without any getters or setters, or with lambda functions.
+    """
+    src = '''
+    class PropertyBase:
+        spam = property()
+    class PropertyDocBase:
+        spam = property(doc="spam spam spam")
+    class PropertyLambdaBase:
+        spam = property(fget=lambda self:self._spam)
+    '''
+    mod = fromText(src, modname='mod', systemcls=systemcls)
+    assert not capsys.readouterr().out
+    
+    spam1 = mod.contents['PropertyBase'].contents['spam']
+    spam2 = mod.contents['PropertyDocBase'].contents['spam']
+    spam3 = mod.contents['PropertyLambdaBase'].contents['spam']
+
+    assert isinstance(spam1, model.Property)
+    assert isinstance(spam2, model.Property)
+    assert isinstance(spam3, model.Property)
+
+    assert spam2.docstring == "spam spam spam"
+    
+    assert spam1.getter is None
+    assert spam2.getter is None
+    assert spam3.getter is None
+
+@systemcls_param
+def test_property_getter_override(systemcls: Type[model.System], capsys: CapSys) -> None:
+    """
+    A function that explicitely overides a property getter will override the docstring as well.
+    But not the line number. 
+    """
+    src = '''
+    class PropertyNewGetter(object):
+        
+        @property
+        def spam(self):
+            """original docstring"""
+            return 1
+        @spam.getter
+        def spam(self):
+            # This overrides the old docstring.
+            """new docstring"""
+            return 8
+    '''
+    mod = fromText(src, modname='mod', systemcls=systemcls)
+    assert capsys.readouterr().out == 'mod:11: Existing docstring at line 6 is overriden\n'
+    attr = mod.contents['PropertyNewGetter'].contents['spam']
+    # the parsed_docstring attribute gets initiated in post-processing
+    assert node2stan.gettext(attr.parsed_docstring.to_node()) == ['new docstring'] # type:ignore
+    assert attr.linenumber == 4
+
+@systemcls_param
+def test_mutilple_docstrings_on_property(systemcls: Type[model.System], capsys: CapSys) -> None:
+    """
+    When pydoctor encounters multiple places where the docstring is defined, it reports a warning.
+    This can only happend for properties at the moment.
+    """
+    src = '''
+    class PropertyOld(object):
+        def _get_spam(self):
+            "First doc"
+        # Old school property
+        spam = property(_get_spam, doc="Second doc")
+        "Third doc"
+        spam2 = property(fset=None, doc='spam2 docs')
+        "ignored"
+    '''
+    mod = fromText(src, systemcls=systemcls)
+    spam = mod.resolveName('PropertyOld.spam')
+    assert isinstance(spam, model.Property)
+    spam.docstring == "Second doc"
+    assert capsys.readouterr().out == ('<test>:6: Existing docstring at line 4 is overriden\n'
+                                       '<test>:9: Existing docstring at line 8 is overriden\n'
+                                       '<test>:6: Existing docstring at line 7 is overriden\n')
+
+@systemcls_param
+def test_property_corner_cases(systemcls: Type[model.System], capsys: CapSys) -> None:
+    """
+    Property handling can be quite complex, there are many corner cases.
+    """
+
+    base_mod = '''
+    # two modules form a cyclic import,
+    # so this class might not be understood well by pydoctor.
+    # Since the cycles can be arbitrarly complex, we just don't
+    # go in the details of resolving them. 
+    from src import BaseClass
+    
+    class System:
+        pass
+
+    class SubClass(BaseClass):
+        # cyclic inherited property
+        @BaseClass.spam.getter
+        def spam(self):
+            pass
+    '''
+
+    src_mod = '''
+    from mod import System
+    
+    class BaseClass(object):
+        system: 'System'
+
+        @property
+        def spam(self):
+            """BaseClass.getter"""
+            pass
+        @spam.setter
+        def spam(self, value):
+            """BaseClass.setter"""
+            pass
+        @spam.deleter
+        def spam(self):
+            """BaseClass.setter"""
+            pass
+    
+    class SubClass(BaseClass):
+        # inherited property
+        @BaseClass.spam.getter
+        def spam(self):
+            """SubClass.getter"""
+            pass
+    
+    # this class is valid, even if not very clear
+    class NotSubClass: 
+        # does not need to explicitely subclass SubClass2
+        @SubClass.spam.setter # Valid once!
+        def spam(self, v): 
+            pass
+        @spam.getter
+        def spam(self): # inherits docs
+            pass
+    
+    class InvalidClass: 
+        @SubClass.spam.setter # Valid once!
+        def spam(self, v): 
+            pass
+        @SubClass.spam.getter # Not valid if there is already a property defined !
+        def spam(self): 
+            pass
+    
+    class InvalidClass2: 
+        @notfound.getter
+        def notfound(self): 
+            pass
+
+    class InvalidClass3: 
+        @property
+        @notfound.getter
+        def notfound(self): 
+            pass
+
+    class InvalidClass4: 
+        @InvalidClass3.nhaaa.getter
+        def notfound(self): 
+            pass
+
+    class InvalidClass5: 
+        @InvalidClass2.notfound.getter
+        def notfound(self): 
+            pass
+    '''
+
+    system = systemcls()
+    builder = system.systemBuilder(system)
+
+    # modules are processed in the order they are discovered/added
+    # to the builder, so by adding 'src_mod' fist, we're sure
+    # the other module won't be fully processed at the time we're
+    # processing 'src_mod', because imports triggers processing of 
+    # imported modules, except in the case of cycles.
+    builder.addModuleString(src_mod, modname='src')
+    builder.addModuleString(base_mod, modname='mod')
+    builder.buildModules()
+
+    assert not capsys.readouterr().out
+
+    mod = system.allobjects['mod']
+    src = system.allobjects['src']
+
+    # Pydoctor doesn't understand this property because it's using an 
+    # import cycle. So the older behaviour applies: 
+    # only renaming the method
+    assert list(mod.contents['SubClass'].contents) == ['spam.getter']
+    assert mod.contents['SubClass'].contents['spam.getter'].kind is model.DocumentableKind.METHOD
+
+    assert list(src.contents['SubClass'].contents) == ['spam']
+    assert list(src.contents['NotSubClass'].contents) == ['spam']
+
+    spam0 = src.contents['SubClass'].contents['spam']
+    spam1 = src.contents['NotSubClass'].contents['spam']
+
+    assert list(src.contents['InvalidClass'].contents) == ['spam', 'spam.getter']
+
+    spam2 = src.contents['InvalidClass'].contents['spam']
+    spam2_bogus = src.contents['InvalidClass'].contents['spam.getter']
+
+    notfound = src.contents['InvalidClass2'].contents['notfound.getter']
+    notfound_both = src.contents['InvalidClass3'].contents['notfound.getter']
+    
+    notfound_alt = src.contents['InvalidClass4'].contents['notfound']
+    not_a_property = src.contents['InvalidClass5'].contents['notfound.getter']
+
+    assert spam0.kind is model.DocumentableKind.PROPERTY
+    assert spam1.kind is model.DocumentableKind.PROPERTY
+    assert spam2.kind is model.DocumentableKind.PROPERTY
+    assert spam2_bogus.kind is model.DocumentableKind.METHOD
+    assert notfound.kind is model.DocumentableKind.METHOD
+    assert notfound_both.kind is model.DocumentableKind.METHOD
+    assert notfound_alt.kind is model.DocumentableKind.METHOD
+    assert not_a_property.kind is model.DocumentableKind.METHOD
+
+@systemcls_param
 def test_exception_kind(systemcls: Type[model.System], capsys: CapSys) -> None:
     """
     Exceptions are marked with the special kind "EXCEPTION".
@@ -2199,6 +2622,34 @@ def getConstructorsText(cls: model.Documentable) -> str:
         epydoc2stan.format_constructor_short_text(c, cls) for c in cls.public_constructors)
 
 @systemcls_param
+def test_property_other_decorators(systemcls: Type[model.System]) -> None:
+
+    src = '''
+    class BaseClass(object):
+        @property
+        @deprecatedProperty
+        def spam(self):
+            """BaseClass.getter"""
+            pass
+        @spam.setter
+        @deprecatedSetProperty
+        def spam(self, value):
+            """BaseClass.setter"""
+            pass
+        @deprecatedDelProperty
+        @spam.deleter
+        def spam(self):
+            """BaseClass.setter"""
+            pass
+        '''
+
+    mod = fromText(src, systemcls=systemcls)
+    p = mod.contents['BaseClass'].contents['spam']
+    assert isinstance(p, model.Property)
+    assert isinstance(p.setter, model.Function)
+    assert isinstance(p.deleter, model.Function)
+
+@systemcls_param
 def test_crash_type_inference_unhashable_type(systemcls: Type[model.System], capsys:CapSys) -> None:
     """
     This test is about not crashing.
@@ -2223,7 +2674,6 @@ def test_crash_type_inference_unhashable_type(systemcls: Type[model.System], cap
         assert isinstance(o, model.Attribute)
         assert o.annotation is None
     assert not capsys.readouterr().out
-
 
 @systemcls_param
 def test_constructor_signature_init(systemcls: Type[model.System]) -> None:
@@ -2719,4 +3169,3 @@ def test_typealias_unstring(systemcls: Type[model.System]) -> None:
     with pytest.raises(StopIteration):
         # there is not Constant nodes in the type alias anymore
         next(n for n in ast.walk(typealias.value) if isinstance(n, ast.Constant))
-

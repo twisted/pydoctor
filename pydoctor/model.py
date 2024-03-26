@@ -9,11 +9,9 @@ from __future__ import annotations
 
 import abc
 import ast
-import attr
 from collections import defaultdict
 import datetime
 import importlib
-import platform
 import sys
 import textwrap
 import types
@@ -31,6 +29,8 @@ from pydoctor import factory, qnmatch, utils, linker, astutils, mro
 from pydoctor.epydoc.markup import ParsedDocstring
 from pydoctor.sphinx import CacheT, SphinxInventory
 
+import attr
+
 if TYPE_CHECKING:
     from typing_extensions import Literal, Protocol
     from pydoctor.astbuilder import ASTBuilder, DocumentableT
@@ -44,20 +44,17 @@ else:
 #
 # this was misguided.  the tree structure is important, to be sure,
 # but the arrangement of the tree is far from arbitrary and there is
-# at least some code that now relies on this.  so here's a list:
+# at least some code that now relies on this (the reparenting process
+# implicitely relies on this, don't try to nest objects under Documentable 
+# that are not supposed to hold other objects!).  
+# 
+# Here's a list:
 #
-#   Packages can contain Packages and Modules
+#   Packages can contain Packages and Modules Functions and Classes
 #   Modules can contain Functions and Classes
 #   Classes can contain Functions (in this case they get called Methods) and
 #       Classes
-#   Functions can't contain anything.
-
-
-_string_lineno_is_end = sys.version_info < (3,8) \
-                    and platform.python_implementation() != 'PyPy'
-"""True iff the 'lineno' attribute of an AST string node points to the last
-line in the string, rather than the first line.
-"""
+#   Functions and Atributes can't contain anything.
 
 
 class DocLocation(Enum):
@@ -161,6 +158,16 @@ class Documentable:
 
     def setDocstring(self, node: astutils.Str) -> None:
         lineno, doc = astutils.extract_docstring(node)
+        self._setDocstringValue(doc, lineno)
+    
+    def _setDocstringValue(self, doc:str, lineno:int) -> None:
+        if self.docstring:
+            msg = 'Existing docstring'
+            if self.docstring_lineno:
+                msg += f' at line {self.docstring_lineno}'
+            msg += f' is overriden'
+            self.report(msg, 'docstring', lineno_offset=lineno-self.docstring_lineno)
+
         self.docstring = doc
         self.docstring_lineno = lineno
 
@@ -839,16 +846,124 @@ class FunctionOverload:
     signature: Signature
     decorators: Sequence[ast.expr]
 
+def init_properties(system:'System') -> None:
+    # Machup property Functons into the Property object,
+    # and remove them from the tree.
+    to_prune: Set[Documentable] = set()
+    for attrib in system.objectsOfType(Property):
+        to_prune.update(init_property(attrib))
+    
+    for obj in to_prune:
+        system._remove(obj)
+        assert obj.parent is not None
+        if obj.name in obj.parent.contents:
+            del obj.parent.contents[obj.name]
+
+def init_property(attrib:'Property') -> Iterator['Function']:
+    """
+    Initiates the L{Property} that represent the property in the tree.
+
+    Returns the functions to remove from the tree.
+    """
+    # avoid cyclic import
+    from pydoctor import epydoc2stan
+    
+    getter = attrib.getter
+    setter = attrib.setter
+    deleter = attrib.deleter
+
+    if getter is not None:
+        # The getter should never be None, 
+        # but it can execpitinally happend when
+        # one uses the property() call alone and dynamically sets the getter.
+
+        # Setup Attribute object for the property
+        if getter.docstring:
+            attrib._setDocstringValue(getter.docstring, 
+                                    getter.docstring_lineno)
+        if not attrib.annotation:
+            attrib.annotation = getter.annotations.get('return')
+        attrib.extra_info.extend(getter.extra_info)
+
+        # Parse docstring now.
+        if epydoc2stan.ensure_parsed_docstring(getter):
+        
+            parsed_doc = getter.parsed_docstring
+            assert parsed_doc is not None
+
+            other_fields = []
+            # process fields such that :returns: clause docs takes the whole docs 
+            # if no global description is written.
+            for field in parsed_doc.fields:
+                tag = field.tag()
+                if tag == 'return':
+                    if not parsed_doc.has_body:
+                        parsed_doc = field.body()
+                elif tag == 'rtype':
+                    attrib.parsed_type = field.body()
+                else:
+                    other_fields.append(field)
+            
+            parsed_doc.fields = other_fields
+            
+            # Set the new attribute parsed docstring
+            attrib.parsed_docstring = parsed_doc
+
+    # Yields the objects to remove from the Documentable tree.
+    # Ensures we delete only the function decorated with @stuff.getter/setter/deleter;
+    # We know these functions will be renamed with the function kind suffix.
+    for fn, expected_name in zip([getter, setter, deleter],
+                                 [f'{attrib.name}.getter', 
+                                  f'{attrib.name}.setter',
+                                  f'{attrib.name}.deleter']):
+        if fn and fn.name == expected_name and fn.parent is attrib.parent:
+            yield fn
+
+
 class Attribute(Inheritable):
     kind: Optional[DocumentableKind] = DocumentableKind.ATTRIBUTE
     annotation: Optional[ast.expr] = None
-    decorators: Optional[Sequence[ast.expr]] = None
     value: Optional[ast.expr] = None
     """
-    The value of the assignment expression. 
-
-    None value means the value is not initialized at the current point of the the process. 
+    The value of the assignment expression.
     """
+
+class Property(Attribute):
+    kind: DocumentableKind = DocumentableKind.PROPERTY
+
+    getter:Optional['Function'] = None
+    """
+    The getter.
+    """
+    setter: Optional['Function'] = None
+    """
+    None if it has not been set with C{@<name>.setter} decorator.
+    """
+    deleter: Optional['Function'] = None
+    """
+    None if it has not been set with C{@<name>.deleter} decorator.
+    """
+
+    class Kind(Enum):
+        GETTER = 1
+        SETTER = 2
+        DELETER = 3
+    
+    @property
+    def decorators(self) -> Optional[Sequence[ast.expr]]:
+        if self.getter:
+            return self.getter.decorators
+        return None
+
+    def store_function(self, kind: 'Property.Kind', func:'Function') -> None:
+        if kind is Property.Kind.GETTER:
+            self.getter = func
+        elif kind is Property.Kind.SETTER:
+            self.setter = func
+        elif kind is Property.Kind.DELETER:
+            self.deleter = func
+        else:
+            assert False
 
 # Work around the attributes of the same name within the System class.
 _ModuleT = Module
@@ -990,6 +1105,9 @@ class System:
     @property
     def Attribute(self) -> Type['Attribute']:
         return self._factory.Attribute
+    @property
+    def Property(self) -> Type['Property']:
+        return self._factory.Property
 
     @property
     def sourcebase(self) -> Optional[str]:
@@ -1352,11 +1470,11 @@ class System:
                 if something:
                     def meth(self):
                         implementation 1
-                else:
+                if somethinglelse:
                     def meth(self):
                         implementation 2
 
-        The default is that the second definition "wins".
+        The default rule is that the last definition "wins".
         """
         i = 0
         fullName = obj.fullName()
@@ -1463,7 +1581,9 @@ def defaultPostProcess(system:'System') -> None:
         # Checking whether the class is an exception
         if is_exception(cls):
             cls.kind = DocumentableKind.EXCEPTION
-            
+    
+    init_properties(system)
+    
     for attrib in system.objectsOfType(Attribute):
        _inherits_instance_variable_kind(attrib)
 
