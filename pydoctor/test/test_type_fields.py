@@ -2,6 +2,7 @@ from typing import List
 from textwrap import dedent
 from pydoctor.epydoc.markup import ParseError, get_parser_by_name
 from pydoctor.test.epydoc.test_restructuredtext import prettify
+from pydoctor.test.test_templatewriter import getHTMLOfAttribute
 from pydoctor.test import NotFoundLinker, CapSys
 from pydoctor.test.epydoc import parse_docstring
 from pydoctor.test.test_epydoc2stan import docstring2html
@@ -364,10 +365,15 @@ def test_napoleon_types_warnings(capsys: CapSys) -> None:
                 - "numpy"
                 - "google"
             h: things
+            k: stuff
         
         :type h: stuff
 
             >>> python
+        
+        :type k: a paragraph
+
+            another one
         """
     '''
 
@@ -387,4 +393,34 @@ warns:11: bad docstring: invalid value set (missing closing brace): {1
 warns:13: bad docstring: invalid value set (missing opening brace): 3}
 warns:15: bad docstring: malformed string literal (missing closing quote): '2
 warns:17: bad docstring: malformed string literal (missing opening quote): 2"
-warns:23: bad docstring: Unexpected element in type specification field: element 'doctest_block'. This value should only contain regular paragraphs with text or inline markup.'''
+warns:24: bad docstring: Unexpected element in type specification field: element 'doctest_block'. This value should only contain text or inline markup.
+warns:28: bad docstring: Unexpected element in type specification field: element 'paragraph'. This value should only contain text or inline markup.'''
+
+def test_process_types_with_consolidated_fields(capsys: CapSys) -> None:
+    """
+    Test for issue https://github.com/twisted/pydoctor/issues/765
+    """
+    src = '''
+    class V:
+        """
+        Doc. 
+
+        :CVariables:
+            `id` : int
+                Classvar doc.
+        """
+    '''
+    system = model.System()
+
+    system.options.processtypes = True
+    system.options.docformat = 'restructuredtext'
+
+    mod = fromText(src, modname='do_not_warn_please', system=system)
+    attr = mod.contents['V'].contents['id']
+    assert isinstance(attr, model.Attribute)
+    html = getHTMLOfAttribute(attr)
+    # Filter docstring linker warnings
+    lines = [line for line in capsys.readouterr().out.splitlines() if 'Cannot find link target' not in line]
+    assert not lines
+    assert '<code>int</code>' in html
+    
