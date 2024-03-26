@@ -934,8 +934,10 @@ def extract_fields(obj: model.CanContainImportsDocumentable) -> None:
                 attrobj.kind = None
                 attrobj.parentMod = obj.parentMod
                 obj.system.addObject(attrobj)
-            attrobj.setLineNumber(model.LineFromDocstringField(
-                obj.docstring_lineno + field.lineno))
+            lineno = model.LineFromDocstringField(obj.docstring_lineno + field.lineno)
+            attrobj.setLineNumber(lineno)
+            if not attrobj.docstring_lineno:
+                attrobj.docstring_lineno = lineno
             if tag == 'type':
                 attrobj.parsed_type = field.body()
             else:

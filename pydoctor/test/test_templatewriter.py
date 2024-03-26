@@ -748,8 +748,8 @@ def test_ivar_field_order_precedence(capsys: CapSys) -> None:
     assert Foo.contents['a'].linenumber == 12
     assert Foo.contents['b'].linenumber == 11
 
-    # assert Foo.contents['a'].docstring_lineno == 7
-    # assert Foo.contents['b'].docstring_lineno == 8
+    assert Foo.contents['a'].docstring_lineno == 7
+    assert Foo.contents['b'].docstring_lineno == 8
 
     _sorted = sorted(Foo.contents.values(), key=system.membersOrder(Foo))
     names = [s.name for s in _sorted]
