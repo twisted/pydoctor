@@ -73,8 +73,8 @@ You can select a different format using the ``--docformat`` option or the ``__do
 What's New?
 ~~~~~~~~~~~
 
-in development
-^^^^^^^^^^^^^^
+pydoctor 24.3.0
+^^^^^^^^^^^^^^^
 
 This is the last major release to support Python 3.7.
 
