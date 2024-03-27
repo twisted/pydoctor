@@ -13,12 +13,11 @@ from typing import (
     Type, TypeVar, Union, cast
 )
 
-import astor
 from pydoctor import epydoc2stan, model, node2stan, extensions, linker
 from pydoctor.epydoc.markup._pyval_repr import colorize_inline_pyval
 from pydoctor.astutils import (is_none_literal, is_typing_annotation, is_using_annotations, is_using_typing_final, node2dottedname, node2fullname, 
                                is__name__equals__main__, unstring_annotation, iterassign, extract_docstring_linenum, infer_type, get_parents,
-                               get_docstring_node, NodeVisitor, Parentage, Str)
+                               get_docstring_node, unparse, NodeVisitor, Parentage, Str)
 
 
 def parseFile(path: Path) -> ast.Module:
@@ -230,8 +229,8 @@ class ModuleVistor(NodeVisitor):
                 name_node = base_node.value
             
             str_base = '.'.join(node2dottedname(name_node) or \
-                # Fallback on astor if the expression is unknown by node2dottedname().
-                [astor.to_source(base_node).strip()]) 
+                # Fallback on unparse() if the expression is unknown by node2dottedname().
+                [unparse(base_node).strip()]) 
                 
             # Store the base as string and as ast.expr in rawbases list.
             rawbases += [(str_base, base_node)]

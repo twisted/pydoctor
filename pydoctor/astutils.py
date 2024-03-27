@@ -7,15 +7,28 @@ import inspect
 import platform
 import sys
 from numbers import Number
-from typing import Any, Iterator, Optional, List, Iterable, Sequence, TYPE_CHECKING, Tuple, Union, cast
+from typing import Any, Callable, Iterator, Optional, List, Iterable, Sequence, TYPE_CHECKING, Tuple, Type, Union, cast
 from inspect import BoundArguments, Signature
 import ast
+
+if sys.version_info >= (3, 9):
+    from ast import unparse as _unparse
+else:
+    from astor import to_source as _unparse
 
 from pydoctor import visitor
 
 if TYPE_CHECKING:
     from pydoctor import model
 
+def unparse(node:ast.AST) -> str:
+    """
+    This function can convert a node tree back into python sourcecode.
+
+    Uses L{ast.unparse} or L{astor.to_source} for python versions before 3.9.
+    """
+    return _unparse(node)
+    
 # AST visitors
 
 def iter_values(node: ast.AST) -> Iterator[ast.AST]:
@@ -540,3 +553,115 @@ def get_parents(node:ast.AST) -> Iterator[ast.AST]:
             yield from _yield_parents(p)
     yield from _yield_parents(getattr(node, 'parent', None))
 
+#Part of the astor library for Python AST manipulation.
+#License: 3-clause BSD
+#Copyright (c) 2015 Patrick Maupin
+_op_data = """
+    GeneratorExp                1
+
+          Assign                1
+       AnnAssign                1
+       AugAssign                0
+            Expr                0
+           Yield                1
+       YieldFrom                0
+              If                1
+             For                0
+        AsyncFor                0
+           While                0
+          Return                1
+
+           Slice                1
+       Subscript                0
+           Index                1
+        ExtSlice                1
+    comprehension_target        1
+           Tuple                0
+  FormattedValue                0
+
+           Comma                1
+       NamedExpr                1
+          Assert                0
+           Raise                0
+    call_one_arg                1
+
+          Lambda                1
+           IfExp                0
+
+   comprehension                1
+              Or   or           1
+             And   and          1
+             Not   not          1
+
+              Eq   ==           1
+              Gt   >            0
+             GtE   >=           0
+              In   in           0
+              Is   is           0
+           NotEq   !=           0
+              Lt   <            0
+             LtE   <=           0
+           NotIn   not in       0
+           IsNot   is not       0
+
+           BitOr   |            1
+          BitXor   ^            1
+          BitAnd   &            1
+          LShift   <<           1
+          RShift   >>           0
+             Add   +            1
+             Sub   -            0
+            Mult   *            1
+             Div   /            0
+             Mod   %            0
+        FloorDiv   //           0
+         MatMult   @            0
+          PowRHS                1
+          Invert   ~            1
+            UAdd   +            0
+            USub   -            0
+             Pow   **           1
+           Await                1
+             Num                1
+        Constant                1
+"""
+
+_op_data = [x.split() for x in _op_data.splitlines()] # type:ignore
+_op_data = [[x[0], ' '.join(x[1:-1]), int(x[-1])] for x in _op_data if x] # type:ignore
+for _index in range(1, len(_op_data)):
+    _op_data[_index][2] *= 2 # type:ignore
+    _op_data[_index][2] += _op_data[_index - 1][2] # type:ignore
+
+_precedence_data = dict((getattr(ast, x, None), z) for x, y, z in _op_data) # type:ignore
+_symbol_data = dict((getattr(ast, x, None), y) for x, y, z in _op_data) # type:ignore
+
+class op_util:
+    """
+    This class provides data and functions for mapping
+    AST nodes to symbols and precedences.
+    """
+    @classmethod
+    def get_op_symbol(cls, obj:ast.operator|ast.boolop|ast.cmpop|ast.unaryop, 
+                      fmt:str='%s', 
+                      symbol_data:dict[type[ast.AST]|None, str]=_symbol_data, 
+                      type:Callable[[object], type[Any]]=type) -> str:
+        """Given an AST node object, returns a string containing the symbol.
+        """
+        return fmt % symbol_data[type(obj)]
+    @classmethod
+    def get_op_precedence(cls, obj:ast.operator|ast.boolop|ast.cmpop|ast.unaryop, 
+                          precedence_data:dict[type[ast.AST]|None, int]=_precedence_data, 
+                          type:Callable[[object], type[Any]]=type) -> int:
+        """Given an AST node object, returns the precedence.
+        """
+        return precedence_data[type(obj)]
+
+    if not TYPE_CHECKING:
+        class Precedence(object):
+            vars().update((cast(str, x), z) for x, _, z in _op_data)
+            highest = max(cast(int, z) for _, _, z in _op_data) + 2
+    else:
+        Precedence: Any
+
+del _op_data, _index, _precedence_data, _symbol_data
+# This was part of the astor library for Python AST manipulation.
