@@ -43,7 +43,6 @@ from inspect import signature
 from typing import Any, AnyStr, Union, Callable, Dict, Iterable, Sequence, Optional, List, Tuple, cast
 
 import attr
-import astor.op_util
 from docutils import nodes
 from twisted.web.template import Tag
 
@@ -51,7 +50,7 @@ from pydoctor.epydoc import sre_parse36, sre_constants36 as sre_constants
 from pydoctor.epydoc.markup import DocstringLinker
 from pydoctor.epydoc.markup.restructuredtext import ParsedRstDocstring
 from pydoctor.epydoc.docutils import set_node_attributes, wbr, obj_reference, new_document
-from pydoctor.astutils import node2dottedname, bind_args, Parentage, get_parents
+from pydoctor.astutils import node2dottedname, bind_args, Parentage, get_parents, unparse, op_util
 
 def decode_with_backslashreplace(s: bytes) -> str:
     r"""
@@ -76,6 +75,7 @@ class _MarkedColorizerState:
     charpos: int
     lineno: int
     linebreakok: bool
+    stacklength: int
 
 class _ColorizerState:
     """
@@ -87,18 +87,20 @@ class _ColorizerState:
     then fall back on a multi-line output if that fails.  
     """
     def __init__(self) -> None:
-        self.result: List[nodes.Node] = []
+        self.result: list[nodes.Node] = []
         self.charpos = 0
         self.lineno = 1
         self.linebreakok = True
-        self.warnings: List[str] = []
+        self.warnings: list[str] = []
+        self.stack: list[ast.AST] = []
 
     def mark(self) -> _MarkedColorizerState:
         return _MarkedColorizerState(
                     length=len(self.result), 
                     charpos=self.charpos,
                     lineno=self.lineno, 
-                    linebreakok=self.linebreakok)
+                    linebreakok=self.linebreakok,
+                    stacklength=len(self.stack))
 
     def restore(self, mark: _MarkedColorizerState) -> List[nodes.Node]:
         """
@@ -109,16 +111,17 @@ class _ColorizerState:
                                         mark.linebreakok)
         trimmed = self.result[mark.length:]
         del self.result[mark.length:]
+        del self.stack[mark.stacklength:]
         return trimmed
 
 # TODO: add support for comparators when needed. 
 # _OperatorDelimitier is needed for:
-# - IfExp
-# - UnaryOp
-# - BinOp, needs special handling for power operator
-# - Compare
-# - BoolOp
-# - Lambda
+# - IfExp (TODO)
+# - UnaryOp (DONE)
+# - BinOp, needs special handling for power operator (DONE)
+# - Compare (TODO)
+# - BoolOp (DONE)
+# - Lambda (TODO)
 class _OperatorDelimiter:
     """
     A context manager that can add enclosing delimiters to nested operators when needed. 
@@ -145,14 +148,14 @@ class _OperatorDelimiter:
         
         # avoid needless parenthesis, since we now collect parents for every nodes 
         if isinstance(parent_node, (ast.expr, ast.keyword, ast.comprehension)):
-            precedence = astor.op_util.get_op_precedence(node.op)
+            precedence = op_util.get_op_precedence(node.op)
             if isinstance(parent_node, (ast.UnaryOp, ast.BinOp, ast.BoolOp)):
-                parent_precedence = astor.op_util.get_op_precedence(parent_node.op)
+                parent_precedence = op_util.get_op_precedence(parent_node.op)
                 if isinstance(parent_node.op, ast.Pow) or isinstance(parent_node, ast.BoolOp):
                     parent_precedence+=1
             else:
                 parent_precedence = colorizer.explicit_precedence.get(
-                    node, astor.op_util.Precedence.highest)
+                    node, op_util.Precedence.highest)
                 
             if precedence < parent_precedence:
                 self.discard = False
@@ -460,7 +463,7 @@ class PyvalColorizer:
                 self._insert_comma(indent, state)
             state.result.append(self.WORD_BREAK_OPPORTUNITY)
             if key:
-                self._set_precedence(astor.op_util.Precedence.Comma, val)
+                self._set_precedence(op_util.Precedence.Comma, val)
                 self._colorize(key, state)
                 self._output(': ', self.COLON_TAG, state)
             else:
@@ -545,6 +548,7 @@ class PyvalColorizer:
             self._output('...', self.ELLIPSIS_TAG, state)
 
     def _colorize_ast(self, pyval: ast.AST, state: _ColorizerState) -> None:
+        state.stack.append(pyval)
         # Set nodes parent in order to check theirs precedences and add delimiters when needed.
         try:
             next(get_parents(pyval))
@@ -588,6 +592,7 @@ class PyvalColorizer:
             self._colorize_ast(pyval.value, state)
         else:
             self._colorize_ast_generic(pyval, state)
+        assert state.stack.pop() is pyval
     
     def _colorize_ast_unary_op(self, pyval: ast.UnaryOp, state: _ColorizerState) -> None:
         with _OperatorDelimiter(self, state, pyval):
@@ -761,7 +766,13 @@ class PyvalColorizer:
 
     def _colorize_ast_generic(self, pyval: ast.AST, state: _ColorizerState) -> None:
         try:
-            source = astor.to_source(pyval).strip()
+            # Always wrap the expression inside parenthesis because we can't be sure 
+            # if there are required since we don;t have support for all operators 
+            # See TODO comment in _OperatorDelimiter.
+            source = unparse(pyval).strip()
+            if sys.version_info > (3,9) and isinstance(pyval, 
+                    (ast.IfExp, ast.Compare, ast.Lambda)) and len(state.stack)>1:
+                source = f'({source})'
         except Exception: #  No defined handler for node of type <type>
             state.result.append(self.UNKNOWN_REPR)
         else:

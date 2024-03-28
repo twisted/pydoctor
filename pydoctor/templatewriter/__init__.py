@@ -1,7 +1,7 @@
 """Render pydoctor data as HTML."""
 from __future__ import annotations
 
-from typing import Any, Iterable, Iterator, Optional, Union, TYPE_CHECKING
+from typing import Iterable, Iterator, Optional, Union, TYPE_CHECKING
 if TYPE_CHECKING:
     from typing_extensions import Protocol, runtime_checkable
 else:
@@ -11,15 +11,11 @@ else:
 import abc
 from pathlib import Path, PurePath
 import warnings
-import sys
 from xml.dom import minidom
 
 # Newer APIs from importlib_resources should arrive to stdlib importlib.resources in Python 3.9.
 if TYPE_CHECKING:
-    if sys.version_info >= (3, 9):
-        from importlib.resources.abc import Traversable
-    else:
-        Traversable = Any
+    from importlib.resources.abc import Traversable
 else:
     Traversable = object
 

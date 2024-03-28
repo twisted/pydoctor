@@ -1530,19 +1530,34 @@ def test_expressions_parens(subtests:Any) -> None:
     check_src("x+y-z*q^t**k")
     
     check_src("flag&(other|foo)")
-    
-    # with astor (which adds a lot of parenthesis :/)
+    check_src("(x if x else y).C")
+    check_src("not (x == y)")
+
     if sys.version_info>=(3,8):
         check_src("(a := b)")
-    if sys.version_info>=(3,7):
-        check_src("(await x)")
-    check_src("(x if x else y)")
-    check_src("(lambda x: x)")
-    check_src("(lambda : int)()")
-    check_src("not (x == y)")
-    check_src("(x == (not y))")
-    check_src("(P * V if P and V else n * R * T)")
-    check_src("(lambda P, V, n: P * V == n * R * T)")
+    
+    if sys.version_info >= (3,11):
+        check_src("(lambda: int)()")
+    else:
+        check_src("(lambda : int)()")
+    
+    if sys.version_info > (3,9):
+        check_src("3 .__abs__()")
+        check_src("await x")
+        check_src("x if x else y")
+        check_src("lambda x: x")
+        check_src("x == (not y)")
+        check_src("P * V if P and V else n * R * T")
+        check_src("lambda P, V, n: P * V == n * R * T")
+    else:
+        check_src("(3).__abs__()")
+        if sys.version_info>=(3,7):
+            check_src("(await x)")
+        check_src("(x if x else y)")
+        check_src("(lambda x: x)")
+        check_src("(x == (not y))")
+        check_src("(P * V if P and V else n * R * T)")
+        check_src("(lambda P, V, n: P * V == n * R * T)")
     
     check_src("f(**x)")
     check_src("{**x}")
@@ -1552,8 +1567,6 @@ def test_expressions_parens(subtests:Any) -> None:
     check_src("(-1j)**6")
     check_src("not True or False")
     check_src("True or not False")
-
-    check_src("(3).__abs__()")
 
     check_src("f(**([] or 5))")
     check_src("{**([] or 5)}")
