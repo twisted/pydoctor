@@ -7,7 +7,7 @@ import inspect
 import platform
 import sys
 from numbers import Number
-from typing import Any, Callable, Iterator, Optional, List, Iterable, Sequence, TYPE_CHECKING, Tuple, Union, cast
+from typing import Any, Callable, Collection, Iterator, Optional, List, Iterable, Sequence, TYPE_CHECKING, Tuple, Union, cast
 from inspect import BoundArguments, Signature
 import ast
 
@@ -633,7 +633,7 @@ for _index in range(1, len(_op_data)):
     _op_data[_index][2] *= 2 # type:ignore
     _op_data[_index][2] += _op_data[_index - 1][2] # type:ignore
 
-_deprecated = ()
+_deprecated: Collection[str] = ()
 if sys.version_info >= (3, 12):
     _deprecated = ('Num', 'Str', 'Bytes', 'Ellipsis', 'NameConstant')
 _precedence_data = dict((getattr(ast, x, None), z) for x, y, z in _op_data if x not in _deprecated) # type:ignore
