@@ -2600,7 +2600,7 @@ def test_augmented_assignment(systemcls: Type[model.System]) -> None:
     attr = mod.contents['var']
     assert isinstance(attr, model.Attribute)
     assert attr.value
-    assert astutils.unparse(attr.value).strip() == '1 + 3'
+    assert astutils.unparse(attr.value).strip() == '1 + 3' if sys.version_info >= (3,9) else '(1 + 3)'
 
 @systemcls_param
 def test_augmented_assignment_in_class(systemcls: Type[model.System]) -> None:
@@ -2612,7 +2612,7 @@ def test_augmented_assignment_in_class(systemcls: Type[model.System]) -> None:
     attr = mod.contents['c'].contents['var']
     assert isinstance(attr, model.Attribute)
     assert attr.value
-    assert astutils.unparse(attr.value).strip() == '1 + 3'
+    assert astutils.unparse(attr.value).strip() == '1 + 3' if sys.version_info >= (3,9) else '(1 + 3)'
 
 
 @systemcls_param
@@ -2630,7 +2630,7 @@ def test_augmented_assignment_conditionnal_else_ignored(systemcls: Type[model.Sy
     attr = mod.contents['var']
     assert isinstance(attr, model.Attribute)
     assert attr.value
-    assert astutils.unparse(attr.value).strip() == '1 + 3'
+    assert astutils.unparse(attr.value).strip() == '1 + 3' if sys.version_info >= (3,9) else '(1 + 3)'
 
 @systemcls_param
 def test_augmented_assignment_conditionnal_multiple_assignments(systemcls: Type[model.System]) -> None:
@@ -2648,7 +2648,7 @@ def test_augmented_assignment_conditionnal_multiple_assignments(systemcls: Type[
     attr = mod.contents['var']
     assert isinstance(attr, model.Attribute)
     assert attr.value
-    assert astutils.unparse(attr.value).strip() == '1 + 3 + 4'
+    assert astutils.unparse(attr.value).strip() == '1 + 3 + 4' if sys.version_info >= (3,9) else '(1 + 3 + 4)'
 
 @systemcls_param
 def test_augmented_assignment_instance_var(systemcls: Type[model.System]) -> None:
@@ -2664,7 +2664,7 @@ def test_augmented_assignment_instance_var(systemcls: Type[model.System]) -> Non
     attr = mod.contents['c'].contents['var']
     assert isinstance(attr, model.Attribute)
     assert attr.value
-    assert astutils.unparse(attr.value).strip() == '1'
+    assert astutils.unparse(attr.value).strip() == '1' if sys.version_info >= (3,9) else '(1)'
 
 @systemcls_param
 def test_augmented_assignment_not_suitable_for_inline_docstring(systemcls: Type[model.System]) -> None:
