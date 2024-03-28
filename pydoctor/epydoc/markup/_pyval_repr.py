@@ -50,9 +50,7 @@ from pydoctor.epydoc import sre_parse36, sre_constants36 as sre_constants
 from pydoctor.epydoc.markup import DocstringLinker
 from pydoctor.epydoc.markup.restructuredtext import ParsedRstDocstring
 from pydoctor.epydoc.docutils import set_node_attributes, wbr, obj_reference, new_document
-from pydoctor.astutils import node2dottedname, bind_args, Parentage, get_parents, unparse#, op_util
-
-from astor import op_util
+from pydoctor.astutils import node2dottedname, bind_args, Parentage, get_parents, unparse, op_util
 
 def decode_with_backslashreplace(s: bytes) -> str:
     r"""

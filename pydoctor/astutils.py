@@ -632,8 +632,11 @@ for _index in range(1, len(_op_data)):
     _op_data[_index][2] *= 2 # type:ignore
     _op_data[_index][2] += _op_data[_index - 1][2] # type:ignore
 
-_precedence_data = dict((getattr(ast, x, None), z) for x, y, z in _op_data) # type:ignore
-_symbol_data = dict((getattr(ast, x, None), y) for x, y, z in _op_data) # type:ignore
+_deprecated = ()
+if sys.version_info >= (3, 12):
+    _deprecated = ('Num', 'Str', 'Bytes', 'Ellipsis', 'NameConstant')
+_precedence_data = dict((getattr(ast, x, None), z) for x, y, z in _op_data if x not in _deprecated) # type:ignore
+_symbol_data = dict((getattr(ast, x, None), y) for x, y, z in _op_data if x not in _deprecated) # type:ignore
 
 class op_util:
     """
@@ -663,5 +666,5 @@ class op_util:
     else:
         Precedence: Any
 
-del _op_data, _index, _precedence_data, _symbol_data
+del _op_data, _index, _precedence_data, _symbol_data, _deprecated
 # This was part of the astor library for Python AST manipulation.
