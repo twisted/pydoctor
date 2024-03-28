@@ -1536,8 +1536,12 @@ def test_expressions_parens(subtests:Any) -> None:
     if sys.version_info>=(3,8):
         check_src("(a := b)")
     
-    if sys.version_info > (3,9):
+    if sys.version_info >= (3,11):
         check_src("(lambda: int)()")
+    else:
+        check_src("(lambda : int)()")
+    
+    if sys.version_info > (3,9):
         check_src("3 .__abs__()")
         check_src("await x")
         check_src("x if x else y")
@@ -1546,7 +1550,6 @@ def test_expressions_parens(subtests:Any) -> None:
         check_src("P * V if P and V else n * R * T")
         check_src("lambda P, V, n: P * V == n * R * T")
     else:
-        check_src("(lambda : int)()")
         check_src("(3).__abs__()")
         if sys.version_info>=(3,7):
             check_src("(await x)")
