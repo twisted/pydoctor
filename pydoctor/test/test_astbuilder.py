@@ -1,9 +1,6 @@
 from typing import Optional, Tuple, Type, List, overload, cast
 import ast
 
-import astor
-
-
 from pydoctor import astbuilder, astutils, model
 from pydoctor import epydoc2stan
 from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring

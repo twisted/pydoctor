@@ -773,8 +773,7 @@ class PyvalColorizer:
             if sys.version_info > (3,9) and isinstance(pyval, 
                     (ast.IfExp, ast.Compare, ast.Lambda)) and len(state.stack)>1:
                 source = f'({source})'
-        except Exception as e: #  No defined handler for node of type <type>
-            # state.warnings.append(str(e))
+        except Exception: #  No defined handler for node of type <type>
             state.result.append(self.UNKNOWN_REPR)
         else:
             # TODO: Maybe try to colorize anyway, without links, with epydoc.doctest ?

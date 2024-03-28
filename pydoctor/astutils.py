@@ -7,7 +7,7 @@ import inspect
 import platform
 import sys
 from numbers import Number
-from typing import Any, Callable, Iterator, Optional, List, Iterable, Sequence, TYPE_CHECKING, Tuple, Type, Union, cast
+from typing import Any, Callable, Iterator, Optional, List, Iterable, Sequence, TYPE_CHECKING, Tuple, Union, cast
 from inspect import BoundArguments, Signature
 import ast
 
@@ -23,9 +23,9 @@ if TYPE_CHECKING:
 
 def unparse(node:ast.AST) -> str:
     """
-    This function can convert a node tree back into python sourcecode.
+    This function convert a node tree back into python sourcecode.
 
-    Uses L{ast.unparse} or L{astor.to_source} for python versions before 3.9.
+    Uses L{ast.unparse} or C{astor.to_source} for python versions before 3.9.
     """
     return _unparse(node)
     
