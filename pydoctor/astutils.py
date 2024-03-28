@@ -263,7 +263,7 @@ class _AnnotationStringParser(ast.NodeTransformer):
         else:
             # Other subscript; unstring the slice.
             slice = self.visit(node.slice)
-        return ast.copy_location(ast.Subscript(value, slice, node.ctx), node)
+        return ast.copy_location(ast.Subscript(value=value, slice=slice, ctx=node.ctx), node)
 
     # For Python >= 3.8:
 
@@ -501,13 +501,14 @@ def _annotation_for_value(value: object) -> Optional[ast.expr]:
             if ann_value is None:
                 ann_elem = None
             elif ann_elem is not None:
-                ann_elem = ast.Tuple(elts=[ann_elem, ann_value])
+                ann_elem = ast.Tuple(elts=[ann_elem, ann_value], ctx=ast.Load())
         if ann_elem is not None:
             if name == 'tuple':
-                ann_elem = ast.Tuple(elts=[ann_elem, ast.Constant(value=...)])
-            return ast.Subscript(value=ast.Name(id=name),
-                                 slice=ast.Index(value=ann_elem))
-    return ast.Name(id=name)
+                ann_elem = ast.Tuple(elts=[ann_elem, ast.Constant(value=...)], ctx=ast.Load())
+            return ast.Subscript(value=ast.Name(id=name, ctx=ast.Load()),
+                                 slice=ann_elem,
+                                 ctx=ast.Load())
+    return ast.Name(id=name, ctx=ast.Load())
 
 def _annotation_for_elements(sequence: Iterable[object]) -> Optional[ast.expr]:
     names = set()
@@ -520,7 +521,7 @@ def _annotation_for_elements(sequence: Iterable[object]) -> Optional[ast.expr]:
             return None
     if len(names) == 1:
         name = names.pop()
-        return ast.Name(id=name)
+        return ast.Name(id=name, ctx=ast.Load())
     else:
         # Empty sequence or no uniform type.
         return None
