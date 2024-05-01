@@ -110,7 +110,7 @@ def _handle_implemented(
 
     for idx, iface_name in enumerate(implementer.implements_directly):
         try:
-            iface = implementer.system.find_object(iface_name)
+            iface = implementer.system.objForFullName(iface_name, raise_missing=True)
         except LookupError:
             implementer.report(
                 'Interface "%s" not found' % iface_name,

@@ -25,10 +25,10 @@ def test_IPAddress_implementations() -> None:
         assert all(impl in page for impl in show_up), page
 
 # Test for https://github.com/twisted/pydoctor/issues/505
-def test_web_template_api() -> None:
+def test_some_apis() -> None:
     """
     This test ensures all important members of the twisted.web.template 
-    module are documented at the right place
+    module are documented at the right place, and other APIs exist as well.
     """
 
     exists = ['twisted.web.template.Tag.html', 
@@ -39,7 +39,8 @@ def test_web_template_api() -> None:
         'twisted.web.template.TagLoader.html',
         'twisted.web.template.XMLString.html',
         'twisted.web.template.XMLFile.html',
-        'twisted.web.template.Element.html',]
+        'twisted.web.template.Element.html',
+        'twisted.internet.ssl.DistinguishedName.html']
     for e in exists:
         assert (BASE_DIR / e).exists(), f"{e} not found"
     

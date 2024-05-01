@@ -57,8 +57,9 @@ def test_allgames() -> None:
     assert isinstance(mod1, model.Module)
     mod2 = system.allobjects['allgames.mod2']
     assert isinstance(mod2, model.Module)
-    # InSourceAll is not moved into mod2, but NotInSourceAll is.
+    # InSourceAll is not moved into mod2 because it's defined in __all__ and module is public.
     assert 'InSourceAll' in mod1.contents
+    assert 'InSourceAll' not in mod2.contents
     assert 'NotInSourceAll' in mod2.contents
     # Source paths must be unaffected by the move, so that error messages
     # point to the right source code.
@@ -141,18 +142,18 @@ def test_reparenting_follows_aliases() -> None:
     assert mything._localNameToFullName('MyClass') == 'reparenting_follows_aliases.main.MyClass'
     assert myotherthing._localNameToFullName('MyClass') == 'reparenting_follows_aliases._mything.MyClass'
 
-    system.find_object('reparenting_follows_aliases._mything.MyClass') == klass
+    system.objForFullName('reparenting_follows_aliases._mything.MyClass') == klass
 
     # This part of the test cannot pass for now since we don't recursively resolve aliases.
     # See https://github.com/twisted/pydoctor/pull/414 and https://github.com/twisted/pydoctor/issues/430
 
     try:
-        assert system.find_object('reparenting_follows_aliases._myotherthing.MyClass') == klass
+        assert system.objForFullName('reparenting_follows_aliases._myotherthing.MyClass') == klass
         assert myotherthing.resolveName('MyClass') == klass
         assert mything.resolveName('MyClass') == klass
         assert top.resolveName('_myotherthing.MyClass') == klass
         assert top.resolveName('_mything.MyClass') == klass
-    except (AssertionError, LookupError):
+    except AssertionError:
         return
     else:
         raise AssertionError("Congratulation!")

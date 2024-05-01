@@ -1,9 +1,10 @@
 """The classes that turn  L{Documentable} instances into objects we can render."""
 from __future__ import annotations
 
+from itertools import chain
 from typing import (
-    TYPE_CHECKING, Dict, Iterator, List, Optional, Mapping, Sequence,
-    Type, Union
+    TYPE_CHECKING, Callable, Dict, Iterator, List, Optional, Mapping, Sequence,
+    Tuple, Type, Union
 )
 import ast
 import abc
@@ -279,11 +280,20 @@ class CommonPage(Page):
 
     def docstring(self) -> "Flattenable":
         return self.docgetter.get(self.ob)
+    
+    def _childtable_objects_order(self, 
+                              v:Union[model.Documentable, Tuple[str, model.Documentable]]) -> Tuple[int, int, str]:
+        if isinstance(v, model.Documentable):
+            return self._order(v) 
+        else:
+            name, o = v
+            i,j,_ = self._order(o)
+            return (i,j, f'{self.ob.fullName()}.{name}'.lower())
 
-    def children(self) -> Sequence[model.Documentable]:
+    def children(self) -> Sequence[Union[model.Documentable, Tuple[str, model.Documentable]]]:
         return sorted(
             (o for o in self.ob.contents.values() if o.isVisible),
-            key=self._order)
+            key=self._childtable_objects_order)
 
     def packageInitTable(self) -> "Flattenable":
         return ()
@@ -363,7 +373,6 @@ class CommonPage(Page):
         )
         return slot_map
 
-
 class ModulePage(CommonPage):
     ob: model.Module
 
@@ -376,17 +385,35 @@ class ModulePage(CommonPage):
 
         r.extend(super().extras())
         return r
+    
+    def _iter_reexported_members(self, predicate: Optional[Callable[[model.Documentable], bool]]=None) -> Iterator[Tuple[str, model.Documentable]]:
+        if not predicate:
+            predicate = lambda v:True
+        return ((n,o) for n,o in self.ob.exported.items() if o.isVisible and predicate(o))
+
+    def children(self) -> Sequence[Union[model.Documentable, Tuple[str, model.Documentable]]]:
+        return sorted(chain(
+            super().children(), self._iter_reexported_members()),
+            key=self._childtable_objects_order)
 
 
 class PackagePage(ModulePage):
-    def children(self) -> Sequence[model.Documentable]:
-        return sorted(self.ob.submodules(), key=self._order)
-
-    def packageInitTable(self) -> "Flattenable":
-        children = sorted(
-            (o for o in self.ob.contents.values()
+    def children(self) -> Sequence[Union[model.Documentable, Tuple[str, model.Documentable]]]:
+        return sorted(chain(self.ob.submodules(), 
+                            self._iter_reexported_members(
+                                predicate=lambda o: isinstance(o, model.Module))), 
+                      key=self._childtable_objects_order)
+    
+    def initTableChildren(self) -> Sequence[Union[model.Documentable, Tuple[str, model.Documentable]]]:
+        return sorted(
+            chain((o for o in self.ob.contents.values()
              if not isinstance(o, model.Module) and o.isVisible),
-            key=self._order)
+             self._iter_reexported_members(
+                                predicate=lambda o: not isinstance(o, model.Module))),
+            key=self._childtable_objects_order)
+    
+    def packageInitTable(self) -> "Flattenable":
+        children = self.initTableChildren()
         if children:
             loader = ChildTable.lookup_loader(self.template_lookup)
             return [
@@ -574,7 +601,7 @@ class ZopeInterfaceClassPage(ClassPage):
         r.extend(super().objectExtras(ob))
         return r
 
-commonpages: 'Final[Mapping[str, Type[CommonPage]]]' = {
+commonpages: Final[Mapping[str, Type[CommonPage]]] = {
     'Module': ModulePage,
     'Package': PackagePage,
     'Class': ClassPage,
