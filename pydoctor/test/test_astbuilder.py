@@ -1137,10 +1137,10 @@ def test_docstring_assignment(systemcls: Type[model.System], capsys: CapSys) -> 
     assert CLS.docstring == """Clears the screen"""
     method1 = CLS.contents['method1']
     assert method1.kind is model.DocumentableKind.METHOD
-    assert method1.docstring == "Updated docstring #1"
+    assert method1.docstring == "Override docstring #1"
     method2 = CLS.contents['method2']
     assert method2.kind is model.DocumentableKind.METHOD
-    assert method2.docstring == "Updated docstring #2"
+    assert method2.docstring == "Set docstring #2"
     captured = capsys.readouterr()
     assert captured.out == (
         '<test>:14: Existing docstring at line 8 is overriden\n'
