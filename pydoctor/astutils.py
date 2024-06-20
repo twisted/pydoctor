@@ -770,3 +770,134 @@ class op_util:
 
 del _op_data, _index, _precedence_data, _symbol_data, _deprecated
 # This was part of the astor library for Python AST manipulation.
+
+
+# Part of the sphinx.pycode.parser module.
+# Copyright 2007-2020 by the Sphinx team, see AUTHORS.
+# BSD, see LICENSE for details.
+from token import DEDENT, INDENT, NAME, NEWLINE, NUMBER, OP, STRING
+from tokenize import COMMENT, generate_tokens, tok_name
+
+class Token:
+    """Better token wrapper for tokenize module."""
+
+    def __init__(self, kind: int, value: Any, start: Tuple[int, int], end: Tuple[int, int],
+                 source: str) -> None:
+        self.kind = kind
+        self.value = value
+        self.start = start
+        self.end = end
+        self.source = source
+
+    def __eq__(self, other: Any) -> bool:
+        if isinstance(other, int):
+            return self.kind == other
+        elif isinstance(other, str):
+            return bool(self.value == other)
+        elif isinstance(other, (list, tuple)):
+            return [self.kind, self.value] == list(other)
+        elif other is None:
+            return False
+        else:
+            raise ValueError('Unknown value: %r' % other)
+
+    def match(self, *conditions: Any) -> bool:
+        return any(self == candidate for candidate in conditions)
+
+    def __repr__(self) -> str:
+        return '<Token kind=%r value=%r>' % (tok_name[self.kind],
+                                             self.value.strip())
+
+class TokenProcessor:
+    def __init__(self, buffers: List[str]) -> None:
+        lines = iter(buffers)
+        self.buffers = buffers
+        self.tokens = generate_tokens(lambda: next(lines))
+        self.current: Token | None = None
+        self.previous: Token | None = None
+
+    def get_line(self, lineno: int) -> str:
+        """Returns specified line."""
+        return self.buffers[lineno - 1]
+
+    def fetch_token(self) -> Token | None:
+        """Fetch a next token from source code.
+
+        Returns ``None`` if sequence finished.
+        """
+        try:
+            self.previous = self.current
+            self.current = Token(*next(self.tokens))
+        except StopIteration:
+            self.current = None
+
+        return self.current
+
+    def fetch_until(self, condition: Any) -> List[Token]:
+        """Fetch tokens until specified token appeared.
+
+        .. note:: This also handles parenthesis well.
+        """
+        tokens = []
+        while current := self.fetch_token():
+            tokens.append(current)
+            if current == condition:
+                break
+            elif current == [OP, '(']:
+                tokens += self.fetch_until([OP, ')'])
+            elif current == [OP, '{']:
+                tokens += self.fetch_until([OP, '}'])
+            elif current == [OP, '[']:
+                tokens += self.fetch_until([OP, ']'])
+
+        return tokens
+
+
+class AfterCommentParser(TokenProcessor):
+    """Python source code parser to pick up comment after assignment.
+
+    This parser takes a python code starts with assignment statement,
+    and returns the comments for variable if exists.
+    """
+
+    def __init__(self, lines: List[str]) -> None:
+        super().__init__(lines)
+        self.comment: str | None = None
+
+    def fetch_rvalue(self) -> List[Token]:
+        """Fetch right-hand value of assignment."""
+        tokens = []
+        while current := self.fetch_token():
+            tokens.append(current)
+            if current == [OP, '(']:
+                tokens += self.fetch_until([OP, ')'])
+            elif current == [OP, '{']:
+                tokens += self.fetch_until([OP, '}'])
+            elif current == [OP, '[']:
+                tokens += self.fetch_until([OP, ']'])
+            elif current == INDENT:
+                tokens += self.fetch_until(DEDENT)
+            elif current == [OP, ';']:
+                break
+            elif current.kind not in (OP, NAME, NUMBER, STRING):
+                break
+
+        return tokens
+
+    def parse(self) -> None:
+        """Parse the code and obtain comment after assignment."""
+        # skip lvalue (or whole of AnnAssign)
+        while (current:=self.fetch_token()) and \
+            not current.match([OP, '='], NEWLINE, COMMENT):
+            assert current
+        
+        if current is None:
+            return
+
+        # skip rvalue (if exists)
+        if current == [OP, '=']:
+            self.fetch_rvalue()
+
+        if current == COMMENT:
+            self.comment = current.value
+# This was part of the sphinx.pycode.parser module.
