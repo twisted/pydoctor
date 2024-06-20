@@ -173,7 +173,7 @@ class Documentable:
             msg = 'Existing docstring'
             if self.docstring_lineno:
                 msg += f' at line {self.docstring_lineno}'
-            msg += f' is overriden'
+            msg += ' is overriden'
             self.report(msg, 'docstring', lineno_offset=lineno-self.docstring_lineno)
         self.docstring = doc
         self.docstring_lineno = lineno
