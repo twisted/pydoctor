@@ -717,7 +717,7 @@ class ModuleVistor(NodeVisitor):
             return
 
         if obj is not None:
-            obj.docstring = docstring
+            obj._setDocstringValue(docstring, expr.lineno)
             # TODO: It might be better to not perform docstring parsing until
             #       we have the final docstrings for all objects.
             obj.parsed_docstring = None
@@ -959,9 +959,7 @@ class ModuleVistor(NodeVisitor):
                 if tag == 'return':
                     if not pdoc.has_body:
                         pdoc = field.body()
-                        # Avoid format_summary() going back to the original
-                        # empty-body docstring.
-                        attr.docstring = ''
+
                 elif tag == 'rtype':
                     attr.parsed_type = field.body()
                 else:
