@@ -181,7 +181,7 @@ def _is_property_decorator(dottedname:Sequence[str], ctx:model.Documentable) -> 
     return False
 
 
-def _get_inherited_property(dottedname:Sequence[str], parent: model.Documentable) -> Optional[model.Property]:
+def _fetch_property(deconame:Sequence[str], parent: model.Documentable) -> Optional[model.Property]:
     """
     Fetch the inherited property that this new decorator overrides.
     Returns C{None} if it doesn't exist in the inherited members or if it's already definied in the locals.
@@ -189,7 +189,7 @@ def _get_inherited_property(dottedname:Sequence[str], parent: model.Documentable
     """
     # TODO: It would be best if this job was done in post-processing...
 
-    property_name = dottedname[:-1]
+    property_name = deconame[:-1]
     
     if len(property_name) <= 1 or property_name[-1] in parent.contents:
         # the property already exist
@@ -919,88 +919,38 @@ class ModuleVistor(NodeVisitor):
         doc_node = get_docstring_node(node)
         func_name = node.name
 
-        # Whether the function is derorated with @classmethod
-        is_classmethod = False
-        # Whether the function is derorated with @staticmethod
-        is_staticmethod = False
-        # Whether the function is derorated with @typing.overload
-        is_overload_func = False
-        # Whether the function is derorated with @property
-        is_property = False
-        # If the function is decorated with some @stuff.setter/deleter/getter property decorator: 
-        # stores the dotted name of the expression.
-        property_func_deco: Optional[List[str]] = None
+        (is_classmethod, is_staticmethod, 
+         is_overload_func, is_property, 
+         property_deconame) = self._getFunctionKinds(node, parent)
+        
+        if property_deconame:
+            # Rename the setter/deleter, so it doesn't replace
+            # the property object.
+            func_name = '.'.join(property_deconame[-2:])
 
-        parent_is_cls = isinstance(parent, model.Class)
-        if node.decorator_list:
-            for deco_name, _ in astutils.iter_decorator_list(node.decorator_list):
-                if deco_name is None:
-                    continue
-                # determine the function's kind
-                if parent_is_cls:
-                    if _is_property_decorator(deco_name, parent):
-                        is_property = True
-                    elif deco_name == ['classmethod']:
-                        is_classmethod = True
-                    elif deco_name == ['staticmethod']:
-                        is_staticmethod = True
-                    else:
-                        # Pre-handle property elements
-                        if _is_property_function(deco_name):
-                            # Setters and deleters should have the same name as the property function,
-                            # otherwise ignore it.
-                            # This pollutes the namespace unnecessarily and is generally not recommended. 
-                            # Therefore it makes sense to stick to a single name, 
-                            # which is consistent with the former property definition.
-                            if not deco_name[-2] == func_name:
-                                continue 
-                            
-                            # Rename the setter/deleter, so it doesn't replace
-                            # the property object.
-                            func_name = '.'.join(deco_name[-2:])
-                            property_func_deco = deco_name
-                
-                # Determine if the function is decorated with overload
-                if parent.expandName('.'.join(deco_name)) in ('typing.overload', 
-                                                              'typing_extensions.overload'):
-                    is_overload_func = True
-
-        # Determine if this function is a property of some kind
+        # Determine if this function is a property of some kind and process it
         property_func_kind: Optional[model.Property.Kind] = None
         property_model: Optional[model.Property] = None
         is_new_property: bool = is_property
         
-        if property_func_deco is not None:
-            # Looks like inherited property
-            if len(property_func_deco)>2:
-                _inherited_property = _get_inherited_property(property_func_deco, parent)
-                if _inherited_property:
-                    property_model = self._addProperty(node.name, parent, lineno)
-                    # copy property defs info
-                    property_model.getter = _inherited_property.getter
-                    property_model.setter = _inherited_property.setter
-                    property_model.deleter = _inherited_property.deleter
-                    # Manually inherits documentation if not explicit in the definition.
-                    if doc_node is None:
-                        property_model.docstring = _inherited_property.docstring
-                        # We can transfert the line numbers only if the two prperties are in the same module. 
-                        # This ignores reparenting, but it's ok because the reparenting will soon hapen in post-process.
-                        if _inherited_property.module is property_model.module:
-                            property_model.docstring_lineno = _inherited_property.docstring_lineno
-                        else:
-                            # TODO: Wrap the docstring info into a new class Docstring. 
-                            # so we can transfert the filename information as well.
-                            property_model.docstring_lineno = -1
+        if property_deconame is not None:
+            # Process property @name.setter/deleter/getter decorated function
+            if len(property_deconame)>2:
+                # Looks like inherited property
+                base_property = _fetch_property(property_deconame, parent)
+                if base_property:
+                    property_model = self._addInheritedProperty(base_property, node.name, parent, lineno, 
+                                               copy_docstring=doc_node is None)
                     is_new_property = True
             else:
                 # fetch property info to add this info to it
-                _maybe_prop = self.builder.current.contents.get(node.name)
-                if isinstance(_maybe_prop, model.Property):
-                    property_model = _maybe_prop
-            property_func_kind = _get_property_function_kind(property_func_deco)
+                maybe_property = self.builder.current.contents.get(node.name)
+                if isinstance(maybe_property, model.Property):
+                    property_model = maybe_property
+            property_func_kind = _get_property_function_kind(property_deconame)
         
         elif is_property:
-            # This is a new property definition
+            # This is a new @property definition
             property_model = self._addProperty(node.name, parent, lineno)
             property_func_kind = model.Property.Kind.GETTER
             # Rename the getter function as well, since both the Property and the Function will
@@ -1023,6 +973,7 @@ class ModuleVistor(NodeVisitor):
             # Do not recreate function object, just re-push it
             self.builder.push(existing_func, lineno)
             func = existing_func
+        
         elif isinstance(existing_func, model.Function) and property_model is not None and not is_new_property:
             # Check if this property function is overriding a previously defined
             # property function on the same scope before pushing the new function
@@ -1114,6 +1065,85 @@ class ModuleVistor(NodeVisitor):
             
             assert property_func_kind is not None
             property_model.store_function(property_func_kind, func)
+
+    def _getFunctionKinds(self, node: ast.FunctionDef | ast.AsyncFunctionDef, 
+                          parent: model.Documentable) -> tuple[bool, bool, bool, bool, List[str] | None]:
+        """
+        Returns a tuple with the following values:
+            
+            - Whether the function is derorated with @classmethod
+            - Whether the function is derorated with @staticmethod
+            - Whether the function is derorated with @typing.overload
+            - Whether the function is derorated with @property
+            - The property decorator name as list of string if the function 
+              is decorated with some @stuff.setter/deleter/getter otherwise None.
+        """
+        is_classmethod = False
+        is_staticmethod = False
+        is_overload_func = False
+        is_property = False
+        property_deconame: List[str] | None = None
+
+        parent_is_cls = isinstance(parent, model.Class)
+        if node.decorator_list:
+            for deco_name, _ in astutils.iter_decorator_list(node.decorator_list):
+                if deco_name is None:
+                    continue
+                # determine the function's kind
+                if parent_is_cls:
+                    if _is_property_decorator(deco_name, parent):
+                        is_property = True
+                    elif deco_name == ['classmethod']:
+                        is_classmethod = True
+                    elif deco_name == ['staticmethod']:
+                        is_staticmethod = True
+                    else:
+                        # Pre-handle property elements
+                        if _is_property_function(deco_name):
+                            # Setters and deleters should have the same name as the property function,
+                            # otherwise ignore it.
+                            # This pollutes the namespace unnecessarily and is generally not recommended. 
+                            # Therefore it makes sense to stick to a single name, 
+                            # which is consistent with the former property definition.
+                            if not deco_name[-2] == node.name:
+                                continue 
+                            
+                            property_deconame = deco_name
+                
+                # Determine if the function is decorated with overload
+                if parent.expandName('.'.join(deco_name)) in ('typing.overload', 
+                                                              'typing_extensions.overload'):
+                    is_overload_func = True
+        
+        return (is_classmethod, is_staticmethod, 
+                is_overload_func, is_property, 
+                property_deconame)
+
+    def _addInheritedProperty(self, 
+                              base_property: model.Property, 
+                              name: str, 
+                              parent: model.Documentable, 
+                              lineno: int, 
+                              copy_docstring: bool, ):
+        property_model = self._addProperty(name, parent, lineno)
+        # copy property defs info
+        property_model.getter = base_property.getter
+        property_model.setter = base_property.setter
+        property_model.deleter = base_property.deleter
+        
+        # Manually inherits documentation if not explicit in the definition.
+        if copy_docstring:
+            property_model.docstring = base_property.docstring
+            # We can transfert the line numbers only if the two properties are in the same module. 
+            # This ignores reparenting, but it's ok because the reparenting will soon hapen in post-process.
+            if base_property.module is property_model.module:
+                property_model.docstring_lineno = base_property.docstring_lineno
+            else:
+                # TODO: Wrap the docstring info into a new class Docstring. 
+                # so we can transfert the filename information as well.
+                pass
+        
+        return property_model
     
 
     def depart_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:
