@@ -177,6 +177,8 @@ class Documentable:
             self.report(msg, 'docstring', lineno_offset=lineno-self.docstring_lineno)
         self.docstring = doc
         self.docstring_lineno = lineno
+        # Due to the current process for parsing doc strings, some objects might already have a parsed_docstring populated at this moment. 
+        # This is an unfortunate behaviour but it’s too big of a refactor for now (see https://github.com/twisted/pydoctor/issues/798).
         if self.parsed_docstring:
             self.parsed_docstring = None
 
