@@ -15,16 +15,20 @@ from typing import (
 
 from pydoctor import epydoc2stan, model, node2stan, extensions, linker
 from pydoctor.epydoc.markup._pyval_repr import colorize_inline_pyval
-from pydoctor.astutils import (is_none_literal, is_typing_annotation, is_using_annotations, is_using_typing_final, node2dottedname, node2fullname, 
+from pydoctor.astutils import (is_none_literal, is_typing_annotation, is_using_annotations, is_using_typing_final, node2dottedname, node2fullname, extract_doc_comment, 
                                is__name__equals__main__, unstring_annotation, upgrade_annotation, iterassign, extract_docstring_linenum, infer_type, get_parents,
                                get_docstring_node, unparse, NodeVisitor, Parentage, Str)
 
 
-def parseFile(path: Path) -> ast.Module:
-    """Parse the contents of a Python source file."""
+def parseFile(path: Path) -> tuple[ast.Module, Sequence[str]]:
+    """
+    Parse the contents of a Python source file.
+
+    @returns: Tuple: ast module, sequence of source code lines.
+    """
     with open(path, 'rb') as f:
         src = f.read() + b'\n'
-    return _parse(src, filename=str(path))
+    return _parse(src, filename=str(path)), src.splitlines(keepends=True)
 
 if sys.version_info >= (3,8):
     _parse = partial(ast.parse, type_comments=True)
@@ -743,6 +747,24 @@ class ModuleVistor(NodeVisitor):
                 self._handleDocstringUpdate(value, expr, lineno)
             elif isinstance(value, ast.Name) and value.id == 'self':
                 self._handleInstanceVar(targetNode.attr, annotation, expr, lineno)
+    
+    def _handleDocComment(self, node: ast.Assign | ast.AnnAssign):
+        # it does not work with tuple unpacking statements or multiple names at the moment
+        is_assign = isinstance(node, ast.Assign)
+        if any(isinstance(t, ast.Tuple) for t in 
+               (node.targets if is_assign else [node.target])) or (
+                is_assign and len(node.targets) > 1):
+            return # should we trigger a warning if a valid doc_comment is found?
+        
+        doc_comment = extract_doc_comment(node, self.builder.lines_collection[self.module])
+        if doc_comment:
+            linenumber, docstring = doc_comment
+            attr = self.builder.currentAttr
+            if attr is not None:
+                attr.docstring = docstring
+                attr.docstring_lineno = linenumber
+                # will be: attr._setDocstringValue(docstring, linenumber)
+        
 
     def visit_Assign(self, node: ast.Assign) -> None:
         lineno = node.lineno
@@ -763,11 +785,13 @@ class ModuleVistor(NodeVisitor):
                     self._handleAssignment(elem, None, None, lineno)
             else:
                 self._handleAssignment(target, annotation, expr, lineno)
+        self._handleDocComment(node)
 
     def visit_AnnAssign(self, node: ast.AnnAssign) -> None:
         annotation = upgrade_annotation(unstring_annotation(
             node.annotation, self.builder.current), self.builder.current)
         self._handleAssignment(node.target, annotation, node.value, node.lineno)
+        self._handleDocComment(node)
     
     def visit_AugAssign(self, node:ast.AugAssign) -> None:
         self._handleAssignment(node.target, None, node.value, 
@@ -1068,12 +1092,13 @@ class ASTBuilder:
     def __init__(self, system: model.System):
         self.system = system
         
-        self.current = cast(model.Documentable, None) # current visited object
-        self.currentMod: Optional[model.Module] = None # module, set when visiting ast.Module
-        self.currentAttr: Optional[model.Documentable] = None # recently visited attribute object
+        self.current = cast(model.Documentable, None) #: current visited object
+        self.currentMod: Optional[model.Module] = None #: module, set when visiting ast.Module
+        self.currentAttr: Optional[model.Documentable] = None #: recently visited attribute object
         
         self._stack: List[model.Documentable] = []
-        self.ast_cache: Dict[Path, Optional[ast.Module]] = {}
+        self.ast_cache: Dict[Path, Optional[ast.Module]] = {} #: avoids calling parse() twice for the same path
+        self.lines_collection: dict[model.Module, Sequence[str]] = {} #: mapping from modules to source code lines 
 
 
     def _push(self, cls: Type[DocumentableT], name: str, lineno: int) -> DocumentableT:
@@ -1179,20 +1204,24 @@ class ASTBuilder:
             return self.ast_cache[path]
         except KeyError:
             mod: Optional[ast.Module] = None
+            lines: Sequence[str] | None = None
             try:
-                mod = parseFile(path)
+                mod, lines = parseFile(path)
             except (SyntaxError, ValueError) as e:
                 ctx.report(f"cannot parse file, {e}")
 
             self.ast_cache[path] = mod
+            self.lines_collection[ctx] = lines
             return mod
     
     def parseString(self, py_string:str, ctx: model.Module) -> Optional[ast.Module]:
-        mod = None
+        mod: Optional[ast.Module] = None
+        lines: Sequence[str] | None = None
         try:
-            mod = _parse(py_string)
+            mod, lines = _parse(py_string), py_string.splitlines(keepends=True)
         except (SyntaxError, ValueError):
             ctx.report("cannot parse string")
+        self.lines_collection[ctx] = lines
         return mod
 
 model.System.defaultBuilder = ASTBuilder

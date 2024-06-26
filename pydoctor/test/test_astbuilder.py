@@ -2747,3 +2747,53 @@ def test_typealias_unstring(systemcls: Type[model.System]) -> None:
         # there is not Constant nodes in the type alias anymore
         next(n for n in ast.walk(typealias.value) if isinstance(n, ast.Constant))
 
+@systemcls_param
+def test_doc_comment(systemcls: Type[model.System],  capsys: CapSys) -> None:
+    """
+    Tests for feature https://github.com/twisted/pydoctor/issues/800
+    """
+    code = ('class Foo(object):\n'
+            '    """class Foo!"""\n'
+            '    #: comment before attr1\n'
+            '    attr1 = None\n'
+            '    attr2 = None  # attribute comment for attr2 (without colon)\n'
+            '    attr3 = None  #: attribute comment for attr3\n'
+            '    attr4 = None  #: long attribute comment\n'
+            '                  #: for attr4\n'
+            '    #: comment before attr5\n'
+            '    attr5 = None  #: attribute comment for attr5\n'
+            '    attr6, attr7 = 1, 2  #: this comment is ignored\n'
+            '\n'
+            '    def __init__(self):\n'
+            '       self.attr8 = None  #: first attribute comment (ignored)\n'
+            '       self.attr8 = None  #: attribute comment for attr8\n'
+            '       #: comment before attr9\n'
+            '       self.attr9 = None  #: comment after attr9\n'
+            '       "string after attr9"\n'
+            '\n'
+            '    def bar(self, arg1, arg2=True, *args, **kwargs):\n'
+            '       """method Foo.bar"""\n'
+            '       pass\n'
+            '\n'
+            'def baz():\n'
+            '   """function baz"""\n'
+            '   pass\n'
+            '\n'
+            'class Qux: attr1 = 1; attr2 = 2')
+    
+    mod = fromText(code, systemcls=systemcls)
+    
+    def docs(name: str) -> str:
+        return mod.contents['Foo'].contents[name].docstring
+    
+    assert docs('attr1') == 'comment before attr1'
+    assert docs('attr2') == None # not a doc comment
+    assert docs('attr3') == 'attribute comment for attr3'
+    assert docs('attr4') == 'long attribute comment'
+    assert docs('attr4') == 'long attribute comment'
+    assert docs('attr5') == 'attribute comment for attr5'
+    assert docs('attr6') == None #'this comment is ignored'
+    assert docs('attr7') == None #'this comment is ignored'
+    assert docs('attr8') == 'attribute comment for attr8'
+    assert docs('attr9') == 'string after attr9'
+    
