@@ -2797,3 +2797,31 @@ def test_doc_comment(systemcls: Type[model.System],  capsys: CapSys) -> None:
     assert docs('attr8') == 'attribute comment for attr8'
     assert docs('attr9') == 'string after attr9'
     
+@systemcls_param
+def test_doc_comment_module_var(systemcls: Type[model.System],  capsys: CapSys) -> None:
+    src = """
+    a: int = 42 #: This is a variable.
+
+    #: This is b variable.
+    b = None
+
+    #: This is c variable.
+    c: float #: This takes precedence!
+
+    d: None  #: This is also ignored.
+    '''Because I exist!'''
+
+    #: this is not documentation
+
+    e = 43
+    """
+    mod = fromText(src, systemcls=systemcls)
+
+    def docs(name: str) -> str:
+        return mod.contents[name].docstring
+
+    assert docs('a') == 'This is a variable.'
+    assert docs('c') == 'This takes precedence!'
+    assert docs('d') == 'Because I exist!'
+    assert docs('e') is None
+    

@@ -901,7 +901,7 @@ class AfterCommentParser(TokenProcessor):
 comment_re = re.compile('^\\s*#: ?(.*)\r?\n?$')
 indent_re = re.compile('^\\s*$')
 
-def extract_doc_comment(node: ast.Assign | ast.AnnAssign, lines: Sequence[str]) ->  Tuple[int, str] | None:
+def extract_doc_comment_after(node: ast.Assign | ast.AnnAssign, lines: Sequence[str]) ->  Tuple[int, str] | None:
     """
     Support for doc comment as found in sphinx.
 
@@ -919,18 +919,23 @@ def extract_doc_comment(node: ast.Assign | ast.AnnAssign, lines: Sequence[str]) 
         docstring = comment_re.sub('\\1', parser.comment)
         return node.lineno, docstring
 
+    return None
+
+def extract_doc_comment_before(node: ast.Assign | ast.AnnAssign, lines: Sequence[str]) ->  Tuple[int, str] | None:
+    """
+    Same as L{extract_doc_comment_after} but fetch the comment before the assignment.
+    """
     # check doc comments before assignment
-    if indent_re.match(current_line[:node.col_offset]):
-        comment_lines = []
-        for i in range(node.lineno - 1):
-            before_line = lines[node.lineno - 2 - i]
-            if comment_re.match(before_line):
-                comment_lines.append(comment_re.sub('\\1', before_line))
-            else:
-                break
-        if comment_lines:
-            docstring = inspect.cleandoc('\n'.join(reversed(comment_lines)))
-            return node.lineno - len(comment_lines), docstring
+    comment_lines = []
+    for i in range(node.lineno - 1):
+        before_line = lines[node.lineno - 2 - i]
+        if comment_re.match(before_line):
+            comment_lines.append(comment_re.sub('\\1', before_line))
+        else:
+            break
+    if comment_lines:
+        docstring = inspect.cleandoc('\n'.join(reversed(comment_lines)))
+        return node.lineno - len(comment_lines), docstring
 
     return None
 

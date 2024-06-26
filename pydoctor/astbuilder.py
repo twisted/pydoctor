@@ -15,9 +15,9 @@ from typing import (
 
 from pydoctor import epydoc2stan, model, node2stan, extensions, linker
 from pydoctor.epydoc.markup._pyval_repr import colorize_inline_pyval
-from pydoctor.astutils import (is_none_literal, is_typing_annotation, is_using_annotations, is_using_typing_final, node2dottedname, node2fullname, extract_doc_comment, 
+from pydoctor.astutils import (is_none_literal, is_typing_annotation, is_using_annotations, is_using_typing_final, node2dottedname, node2fullname, 
                                is__name__equals__main__, unstring_annotation, upgrade_annotation, iterassign, extract_docstring_linenum, infer_type, get_parents,
-                               get_docstring_node, unparse, NodeVisitor, Parentage, Str)
+                               get_docstring_node, unparse, extract_doc_comment_before, extract_doc_comment_after, NodeVisitor, Parentage, Str)
 
 
 def parseFile(path: Path) -> tuple[ast.Module, Sequence[str]]:
@@ -750,19 +750,23 @@ class ModuleVistor(NodeVisitor):
     
     def _handleDocComment(self, node: ast.Assign | ast.AnnAssign):
         # it does not work with tuple unpacking statements or multiple names at the moment
+        # as we cannot tell which of the variables the docstring is
+        # for, and how to assign the right side to the variables on the left.
         is_assign = isinstance(node, ast.Assign)
         if any(isinstance(t, ast.Tuple) for t in 
                (node.targets if is_assign else [node.target])) or (
                 is_assign and len(node.targets) > 1):
             return # should we trigger a warning if a valid doc_comment is found?
         
-        doc_comment = extract_doc_comment(node, self.builder.lines_collection[self.module])
-        if doc_comment:
-            linenumber, docstring = doc_comment
-            attr = self.builder.currentAttr
-            if attr is not None:
-                attr.docstring = docstring
-                attr.docstring_lineno = linenumber
+        attr = self.builder.currentAttr
+        if attr is None:
+            return
+        
+        lines = self.builder.lines_collection[self.module]
+        for doc_comment in [extract_doc_comment_before(node, lines), 
+                            extract_doc_comment_after(node, lines)]:
+            if doc_comment:
+                attr.docstring_lineno, attr.docstring = doc_comment
                 # will be: attr._setDocstringValue(docstring, linenumber)
         
 
