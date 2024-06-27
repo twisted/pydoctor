@@ -166,8 +166,21 @@ class Documentable:
 
     def setDocstring(self, node: astutils.Str) -> None:
         lineno, doc = astutils.extract_docstring(node)
+        self._setDocstringValue(doc, lineno)
+
+    def _setDocstringValue(self, doc:str, lineno:int) -> None:
+        if self.docstring or self.parsed_docstring: # some object have a parsed docstring only like the ones coming from ivar fields
+            msg = 'Existing docstring'
+            if self.docstring_lineno:
+                msg += f' at line {self.docstring_lineno}'
+            msg += ' is overriden'
+            self.report(msg, 'docstring', lineno_offset=lineno-self.docstring_lineno)
         self.docstring = doc
         self.docstring_lineno = lineno
+        # Due to the current process for parsing doc strings, some objects might already have a parsed_docstring populated at this moment. 
+        # This is an unfortunate behaviour but it’s too big of a refactor for now (see https://github.com/twisted/pydoctor/issues/798).
+        if self.parsed_docstring:
+            self.parsed_docstring = None
 
     def setLineNumber(self, lineno: LineFromDocstringField | LineFromAst | int) -> None:
         """
