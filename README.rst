@@ -76,6 +76,8 @@ What's New?
 in development
 ^^^^^^^^^^^^^^
 
+* Add support for doc-comments as found in Sphinx. Use the special comment formatting ``#:`` to start the comment instead of just ``#``.
+  Comments need to be either on a line of their own before the definition, or immediately after the assignment on the same line. 
 * Trigger a warning when several docstrings are detected for the same object.
 
 pydoctor 24.3.3
