@@ -2850,7 +2850,7 @@ def test_mutilple_docstrings_warnings(systemcls: Type[model.System], capsys: Cap
 def test_mutilple_docstring_with_doc_comments_warnings(systemcls: Type[model.System], capsys: CapSys) -> None:
     src = '''
     class C:
-        a: int;"docs" #: re-docs
+        a: int;"re-docs" #: docs
     
     class B:
         """
