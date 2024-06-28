@@ -20,19 +20,16 @@ from pydoctor.astutils import (is_none_literal, is_typing_annotation, is_using_a
                                is__name__equals__main__, unstring_annotation, upgrade_annotation, iterassign, extract_docstring_linenum, infer_type, get_parents,
                                get_docstring_node, unparse, extract_doc_comment_before, extract_doc_comment_after, NodeVisitor, Parentage, Str)
 
-coding_re = re.compile(b'coding[=:]\s*([-\w.]+)')
-
 def parseFile(path: Path) -> tuple[ast.Module, Sequence[str]]:
     """
     Parse the contents of a Python source file.
 
     @returns: Tuple: ast module, sequence of source code lines.
     """
-    with open(path, 'rb') as f:
-        bytes_src = f.read() + b'\n'
-    return (_parse(bytes_src, filename=str(path)), 
-            bytes_src.decode(encoding='utf-8', 
-                             errors='replace').splitlines(keepends=True))
+    # TODO: Here we are assuming the file encoding of uft-8, but source code files
+    # can use a different encoding: https://stackoverflow.com/a/729016
+    src = path.read_text() + '\n'
+    return _parse(src, filename=str(path)), src.splitlines(keepends=True)
 
 if sys.version_info >= (3,8):
     _parse = partial(ast.parse, type_comments=True)
