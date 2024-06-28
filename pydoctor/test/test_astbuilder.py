@@ -2887,4 +2887,4 @@ def test_other_encoding(systemcls: Type[model.System], capsys: CapSys) -> None:
         systemcls=lambda: model.System(model.Options.from_args(['-q'])))
     errs = capsys.readouterr().out.splitlines()
     assert len(errs) == 1
-    assert errs[0].endswith("pydoctor/test/testpackages/coding_not_utf8/other_coding.py:???: cannot parse file, 'utf-8' codec can't decode byte 0xa1 in position 46: invalid start byte\n")
+    assert errs[0].endswith("pydoctor/test/testpackages/coding_not_utf8/other_coding.py:???: cannot parse file, 'utf-8' codec can't decode byte 0xa1 in position 46: invalid start byte")
