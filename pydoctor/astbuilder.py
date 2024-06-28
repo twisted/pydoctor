@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import ast
+import re
 import sys
 
 from functools import partial
@@ -19,6 +20,7 @@ from pydoctor.astutils import (is_none_literal, is_typing_annotation, is_using_a
                                is__name__equals__main__, unstring_annotation, upgrade_annotation, iterassign, extract_docstring_linenum, infer_type, get_parents,
                                get_docstring_node, unparse, extract_doc_comment_before, extract_doc_comment_after, NodeVisitor, Parentage, Str)
 
+coding_re = re.compile(b'coding[=:]\s*([-\w.]+)')
 
 def parseFile(path: Path) -> tuple[ast.Module, Sequence[str]]:
     """
@@ -27,8 +29,10 @@ def parseFile(path: Path) -> tuple[ast.Module, Sequence[str]]:
     @returns: Tuple: ast module, sequence of source code lines.
     """
     with open(path, 'rb') as f:
-        src = f.read() + b'\n'
-    return _parse(src, filename=str(path)), src.splitlines(keepends=True)
+        bytes_src = f.read() + b'\n'
+    return (_parse(bytes_src, filename=str(path)), 
+            bytes_src.decode(encoding='utf-8', 
+                             errors='replace').splitlines(keepends=True))
 
 if sys.version_info >= (3,8):
     _parse = partial(ast.parse, type_comments=True)
