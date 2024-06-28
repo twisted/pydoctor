@@ -2878,3 +2878,13 @@ def test_mutilple_docstring_with_doc_comments_warnings(systemcls: Type[model.Sys
     assert mod.contents['C'].contents['a'].docstring == 're-docs'
     assert mod.contents['B'].contents['a'].docstring == 're-docs'
     assert mod.contents['B2'].contents['a'].docstring == 're-re-docs'
+
+@systemcls_param
+def test_other_encoding(systemcls: Type[model.System], capsys: CapSys) -> None:
+    # Test for issue https://github.com/twisted/pydoctor/issues/805
+    # We're missing support for other kind of encodings.
+    processPackage('coding_not_utf8', 
+        systemcls=lambda: model.System(model.Options.from_args(['-q'])))
+    errs = capsys.readouterr().out.splitlines()
+    assert len(errs) == 1
+    assert errs[0].endswith("pydoctor/test/testpackages/coding_not_utf8/other_coding.py:???: cannot parse file, 'utf-8' codec can't decode byte 0xa1 in position 46: invalid start byte\n")
