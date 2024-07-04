@@ -76,6 +76,8 @@ What's New?
 in development
 ^^^^^^^^^^^^^^
 
+* Trigger a warning when several docstrings are detected for the same object.
+
 pydoctor 24.3.3
 ^^^^^^^^^^^^^^^
 

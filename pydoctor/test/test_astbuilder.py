@@ -1114,11 +1114,11 @@ def test_docstring_assignment(systemcls: Type[model.System], capsys: CapSys) -> 
         def method2():
             pass
 
-        method1.__doc__ = "Updated docstring #1"
+        method1.__doc__ = "Override docstring #1"
 
     fun.__doc__ = "Happy Happy Joy Joy"
     CLS.__doc__ = "Clears the screen"
-    CLS.method2.__doc__ = "Updated docstring #2"
+    CLS.method2.__doc__ = "Set docstring #2"
 
     None.__doc__ = "Free lunch!"
     real.__doc__ = "Second breakfast"
@@ -1137,24 +1137,19 @@ def test_docstring_assignment(systemcls: Type[model.System], capsys: CapSys) -> 
     assert CLS.docstring == """Clears the screen"""
     method1 = CLS.contents['method1']
     assert method1.kind is model.DocumentableKind.METHOD
-    assert method1.docstring == "Updated docstring #1"
+    assert method1.docstring == "Override docstring #1"
     method2 = CLS.contents['method2']
     assert method2.kind is model.DocumentableKind.METHOD
-    assert method2.docstring == "Updated docstring #2"
+    assert method2.docstring == "Set docstring #2"
     captured = capsys.readouterr()
-    lines = captured.out.split('\n')
-    assert len(lines) > 0 and lines[0] == \
-        "<test>:20: Unable to figure out target for __doc__ assignment"
-    assert len(lines) > 1 and lines[1] == \
-        "<test>:21: Unable to figure out target for __doc__ assignment: " \
-        "computed full name not found: real"
-    assert len(lines) > 2 and lines[2] == \
-        "<test>:22: Unable to figure out value for __doc__ assignment, " \
-        "maybe too complex"
-    assert len(lines) > 3 and lines[3] == \
-        "<test>:23: Ignoring value assigned to __doc__: not a string"
-    assert len(lines) == 5 and lines[-1] == ''
-
+    assert captured.out == (
+        '<test>:14: Existing docstring at line 8 is overriden\n'
+        '<test>:20: Unable to figure out target for __doc__ assignment\n'
+        '<test>:21: Unable to figure out target for __doc__ assignment: computed full name not found: real\n'
+        '<test>:22: Unable to figure out value for __doc__ assignment, maybe too complex\n'
+        '<test>:23: Ignoring value assigned to __doc__: not a string\n'
+    )
+    
 @systemcls_param
 def test_docstring_assignment_detuple(systemcls: Type[model.System], capsys: CapSys) -> None:
     """We currently don't trace values for detupling assignments, so when
@@ -3198,3 +3193,56 @@ def test_typealias_unstring(systemcls: Type[model.System]) -> None:
     with pytest.raises(StopIteration):
         # there is not Constant nodes in the type alias anymore
         next(n for n in ast.walk(typealias.value) if isinstance(n, ast.Constant))
+
+@systemcls_param
+def test_mutilple_docstrings_warnings(systemcls: Type[model.System], capsys: CapSys) -> None:
+    """
+    When pydoctor encounters multiple places where the docstring is defined, it reports a warning.
+    """
+    src = '''
+    class C:
+        a: int;"docs"
+        def _(self):
+            self.a = 0; "re-docs"
+    
+    class B:
+        """
+        @ivar a: docs
+        """
+        a: int
+        "re-docs"
+    
+    class A:
+        """docs"""
+        A.__doc__ = 're-docs'
+    '''
+    fromText(src, systemcls=systemcls)
+    assert capsys.readouterr().out == ('<test>:5: Existing docstring at line 3 is overriden\n'
+                                       '<test>:12: Existing docstring at line 9 is overriden\n'
+                                       '<test>:16: Existing docstring at line 15 is overriden\n')
+
+@systemcls_param
+def test_mutilple_docstring_with_doc_comments_warnings(systemcls: Type[model.System], capsys: CapSys) -> None:
+    src = '''
+    class C:
+        a: int;"docs" #: re-docs
+    
+    class B:
+        """
+        @ivar a: docs
+        """
+        #: re-docs
+        a: int 
+
+    class B2:
+        """
+        @ivar a: docs
+        """
+        #: re-docs
+        a: int 
+        "re-re-docs"
+    '''
+    fromText(src, systemcls=systemcls)
+    # TODO: handle doc comments.x
+    assert capsys.readouterr().out == '<test>:18: Existing docstring at line 14 is overriden\n'
+

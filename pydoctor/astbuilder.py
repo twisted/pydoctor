@@ -820,7 +820,7 @@ class ModuleVistor(NodeVisitor):
             return
 
         if obj is not None:
-            obj.docstring = docstring
+            obj._setDocstringValue(docstring, expr.lineno)
             # TODO: It might be better to not perform docstring parsing until
             #       we have the final docstrings for all objects.
             obj.parsed_docstring = None
