@@ -46,8 +46,7 @@ class SphinxInventory:
             project_name: Optional[str] = None
             ):
         """
-        @param project_name: Dummy argument to stay compatible with
-                             L{twisted.python._pydoctor}.
+        @param project_name: Dummy argument.
         """
         self._links: Dict[str, Tuple[str, str]] = {}
         self._logger = logger

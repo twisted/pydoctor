@@ -126,6 +126,7 @@ class ObjContent(Element):
         self.documented_ob = documented_ob
         self.template_lookup = template_lookup
 
+        self._order = ob.system.membersOrder(ob)
         self._depth = depth
         self._level = level + 1
 
@@ -172,10 +173,10 @@ class ObjContent(Element):
         if inherited:
             assert isinstance(self.ob, Class), "Use inherited=True only with Class instances"
             return sorted((o for o in util.inherited_members(self.ob) if o.isVisible),
-                              key=util.objects_order)
+                              key=self._order)
         else:
             return sorted((o for o in self.ob.contents.values() if o.isVisible),
-                              key=util.objects_order)
+                              key=self._order)
 
     def _isExpandable(self, list_type: Type[Documentable]) -> bool:
         """
