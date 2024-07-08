@@ -2820,6 +2820,7 @@ def test_doc_comment_module_var(systemcls: Type[model.System],  capsys: CapSys) 
     assert docs('d') == 'Because I exist!'
     assert docs('e') is None
     
+
 def test_mutilple_docstrings_warnings(systemcls: Type[model.System], capsys: CapSys) -> None:
     """
     When pydoctor encounters multiple places where the docstring is defined, it reports a warning.
@@ -2884,7 +2885,7 @@ def test_other_encoding(systemcls: Type[model.System], capsys: CapSys) -> None:
     # Test for issue https://github.com/twisted/pydoctor/issues/805
     # We're missing support for other kind of encodings.
     processPackage('coding_not_utf8', 
-        systemcls=lambda: model.System(model.Options.from_args(['-q'])))
+        systemcls=lambda: systemcls(model.Options.from_args(['-q'])))
     errs = capsys.readouterr().out.splitlines()
     assert len(errs) == 1
     assert errs[0].endswith("pydoctor/test/testpackages/coding_not_utf8/other_coding.py:???: cannot parse file, 'utf-8' codec can't decode byte 0xa1 in position 46: invalid start byte")
