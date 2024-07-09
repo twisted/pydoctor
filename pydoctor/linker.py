@@ -118,7 +118,7 @@ class _EpydocLinker(DocstringLinker):
                 self.debug(f'Linker does not find {part0} in {src}, continuing...', lineno)
                 continue
             target = src.contents.get(name)
-            if target is None or target.kind is model.DocumentableKind.ALIAS:
+            if target is None or target.kind.name == 'ALIAS':
                 # replace an alias with its definition and
                 # ignore aliases that point to a definition already in the collection
                 target = src.resolveName(name)
