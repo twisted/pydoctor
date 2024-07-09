@@ -566,7 +566,7 @@ def test_ast_bin_op() -> None:
     2.3*6
     """)))) == """<document source="pyval_repr">
     2.3
-    *
+     * 
     6\n"""
 
     assert color(extract_expr(ast.parse(dedent("""
@@ -574,56 +574,56 @@ def test_ast_bin_op() -> None:
     """)))) == """<document source="pyval_repr">
     (
     3
-    -
+     - 
     6
     )
-    *
+     * 
     2\n"""
 
     assert color(extract_expr(ast.parse(dedent("""
     101//4+101%4
     """)))) == """<document source="pyval_repr">
     101
-    //
+     // 
     4
-    +
+     + 
     101
-    %
+     % 
     4\n"""
 
     assert color(extract_expr(ast.parse(dedent("""
     1 & 0
     """)))) == """<document source="pyval_repr">
     1
-    &
+     & 
     0\n"""
 
     assert color(extract_expr(ast.parse(dedent("""
     1 | 0
     """)))) == """<document source="pyval_repr">
     1
-    |
+     | 
     0\n"""
 
     assert color(extract_expr(ast.parse(dedent("""
     1 ^ 0
     """)))) == """<document source="pyval_repr">
     1
-    ^
+     ^ 
     0\n"""
 
     assert color(extract_expr(ast.parse(dedent("""
     1 << 0
     """)))) == """<document source="pyval_repr">
     1
-    <<
+     << 
     0\n"""
     
     assert color(extract_expr(ast.parse(dedent("""
     1 >> 0
     """)))) == """<document source="pyval_repr">
     1
-    >>
+     >> 
     0\n"""
 
     assert color(extract_expr(ast.parse(dedent("""
@@ -631,7 +631,7 @@ def test_ast_bin_op() -> None:
     """)))) == """<document source="pyval_repr">
     <obj_reference refuri="H">
         H
-    @
+     @ 
     <obj_reference refuri="beta">
         beta\n"""
 
@@ -642,20 +642,20 @@ def test_operator_precedences() -> None:
     """)))) == """<document source="pyval_repr">
     (
     2
-    **
+     ** 
     3
     )
-    **
+     ** 
     2\n"""
 
     assert color(extract_expr(ast.parse(dedent("""
     2 ** 3 ** 2
     """)))) == """<document source="pyval_repr">
     2
-    **
+     ** 
     (
     3
-    **
+     ** 
     2
     )\n"""
 
@@ -664,12 +664,12 @@ def test_operator_precedences() -> None:
     """)))) == """<document source="pyval_repr">
     (
     1
-    +
+     + 
     2
     )
-    *
+     * 
     3
-    /
+     / 
     4\n"""
 
     assert color(extract_expr(ast.parse(dedent("""
@@ -677,12 +677,12 @@ def test_operator_precedences() -> None:
     """)))) == """<document source="pyval_repr">
     (
     1
-    +
+     + 
     2
     )
-    *
+     * 
     3
-    /
+     / 
     4\n"""
 
     assert color(extract_expr(ast.parse(dedent("""
@@ -690,25 +690,25 @@ def test_operator_precedences() -> None:
     """)))) == """<document source="pyval_repr">
     (
     1
-    +
+     + 
     2
     )
-    *
+     * 
     3
-    /
+     / 
     4\n"""
 
     assert color(extract_expr(ast.parse(dedent("""
     1 + 2 * 3 / 4 - 1
     """)))) == """<document source="pyval_repr">
     1
-    +
+     + 
     2
-    *
+     * 
     3
-    /
+     / 
     4
-    -
+     - 
     1\n"""
 
 def test_ast_bool_op() -> None:
@@ -783,7 +783,7 @@ def test_ast_list_tuple() -> None:
     <wbr>
     11
     ]
-    +
+     + 
     [
     <wbr>
     99
@@ -847,7 +847,7 @@ def test_ast_dict() -> None:
     """
     assert color(extract_expr(ast.parse(dedent("""
     {'1':33, '2':[1,2,3,{7:'oo'*20}]}
-    """)))) == """<document source="pyval_repr">
+    """))), linelen=45) == """<document source="pyval_repr">
     {
     <wbr>
     <inline classes="variable-quote">
@@ -888,7 +888,7 @@ def test_ast_dict() -> None:
         oo
     <inline classes="variable-quote">
         '
-    *
+     * 
     20
     }
     ]
@@ -1507,13 +1507,15 @@ def check_src_roundtrip(src:str, subtests:Any) -> None:
 
 def test_expressions_parens(subtests:Any) -> None:
     check_src = partial(check_src_roundtrip, subtests=subtests)
-    check_src("1<<(10|1)<<1")
-    check_src("int|float|complex|None")
-    check_src("1+1")
-    check_src("1+2/3")
-    check_src("(1+2)/3")
-    check_src("(1+2)*3+4*(5+2)")
-    check_src("(1+2)*3+4*(5+2)**2")
+    check_src("1 << (10 | 1) << 1")
+    check_src("int | float | complex | None")
+    check_src("list[int | float | complex | None]")
+    check_src("list[int | float | complex | None, int | None]")
+    check_src("1 + 1")
+    check_src("1 + 2 / 3")
+    check_src("(1 + 2) / 3")
+    check_src("(1 + 2) * 3 + 4 * (5 + 2)")
+    check_src("(1 + 2) * 3 + 4 * (5 + 2) ** 2")
     check_src("~x")
     check_src("x and y")
     check_src("x and y and z")
@@ -1522,14 +1524,14 @@ def test_expressions_parens(subtests:Any) -> None:
     # cpython tests expected '(x**y)**z**q', 
     # but too much reasonning is needed to obtain this result,
     # because the power operator is reassociative...
-    check_src("(x**y)**(z**q)")
-    check_src("((x**y)**z)**q")
-    check_src("x>>y")
-    check_src("x<<y")
-    check_src("x>>y and x>>z")
-    check_src("x+y-z*q^t**k")
+    check_src("(x ** y) ** (z ** q)")
+    check_src("((x ** y) ** z) ** q")
+    check_src("x >> y")
+    check_src("x << y")
+    check_src("x >> y and x >> z")
+    check_src("x + y - z * q ^ t ** k")
     
-    check_src("flag&(other|foo)")
+    check_src("flag & (other | foo)")
     check_src("(x if x else y).C")
     check_src("not (x == y)")
 
@@ -1562,9 +1564,9 @@ def test_expressions_parens(subtests:Any) -> None:
     check_src("f(**x)")
     check_src("{**x}")
 
-    check_src("(-1)**7")
-    check_src("(-1.0)**8")
-    check_src("(-1j)**6")
+    check_src("(-1) ** 7")
+    check_src("(-1.0) ** 8")
+    check_src("(-1j) ** 6")
     check_src("not True or False")
     check_src("True or not False")
 

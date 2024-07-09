@@ -225,9 +225,9 @@ def test_epytext_inline() -> None:
     expected = '''
         <p> <em>  <strong>   Inline markup  </strong>  may be nested; and it may span </em> multiple lines.</p>
         <ul class="rst-simple"> <li>  <em>   Italicized text  </em> </li> <li>  <strong>   Bold-faced text  </strong> </li> 
-        <li>  <tt class="rst-docutils literal">   Source code  </tt> </li> 
-        <li>  Math:  <span class="rst-math rst-formula">   <i>    m   </i>   *   <i>    x   </i>   +   <i>    b   </i>  </span> </li></ul>
-        <p> Without the capital letter, matching braces are not interpreted as markup: <tt class="rst-docutils literal">  
+        <li>  <tt class="rst-docutils rst-literal">   Source code  </tt> </li> 
+        <li>  Math:  <span class="rst-formula rst-math">   <i>    m   </i>   *   <i>    x   </i>   +   <i>    b   </i>  </span> </li></ul>
+        <p> Without the capital letter, matching braces are not interpreted as markup: <tt class="rst-docutils rst-literal">  
         <span class="pre">   my_dict={1:2,  </span>  3:4} </tt> .</p>
         '''
     assert epytext2html(doc) == squash(expected)
@@ -246,11 +246,11 @@ def test_epytext_url() -> None:
         '''
     expected = '''
         <ul class="rst-simple">
-        <li><a class="rst-reference external" href="http://www.python.org" target="_top">www.python.org</a></li>
-        <li><a class="rst-reference external" href="http://www.python.org" target="_top">http://www.python.org</a></li>
-        <li><a class="rst-reference external" href="http://epydoc.sourceforge.net" target="_top">The epydoc homepage</a></li>
-        <li><a class="rst-reference external" href="http://www.python.org" target="_top">The<strong><em>Python</em></strong>homepage</a></li>
-        <li><a class="rst-reference external" href="mailto:edloper@gradient.cis.upenn.edu" target="_top">Edward Loper</a></li></ul>'''
+        <li><a class="rst-external rst-reference" href="http://www.python.org" target="_top">www.python.org</a></li>
+        <li><a class="rst-external rst-reference" href="http://www.python.org" target="_top">http://www.python.org</a></li>
+        <li><a class="rst-external rst-reference" href="http://epydoc.sourceforge.net" target="_top">The epydoc homepage</a></li>
+        <li><a class="rst-external rst-reference" href="http://www.python.org" target="_top">The<strong><em>Python</em></strong>homepage</a></li>
+        <li><a class="rst-external rst-reference" href="mailto:edloper@gradient.cis.upenn.edu" target="_top">Edward Loper</a></li></ul>'''
 
     assert epytext2html(doc) == squash(expected)
 
@@ -286,7 +286,7 @@ def test_nested_markup() -> None:
         It becomes a little bit complicated with U{B{custom} links <https://google.ca>}
         '''
     expected = '''
-      It becomes a little bit complicated with<a class="rst-reference external" href="https://google.ca" target="_top"><strong>custom</strong>links</a>
+      It becomes a little bit complicated with<a class="rst-external rst-reference" href="https://google.ca" target="_top"><strong>custom</strong>links</a>
       '''
     
     assert epytext2html(doc) == squash(expected)
@@ -335,42 +335,42 @@ Other
     expected_html="""
     <li>
  <p class="rst-first">
-  <a class="rst-reference internal" href="#rst-titles" id="rst-toc-entry-1">
+  <a class="rst-internal rst-reference" href="#rst-titles" id="rst-toc-entry-1">
    Titles
   </a>
  </p>
  <ul class="rst-simple">
   <li>
-   <a class="rst-reference internal" href="#rst-level-2" id="rst-toc-entry-2">
+   <a class="rst-internal rst-reference" href="#rst-level-2" id="rst-toc-entry-2">
     Level 2
    </a>
    <ul>
     <li>
-     <a class="rst-reference internal" href="#rst-level-3" id="rst-toc-entry-3">
+     <a class="rst-internal rst-reference" href="#rst-level-3" id="rst-toc-entry-3">
       Level 3
      </a>
     </li>
    </ul>
   </li>
   <li>
-   <a class="rst-reference internal" href="#rst-level-22" id="rst-toc-entry-4">
+   <a class="rst-internal rst-reference" href="#rst-level-22" id="rst-toc-entry-4">
     Level 2.2
    </a>
   </li>
   <li>
-   <a class="rst-reference internal" href="#rst-level-22-1" id="rst-toc-entry-5">
+   <a class="rst-internal rst-reference" href="#rst-level-22-1" id="rst-toc-entry-5">
     Level 22
    </a>
   </li>
  </ul>
 </li>
 <li>
- <a class="rst-reference internal" href="#rst-lists" id="rst-toc-entry-6">
+ <a class="rst-internal rst-reference" href="#rst-lists" id="rst-toc-entry-6">
   Lists
  </a>
 </li>
 <li>
- <a class="rst-reference internal" href="#rst-other" id="rst-toc-entry-7">
+ <a class="rst-internal rst-reference" href="#rst-other" id="rst-toc-entry-7">
   Other
  </a>
 </li>

@@ -3,6 +3,7 @@ Helper function to convert L{docutils} nodes to Stan tree.
 """
 from __future__ import annotations
 
+from itertools import chain
 import re
 import optparse
 from typing import Any, Callable, ClassVar, Iterable, List, Optional, Union, TYPE_CHECKING
@@ -148,6 +149,11 @@ class HTMLTranslator(html4css1.HTMLTranslator):
           - hrefs not starting with C{'#'} are given target='_top'
           - all headings (C{<hM{n}>}) are given the css class C{'heading'}
         """
+
+        to_list_names = {'name':'names', 
+                         'id':'ids', 
+                         'class':'classes'}
+
         # Get the list of all attribute dictionaries we need to munge.
         attr_dicts = [attributes]
         if isinstance(node, nodes.Node):
@@ -158,15 +164,21 @@ class HTMLTranslator(html4css1.HTMLTranslator):
         # iterate through attributes one at a time because some
         # versions of docutils don't case-normalize attributes.
         for attr_dict in attr_dicts:
-            for key, val in tuple(attr_dict.items()):
-                # Prefix all CSS classes with "rst-"; and prefix all
+            # Prefix all CSS classes with "rst-"; and prefix all
                 # names with "rst-" to avoid conflicts.
+            done = set()
+            for key, val in tuple(attr_dict.items()):
                 if key.lower() in ('class', 'id', 'name'):
-                    if not val.startswith('rst-'):
-                        attr_dict[key] = f'rst-{val}'
-                elif key.lower() in ('classes', 'ids', 'names'):
+                    list_key = to_list_names[key.lower()]
+                    attr_dict[list_key] = [f'rst-{cls}' if not cls.startswith('rst-') 
+                                      else cls for cls in sorted(chain(val.split(), 
+                                        attr_dict.get(list_key, ())))]
+                    del attr_dict[key]
+                    done.add(list_key)
+            for key, val in tuple(attr_dict.items()):
+                if key.lower() in ('classes', 'ids', 'names') and key.lower() not in done:
                     attr_dict[key] = [f'rst-{cls}' if not cls.startswith('rst-') 
-                                      else cls for cls in val]
+                                      else cls for cls in sorted(val)]
                 elif key.lower() == 'href':
                     if attr_dict[key][:1]=='#':
                         href = attr_dict[key][1:]

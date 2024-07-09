@@ -282,7 +282,7 @@ def test_processtypes_corner_cases(capsys: CapSys) -> None:
     assert process("'hello'[str]")                          == "<span class=\"literal\">'hello'</span>[<code>str]</code>"
     assert process('"hello"[str]')                          == "<span class=\"literal\">\"hello\"</span>[<code>str]</code>"
     assert process('`hello`[str]')                          == "<code>hello</code>[<code>str]</code>"
-    assert process('`hello <https://github.com>`_[str]')    == """<a class="rst-reference external" href="https://github.com" target="_top">hello</a>[<code>str]</code>"""
+    assert process('`hello <https://github.com>`_[str]')    == """<a class="rst-external rst-reference" href="https://github.com" target="_top">hello</a>[<code>str]</code>"""
     assert process('**hello**[str]')                        == "<strong>hello</strong>[<code>str]</code>"
     assert process('["hello" or str, default: 2]')          == """[<span class="literal">"hello"</span> or <code>str</code>, <em>default</em>: <span class="literal">2</span>]"""
 
