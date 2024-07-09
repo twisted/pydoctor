@@ -4,7 +4,7 @@ Module containing the logic to resolve names, aliases and imports.
 from typing import Optional, List, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from typing_extensions import Protocol
+    from typing import Protocol
 else:
     Protocol = object
 
@@ -28,7 +28,7 @@ def _localDocumentableToFullName(ctx: model.CanContainImportsDocumentable, o: 'm
     """
     if o.kind is model.DocumentableKind.ALIAS:
         assert isinstance(o, model.Attribute)
-        return _resolveAlias(ctx, o, indirections)
+        return _expandAlias(ctx, o, indirections)
     return o.fullName()
 
 def _localNameToFullName(ctx: model.Documentable, name: str, indirections:Optional[List['_IndirectionT']]) -> str:
@@ -39,7 +39,7 @@ def _localNameToFullName(ctx: model.Documentable, name: str, indirections:Option
         
         # Imports
         if name in ctx._localNameToFullName_map:
-            return _resolveImport(ctx, ctx._localNameToFullName_map[name], indirections)
+            return _expandImport(ctx, ctx._localNameToFullName_map[name], indirections)
         
         # Not found
         if isinstance(ctx, model.Class):
@@ -53,10 +53,12 @@ def _localNameToFullName(ctx: model.Documentable, name: str, indirections:Option
 
 _ensure_indirection_list = lambda indirections: indirections if isinstance(indirections, list) else []
 
-def _resolveImport(ctx: model.CanContainImportsDocumentable, import_:_IndirectionT, indirections:Optional[List['_IndirectionT']]) -> str:
+def _expandImport(ctx: model.CanContainImportsDocumentable, 
+                  import_: _IndirectionT, 
+                  indirections:Optional[List['_IndirectionT']]) -> str:
     indirections = _ensure_indirection_list(indirections) + [import_]
 
-    failed = fail_to_many_aliases(ctx, import_, indirections)
+    failed = _failManyAlises(ctx, import_, indirections)
     if failed:
         return failed
     
@@ -90,14 +92,14 @@ def _resolveImport(ctx: model.CanContainImportsDocumentable, import_:_Indirectio
     
     return fullName
 
-def fail_to_many_aliases(self: model.CanContainImportsDocumentable, alias: _IndirectionT, indirections:Optional[List[_IndirectionT]]=None) -> Optional[str]:
+def _failManyAlises(ctx: model.CanContainImportsDocumentable, alias: _IndirectionT, indirections:Optional[List[_IndirectionT]]=None) -> Optional[str]:
     """
     Returns None if the alias can be resolved normally, 
     returns a string and log a warning if the alias 
     can't be resolved because it's too complex.
     """
-    if indirections and len(indirections) > self._RESOLVE_ALIAS_MAX_RECURSE:
-        self.module.report("Too many aliases", lineno_offset=alias.linenumber, section='aliases')
+    if indirections and len(indirections) > ctx._RESOLVE_ALIAS_MAX_RECURSE:
+        ctx.module.report("Too many aliases", lineno_offset=alias.linenumber, section='aliases')
         return indirections[0].fullName()
     return None
 
@@ -106,7 +108,9 @@ def fail_to_many_aliases(self: model.CanContainImportsDocumentable, alias: _Indi
 # care needs to be taken while resolving an ALIAS vs an IMPORT because an alias
 # can have the same name and target and redirect to the upper scope name, 
 # so this needs to be handled specially. 
-def _resolveAlias(self: model.CanContainImportsDocumentable, alias: _IndirectionT, indirections:Optional[List[_IndirectionT]]=None) -> str:
+def _expandAlias(self: model.CanContainImportsDocumentable, 
+                 alias: _IndirectionT, 
+                 indirections:Optional[List[_IndirectionT]]=None) -> str:
     """
     Resolve the indirection value to it's target full name.
     Or fall back to original name if we've exhausted the max recursions (or something else went wrong).
@@ -118,7 +122,7 @@ def _resolveAlias(self: model.CanContainImportsDocumentable, alias: _Indirection
     """
     indirections = _ensure_indirection_list(indirections)
 
-    failed = fail_to_many_aliases(self, alias, indirections)
+    failed = _failManyAlises(self, alias, indirections)
     if failed:
         return failed
 
