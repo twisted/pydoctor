@@ -108,25 +108,22 @@ class _EpydocLinker(DocstringLinker):
     def look_for_name(self,
             name: str,
             candidates: Iterable['model.Documentable'],
-            lineno: int
+            lineno: int,
+            look_for_imports: bool = False, 
             ) -> Optional['model.Documentable']:
         self.debug(f'Linker looks for name {name!r} in several candidates...', lineno)
         part0 = name.split('.')[0] if '.' in name else name
         potential_targets: list[model.Documentable] = []
         for src in candidates:
-            if not src.isNameDefined(part0):
-                self.debug(f'Linker does not find {part0} in {src}, continuing...', lineno)
+            # First look for objects that are not imports and then include imports if nothing was found,
+            name_defined = src.isNameDefined(part0) if look_for_imports else part0 in src.contents
+            if not name_defined:
                 continue
-            target = src.contents.get(name)
-            target_was_none = target is None
-            if target_was_none or target.kind.name == 'ALIAS':
-                # replace an alias with its definition and
-                # ignore aliases that point to a definition already in the collection
-                target = src.resolveName(name)
-
-                # roll back to the alias if definition not found
-                if not target_was_none and target is None:
-                    target = src.contents.get(name)
+            
+            target = src.resolveName(name) or src.contents.get(name)
+            # replace an alias with its definition but use the alias is we fail to resolve it
+            # ignore aliases that point to a definition already in the collection
+            
             self.debug(f'Linker finds {part0} in {src} resolving name into {target}', lineno)
             if target is not None and target not in potential_targets:
                 potential_targets.append(target)
@@ -139,6 +136,9 @@ class _EpydocLinker(DocstringLinker):
                     name,
                     ', '.join(ob.fullName() for ob in potential_targets)),
                 'resolve_identifier_xref', lineno)
+        elif not look_for_imports:
+            return self.look_for_name(name, candidates, lineno, look_for_imports=True)
+        
         return None
 
     def look_for_intersphinx(self, name: str) -> Optional[str]:
