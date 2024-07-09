@@ -118,10 +118,15 @@ class _EpydocLinker(DocstringLinker):
                 self.debug(f'Linker does not find {part0} in {src}, continuing...', lineno)
                 continue
             target = src.contents.get(name)
-            if target is None or target.kind.name == 'ALIAS':
+            target_was_none = target is None
+            if target_was_none or target.kind.name == 'ALIAS':
                 # replace an alias with its definition and
                 # ignore aliases that point to a definition already in the collection
                 target = src.resolveName(name)
+
+                # roll back to the alias if definition not found
+                if not target_was_none and target is None:
+                    target = src.contents.get(name)
             self.debug(f'Linker finds {part0} in {src} resolving name into {target}', lineno)
             if target is not None and target not in potential_targets:
                 potential_targets.append(target)
