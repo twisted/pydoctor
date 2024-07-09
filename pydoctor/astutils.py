@@ -117,15 +117,25 @@ def node2dottedname(node: Optional[ast.AST]) -> Optional[List[str]]:
     return parts
 
 
-def node2fullname(expr: Optional[ast.AST], ctx: 'model.Documentable') -> Optional[str]:
+def node2fullname(expr: Optional[ast.AST], 
+                  ctx: model.Documentable | None = None, 
+                  *,
+                  expandName:Callable[[str], str] | None = None) -> Optional[str]:
     """
     Returns the expanded name of this AST expression if C{expr} is a name, or C{None}.
     A name is an expression only composed by `ast.Name` and `ast.Attribute` nodes.
     """
+    if expandName is None:
+        if ctx is None:
+            raise TypeError('this function takes exactly two arguments')
+        expandName = ctx.expandName
+    elif ctx is not None:
+        raise TypeError('this function takes exactly two arguments')
+
     dottedname = node2dottedname(expr)
     if dottedname is None:
         return None
-    return ctx.expandName('.'.join(dottedname))
+    return expandName('.'.join(dottedname))
 
 def bind_args(sig: Signature, call: ast.Call) -> BoundArguments:
     """
