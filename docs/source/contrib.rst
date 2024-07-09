@@ -94,9 +94,15 @@ Read more about reviewing:
 Releasing and publishing a new package
 --------------------------------------
 
-Publishing to PyPI is done via a GitHub Actions workflow that is triggered when a tag is pushed. Version is configured in the ``setup.cfg``. 
+Publishing to PyPI is done via a GitHub Actions workflow.
+The publish to PyPI is triggered when a tag is pushed.
+Version is configured in the ``setup.cfg``.
 
-The following process ensures correct version management: 
+The `pydoctor PyPI project <https://pypi.org/manage/project/pydoctor/settings/publishing>`_ is configured to accept trusted publishing via GitHub actions from the `unit.yaml` workflow.
+
+If the release is done from another workflow file, the PyPI project management page needs to be updated.
+
+The following process ensures correct version management:
 
  - Create a branch: name it by the name of the new major ``pydoctor`` version, i.e. ``21.9.x``, re-use that same branch for bug-fixes.
  - On the branch, update the version and release notes.

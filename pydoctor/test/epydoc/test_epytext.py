@@ -85,8 +85,8 @@ def test_literal_braces() -> None:
     This test makes sure that braces are getting rendered as desired.
     """
     assert epytext2html("{1:{2:3}}") == '{1:{2:3}}'
-    assert epytext2html("C{{1:{2:3}}}") == '<tt class="rst-docutils literal"><span class="pre">{1:{2:3}}</span></tt>'
-    assert epytext2html("{1:C{{2:3}}}") == '{1:<tt class="rst-docutils literal">{2:3}</tt>}'
+    assert epytext2html("C{{1:{2:3}}}") == '<tt class="rst-docutils rst-literal"><span class="pre">{1:{2:3}}</span></tt>'
+    assert epytext2html("{1:C{{2:3}}}") == '{1:<tt class="rst-docutils rst-literal">{2:3}</tt>}'
     assert epytext2html("{{{}{}}{}}") == '{{{}{}}{}}'
     assert epytext2html("{{E{lb}E{lb}E{lb}}}") == '{{{{{}}'
 

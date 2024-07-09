@@ -76,10 +76,20 @@ What's New?
 in development
 ^^^^^^^^^^^^^^
 
+* Trigger a warning when several docstrings are detected for the same object.
+
+pydoctor 24.3.3
+^^^^^^^^^^^^^^^
+
+* Fix release pipeline.
+
+pydoctor 24.3.0
+^^^^^^^^^^^^^^^
+
 This is the last major release to support Python 3.7.
 
 * Drop support for Python 3.6.
-* Add support for Python 3.12 and Python 3.13.
+* Add support for Python 3.12.
 * Astor is no longer a requirement starting at Python 3.9.
 * `ExtRegistrar.register_post_processor()` now supports a `priority` argument that is an int.
   Highest priority callables will be called first during post-processing.
@@ -89,6 +99,10 @@ This is the last major release to support Python 3.7.
   order of class members and module/package members, the supported values are "alphabetical" or "source".
   The default behavior is to sort all members alphabetically.
 * Make sure the line number coming from ast analysis has precedence over the line of a ``ivar`` field.
+* Ensure that all docutils generated css classes have the ``rst-`` prefix, the base theme have been updated accordingly.
+* Fix compatibility issue with docutils 0.21.x
+* Transform annotations to use python 3.10 style: ``typing.Union[x, y]`` -> ``x | y``; ``typing.Optional[x]`` -> ``x | None``; ``typing.List[x]`` -> ``list[x]``.
+* Do not output useless parenthesis when colourizing subscripts. 
 
 pydoctor 23.9.1
 ^^^^^^^^^^^^^^^

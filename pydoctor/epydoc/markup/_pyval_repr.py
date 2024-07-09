@@ -130,7 +130,7 @@ class _OperatorDelimiter:
     """
 
     def __init__(self, colorizer: 'PyvalColorizer', state: _ColorizerState, 
-                 node: Union[ast.UnaryOp, ast.BinOp, ast.BoolOp],) -> None:
+                 node: ast.expr,) -> None:
 
         self.discard = True
         """No parenthesis by default."""
@@ -148,17 +148,21 @@ class _OperatorDelimiter:
         
         # avoid needless parenthesis, since we now collect parents for every nodes 
         if isinstance(parent_node, (ast.expr, ast.keyword, ast.comprehension)):
-            precedence = op_util.get_op_precedence(node.op)
-            if isinstance(parent_node, (ast.UnaryOp, ast.BinOp, ast.BoolOp)):
-                parent_precedence = op_util.get_op_precedence(parent_node.op)
-                if isinstance(parent_node.op, ast.Pow) or isinstance(parent_node, ast.BoolOp):
-                    parent_precedence+=1
-            else:
-                parent_precedence = colorizer.explicit_precedence.get(
-                    node, op_util.Precedence.highest)
-                
-            if precedence < parent_precedence:
+            try:
+                precedence = op_util.get_op_precedence(getattr(node, 'op', node))
+            except KeyError:
                 self.discard = False
+            else:
+                try:
+                    parent_precedence = op_util.get_op_precedence(getattr(parent_node, 'op', parent_node))
+                    if isinstance(getattr(parent_node, 'op', None), ast.Pow) or isinstance(parent_node, ast.BoolOp):
+                        parent_precedence+=1
+                except KeyError:
+                    parent_precedence = colorizer.explicit_precedence.get(
+                        node, op_util.Precedence.highest)
+                    
+                if precedence < parent_precedence:
+                    self.discard = False
 
     def __enter__(self) -> '_OperatorDelimiter':
         return self
@@ -613,38 +617,16 @@ class PyvalColorizer:
     def _colorize_ast_binary_op(self, pyval: ast.BinOp, state: _ColorizerState) -> None:
         with _OperatorDelimiter(self, state, pyval):
             # Colorize first operand
+            mark = state.mark()
             self._colorize(pyval.left, state)
-
             # Colorize operator
-            if isinstance(pyval.op, ast.Sub):
-                self._output('-', None, state)
-            elif isinstance(pyval.op, ast.Add):
-                self._output('+', None, state)
-            elif isinstance(pyval.op, ast.Mult):
-                self._output('*', None, state)
-            elif isinstance(pyval.op, ast.Div):
-                self._output('/', None, state)
-            elif isinstance(pyval.op, ast.FloorDiv):
-                self._output('//', None, state)
-            elif isinstance(pyval.op, ast.Mod):
-                self._output('%', None, state)
-            elif isinstance(pyval.op, ast.Pow):
-                self._output('**', None, state)
-            elif isinstance(pyval.op, ast.LShift):
-                self._output('<<', None, state)
-            elif isinstance(pyval.op, ast.RShift):
-                self._output('>>', None, state)
-            elif isinstance(pyval.op, ast.BitOr):
-                self._output('|', None, state)
-            elif isinstance(pyval.op, ast.BitXor):
-                self._output('^', None, state)
-            elif isinstance(pyval.op, ast.BitAnd):
-                self._output('&', None, state)
-            elif isinstance(pyval.op, ast.MatMult):
-                self._output('@', None, state)
-            else:
+            try:
+                self._output(op_util.get_op_symbol(pyval.op, ' %s '), None, state)
+            except KeyError:
                 state.warnings.append(f"Unknow binary operator: {pyval}")
+                state.restore(mark)
                 self._colorize_ast_generic(pyval, state)
+                return
 
             # Colorize second operand
             self._colorize(pyval.right, state)
@@ -687,6 +669,8 @@ class PyvalColorizer:
             # In Python < 3.9, non-slices are always wrapped in an Index node.
             sub = sub.value
         self._output('[', self.GROUP_TAG, state)
+        self._set_precedence(op_util.Precedence.Subscript, node)
+        self._set_precedence(op_util.Precedence.Index, sub)
         if isinstance(sub, ast.Tuple):
             self._multiline(self._colorize_iter, sub.elts, state)
         else:
