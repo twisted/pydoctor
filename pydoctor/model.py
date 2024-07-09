@@ -57,12 +57,6 @@ else:
 #   Functions can't contain anything.
 
 
-_string_lineno_is_end = sys.version_info < (3,8) \
-                    and platform.python_implementation() != 'PyPy'
-"""True iff the 'lineno' attribute of an AST string node points to the last
-line in the string, rather than the first line.
-"""
-
 class LineFromAst(int):
     "Simple L{int} wrapper for linenumbers coming from ast analysis."
 
@@ -80,17 +74,6 @@ class ProcessingState(Enum):
     UNPROCESSED = 0
     PROCESSING = 1
     PROCESSED = 2
-
-class NameDefined(IntEnum):
-    """
-    >>> bool(NameDefined.NOT_FOUND)
-    False
-    >>> bool(NameDefined.BY_IMPORT)
-    True
-    """
-    NOT_FOUND = 0
-    BY_IMPORT = 1
-    BY_DECLARATION = 2
 
 class PrivacyClass(Enum):
     """L{Enum} containing values indicating how private an object should be.
@@ -851,7 +834,7 @@ class Inheritable(Documentable):
     def isNameDefined(self, name: str, before:int|None=None) -> bool:
         return self.parent.isNameDefined(name, before)
 
-    def getDefinitions(self, name: str, before:int|None=None) -> Documentable | ImportAlias | None:
+    def getDefinitions(self, name: str, before:int|None=None) -> list[Documentable | ImportAlias]:
         return self.parent.getDefinitions(name, before)
 
 class Function(Inheritable):
@@ -1553,7 +1536,7 @@ def _resolve_alias(attr: Attribute) -> None:
     # Since we try to resolve all aliases once in post-processing,
     # we use some caching
     from pydoctor import names
-    resolved = names._resolveAlias(attr.parent, attr)
+    resolved = names._expandAlias(attr.parent, attr)
     if resolved:
         resolved_ob = attr.system.objForFullName(resolved)
         if resolved_ob: 
