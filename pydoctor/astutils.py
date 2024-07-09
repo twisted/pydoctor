@@ -125,7 +125,7 @@ def node2fullname(expr: Optional[ast.AST], ctx: 'model.Documentable') -> Optiona
     dottedname = node2dottedname(expr)
     if dottedname is None:
         return None
-    return expandName('.'.join(dottedname))
+    return ctx.expandName('.'.join(dottedname))
 
 def bind_args(sig: Signature, call: ast.Call) -> BoundArguments:
     """
