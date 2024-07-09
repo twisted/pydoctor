@@ -4,14 +4,8 @@ from __future__ import annotations
 from typing import (
     TYPE_CHECKING, Dict, Iterator, List, Optional, Mapping, Sequence,
     Type, Union
-)
-if TYPE_CHECKING:
-    from typing_extensions import Final
-else:
-    # Dirty hack to work without the typing_extensions dep at runtime.
-    from collections import defaultdict
-    from functools import partial
-    Final = defaultdict(partial(defaultdict, defaultdict))
+)   
+
 import ast
 import abc
 
@@ -28,7 +22,7 @@ from pydoctor.templatewriter.pages.sidebar import SideBar
 from pydoctor.epydoc.markup._pyval_repr import colorize_inline_pyval
 
 if TYPE_CHECKING:
-    from typing_extensions import Final
+    from typing import Final
     from twisted.web.template import Flattenable
     from pydoctor.templatewriter.pages.attributechild import AttributeChild
     from pydoctor.templatewriter.pages.functionchild import FunctionChild
