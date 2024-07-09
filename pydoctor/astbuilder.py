@@ -46,23 +46,6 @@ def _maybeAttribute(cls: model.Class, name: str) -> bool:
     return obj is None or isinstance(obj, model.Attribute)
 
 
-# def _handleAliasing(
-#         ctx: model.CanContainImportsDocumentable,
-#         target: str,
-#         expr: Optional[ast.expr]
-#         ) -> bool:
-#     """If the given expression is a name assigned to a target that is not yet
-#     in use, create an alias.
-#     @return: L{True} iff an alias was created.
-#     """
-#     if target in ctx.contents:
-#         return False
-#     full_name = node2fullname(expr, ctx)
-#     if full_name is None:
-#         return False
-#     ctx._localNameToFullName_map[target] = full_name
-#     return True
-
 _LOOP_BLOCKS: Tuple[Type[ast.stmt],...] = (ast.While, ast.For, ast.AsyncFor,)
 _CONTROL_FLOW_BLOCKS: Tuple[Type[ast.stmt],...] = (ast.If, ast.Try, ast.With, ast.AsyncWith, *_LOOP_BLOCKS)
 """
@@ -197,7 +180,6 @@ class ModuleVistor(NodeVisitor):
         self.builder = builder
         self.system = builder.system
         self.module = module
-        self._moduleLevelAssigns: List[str] = []
 
     def _infer_attr_annotations(self, scope: model.Documentable) -> None:
         # Infer annotation when leaving scope so explicit
