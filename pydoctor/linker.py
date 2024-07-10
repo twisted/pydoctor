@@ -114,19 +114,21 @@ class _EpydocLinker(DocstringLinker):
         self.debug(f'Linker looks for name {name!r} in several candidates...', lineno)
         part0 = name.split('.')[0] if '.' in name else name
         potential_targets: list[model.Documentable] = []
+        potential_expanded_names: set[str] = set()
         for src in candidates:
             # First look for objects that are not imports and then include imports if nothing was found,
             name_defined = src.isNameDefined(part0) if look_for_imports else part0 in src.contents
             if not name_defined:
                 continue
-            
-            target = src.resolveName(name) or src.contents.get(name)
+            expanded_target = src.expandName(name)
+            target = src.system.objForFullName(name) or src.contents.get(name)
             # replace an alias with its definition but use the alias is we fail to resolve it
             # ignore aliases that point to a definition already in the collection
             
             self.debug(f'Linker finds {part0} in {src} resolving name into {target}', lineno)
-            if target is not None and target not in potential_targets:
+            if target is not None and target not in potential_targets and expanded_target not in potential_expanded_names:
                 potential_targets.append(target)
+                potential_expanded_names.add(expanded_target)
         
         if len(potential_targets) == 1:
             return potential_targets[0]
