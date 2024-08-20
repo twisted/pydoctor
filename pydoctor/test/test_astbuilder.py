@@ -3574,6 +3574,17 @@ def test_builtins_aliases(systemcls: Type[model.System], capsys:CapSys) -> None:
     
     assert capsys.readouterr().out == ''
 
+# These two tests should go with linker's tests
+# TODO: Test the scenario of twisted JID: meaning a docstring links to JID, but JID is not defined in the current
+# module, instead it's defined in a uncle module, but other uncle module does from x import y as JID
+# The linker should ngive the priority to the declaration of JID instead of the import
+# If the declaration doesn't exist then it uses the import. 
+
+# TODO: Test the scenario of twisted URL: meaning it's re-exported from an external library at two different places
+# a docstring link to URL but it's defined in  modules as well (both re-export the alias but one of them is used only and
+# we do not complain)
+
+
 @systemcls_param
 def test_mutilple_docstrings_warnings(systemcls: Type[model.System], capsys: CapSys) -> None:
     """
