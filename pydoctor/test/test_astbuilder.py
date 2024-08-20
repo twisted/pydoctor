@@ -2820,7 +2820,7 @@ def test_doc_comment_module_var(systemcls: Type[model.System],  capsys: CapSys) 
     assert docs('d') == 'Because I exist!'
     assert docs('e') is None
     
-
+@systemcls_param
 def test_mutilple_docstrings_warnings(systemcls: Type[model.System], capsys: CapSys) -> None:
     """
     When pydoctor encounters multiple places where the docstring is defined, it reports a warning.
