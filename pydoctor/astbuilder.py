@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import ast
-import re
+import tokenize
 import sys
 
 from functools import partial
@@ -26,9 +26,8 @@ def parseFile(path: Path) -> tuple[ast.Module, Sequence[str]]:
 
     @returns: Tuple: ast module, sequence of source code lines.
     """
-    # TODO: Here we are assuming the file encoding of uft-8, but source code files
-    # can use a different encoding: https://stackoverflow.com/a/729016
-    src = path.read_text() + '\n'
+    with tokenize.open(path) as f: 
+        src = f.read() + '\n'
     return _parse(src, filename=str(path)), src.splitlines(keepends=True)
 
 if sys.version_info >= (3,8):
