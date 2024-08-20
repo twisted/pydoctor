@@ -606,6 +606,8 @@ class ModuleVistor(NodeVisitor):
         assert isinstance(module, model.Module)
         if not _handleAliasing(module, target, expr):
             self._handleModuleVar(target, annotation, expr, lineno, augassign=augassign)
+        else:
+            self.builder.currentAttr = None
 
     def _handleClassVar(self,
             name: str,
@@ -678,6 +680,8 @@ class ModuleVistor(NodeVisitor):
         assert isinstance(cls, model.Class)
         if not _handleAliasing(cls, target, expr):
             self._handleClassVar(target, annotation, expr, lineno, augassign=augassign)
+        else:
+            self.builder.currentAttr = None
 
     def _handleDocstringUpdate(self,
             targetNode: ast.expr,
