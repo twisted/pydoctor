@@ -21,7 +21,7 @@ from enum import Enum
 from inspect import signature, Signature
 from pathlib import Path
 from typing import (
-    TYPE_CHECKING, Any, Collection, Dict, Iterator, List, Mapping,
+    TYPE_CHECKING, Any, Collection, Dict, Iterator, List, Mapping, Callable, 
     Optional, Sequence, Set, Tuple, Type, TypeVar, Union, cast, overload
 )
 from urllib.parse import quote
@@ -59,6 +59,11 @@ _string_lineno_is_end = sys.version_info < (3,8) \
 line in the string, rather than the first line.
 """
 
+class LineFromAst(int):
+    "Simple L{int} wrapper for linenumbers coming from ast analysis."
+
+class LineFromDocstringField(int):
+    "Simple L{int} wrapper for linenumbers coming from docstrings."
 
 class DocLocation(Enum):
     OWN_PAGE = 1
@@ -126,7 +131,7 @@ class Documentable:
     parsed_summary: Optional[ParsedDocstring] = None
     parsed_type: Optional[ParsedDocstring] = None
     docstring_lineno = 0
-    linenumber = 0
+    linenumber: LineFromAst | LineFromDocstringField | Literal[0] = 0
     sourceHref: Optional[str] = None
     kind: Optional[DocumentableKind] = None
 
@@ -161,11 +166,40 @@ class Documentable:
 
     def setDocstring(self, node: astutils.Str) -> None:
         lineno, doc = astutils.extract_docstring(node)
+        self._setDocstringValue(doc, lineno)
+
+    def _setDocstringValue(self, doc:str, lineno:int) -> None:
+        if self.docstring or self.parsed_docstring: # some object have a parsed docstring only like the ones coming from ivar fields
+            msg = 'Existing docstring'
+            if self.docstring_lineno:
+                msg += f' at line {self.docstring_lineno}'
+            msg += ' is overriden'
+            self.report(msg, 'docstring', lineno_offset=lineno-self.docstring_lineno)
         self.docstring = doc
         self.docstring_lineno = lineno
+        # Due to the current process for parsing doc strings, some objects might already have a parsed_docstring populated at this moment. 
+        # This is an unfortunate behaviour but it’s too big of a refactor for now (see https://github.com/twisted/pydoctor/issues/798).
+        if self.parsed_docstring:
+            self.parsed_docstring = None
 
-    def setLineNumber(self, lineno: int) -> None:
-        if not self.linenumber:
+    def setLineNumber(self, lineno: LineFromDocstringField | LineFromAst | int) -> None:
+        """
+        Save the linenumber of this object.
+
+        If the linenumber is already set from a ast analysis, this is an no-op.
+        If the linenumber is already set from docstring fields and the new linenumber
+        if not from docstring fields as well, the old docstring based linumber will be replaced
+        with the one from ast analysis since this takes precedence.
+
+        @param lineno: The linenumber. 
+            If the given linenumber is simply an L{int} we'll assume it's coming from the ast builder 
+            and it will be converted to an L{LineFromAst} instance.
+        """
+        if not self.linenumber or (
+            isinstance(self.linenumber, LineFromDocstringField) 
+                and not isinstance(lineno, LineFromDocstringField)):
+            if not isinstance(lineno, (LineFromAst, LineFromDocstringField)):
+                lineno = LineFromAst(lineno)
             self.linenumber = lineno
             parentMod = self.parentMod
             if parentMod is not None:
@@ -324,6 +358,17 @@ class Documentable:
                 break
             obj = nxt
         return '.'.join([full_name] + parts[i + 1:])
+
+    def expandAnnotationName(self, name: str) -> str:
+        """
+        Like L{expandName} but gives precedence to the module scope when a 
+        name is defined both in the current scope and the module scope.
+        """
+        if self.module.isNameDefined(name):
+            return self.module.expandName(name)
+        elif self.isNameDefined(name):
+            return self.expandName(name)
+        return self.module.expandName(name)
 
     def resolveName(self, name: str) -> Optional['Documentable']:
         """Return the object named by "name" (using Python's lookup rules) in
@@ -607,6 +652,39 @@ def _find_dunder_constructor(cls:'Class') -> Optional['Function']:
             return _init
     return None
 
+def get_constructors(cls:Class) -> Iterator[Function]:
+    """
+    Look for python language powered constructors or classmethod constructors.
+    A constructor MUST be a method accessible in the locals of the class.
+    """
+    # Look for python language powered constructors.
+    # If __new__ is defined, then it takes precedence over __init__
+    # Blind spot: we don't understand when a Class is using a metaclass that overrides __call__.
+    dunder_constructor = _find_dunder_constructor(cls)
+    if dunder_constructor:
+        yield dunder_constructor
+
+    # Then look for staticmethod/classmethod constructors,
+    # This only happens at the local scope level (i.e not looking in super-classes).
+    for fun in cls.contents.values():
+        if not isinstance(fun, Function):
+            continue
+        # Only static methods and class methods can be recognized as constructors
+        if not fun.kind in (DocumentableKind.STATIC_METHOD, DocumentableKind.CLASS_METHOD):
+            continue
+        # get return annotation, if it returns the same type as self, it's a constructor method.
+        if not 'return' in fun.annotations:
+            # we currently only support constructor detection trought explicit annotations.
+            continue 
+
+        # annotation should be resolved at the module scope
+        return_ann = astutils.node2fullname(fun.annotations['return'], cls.module)
+
+        # pydoctor understand explicit annotation as well as the Self-Type.
+        if return_ann == cls.fullName() or \
+            return_ann in ('typing.Self', 'typing_extensions.Self'):
+            yield fun
+
 class Class(CanContainImportsDocumentable):
     kind = DocumentableKind.CLASS
     parent: CanContainImportsDocumentable
@@ -622,14 +700,6 @@ class Class(CanContainImportsDocumentable):
         self.rawbases: Sequence[Tuple[str, ast.expr]] = []
         self.raw_decorators: Sequence[ast.expr] = []
         self.subclasses: List[Class] = []
-        self.constructors: List[Function] = []
-        """
-        List of constructors.
-
-        Makes the assumption that the constructor name is available in the locals of the class
-        it's supposed to create. Typically with C{__init__} and C{__new__} it's always the case. 
-        It means that no regular function can be interpreted as a constructor for a given class.
-        """
         self._initialbases: List[str] = []
         self._initialbaseobjects: List[Optional['Class']] = []
     
@@ -643,42 +713,6 @@ class Class(CanContainImportsDocumentable):
             self.report(str(e), 'mro')
             self._mro = list(self.allbases(True))
     
-    def _init_constructors(self) -> None:
-        """
-        Initiate the L{Class.constructors} list. A constructor MUST be a method accessible 
-        in the locals of the class.
-        """
-        # Look for python language powered constructors.
-        # If __new__ is defined, then it takes precedence over __init__
-        # Blind spot: we don't understand when a Class is using a metaclass that overrides __call__.
-        dunder_constructor = _find_dunder_constructor(self)
-        if dunder_constructor:
-            self.constructors.append(dunder_constructor)
-        
-        # Then look for staticmethod/classmethod constructors,
-        # This only happens at the local scope level (i.e not looking in super-classes).
-        for fun in self.contents.values():
-            if not isinstance(fun, Function):
-                continue
-            # Only static methods and class methods can be recognized as constructors
-            if not fun.kind in (DocumentableKind.STATIC_METHOD, DocumentableKind.CLASS_METHOD):
-                continue
-            # get return annotation, if it returns the same type as self, it's a constructor method.
-            if not 'return' in fun.annotations:
-                # we currently only support constructor detection trought explicit annotations.
-                continue 
-            
-            # annotation should be resolved at the module scope
-            return_ann = astutils.node2fullname(fun.annotations['return'], self.module)
-            
-            # pydoctor understand explicit annotation as well as the Self-Type.
-            if return_ann == self.fullName() or \
-               return_ann in ('typing.Self', 'typing_extensions.Self'):
-                self.constructors.append(fun)
-        
-        from pydoctor import epydoc2stan
-        epydoc2stan.populate_constructors_extra_info(self)
-
     @overload
     def mro(self, include_external:'Literal[True]', include_self:bool=True) -> Sequence[Union['Class', str]]:...
     @overload
@@ -726,12 +760,12 @@ class Class(CanContainImportsDocumentable):
     @property
     def public_constructors(self) -> Sequence['Function']:
         """
-        Yields public constructors for this class.
+        The public constructors of this class.
         A public constructor must not be hidden and have
         arguments or have a docstring.
         """
         r = []
-        for c in self.constructors:
+        for c in get_constructors(self):
             if not c.isVisible:
                 continue
             args = list(c.annotations)
@@ -1133,6 +1167,20 @@ class System:
         self._privacyClassCache[ob_fullName] = privacy
         return privacy
 
+    def membersOrder(self, ob: Documentable) -> Callable[[Documentable], Tuple[Any, ...]]:
+        """
+        Returns a callable suitable to be used with L{sorted} function. 
+        Used to sort the given object's members for presentation.
+
+        Users can customize class and module members order independently, or can override this method
+        with a custom system class for further tweaks.
+        """
+        from pydoctor.templatewriter.util import objects_order
+        if isinstance(ob, Class):
+            return objects_order(self.options.cls_member_order)
+        else:
+            return objects_order(self.options.mod_member_order)
+           
     def addObject(self, obj: Documentable) -> None:
         """Add C{object} to the system."""
 
@@ -1454,8 +1502,6 @@ def defaultPostProcess(system:'System') -> None:
     for cls in system.objectsOfType(Class):
         # Initiate the MROs
         cls._init_mro()
-        # Lookup of constructors
-        cls._init_constructors()
 
         # Compute subclasses
         for b in cls.baseobjects:

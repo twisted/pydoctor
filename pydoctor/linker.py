@@ -151,8 +151,11 @@ class _EpydocLinker(DocstringLinker):
                 self.reporting_obj.report(str(e), 'resolve_identifier_xref', lineno, thresh=1)
             return link
 
-    def link_to(self, identifier: str, label: "Flattenable") -> Tag:
-        fullID = self.obj.expandName(identifier)
+    def link_to(self, identifier: str, label: "Flattenable", *, is_annotation: bool = False) -> Tag:
+        if is_annotation:
+            fullID = self.obj.expandAnnotationName(identifier)
+        else:
+            fullID = self.obj.expandName(identifier)
 
         target = self.obj.system.objForFullName(fullID)
         if target is not None:
@@ -329,8 +332,7 @@ class _AnnotationLinker(DocstringLinker):
         self._obj = obj
         self._module = obj.module
         self._scope = obj.parent or obj
-        self._module_linker = self._module.docstring_linker
-        self._scope_linker = self._scope.docstring_linker
+        self._scope_linker = _EpydocLinker(self._scope)
     
     @property
     def obj(self) -> 'model.Documentable':
@@ -351,11 +353,7 @@ class _AnnotationLinker(DocstringLinker):
         with self.switch_context(self._obj):
             if self._module.isNameDefined(target):
                 self.warn_ambiguous_annotation(target)
-                return self._module_linker.link_to(target, label)
-            elif self._scope.isNameDefined(target):
-                return self._scope_linker.link_to(target, label)
-            else:
-                return self._module_linker.link_to(target, label)
+            return self._scope_linker.link_to(target, label, is_annotation=True)
     
     def link_xref(self, target: str, label: "Flattenable", lineno: int, **kw: Any) -> Tag:
         with self.switch_context(self._obj):
@@ -363,6 +361,5 @@ class _AnnotationLinker(DocstringLinker):
 
     @contextlib.contextmanager
     def switch_context(self, ob:Optional['model.Documentable']) -> Iterator[None]:
-        with self._module_linker.switch_context(ob):
-            with self._scope_linker.switch_context(ob):
-                yield
+        with self._scope_linker.switch_context(ob):
+            yield

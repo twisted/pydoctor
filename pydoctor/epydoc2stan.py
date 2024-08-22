@@ -13,13 +13,16 @@ import ast
 import re
 
 import attr
+from docutils import nodes
 
 from pydoctor import model, linker, node2stan
 from pydoctor.astutils import is_none_literal
+from pydoctor.epydoc.docutils import new_document, set_node_attributes
 from pydoctor.epydoc.markup import Field as EpydocField, ParseError, get_parser_by_name, processtypes
 from twisted.web.template import Tag, tags
 from pydoctor.epydoc.markup import ParsedDocstring, DocstringLinker
 import pydoctor.epydoc.markup.plaintext
+from pydoctor.epydoc.markup.restructuredtext import ParsedRstDocstring
 from pydoctor.epydoc.markup._pyval_repr import colorize_pyval, colorize_inline_pyval
 
 if TYPE_CHECKING:
@@ -934,7 +937,10 @@ def extract_fields(obj: model.CanContainImportsDocumentable) -> None:
                 attrobj.kind = None
                 attrobj.parentMod = obj.parentMod
                 obj.system.addObject(attrobj)
-            attrobj.setLineNumber(obj.docstring_lineno + field.lineno)
+            lineno = model.LineFromDocstringField(obj.docstring_lineno + field.lineno)
+            attrobj.setLineNumber(lineno)
+            if not attrobj.docstring_lineno:
+                attrobj.docstring_lineno = lineno
             if tag == 'type':
                 attrobj.parsed_type = field.body()
             else:
@@ -1128,19 +1134,41 @@ def format_constructor_short_text(constructor: model.Function, forclass: model.C
 
     return f"{callable_name}({args})"
 
-def populate_constructors_extra_info(cls:model.Class) -> None:
+def get_constructors_extra(cls:model.Class) -> ParsedDocstring | None:
     """
-    Adds an extra information to be rendered based on Class constructors.
+    Get an extra docstring to represent Class constructors.
     """
     from pydoctor.templatewriter import util
     constructors = cls.public_constructors
-    if constructors:
-        plural = 's' if len(constructors)>1 else ''
-        extra_epytext = f'Constructor{plural}: '
-        for i, c in enumerate(sorted(constructors, key=util.objects_order)):
-            if i != 0:
-                extra_epytext += ', '
-            short_text = format_constructor_short_text(c, cls)
-            extra_epytext += '`%s <%s>`' % (short_text, c.fullName())
-        
-        cls.extra_info.append(parse_docstring(cls, extra_epytext, cls, 'restructuredtext', section='constructor extra'))
+    if not constructors:
+        return None
+    
+    document = new_document('constructors')
+
+    elements = []
+    plural = 's' if len(constructors)>1 else ''
+    elements.append(set_node_attributes(
+        nodes.Text(f'Constructor{plural}: '), 
+        document=document, 
+        lineno=1))
+
+    for i, c in enumerate(sorted(constructors, 
+                    key=util.alphabetical_order_func)):
+        if i != 0:
+            elements.append(set_node_attributes(
+                nodes.Text(', '), 
+                document=document, 
+                lineno=1))
+        short_text = format_constructor_short_text(c, cls)
+        elements.append(set_node_attributes(
+            nodes.title_reference('', '', refuri=c.fullName()), 
+            document=document, 
+            children=[set_node_attributes(
+                nodes.Text(short_text), 
+                document=document, 
+                lineno=1
+                )], 
+                lineno=1))
+    
+    set_node_attributes(document, children=elements)
+    return ParsedRstDocstring(document, ())

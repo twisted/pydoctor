@@ -76,13 +76,7 @@ What's New?
 in development
 ^^^^^^^^^^^^^^
 
-This is the last major release to support Python 3.7.
-
-* Drop support for Python 3.6
-* Add support for Python 3.12
-* `ExtRegistrar.register_post_processor()` now supports a `priority` argument that is an int.
-  Highest priority callables will be called first during post-processing.
-* Fix too noisy ``--verbose`` mode (suppres some ambiguous annotations warnings).
+* Trigger a warning when several docstrings are detected for the same object.
 * Major improvements of the intersphinx integration:
   - Pydoctor now supports linking to arbitrary intersphinx references with Sphinx role ``:external:``. 
   - Other common Sphinx reference roles like ``:ref:``, ``:any:``, ``:class:``, ``py:*``, etc are now 
@@ -94,6 +88,32 @@ This is the last major release to support Python 3.7.
   - The ``--intersphinx-file`` option has been added in order to load a local inventory file, this option
     support the following format: ``[INVENTORY_NAME:]PATH:BASE_URL``. 
     ``BASE_URL`` is the base for the generated links, it is mandatory if loading the inventory from a file.
+
+pydoctor 24.3.3
+^^^^^^^^^^^^^^^
+
+* Fix release pipeline.
+
+pydoctor 24.3.0
+^^^^^^^^^^^^^^^
+
+This is the last major release to support Python 3.7.
+
+* Drop support for Python 3.6.
+* Add support for Python 3.12.
+* Astor is no longer a requirement starting at Python 3.9.
+* `ExtRegistrar.register_post_processor()` now supports a `priority` argument that is an int.
+  Highest priority callables will be called first during post-processing.
+* Fix too noisy ``--verbose`` mode (suppres some ambiguous annotations warnings).
+* Fix type processing inside restructuredtext consolidated fields.
+* Add options ``--cls-member-order`` and ``--mod-member-order`` to customize the presentation
+  order of class members and module/package members, the supported values are "alphabetical" or "source".
+  The default behavior is to sort all members alphabetically.
+* Make sure the line number coming from ast analysis has precedence over the line of a ``ivar`` field.
+* Ensure that all docutils generated css classes have the ``rst-`` prefix, the base theme have been updated accordingly.
+* Fix compatibility issue with docutils 0.21.x
+* Transform annotations to use python 3.10 style: ``typing.Union[x, y]`` -> ``x | y``; ``typing.Optional[x]`` -> ``x | None``; ``typing.List[x]`` -> ``list[x]``.
+* Do not output useless parenthesis when colourizing subscripts. 
 
 pydoctor 23.9.1
 ^^^^^^^^^^^^^^^

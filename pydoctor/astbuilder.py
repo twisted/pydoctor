@@ -13,12 +13,11 @@ from typing import (
     Type, TypeVar, Union, cast
 )
 
-import astor
 from pydoctor import epydoc2stan, model, node2stan, extensions, linker
 from pydoctor.epydoc.markup._pyval_repr import colorize_inline_pyval
 from pydoctor.astutils import (is_none_literal, is_typing_annotation, is_using_annotations, is_using_typing_final, node2dottedname, node2fullname, 
-                               is__name__equals__main__, unstring_annotation, iterassign, extract_docstring_linenum, infer_type, get_parents,
-                               get_docstring_node, NodeVisitor, Parentage, Str)
+                               is__name__equals__main__, unstring_annotation, upgrade_annotation, iterassign, extract_docstring_linenum, infer_type, get_parents,
+                               get_docstring_node, unparse, NodeVisitor, Parentage, Str)
 
 
 def parseFile(path: Path) -> ast.Module:
@@ -129,9 +128,9 @@ class TypeAliasVisitorExt(extensions.ModuleVisitorExt):
                 if self._isTypeAlias(attr) is True:
                     attr.kind = model.DocumentableKind.TYPE_ALIAS
                     # unstring type aliases
-                    attr.value = unstring_annotation(
+                    attr.value = upgrade_annotation(unstring_annotation(
                         # this cast() is safe because _isTypeAlias() return True only if value is not None
-                        cast(ast.expr, attr.value), attr, section='type alias')
+                        cast(ast.expr, attr.value), attr, section='type alias'), attr, section='type alias')
                 elif self._isTypeVariable(attr) is True:
                     # TODO: unstring bound argument of type variables
                     attr.kind = model.DocumentableKind.TYPE_VARIABLE
@@ -230,8 +229,8 @@ class ModuleVistor(NodeVisitor):
                 name_node = base_node.value
             
             str_base = '.'.join(node2dottedname(name_node) or \
-                # Fallback on astor if the expression is unknown by node2dottedname().
-                [astor.to_source(base_node).strip()]) 
+                # Fallback on unparse() if the expression is unknown by node2dottedname().
+                [unparse(base_node).strip()]) 
                 
             # Store the base as string and as ast.expr in rawbases list.
             rawbases += [(str_base, base_node)]
@@ -427,14 +426,12 @@ class ModuleVistor(NodeVisitor):
             orgname, asname = al.name, al.asname
             if asname is None:
                 asname = orgname
-
-            if mod is not None and self._handleReExport(exports, orgname, asname, mod) is True:
-                continue
-
             # If we're importing from a package, make sure imported modules
             # are processed (getProcessedModule() ignores non-modules).
             if isinstance(mod, model.Package):
                 self.system.getProcessedModule(f'{modname}.{orgname}')
+            if mod is not None and self._handleReExport(exports, orgname, asname, mod) is True:
+                continue
 
             _localNameToFullName[asname] = f'{modname}.{orgname}'
 
@@ -713,7 +710,7 @@ class ModuleVistor(NodeVisitor):
             return
 
         if obj is not None:
-            obj.docstring = docstring
+            obj._setDocstringValue(docstring, expr.lineno)
             # TODO: It might be better to not perform docstring parsing until
             #       we have the final docstrings for all objects.
             obj.parsed_docstring = None
@@ -748,7 +745,8 @@ class ModuleVistor(NodeVisitor):
         if type_comment is None:
             annotation = None
         else:
-            annotation = unstring_annotation(ast.Constant(type_comment, lineno=lineno), self.builder.current)
+            annotation = upgrade_annotation(unstring_annotation(
+                ast.Constant(type_comment, lineno=lineno), self.builder.current), self.builder.current)
 
         for target in node.targets:
             if isinstance(target, ast.Tuple):
@@ -760,7 +758,8 @@ class ModuleVistor(NodeVisitor):
                 self._handleAssignment(target, annotation, expr, lineno)
 
     def visit_AnnAssign(self, node: ast.AnnAssign) -> None:
-        annotation = unstring_annotation(node.annotation, self.builder.current)
+        annotation = upgrade_annotation(unstring_annotation(
+            node.annotation, self.builder.current), self.builder.current)
         self._handleAssignment(node.target, annotation, node.value, node.lineno)
     
     def visit_AugAssign(self, node:ast.AugAssign) -> None:
@@ -953,9 +952,7 @@ class ModuleVistor(NodeVisitor):
                 if tag == 'return':
                     if not pdoc.has_body:
                         pdoc = field.body()
-                        # Avoid format_summary() going back to the original
-                        # empty-body docstring.
-                        attr.docstring = ''
+
                 elif tag == 'rtype':
                     attr.parsed_type = field.body()
                 else:
@@ -964,7 +961,7 @@ class ModuleVistor(NodeVisitor):
             attr.parsed_docstring = pdoc
 
         if node.returns is not None:
-            attr.annotation = unstring_annotation(node.returns, attr)
+            attr.annotation = upgrade_annotation(unstring_annotation(node.returns, attr), attr)
         attr.decorators = node.decorator_list
 
         return attr
@@ -1005,7 +1002,8 @@ class ModuleVistor(NodeVisitor):
             # Include parameter names even if they're not annotated, so that
             # we can use the key set to know which parameters exist and warn
             # when non-existing parameters are documented.
-            name: None if value is None else unstring_annotation(value, self.builder.current)
+            name: None if value is None else upgrade_annotation(unstring_annotation(
+                value, self.builder.current), self.builder.current)
             for name, value in _get_all_ast_annotations()
             }
     

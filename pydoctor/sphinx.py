@@ -153,7 +153,6 @@ class SphinxInventory:
     """
 
     def __init__(self, logger: Callable[..., None],):
-        
         self._links: Dict[str, List[InventoryObject]] = defaultdict(list)
         self._inventories: Set[str] = set()
         self._logger = logger
