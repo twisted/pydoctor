@@ -39,7 +39,7 @@ def test_nested_markup() -> None:
     expected = '''<document source="epytext">
     <paragraph>
         It becomes a little bit complicated with 
-        <title_reference refuri="twisted.web">
+        <title_reference refuri="twisted.web()">
             <strong>
                 custom
              links

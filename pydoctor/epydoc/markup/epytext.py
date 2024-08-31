@@ -1181,20 +1181,21 @@ def _colorize_link(link: Element, token: Token, end: int, errors: List[ParseErro
 
     # Clean up the target.  For URIs, assume http or mailto if they
     # don't specify (no relative urls)
-    target = re.sub(r'\s', '', target)
+    # we used to stip spaces from the target here but that's no good 
+    # since intersphinx targets can contain spaces.
     if link.tag=='uri':
+        target = re.sub(r'\s', '', target)
         if not re.match(r'\w+:', target):
             if re.match(r'\w+@(\w+)(\.\w+)*', target):
                 target = 'mailto:' + target
             else:
                 target = 'http://'+target
     elif link.tag=='link':
-        # Remove arg lists for functions (e.g., L{_colorize_link()})
-        target = re.sub(r'\(.*\)$', '', target)
-        if not re.match(r'^[a-zA-Z_]\w*(\.[a-zA-Z_]\w*)*$', target):
-            estr = "Bad link target."
-            errors.append(ColorizingError(estr, token, end))
-            return
+        # Here we used to process the target in order to remove arg lists for functions
+        # and validate it. But now this happens in node2stan.parse_reference().
+        # The target is not validated anymore since the intersphinx taget names can contain any kind of text.
+        # We simply normalize it.
+        target = re.sub(r'\s', ' ', target)
 
     # Construct the target element.
     target_elt = Element('target', target, lineno=str(token.startline))

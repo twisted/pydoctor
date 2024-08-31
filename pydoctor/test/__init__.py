@@ -2,7 +2,7 @@
 
 import contextlib
 from logging import LogRecord
-from typing import Iterable, TYPE_CHECKING, Iterator, Optional, Sequence
+from typing import Any, Iterable, TYPE_CHECKING, Iterator, Optional, Sequence
 import sys
 import pytest
 from pathlib import Path
@@ -90,7 +90,7 @@ class NotFoundLinker(DocstringLinker):
     def link_to(self, target: str, label: "Flattenable") -> Tag:
         return tags.transparent(label)
 
-    def link_xref(self, target: str, label: "Flattenable", lineno: int) -> Tag:
+    def link_xref(self, target: str, label: "Flattenable", lineno: int, **kw:Any) -> Tag:
         return tags.code(label)
     
     @contextlib.contextmanager
