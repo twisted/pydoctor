@@ -305,8 +305,16 @@ def _convert_privacy(l: List[str]) -> List[Tuple['model.PrivacyClass', str]]:
 
 def _object_inv_url_and_base_url(url:str) -> Tuple[str, str]:
     """
-    Given a base url OR an url to objects.inv file.
+    Given a base url OR an url to .inv file.
     Returns a tuple: (URL_TO_OBJECTS.INV, BASE_URL)
+
+    >>> _object_inv_url_and_base_url('thing.inv') # error
+    >>> _object_inv_url_and_base_url('hello.com/thing.inv')
+    ('hello.com/thing.inv', 'hello.com')
+    >>> _object_inv_url_and_base_url('hello.com')
+    ('hello.com/objects.inv', 'hello.com')
+    >>> _object_inv_url_and_base_url('hello.com/')
+    ('hello.com/objects.inv', 'hello.com')
     """
     if url.endswith('.inv'):
         parts = url.rsplit('/', 1)
@@ -325,12 +333,12 @@ def _object_inv_url_and_base_url(url:str) -> Tuple[str, str]:
 
 def _is_identifier_like(s:str) -> bool:
     """
-    Examples of identifier-like strings::
+    True if C{s} is an identifier-like strings
 
-        identifier
-        identifier_thing
-        zope.interface
-        identifier-like
+    >>> assert _is_identifier_like('identifier')
+    >>> assert _is_identifier_like('identifier_thing')
+    >>> assert _is_identifier_like('zope.interface')
+    >>> assert _is_identifier_like('identifier-like')
     """
     return s.replace('-', '_').replace('.', '_').isidentifier()
 
@@ -350,8 +358,7 @@ def _is_identifier_like(s:str) -> bool:
 _RE_DRIVE_LIKE = re.compile(r':[a-z]:(\\|\/)', re.IGNORECASE)
 def _split_intersphinx_parts(s:str, option:str='--intersphinx') -> List[str]:
     """
-    This replies on the fact the filename does not contain a colon. 
-    # TODO: find a manner to lift this limitation.
+    Colons in filenames must be escaped with a backslash.
     """
     parts = ['']
     part_nb = 0
@@ -366,10 +373,14 @@ def _split_intersphinx_parts(s:str, option:str='--intersphinx') -> List[str]:
             elif _RE_DRIVE_LIKE.match(s[i-2:i+2]):
                 # Still not a separator, a windows drive :c:/
                 pass
+            elif s[i-1] == '\\':
+                # An escaped colon, remove the backslash and keep the colon
+                parts[part_nb] = parts[part_nb][:-1]
+                pass
             elif len(parts) == 3:
-                raise ValueError(f'Malformed {option} option {s!r}: too many parts, beware that colons in filenames are not supported')
+                raise ValueError(f'Malformed {option} option {s!r}: too many parts, beware that colons in filenames must be escaped with a backslash')
             elif not parts[part_nb]:
-                raise ValueError(f'Malformed {option} option {s!r}: two consecutive colons is not valid')
+                raise ValueError(f'Malformed {option} option {s!r}: two consecutive colons is not valid, beware that colons in filenames must be escaped with a backslash')
             else:
                 parts.append('')
                 part_nb += 1
@@ -377,7 +388,7 @@ def _split_intersphinx_parts(s:str, option:str='--intersphinx') -> List[str]:
         parts[part_nb] += c
     return parts
 
-IntersphinxOption: 'TypeAlias' = Tuple[Optional[str], str, str]
+IntersphinxOption: TypeAlias = Tuple[Optional[str], str, str]
 
 def _parse_intersphinx_file(s:str) -> IntersphinxOption:
     """
@@ -386,6 +397,14 @@ def _parse_intersphinx_file(s:str) -> IntersphinxOption:
         [INVENTORY_NAME:]PATH:BASE_URL
     
     Returns a L{IntersphinxOption} tuple.
+
+    >>> _parse_intersphinx_file('privpackage:./shinx inventories/privpackage.inv:https://myprivatehost/apidocs/privpackage/')
+    >>> _parse_intersphinx_file('./shinx inventories/privpackage.inv:https://myprivatehost/apidocs/privpackage/')
+    >>> _parse_intersphinx_file('privpackage:d:/shinx inventories/privpackage.inv:https://myprivatehost/apidocs/privpackage/')
+    >>> _parse_intersphinx_file('./shinx inventories/privpackage.inv') # error
+    >>> _parse_intersphinx_file('https://myprivatehost/apidocs/privpackage/') # error
+    >>> _parse_intersphinx_file(r'shinx inventories\\:aka intersphinx/privpackage.inv:https://myprivatehost/apidocs/privpackage/')
+
     """
     try:
         parts = _split_intersphinx_parts(s, '--intersphinx-file')
@@ -423,6 +442,9 @@ def _parse_intersphinx(s:str) -> IntersphinxOption:
         [INVENTORY_NAME:]URL[:BASE_URL]
 
     Returns a L{IntersphinxOption} tuple.
+
+    >>> _parse_intersphinx('docs.stuff.org')
+    >>> _parse_intersphinx('https://docs.stuff.org')
     """
     try:
 

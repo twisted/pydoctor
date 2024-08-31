@@ -294,6 +294,8 @@ def test_intersphinx_split_on_colon() -> None:
     assert _split_intersphinx_parts('pydoctor:inventories/pack.inv:http://something.org/')==['pydoctor', 'inventories/pack.inv', 'http://something.org/']
     assert _split_intersphinx_parts('pydoctor:c:/data/inventories/pack.inv:http://something.org/')==['pydoctor', 'c:/data/inventories/pack.inv', 'http://something.org/']
     
+    assert _split_intersphinx_parts('file with a colon\\: in the name.inv:http://something.org/')==['file with a colon: in the name.inv', 'http://something.org/']
+
     with pytest.raises(ValueError, match='Malformed --intersphinx option \'pydoctor::\': two consecutive colons is not valid'):
         _split_intersphinx_parts('pydoctor::')
     with pytest.raises(ValueError, match='Malformed --intersphinx option \'pydoctor:a:b:c:d\': too many parts'):

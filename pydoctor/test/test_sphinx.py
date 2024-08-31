@@ -849,3 +849,46 @@ def test_inv_object_reftyp() -> None:
                                  domain='py', 
                                  reftype='class', 
                                  display='-')
+
+def test_get_inventory_filtered_by_invname() -> None:
+    ...
+
+def test_get_inventory_filtered_by_domain() -> None:
+    ...
+
+def test_get_inventory_filtered_by_reftype() -> None:
+    ...
+
+def test_get_inventory_filtered_by_both_domain_and_reftype() -> None:
+    ...
+
+def test_get_inventory_filtered_by_invname_and_domain() -> None:
+    ...
+
+def test_get_inventory_py_domain_has_precedence() -> None:
+    ...
+
+def test_get_inventory_ambigous_ref_in_std_domain() -> None:
+    ...
+
+def test_duplicate_inventory_from_url() -> None:
+    ...
+
+def test_duplicate_inventory_from_file() -> None:
+    ...
+
+def test_inventory_from_file_with_colon_in_the_filename() -> None:
+    ...
+
+def test_duplicate_inventory_from_both_file_and_url() -> None:
+    ...
+
+def test_inventory_from_file_fails_because_of_io_error() -> None:
+    ...
+
+def test_get_inventory_object_ambiguous_missing_some_filters() -> None:
+    ...
+
+def test_get_inventory_object_truly_ambiguous() -> None:
+    ...
+

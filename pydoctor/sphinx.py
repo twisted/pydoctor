@@ -301,11 +301,13 @@ class SphinxInventory:
 
         if not missing_filters:
             # there is a problem with this inventory...
-            msg = f'complete intersphinx ref is still ambiguous {target_str}, could be {",".join(options_urls)}'
-            msg += ', this is likely an issue with the inventory'
+            # TODO: should we even report such an issue ?
+            # probably mnot since the dev cannot do anything about it
+            msg = (f'there is an issue with the inventory {invname}: '
+                    f' {target_str}, could be {",".join(options_urls)}')
         else:
             msg = f'ambiguous intersphinx ref to {target_str}, could be {",".join(options_urls)}'
-            msg += f', try adding one of {", ".join(missing_filters)} filter to your RST role'
+            msg += f', try adding one of {", ".join(missing_filters)} filter to your role'
         raise ValueError(msg)
 
     def getInv(self, target: str, 
