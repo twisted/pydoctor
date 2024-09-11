@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import abc
 import ast
+from itertools import chain
+from operator import attrgetter, itemgetter
 import attr
 from collections import defaultdict
 import datetime
@@ -17,11 +19,11 @@ import platform
 import sys
 import textwrap
 import types
-from enum import Enum
+from enum import Enum, IntEnum
 from inspect import signature, Signature
 from pathlib import Path
 from typing import (
-    TYPE_CHECKING, Any, Collection, Dict, Iterator, List, Mapping, Callable, 
+    TYPE_CHECKING, Any, Callable, Collection, Dict, Iterable, Iterator, List, Mapping,
     Optional, Sequence, Set, Tuple, Type, TypeVar, Union, cast, overload
 )
 from urllib.parse import quote
@@ -34,9 +36,11 @@ from pydoctor.sphinx import CacheT, SphinxInventory
 if TYPE_CHECKING:
     from typing_extensions import Literal, Protocol
     from pydoctor.astbuilder import ASTBuilder, DocumentableT
+    from pydoctor.names import _IndirectionT
 else:
     Literal = {True: bool, False: bool}
     ASTBuilder = Protocol = object
+    _IndirectionT = object
 
 
 # originally when I started to write pydoctor I had this idea of a big
@@ -52,12 +56,6 @@ else:
 #       Classes
 #   Functions can't contain anything.
 
-
-_string_lineno_is_end = sys.version_info < (3,8) \
-                    and platform.python_implementation() != 'PyPy'
-"""True iff the 'lineno' attribute of an AST string node points to the last
-line in the string, rather than the first line.
-"""
 
 class LineFromAst(int):
     "Simple L{int} wrapper for linenumbers coming from ast analysis."
@@ -76,7 +74,6 @@ class ProcessingState(Enum):
     UNPROCESSED = 0
     PROCESSING = 1
     PROCESSED = 2
-
 
 class PrivacyClass(Enum):
     """L{Enum} containing values indicating how private an object should be.
@@ -107,6 +104,7 @@ class DocumentableKind(Enum):
     STATIC_METHOD       = 600
     METHOD              = 500
     FUNCTION            = 400
+    ALIAS               = 320
     CONSTANT            = 310
     TYPE_VARIABLE       = 306
     TYPE_ALIAS          = 305
@@ -116,6 +114,27 @@ class DocumentableKind(Enum):
     INSTANCE_VARIABLE   = 200
     PROPERTY            = 150
     VARIABLE            = 100
+
+
+class ImportAlias:
+    """
+    Imports are not documentable, but share bits of the interface.
+    """
+
+    def __init__(self, system: 'System', 
+                 name: str, alias:str, 
+                 parent: 'CanContainImportsDocumentable', 
+                 linenumber:int):
+        
+        self.system = system
+        self.name = name
+        self.parent = parent
+        self.linenumber = linenumber
+        self.alias: Optional[str] = alias
+
+    def fullName(self) -> str:
+        return f'{self.parent.fullName()}.{self.name}'
+
 
 class Documentable:
     """An object that can be documented.
@@ -138,6 +157,8 @@ class Documentable:
     documentation_location = DocLocation.OWN_PAGE
     """Page location where we are documented."""
 
+    _RESOLVE_ALIAS_MAX_RECURSE = 100
+
     def __init__(
             self, system: 'System', name: str,
             parent: Optional['Documentable'] = None,
@@ -150,10 +171,12 @@ class Documentable:
         self.parent = parent
         self.parentMod: Optional[Module] = None
         self.source_path: Optional[Path] = source_path
+        
         self.extra_info: List[ParsedDocstring] = []
         """
         A list to store extra informations about this documentable, as L{ParsedDocstring}.
         """
+        
         self.setup()
 
     @property
@@ -162,6 +185,11 @@ class Documentable:
 
     def setup(self) -> None:
         self.contents: Dict[str, Documentable] = {}
+        self.aliases: List[Documentable] = []
+        """
+        Aliases to this object. 
+        Computed at the time of post-procesing.
+        """
         self._linker: Optional['linker.DocstringLinker'] = None
 
     def setDocstring(self, node: astutils.Str) -> None:
@@ -289,7 +317,10 @@ class Documentable:
         self.name = new_name
         self._handle_reparenting_post()
         del old_parent.contents[old_name]
-        old_parent._localNameToFullName_map[old_name] = self.fullName()
+        # We could add a special alias insead of using _localNameToFullName_map, 
+        # this would allow to track the original location of the documentable.
+        old_parent._localNameToFullName_map[old_name] = ImportAlias(self.system, old_name, 
+                    alias=self.fullName(), parent=old_parent, linenumber=self.linenumber)
         new_parent.contents[new_name] = self
         self._handle_reparenting_post()
 
@@ -302,62 +333,26 @@ class Documentable:
         self.system.allobjects[self.fullName()] = self
         for o in self.contents.values():
             o._handle_reparenting_post()
-    
-    def _localNameToFullName(self, name: str) -> str:
-        raise NotImplementedError(self._localNameToFullName)
-    
-    def isNameDefined(self, name:str) -> bool:
-        """
-        Is the given name defined in the globals/locals of self-context?
-        Only the first name of a dotted name is checked.
 
-        Returns True iff the given name can be loaded without raising `NameError`.
+    def expandName(self, name: str, indirections:Any=None) -> str:
         """
+        See L{names.expandName}
+        """
+        from pydoctor import names
+        return names.expandName(self, name, indirections)
+    
+    def isNameDefined(self, name: str, before:int|None=None) -> bool:
         raise NotImplementedError(self.isNameDefined)
 
-    def expandName(self, name: str) -> str:
-        """Return a fully qualified name for the possibly-dotted `name`.
+    def getDefinitions(self, name: str, before:int|None=None) -> list[Documentable | ImportAlias]:
+        """
+        Find all registered definitions of the given name in the context of C{self}.
+        The definitions are sorted by source linenumber.
 
-        To explain what this means, consider the following modules:
-
-        mod1.py::
-
-            from external_location import External
-            class Local:
-                pass
-
-        mod2.py::
-
-            from mod1 import External as RenamedExternal
-            import mod1 as renamed_mod
-            class E:
-                pass
-
-        In the context of mod2.E, expandName("RenamedExternal") should be
-        "external_location.External" and expandName("renamed_mod.Local")
-        should be "mod1.Local". """
-        parts = name.split('.')
-        obj: Documentable = self
-        for i, p in enumerate(parts):
-            full_name = obj._localNameToFullName(p)
-            if full_name == p and i != 0:
-                # The local name was not found.
-                # If we're looking at a class, we try our luck with the inherited members
-                if isinstance(obj, Class):
-                    inherited = obj.find(p)
-                    if inherited: 
-                        full_name = inherited.fullName()
-                if full_name == p:
-                    # We don't have a full name
-                    # TODO: Instead of returning the input, _localNameToFullName()
-                    #       should probably either return None or raise LookupError.
-                    full_name = f'{obj.fullName()}.{p}'
-                    break
-            nxt = self.system.objForFullName(full_name)
-            if nxt is None:
-                break
-            obj = nxt
-        return '.'.join([full_name] + parts[i + 1:])
+        @param before: A linenumber to filter all definitions after this point. 
+            Only works for the locals since upper scope definitions are executed before.
+        """
+        raise NotImplementedError(self.getDefinitions)
 
     def expandAnnotationName(self, name: str) -> str:
         """
@@ -371,9 +366,12 @@ class Documentable:
         return self.module.expandName(name)
 
     def resolveName(self, name: str) -> Optional['Documentable']:
-        """Return the object named by "name" (using Python's lookup rules) in
-        this context, if any is known to pydoctor."""
-        return self.system.objForFullName(self.expandName(name))
+        """
+        Return the object named by "name" (using Python's lookup rules) in
+        this context, if any is known to pydoctor. 
+        """
+        obj = self.system.objForFullName(self.expandName(name))
+        return obj
 
     @property
     def privacyClass(self) -> PrivacyClass:
@@ -455,19 +453,34 @@ class Documentable:
 class CanContainImportsDocumentable(Documentable):
     def setup(self) -> None:
         super().setup()
-        self._localNameToFullName_map: Dict[str, str] = {}
+        self._localNameToFullName_map: Dict[str, ImportAlias] = {}
     
-    def isNameDefined(self, name: str) -> bool:
+    def isNameDefined(self, name: str, before:int|None=None) -> bool:
         name = name.split('.')[0]
-        if name in self.contents:
-            return True
-        if name in self._localNameToFullName_map:
-            return True
-        if not isinstance(self, Module):
-            return self.module.isNameDefined(name)
-        else:
-            return False
+        return bool(self.getDefinitions(name, before))
     
+    def getDefinitions(self, name: str, before:int|None=None) -> list[Documentable | ImportAlias]:
+        defs: Iterator[Documentable | ImportAlias] = iter([])
+        if name in self.contents:
+            defs = chain(defs, [self.contents[name]])
+        if name in self._localNameToFullName_map:
+            defs = chain(defs, [self._localNameToFullName_map[name]])
+        
+        if before is not None:
+            def _f(o: Documentable | ImportAlias) -> bool:
+                return o.linenumber < before
+            defs = filter(_f, defs)
+
+        try:
+            i0 = next(iter(defs))
+        except StopIteration:
+            if not isinstance(self, Module):
+                return self.module.getDefinitions(name)
+            # not found
+            return []
+
+        return sorted(chain([i0], defs), key=attrgetter('linenumber'))
+        
 
 class Module(CanContainImportsDocumentable):
     kind = DocumentableKind.MODULE
@@ -503,15 +516,6 @@ class Module(CanContainImportsDocumentable):
 
         self._docformat: Optional[str] = None
 
-    def _localNameToFullName(self, name: str) -> str:
-        if name in self.contents:
-            o: Documentable = self.contents[name]
-            return o.fullName()
-        elif name in self._localNameToFullName_map:
-            return self._localNameToFullName_map[name]
-        else:
-            return name
-
     @property
     def module(self) -> 'Module':
         return self
@@ -545,7 +549,7 @@ class Package(Module):
     kind = DocumentableKind.PACKAGE
 
 # List of exceptions class names in the standard library, Python 3.8.10
-_STD_LIB_EXCEPTIONS = ('ArithmeticError', 'AssertionError', 'AttributeError', 
+_STD_LIB_EXCEPTIONS = set(('ArithmeticError', 'AssertionError', 'AttributeError', 
     'BaseException', 'BlockingIOError', 'BrokenPipeError', 
     'BufferError', 'BytesWarning', 'ChildProcessError', 
     'ConnectionAbortedError', 'ConnectionError', 
@@ -565,7 +569,7 @@ _STD_LIB_EXCEPTIONS = ('ArithmeticError', 'AssertionError', 'AttributeError',
     'SystemExit', 'TabError', 'TimeoutError', 'TypeError', 
     'UnboundLocalError', 'UnicodeDecodeError', 'UnicodeEncodeError', 
     'UnicodeError', 'UnicodeTranslateError', 'UnicodeWarning', 'UserWarning', 
-    'ValueError', 'Warning', 'ZeroDivisionError')
+    'ValueError', 'Warning', 'ZeroDivisionError'))
 def is_exception(cls: 'Class') -> bool:
     """
     Whether is class should be considered as 
@@ -573,6 +577,12 @@ def is_exception(cls: 'Class') -> bool:
     kind L{DocumentableKind.EXCEPTION}.
     """
     for base in cls.mro(True, False):
+        if not isinstance(base, str):
+            base = base.fullName()
+        if base.startswith('builtins.'):
+            base = base[9:]
+        if '.' in base:
+            continue
         if base in _STD_LIB_EXCEPTIONS:
             return True
     return False
@@ -804,15 +814,6 @@ class Class(CanContainImportsDocumentable):
                 return obj
         return None
 
-    def _localNameToFullName(self, name: str) -> str:
-        if name in self.contents:
-            o: Documentable = self.contents[name]
-            return o.fullName()
-        elif name in self._localNameToFullName_map:
-            return self._localNameToFullName_map[name]
-        else:
-            return self.parent._localNameToFullName(name)
-
     @property
     def constructor_params(self) -> Mapping[str, Optional[ast.expr]]:
         """A mapping of constructor parameter names to their type annotation.
@@ -842,12 +843,12 @@ class Inheritable(Documentable):
         for b in self.parent.mro(include_self=False):
             if self.name in b.contents:
                 yield b.contents[self.name]
-
-    def _localNameToFullName(self, name: str) -> str:
-        return self.parent._localNameToFullName(name)
     
-    def isNameDefined(self, name: str) -> bool:
-        return self.parent.isNameDefined(name)
+    def isNameDefined(self, name: str, before:int|None=None) -> bool:
+        return self.parent.isNameDefined(name, before)
+
+    def getDefinitions(self, name: str, before:int|None=None) -> list[Documentable | ImportAlias]:
+        return self.parent.getDefinitions(name, before)
 
 class Function(Inheritable):
     kind = DocumentableKind.FUNCTION
@@ -873,6 +874,14 @@ class FunctionOverload:
     signature: Signature
     decorators: Sequence[ast.expr]
 
+@object.__new__
+class _NotYetResolved:
+    def __bool__(self) -> bool:
+        return False
+
+if TYPE_CHECKING:
+    _NotYetResolvedT = Type[_NotYetResolved]
+
 class Attribute(Inheritable):
     kind: Optional[DocumentableKind] = DocumentableKind.ATTRIBUTE
     annotation: Optional[ast.expr] = None
@@ -882,6 +891,24 @@ class Attribute(Inheritable):
     The value of the assignment expression. 
 
     None value means the value is not initialized at the current point of the the process. 
+    """
+
+    alias: Optional[str] = None
+    """"
+    We store the alias value here so we don't have to process it all the time. 
+
+    For aliases, this is the same as::
+
+        '.'.join(node2dottedname(self.value))
+
+    For other attributes, it's C{None}.
+    """
+    
+    resolved_alias: _NotYetResolvedT | Documentable | None = _NotYetResolved
+    """
+    Once we have resolved the alias to a Documentable object in post-processing, it's value is stored in this attribute. 
+
+    If it's None, it means that the alias could not be resolved to an object in the system.
     """
 
 # Work around the attributes of the same name within the System class.
@@ -1512,6 +1539,24 @@ def defaultPostProcess(system:'System') -> None:
             
     for attrib in system.objectsOfType(Attribute):
        _inherits_instance_variable_kind(attrib)
+       _resolve_alias(attrib)
+
+def _resolve_alias(attr: Attribute) -> None:
+    if attr.kind is not DocumentableKind.ALIAS:
+        return
+    # Since we try to resolve all aliases once in post-processing,
+    # we use some caching
+    from pydoctor import names
+    resolved = names._expandAlias(attr.parent, attr)
+    if resolved:
+        resolved_ob = attr.system.objForFullName(resolved)
+        if resolved_ob: 
+            attr.resolved_alias = resolved_ob
+            if attr not in resolved_ob.aliases:
+                resolved_ob.aliases.append(attr)
+        else:
+            # Not in the system
+            attr.resolved_alias = None
 
 def _inherits_instance_variable_kind(attr: Attribute) -> None:
     """

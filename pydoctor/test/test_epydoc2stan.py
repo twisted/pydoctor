@@ -1176,14 +1176,13 @@ def test_EpydocLinker_resolve_identifier_xref_intersphinx_link_not_found(capsys:
     # This is called for the L{ext_module} markup.
     assert sut.link_to('ext_module', 'ext').tagName == ''
     assert not capsys.readouterr().out
+    sut._resolve_identifier_xref('ext_module', 0)
     with raises(LookupError):
-        sut._resolve_identifier_xref('ext_module', 0)
+        sut._resolve_identifier_xref('notfound', 0)
 
     captured = capsys.readouterr().out
     expected = (
-        'ignore-name:???: Cannot find link target for "ext_package.ext_module", '
-        'resolved from "ext_module" '
-        '(you can link to external docs with --intersphinx)\n'
+        'ignore-name:???: Cannot find link target for "notfound"\n'
         )
     assert expected == captured
 

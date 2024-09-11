@@ -58,7 +58,7 @@ def test_mro(systemcls: Type[model.System],) -> None:
     assert_mro_equals(mod.contents["D1"], ['mro.D1', 'mro.B1', 'mro.C1', 'mro.A1'])
     assert_mro_equals(mod.contents["E1"], ['mro.E1', 'mro.C1', 'mro.B1', 'mro.A1'])
     assert_mro_equals(mod.contents["Extension"], ["mro.Extension", "mod.External"])
-    assert_mro_equals(mod.contents["MycustomString"], ["mro.MycustomString", "str"])
+    assert_mro_equals(mod.contents["MycustomString"], ["mro.MycustomString", "builtins.str"])
     
     assert_mro_equals(
         mod.contents["PedalWheelBoat"],

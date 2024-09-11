@@ -1,12 +1,12 @@
 """Classes that generate the summary pages."""
 from __future__ import annotations
 
-from collections import defaultdict
 from typing import (
     TYPE_CHECKING, DefaultDict, Dict, Iterable, List, Mapping, MutableSet,
     Sequence, Tuple, Type, Union, cast
 )
 
+from collections import defaultdict
 from twisted.web.template import Element, Tag, TagLoader, renderer, tags
 
 from pydoctor import epydoc2stan, model, linker

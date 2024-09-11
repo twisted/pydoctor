@@ -10,6 +10,7 @@ from numbers import Number
 from typing import Any, Callable, Collection, Iterator, Optional, List, Iterable, Sequence, TYPE_CHECKING, Tuple, Union, cast
 from inspect import BoundArguments, Signature
 import ast
+from numbers import Number
 
 if sys.version_info >= (3, 9):
     from ast import unparse as _unparse
@@ -115,10 +116,15 @@ def node2dottedname(node: Optional[ast.AST]) -> Optional[List[str]]:
     parts.reverse()
     return parts
 
+
 def node2fullname(expr: Optional[ast.AST], 
                   ctx: model.Documentable | None = None, 
                   *,
                   expandName:Callable[[str], str] | None = None) -> Optional[str]:
+    """
+    Returns the expanded name of this AST expression if C{expr} is a name, or C{None}.
+    A name is an expression only composed by `ast.Name` and `ast.Attribute` nodes.
+    """
     if expandName is None:
         if ctx is None:
             raise TypeError('this function takes exactly two arguments')
@@ -144,8 +150,6 @@ def bind_args(sig: Signature, call: ast.Call) -> BoundArguments:
         if kw.arg is not None
         }
     return sig.bind(*call.args, **kwargs)
-
-
 
 if sys.version_info[:2] >= (3, 8):
     # Since Python 3.8 "foo" is parsed as ast.Constant.
