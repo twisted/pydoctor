@@ -3584,6 +3584,12 @@ def test_builtins_aliases(systemcls: Type[model.System], capsys:CapSys) -> None:
 # a docstring link to URL but it's defined in  modules as well (both re-export the alias but one of them is used only and
 # we do not complain)
 
+# TODO: Test that an instance variable is never flagged as an alias.
+# class F:
+#     def __init__(self, a):
+#         self.a = a
+# class G(F):
+#     a = Exception # a is not an alias
 
 @systemcls_param
 def test_mutilple_docstrings_warnings(systemcls: Type[model.System], capsys: CapSys) -> None:
