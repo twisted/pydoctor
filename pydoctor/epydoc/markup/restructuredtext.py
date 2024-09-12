@@ -339,7 +339,7 @@ class _SplitFieldsTranslator(nodes.NodeVisitor):
             arg = item[0][0].astext() # type: ignore
 
             # Extract the field body, and remove the arg
-            fbody = cast(list[nodes.Element], item[:])
+            fbody = cast('list[nodes.Element]', item[:])
             fbody[0] = fbody[0].copy()
             fbody[0][:] = cast(nodes.paragraph, item[0])[1:]
 
