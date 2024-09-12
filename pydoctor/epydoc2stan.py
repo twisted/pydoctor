@@ -1145,7 +1145,7 @@ def get_constructors_extra(cls:model.Class) -> ParsedDocstring | None:
     
     document = new_document('constructors')
 
-    elements = []
+    elements: list[nodes.Node] = []
     plural = 's' if len(constructors)>1 else ''
     elements.append(set_node_attributes(
         nodes.Text(f'Constructor{plural}: '), 
