@@ -76,7 +76,10 @@ What's New?
 in development
 ^^^^^^^^^^^^^^
 
+* Drop Python 3.7 and support Python 3.13.
 * Trigger a warning when several docstrings are detected for the same object.
+* Improve typing.
+* Replace the deprecated dependency appdirs with platformdirs.
 
 pydoctor 24.3.3
 ^^^^^^^^^^^^^^^
