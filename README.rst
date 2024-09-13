@@ -77,6 +77,8 @@ in development
 ^^^^^^^^^^^^^^
 
 * Trigger a warning when several docstrings are detected for the same object.
+* Fix WinError caused by the failure of the symlink creation process.
+  Pydoctor should now run on windows without the need to be administrator.
 
 pydoctor 24.3.3
 ^^^^^^^^^^^^^^^
