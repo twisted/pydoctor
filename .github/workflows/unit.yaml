@@ -20,7 +20,7 @@ jobs:
     strategy:
       matrix:
         # Re-enable 3.13-dev when https://github.com/zopefoundation/zope.interface/issues/292 is fixed
-        python-version: [pypy-3.7, 3.7, 3.8, 3.9, '3.10', 3.11, '3.12']
+        python-version: [pypy-3.8, 3.8, 3.9, '3.10', 3.11, '3.12']
         os: [ubuntu-22.04]
         include:
           - os: windows-latest

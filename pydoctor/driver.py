@@ -129,6 +129,8 @@ def make(system: model.System) -> None:
             if not options.htmlsummarypages:
                 subjects = system.rootobjects
         writer.writeIndividualFiles(subjects)
+        if not options.htmlsubjects:
+            writer.writeLinks(system)
         
     if options.makeintersphinx:
         if not options.makehtml:
