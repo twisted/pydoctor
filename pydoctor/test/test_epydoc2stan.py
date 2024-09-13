@@ -2163,3 +2163,35 @@ def test_regression_not_found_linenumbers(capsys: CapSys) -> None:
     docstring2html(mod.contents['Settings'])
     captured = capsys.readouterr().out
     assert captured == '<test>:15: Cannot find link target for "TypeError"\n'
+
+def test_does_not_loose_type_linenumber(capsys: CapSys) -> None:
+    # exmaple from numpy/distutils/ccompiler_opt.py
+    src = '''
+    class C:
+        """
+        Some docs bla
+        bla
+        bla
+        bla
+
+        @ivar one: trash
+        @type cc_noopt: L{bool}
+        @ivar cc_noopt: docs
+        """
+        def __init__(self):
+            self.cc_noopt = True
+            """
+            docs again
+            """
+    '''
+
+    system = model.System(model.Options.from_args('-q'))
+    mod =  fromText(src, system=system)
+    assert mod.contents['C'].contents['cc_noopt'].docstring == 'docs again'
+    
+    from pydoctor.test.test_templatewriter import getHTMLOf 
+    # we use this function as a shortcut to trigger
+    # the link not found warnings.
+    getHTMLOf(mod.contents['C'])
+    assert capsys.readouterr().out == ('<test>:16: Existing docstring at line 10 is overriden\n'
+                                       '<test>:10: Cannot find link target for "bool"\n')

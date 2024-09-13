@@ -2814,3 +2814,28 @@ def test_inline_docstring_multiple_assigments(systemcls: Type[model.System], cap
     assert mod.contents['C'].contents['x'].docstring == 'x docs'
     assert mod.contents['C'].contents['y'].docstring == 'y docs'
 
+
+@systemcls_param
+def test_does_not_misinterpret_string_as_documentation(systemcls: Type[model.System], capsys: CapSys) -> None:
+    # exmaple from numpy/distutils/ccompiler_opt.py
+    src = '''
+    __docformat__ = 'numpy'
+    class C:
+        """
+        Attributes
+        ----------
+        cc_noopt : bool
+            docs
+        """
+        def __init__(self):
+            self.cc_noopt = True
+
+            if True:
+                """
+                this is not documentation
+                """
+    '''
+
+    mod =  fromText(src, systemcls=systemcls)
+    assert not capsys.readouterr().out
+    assert mod.contents['C'].contents['cc_noopt'].docstring == 'docs'
