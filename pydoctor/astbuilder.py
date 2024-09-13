@@ -42,12 +42,10 @@ def _maybeAttribute(cls: model.Class, name: str) -> bool:
     obj = cls.find(name)
     return obj is None or isinstance(obj, model.Attribute)
 
-class SkipInlineDocstring(Exception):
-    ...
-class NotANewBinding(Exception):
-    ...
-class UsingSelfInUnknownContext(Exception):
-    ...
+class IgnoreAssignment(Exception):
+    """
+    A control flow exception meaning that the assignment should not be further proccessed.
+    """
 
 def _handleAliasing(
         ctx: model.CanContainImportsDocumentable,
@@ -556,7 +554,7 @@ class ModuleVistor(NodeVisitor):
         if target in MODULE_VARIABLES_META_PARSERS:
             # This is metadata, not a variable that needs to be documented,
             # and therefore doesn't need an Attribute instance.
-            return
+            raise IgnoreAssignment()
         parent = self.builder.current
         obj = parent.contents.get(target)
         if obj is None:
@@ -580,7 +578,7 @@ class ModuleVistor(NodeVisitor):
         # TODO: Should we report a warning?
 
         if not isinstance(obj, model.Attribute):
-            raise SkipInlineDocstring()
+            raise IgnoreAssignment()
         
         self._setAttributeAnnotation(obj, annotation)
         
@@ -601,6 +599,8 @@ class ModuleVistor(NodeVisitor):
         assert isinstance(module, model.Module)
         if not _handleAliasing(module, target, expr):
             self._handleModuleVar(target, annotation, expr, lineno, augassign=augassign)
+        else:
+            raise IgnoreAssignment()
 
     def _handleClassVar(self,
             name: str,
@@ -613,7 +613,7 @@ class ModuleVistor(NodeVisitor):
         cls = self.builder.current
         assert isinstance(cls, model.Class)
         if not _maybeAttribute(cls, name):
-            raise SkipInlineDocstring()
+            raise IgnoreAssignment()
 
         # Class variables can only be Attribute, so it's OK to cast
         obj = cast(Optional[model.Attribute], cls.contents.get(name))
@@ -641,11 +641,10 @@ class ModuleVistor(NodeVisitor):
             expr: Optional[ast.expr],
             lineno: int
             ) -> None:
-        cls = self._getClassFromMethodContext()
-        if not cls:
-            return
+        if not (cls:=self._getClassFromMethodContext()):
+            raise IgnoreAssignment()
         if not _maybeAttribute(cls, name):
-            raise SkipInlineDocstring()
+            raise IgnoreAssignment()
 
         # Class variables can only be Attribute, so it's OK to cast because we used _maybeAttribute() above.
         obj = cast(Optional[model.Attribute], cls.contents.get(name))
@@ -670,6 +669,8 @@ class ModuleVistor(NodeVisitor):
         assert isinstance(cls, model.Class)
         if not _handleAliasing(cls, target, expr):
             self._handleClassVar(target, annotation, expr, lineno, augassign=augassign)
+        else:
+            raise IgnoreAssignment()
 
     def _handleDocstringUpdate(self,
             targetNode: ast.expr,
@@ -738,6 +739,7 @@ class ModuleVistor(NodeVisitor):
             value = targetNode.value
             if targetNode.attr == '__doc__':
                 self._handleDocstringUpdate(value, expr, lineno)
+                raise IgnoreAssignment()
             elif isinstance(value, ast.Name) and value.id == 'self':
                 self._handleInstanceVar(targetNode.attr, annotation, expr, lineno)
 
@@ -761,7 +763,7 @@ class ModuleVistor(NodeVisitor):
                         self._handleAssignment(elem, None, None, lineno)
                 else:
                     self._handleAssignment(target, annotation, expr, lineno)
-            except SkipInlineDocstring:
+            except IgnoreAssignment:
                 continue
             else:
                 if not isTupleAssignment:
@@ -775,7 +777,7 @@ class ModuleVistor(NodeVisitor):
             node.annotation, self.builder.current), self.builder.current)
         try:
             self._handleAssignment(node.target, annotation, node.value, node.lineno)
-        except SkipInlineDocstring:
+        except IgnoreAssignment:
             return
         else:
             self._handleInlineDocstrings(node, node.target)
@@ -789,44 +791,43 @@ class ModuleVistor(NodeVisitor):
             return None
         return cls
     
-    def _contextualizeTarget(self, target:ast.expr) -> Tuple[List[str], model.Documentable]:
+    def _contextualizeTarget(self, target:ast.expr) -> Tuple[model.Documentable, str]:
         """
-        If the current context is a method, strip the C{'self.'} part of assignment names and return 
-        the right L{Class} context in which to use the new name. The new name maybe dotted.
+        Find out the documentatble wich is the parent of the assignment's target as well as it's name. 
 
-        @returns: Tuple C{(dottedname, context)}. 
-        @raises: L{NotANewBinding} or L{UsingSelfInUnknownContext}.
+        @returns: Tuple C{parent, name}. 
+        @raises: L{ValueError} if the target does not bind a new variable.
         """
         dottedname = node2dottedname(target)
-        if dottedname is None or len(dottedname) >= 3:
-            raise NotANewBinding()
-        parent = self.builder.current
-        if dottedname[0] == 'self':
+        if not dottedname or len(dottedname) > 2:
+            raise ValueError()
+        if len(dottedname) == 2 and dottedname[0] == 'self':
+            # an instance variable.
+            # TODO: This currently only works if the first argument of methods
+            # is named 'self'.
+            if (maybe_cls:=self._getClassFromMethodContext()) is None:
+                raise ValueError()
             dottedname = dottedname[1:]
-            maybe_parent = self._getClassFromMethodContext()
-            if not maybe_parent:
-                raise UsingSelfInUnknownContext()
-            parent = maybe_parent
-        return dottedname, parent
+            parent = maybe_cls
+        elif len(dottedname) != 1:
+            raise ValueError()
+        else:
+            parent = self.builder.current
+        return parent, dottedname[0]
 
     def _handleInlineDocstrings(self, assign:Union[ast.Assign, ast.AnnAssign], target:ast.expr) -> None:
         # Process the inline docstrings
         try:
-            dottedname, parent = self._contextualizeTarget(target)
-        except (NotANewBinding, UsingSelfInUnknownContext):
+            parent, name = self._contextualizeTarget(target)
+        except ValueError:
             return
         
-        if len(dottedname) != 1:
-            return 
-
         docstring_node = get_assign_docstring_node(assign)
         if docstring_node:
-   
             # fetch the target of the inline docstring
-            attr = parent.contents.get(dottedname[0])
+            attr = parent.contents.get(name)
             if attr:
                 attr.setDocstring(docstring_node)
-        
     
     def visit_AugAssign(self, node:ast.AugAssign) -> None:
         self._handleAssignment(node.target, None, node.value, 

@@ -2793,3 +2793,24 @@ def test_mutilple_docstring_with_doc_comments_warnings(systemcls: Type[model.Sys
     fromText(src, systemcls=systemcls)
     # TODO: handle doc comments.x
     assert capsys.readouterr().out == '<test>:18: Existing docstring at line 14 is overriden\n'
+
+@systemcls_param
+def test_inline_docstring_multiple_assigments(systemcls: Type[model.System], capsys: CapSys) -> None:
+    # TODO: this currently does not support nested tuple assignments.
+    src = '''
+    class C:
+        def __init__(self):
+            self.x, x = 1, 1; 'x docs'
+            self.y = x = 1; 'y docs'
+    x,y = 1,1; 'x and y docs'
+    v = w = 1; 'v and w docs'
+    '''
+    mod =  fromText(src, systemcls=systemcls)
+    assert not capsys.readouterr().out
+    assert mod.contents['x'].docstring == 'x and y docs'
+    assert mod.contents['y'].docstring == 'x and y docs'
+    assert mod.contents['v'].docstring == 'v and w docs'
+    assert mod.contents['w'].docstring == 'v and w docs'
+    assert mod.contents['C'].contents['x'].docstring == 'x docs'
+    assert mod.contents['C'].contents['y'].docstring == 'y docs'
+
