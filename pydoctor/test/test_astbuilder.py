@@ -2778,7 +2778,7 @@ def test_doc_comment(systemcls: Type[model.System],  capsys: CapSys) -> None:
     
     mod = fromText(code, systemcls=systemcls)
     
-    def docs(name: str) -> str:
+    def docs(name: str) -> str | None:
         return mod.contents['Foo'].contents[name].docstring
     
     assert docs('attr1') == 'comment before attr1'
@@ -2812,7 +2812,7 @@ def test_doc_comment_module_var(systemcls: Type[model.System],  capsys: CapSys) 
     """
     mod = fromText(src, systemcls=systemcls)
 
-    def docs(name: str) -> str:
+    def docs(name: str) -> str | None:
         return mod.contents[name].docstring
 
     assert docs('a') == 'This is a variable.'

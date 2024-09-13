@@ -755,11 +755,11 @@ class ModuleVistor(NodeVisitor):
     def _handleDocComment(self, node: ast.Assign | ast.AnnAssign):
         # it does not work with tuple unpacking statements or multiple names at the moment
         # as we cannot tell which of the variables the docstring is
-        # for, and how to assign the right side to the variables on the left.
-        is_assign = isinstance(node, ast.Assign)
-        if any(isinstance(t, ast.Tuple) for t in 
-               (node.targets if is_assign else [node.target])) or (
-                is_assign and len(node.targets) > 1):
+        # for, and how to assign the right side to the variables on the left....
+        # Sphinx on the opposite will assigne the same docstring to all variables detected on the left hand side.
+        # We need PR  #585 before merging this feature!
+        targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+        if any(isinstance(t, ast.Tuple) for t in targets) or len(node.targets) > 1:
             return # should we trigger a warning if a valid doc_comment is found?
         
         attr = self.builder.currentAttr
@@ -767,10 +767,11 @@ class ModuleVistor(NodeVisitor):
             return
         
         lines = self.builder.lines_collection[self.module]
-        for doc_comment in [extract_doc_comment_before(node, lines), 
-                            extract_doc_comment_after(node, lines)]:
-            if doc_comment:
-                attr._setDocstringValue(doc_comment[1], doc_comment[0])
+        if lines:
+            for doc_comment in [extract_doc_comment_before(node, lines), 
+                                extract_doc_comment_after(node, lines)]:
+                if doc_comment:
+                    attr._setDocstringValue(doc_comment[1], doc_comment[0])
         
 
     def visit_Assign(self, node: ast.Assign) -> None:
@@ -1103,7 +1104,7 @@ class ASTBuilder:
         
         self._stack: List[model.Documentable] = []
         self.ast_cache: Dict[Path, Optional[ast.Module]] = {} #: avoids calling parse() twice for the same path
-        self.lines_collection: dict[model.Module, Sequence[str]] = {} #: mapping from modules to source code lines 
+        self.lines_collection: dict[model.Module, Sequence[str] | None] = {} #: mapping from modules to source code lines 
 
 
     def _push(self, cls: Type[DocumentableT], name: str, lineno: int) -> DocumentableT:
