@@ -769,7 +769,7 @@ class ModuleVistor(NodeVisitor):
                 if not isTupleAssignment:
                     self._handleInlineDocstrings(node, target)
                 else:
-                    for elem in target.elts:
+                    for elem in cast(ast.Tuple, target).elts: # mypy is not as smart as pyright yet.
                         self._handleInlineDocstrings(node, elem)
 
     def visit_AnnAssign(self, node: ast.AnnAssign) -> None:
@@ -801,6 +801,7 @@ class ModuleVistor(NodeVisitor):
         dottedname = node2dottedname(target)
         if not dottedname or len(dottedname) > 2:
             raise ValueError()
+        parent: model.Documentable
         if len(dottedname) == 2 and dottedname[0] == 'self':
             # an instance variable.
             # TODO: This currently only works if the first argument of methods

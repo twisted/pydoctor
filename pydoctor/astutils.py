@@ -216,7 +216,7 @@ def is_using_annotations(expr: Optional[ast.AST],
                 return True
     return False
 
-def get_assign_docstring_node(assign:ast.Assig | ast.AnnAssign) -> Str | None:
+def get_assign_docstring_node(assign:ast.Assign | ast.AnnAssign) -> Str | None:
     """
     Get the docstring for a L{ast.Assign} or L{ast.AnnAssign} node.
 
