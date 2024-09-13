@@ -830,8 +830,11 @@ class ModuleVistor(NodeVisitor):
                 attr.setDocstring(docstring_node)
     
     def visit_AugAssign(self, node:ast.AugAssign) -> None:
-        self._handleAssignment(node.target, None, node.value, 
-                               node.lineno, augassign=node.op)
+        try:
+            self._handleAssignment(node.target, None, node.value, 
+                                node.lineno, augassign=node.op)
+        except IgnoreAssignment:
+            pass
 
     
     def visit_Expr(self, node: ast.Expr) -> None:
