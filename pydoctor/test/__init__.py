@@ -70,6 +70,11 @@ class InMemoryWriter(IWriter):
         Rig the system to not created the inter sphinx inventory.
         """
         system.options.makeintersphinx = False
+    
+    def writeLinks(self, system: model.System) -> None:
+        """
+        Does nothing.
+        """
 
     def _writeDocsFor(self, ob: model.Documentable) -> None:
         """

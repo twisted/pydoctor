@@ -272,3 +272,30 @@ def test_make_intersphix(tmp_path: Path) -> None:
     assert [p.name for p in tmp_path.iterdir()] == ['objects.inv']
     assert inventory.is_file()
     assert b'Project: acme-lib\n# Version: 20.12.0-dev123\n' in inventory.read_bytes()
+
+def test_index_symlink(tmp_path: Path) -> None:
+    """
+    Test that the default behaviour is to create symlinks, at least on unix.
+
+    For windows users, this has not been a success, so we automatically fallback to copying the file now.
+    See https://github.com/twisted/pydoctor/issues/808, https://github.com/twisted/pydoctor/issues/720.
+    """
+    import platform
+    exit_code = driver.main(args=['--html-output', str(tmp_path), 'pydoctor/test/testpackages/basic/'])
+    assert exit_code == 0
+    link = (tmp_path / 'basic.html')
+    assert link.exists()
+    if platform.system() == 'Windows':
+        assert link.is_symlink() or link.is_file()
+    else:
+        assert link.is_symlink()
+
+def test_index_hardlink(tmp_path: Path) -> None:
+    """
+    Test for option --use-hardlink wich enforce the usage of harlinks.
+    """
+    exit_code = driver.main(args=['--use-hardlink', '--html-output', str(tmp_path), 'pydoctor/test/testpackages/basic/'])
+    assert exit_code == 0
+    assert (tmp_path / 'basic.html').exists()
+    assert not (tmp_path / 'basic.html').is_symlink()
+    assert (tmp_path / 'basic.html').is_file()
