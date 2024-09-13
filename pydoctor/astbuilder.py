@@ -545,12 +545,6 @@ class ModuleVistor(NodeVisitor):
             else:
                 obj.value = new_value
     
-    def _storeCurrentAttr(self, obj:model.Attribute, 
-                          augassign:Optional[object]=None) -> None:
-        if not augassign:
-            self.builder.currentAttr = obj
-        else:
-            self.builder.currentAttr = None
 
     def _handleModuleVar(self,
             target: str,
@@ -595,7 +589,6 @@ class ModuleVistor(NodeVisitor):
         self._handleConstant(obj, annotation, expr, lineno, 
                                   model.DocumentableKind.VARIABLE)
         self._storeAttrValue(obj, expr, augassign)
-        self._storeCurrentAttr(obj, augassign)
 
     def _handleAssignmentInModule(self,
             target: str,
@@ -640,7 +633,7 @@ class ModuleVistor(NodeVisitor):
         self._handleConstant(obj, annotation, expr, lineno, 
                                   model.DocumentableKind.CLASS_VARIABLE)
         self._storeAttrValue(obj, expr, augassign)
-        self._storeCurrentAttr(obj, augassign)
+
        
     def _handleInstanceVar(self,
             name: str,
@@ -665,7 +658,6 @@ class ModuleVistor(NodeVisitor):
         # undonditionnaly set the kind to ivar
         obj.kind = model.DocumentableKind.INSTANCE_VARIABLE
         self._storeAttrValue(obj, expr)
-        self._storeCurrentAttr(obj)
 
     def _handleAssignmentInClass(self,
             target: str,
@@ -840,13 +832,6 @@ class ModuleVistor(NodeVisitor):
         self._handleAssignment(node.target, None, node.value, 
                                node.lineno, augassign=node.op)
 
-    def visit_Expr(self, node: ast.Expr) -> None:
-        value = node.value
-        if isinstance(value, Str):
-            attr = self.builder.currentAttr
-            if attr is not None:
-                attr.setDocstring(value)
-                self.builder.currentAttr = None
     
     def visit_Expr(self, node: ast.Expr) -> None:
         # Visit's ast.Expr.value with the visitor, used by extensions to visit top-level calls.
