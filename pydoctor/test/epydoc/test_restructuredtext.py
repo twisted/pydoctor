@@ -1,6 +1,5 @@
 from typing import List
 from textwrap import dedent
-from pydoctor.epydoc.docutils import _get_docutils_version
 
 from pydoctor.epydoc.markup import DocstringLinker, ParseError, ParsedDocstring, get_parser_by_name
 from pydoctor.epydoc.markup.restructuredtext import parse_docstring
@@ -8,7 +7,7 @@ from pydoctor.test import NotFoundLinker
 from pydoctor.node2stan import node2stan
 from pydoctor.stanutils import flatten, flatten_text
 
-from docutils import nodes
+from docutils import nodes, __version_info__ as docutils_version_info
 from bs4 import BeautifulSoup
 import pytest
 
@@ -115,16 +114,16 @@ def test_rst_xref_implicit_target() -> None:
 
 def test_rst_directive_adnomitions() -> None:
     expected_html_multiline="""
-        <div class="rst-admonition {}">
-        <p class="rst-first rst-admonition-title">{}</p>
+        <div class="rst-admonition rst-{}">
+        <p class="rst-admonition-title rst-first">{}</p>
         <p>this is the first line</p>
         <p class="rst-last">and this is the second line</p>
         </div>
 """
 
     expected_html_single_line = """
-        <div class="rst-admonition {}">
-        <p class="rst-first rst-admonition-title">{}</p>
+        <div class="rst-admonition rst-{}">
+        <p class="rst-admonition-title rst-first">{}</p>
         <p class="rst-last">this is a single line</p>
         </div>
 """
@@ -178,7 +177,7 @@ def test_rst_directive_versionadded() -> None:
     """
     html = rst2html(".. versionadded:: 0.6")
     expected_html="""<div class="rst-versionadded">
-<span class="rst-versionmodified rst-added">New in version 0.6.</span></div>
+<span class="rst-added rst-versionmodified">New in version 0.6.</span></div>
 """
     assert html==expected_html, html
 
@@ -190,7 +189,7 @@ def test_rst_directive_versionchanged() -> None:
     html = rst2html(""".. versionchanged:: 0.7
     Add extras""")
     expected_html="""<div class="rst-versionchanged">
-<span class="rst-versionmodified rst-changed">Changed in version 0.7: </span><span>Add extras</span></div>
+<span class="rst-changed rst-versionmodified">Changed in version 0.7: </span><span>Add extras</span></div>
 """
     assert html==expected_html, html
 
@@ -202,7 +201,7 @@ def test_rst_directive_deprecated() -> None:
     html = rst2html(""".. deprecated:: 0.2
     For security reasons""")
     expected_html="""<div class="rst-deprecated">
-<span class="rst-versionmodified rst-deprecated">Deprecated since version 0.2: </span><span>For security reasons</span></div>
+<span class="rst-deprecated rst-versionmodified">Deprecated since version 0.2: </span><span>For security reasons</span></div>
 """
     assert html==expected_html, html
     
@@ -210,8 +209,8 @@ def test_rst_directive_seealso() -> None:
 
     html = rst2html(".. seealso:: Hey")
     expected_html = """
-        <div class="rst-admonition seealso">
-        <p class="rst-first rst-admonition-title">See Also</p>
+        <div class="rst-admonition rst-seealso">
+        <p class="rst-admonition-title rst-first">See Also</p>
         <p class="rst-last">Hey</p>
         </div>"""
     assert prettify(html).strip() == prettify(expected_html).strip(), html
@@ -248,14 +247,14 @@ def test_summary(markup:str) -> None:
     ]
     for src, summary_text in cases:
         errors: List[ParseError] = []
-        pdoc = get_parser_by_name(markup)(dedent(src), errors, False)
+        pdoc = get_parser_by_name(markup)(dedent(src), errors)
         assert not errors
         assert pdoc.get_summary() == pdoc.get_summary() # summary is cached inside ParsedDocstring as well.
         assert flatten_text(pdoc.get_summary().to_stan(NotFoundLinker())) == summary_text
 
 
 # From docutils 0.18 the toc entries uses different ids.
-@pytest.mark.skipif(_get_docutils_version() < (0,18,0), reason="HTML ids in toc tree changed in docutils 0.18.0.")
+@pytest.mark.skipif(docutils_version_info < (0,18), reason="HTML ids in toc tree changed in docutils 0.18.0.")
 def test_get_toc() -> None:
 
     docstring = """
@@ -298,23 +297,23 @@ Other
     expected_html="""
 <li>
  <p class="rst-first">
-  <a class="rst-reference internal" href="#rst-titles" id="rst-toc-entry-1">
+  <a class="rst-internal rst-reference" href="#rst-titles" id="rst-toc-entry-1">
    Titles
   </a>
  </p>
  <ul class="rst-simple">
   <li>
-   <a class="rst-reference internal" href="#rst-level-2" id="rst-toc-entry-2">
+   <a class="rst-internal rst-reference" href="#rst-level-2" id="rst-toc-entry-2">
     Level 2
    </a>
    <ul>
     <li>
-     <a class="rst-reference internal" href="#rst-level-3" id="rst-toc-entry-3">
+     <a class="rst-internal rst-reference" href="#rst-level-3" id="rst-toc-entry-3">
       Level 3
      </a>
      <ul>
       <li>
-       <a class="rst-reference internal" href="#rst-level-4" id="rst-toc-entry-4">
+       <a class="rst-internal rst-reference" href="#rst-level-4" id="rst-toc-entry-4">
         Level 4
        </a>
       </li>
@@ -323,24 +322,24 @@ Other
    </ul>
   </li>
   <li>
-   <a class="rst-reference internal" href="#rst-level-2-2" id="rst-toc-entry-5">
+   <a class="rst-internal rst-reference" href="#rst-level-2-2" id="rst-toc-entry-5">
     Level 2.2
    </a>
   </li>
   <li>
-   <a class="rst-reference internal" href="#rst-level-22" id="rst-toc-entry-6">
+   <a class="rst-internal rst-reference" href="#rst-level-22" id="rst-toc-entry-6">
     Level 22
    </a>
   </li>
  </ul>
 </li>
 <li>
- <a class="rst-reference internal" href="#rst-lists" id="rst-toc-entry-7">
+ <a class="rst-internal rst-reference" href="#rst-lists" id="rst-toc-entry-7">
   Lists
  </a>
 </li>
 <li>
- <a class="rst-reference internal" href="#rst-other" id="rst-toc-entry-8">
+ <a class="rst-internal rst-reference" href="#rst-other" id="rst-toc-entry-8">
   Other
  </a>
 </li>

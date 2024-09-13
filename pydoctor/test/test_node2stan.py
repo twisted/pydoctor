@@ -65,7 +65,7 @@ def test_gettext() -> None:
           gradient.cis.upenn.edu>}
         '''
 
-    # TODO: Make it retreive the links refuid attribute.
+    # TODO: Make it retreive the links refuri attribute.
     assert gettext(epytext2node(doc)) == ['www.python.org', 
     'http://www.python.org', 'The epydoc homepage', 'The ', 'Python', 
     ' homepage', 'Edward Loper']

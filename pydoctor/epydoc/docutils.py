@@ -1,13 +1,35 @@
 """
 Collection of helper functions and classes related to the creation and processing of L{docutils} nodes.
 """
-from typing import Iterable, Iterator, Optional, Tuple
+from __future__ import annotations
 
-from docutils import nodes
-import docutils
+from typing import Iterable, Iterator, Optional
+
+import optparse
+
+from docutils import nodes, utils, frontend, __version_info__ as docutils_version_info
 from docutils.transforms import parts
 
 __docformat__ = 'epytext en'
+
+_DEFAULT_DOCUTILS_SETTINGS: Optional[optparse.Values] = None
+
+def new_document(source_path: str, settings: Optional[optparse.Values] = None) -> nodes.document:
+    """
+    Create a new L{nodes.document} using the provided settings or cached default settings.
+
+    @returns: L{nodes.document}
+    """
+    global _DEFAULT_DOCUTILS_SETTINGS
+    # If we have docutils >= 0.19 we use get_default_settings to calculate and cache
+    # the default settings. Otherwise we let new_document figure it out.
+    if settings is None and docutils_version_info >= (0,19):
+        if _DEFAULT_DOCUTILS_SETTINGS is None:
+            _DEFAULT_DOCUTILS_SETTINGS = frontend.get_default_settings() # type:ignore[attr-defined]
+
+        settings = _DEFAULT_DOCUTILS_SETTINGS
+
+    return utils.new_document(source_path, settings)
 
 def _set_nodes_parent(nodes: Iterable[nodes.Node], parent: nodes.Element) -> Iterator[nodes.Node]:
     """
@@ -134,22 +156,3 @@ class obj_reference(nodes.title_reference):
     """
     A reference to a documentable object.
     """
-
-def _get_docutils_version() -> Tuple[int, int,int]:
-    """
-    Returns tuple (major, minor, micro).
-    
-    Pre-release info is ignored (replaced by zero).
-    """
-    def int_or_zero(s:str) -> int:
-        try:
-            return int(s)
-        except ValueError:
-            return  0
-    
-    version = [int_or_zero(p) for p in docutils.__version__.split('.')[:3]]
-    if len(version)==2:
-        version += [0]
-    
-    assert len(version)==3, version
-    return (version[0], version[1], version[2])

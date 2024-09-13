@@ -1,6 +1,8 @@
 """
 General purpose visitor pattern implementation, with extensions.
 """
+from __future__ import annotations
+
 from collections import defaultdict
 import enum
 import abc

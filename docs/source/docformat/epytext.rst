@@ -4,7 +4,7 @@ Epytext
 .. toctree::
     :maxdepth: 1
 
-    epytext/epytext_demo
+    epytext_demo/index
 
 Read the `the epytext manual <http://epydoc.sourceforge.net/manual-epytext.html>`_
 for full documentation.

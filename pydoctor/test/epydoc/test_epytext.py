@@ -13,8 +13,13 @@ def epytext2html(s: str, linker: DocstringLinker = NotFoundLinker()) -> str:
 
 
 def parse(s: str) -> str:
-    # this strips off the <epytext>...</epytext>
-    return ''.join(str(n) for n in epytext.parse(s).children)
+    errors: List[ParseError] = []
+    element = epytext.parse(s, errors)
+    if element is None:
+        raise errors[0]
+    else:
+        # this strips off the <epytext>...</epytext>
+        return ''.join(str(n) for n in element.children)
 
 
 def test_basic_list() -> None:
@@ -80,8 +85,8 @@ def test_literal_braces() -> None:
     This test makes sure that braces are getting rendered as desired.
     """
     assert epytext2html("{1:{2:3}}") == '{1:{2:3}}'
-    assert epytext2html("C{{1:{2:3}}}") == '<tt class="rst-docutils literal"><span class="pre">{1:{2:3}}</span></tt>'
-    assert epytext2html("{1:C{{2:3}}}") == '{1:<tt class="rst-docutils literal">{2:3}</tt>}'
+    assert epytext2html("C{{1:{2:3}}}") == '<tt class="rst-docutils rst-literal"><span class="pre">{1:{2:3}}</span></tt>'
+    assert epytext2html("{1:C{{2:3}}}") == '{1:<tt class="rst-docutils rst-literal">{2:3}</tt>}'
     assert epytext2html("{{{}{}}{}}") == '{{{}{}}{}}'
     assert epytext2html("{{E{lb}E{lb}E{lb}}}") == '{{{{{}}'
 

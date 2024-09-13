@@ -4,7 +4,6 @@
 # Author: Edward Loper <edloper@loper.org>
 # URL: <http://epydoc.sf.net>
 #
-
 """
 Syntax highlighter for Python values.  Currently provides special
 colorization support for:
@@ -32,6 +31,7 @@ C{__repr__}.
 B{Usage}: 
 >>> 
 """
+from __future__ import annotations
 
 __docformat__ = 'epytext en'
 
@@ -39,21 +39,18 @@ import re
 import ast
 import functools
 import sys
-import sre_constants
 from inspect import signature
 from typing import Any, AnyStr, Union, Callable, Dict, Iterable, Sequence, Optional, List, Tuple, cast
 
 import attr
-import astor.op_util
-from docutils import nodes, utils
+from docutils import nodes
 from twisted.web.template import Tag
 
-from pydoctor.epydoc import sre_parse36
+from pydoctor.epydoc import sre_parse36, sre_constants36 as sre_constants
 from pydoctor.epydoc.markup import DocstringLinker
 from pydoctor.epydoc.markup.restructuredtext import ParsedRstDocstring
-from pydoctor.epydoc.docutils import set_node_attributes, wbr, obj_reference
-from pydoctor.astutils import node2dottedname, bind_args, parentage_ast_tree
-from pydoctor.node2stan import gettext
+from pydoctor.epydoc.docutils import set_node_attributes, wbr, obj_reference, new_document
+from pydoctor.astutils import node2dottedname, bind_args, Parentage, get_parents, unparse, op_util
 
 def decode_with_backslashreplace(s: bytes) -> str:
     r"""
@@ -78,6 +75,7 @@ class _MarkedColorizerState:
     charpos: int
     lineno: int
     linebreakok: bool
+    stacklength: int
 
 class _ColorizerState:
     """
@@ -89,18 +87,20 @@ class _ColorizerState:
     then fall back on a multi-line output if that fails.  
     """
     def __init__(self) -> None:
-        self.result: List[nodes.Node] = []
+        self.result: list[nodes.Node] = []
         self.charpos = 0
         self.lineno = 1
         self.linebreakok = True
-        self.warnings: List[str] = []
+        self.warnings: list[str] = []
+        self.stack: list[ast.AST] = []
 
     def mark(self) -> _MarkedColorizerState:
         return _MarkedColorizerState(
                     length=len(self.result), 
                     charpos=self.charpos,
                     lineno=self.lineno, 
-                    linebreakok=self.linebreakok)
+                    linebreakok=self.linebreakok,
+                    stacklength=len(self.stack))
 
     def restore(self, mark: _MarkedColorizerState) -> List[nodes.Node]:
         """
@@ -111,9 +111,17 @@ class _ColorizerState:
                                         mark.linebreakok)
         trimmed = self.result[mark.length:]
         del self.result[mark.length:]
+        del self.stack[mark.stacklength:]
         return trimmed
 
 # TODO: add support for comparators when needed. 
+# _OperatorDelimitier is needed for:
+# - IfExp (TODO)
+# - UnaryOp (DONE)
+# - BinOp, needs special handling for power operator (DONE)
+# - Compare (TODO)
+# - BoolOp (DONE)
+# - Lambda (TODO)
 class _OperatorDelimiter:
     """
     A context manager that can add enclosing delimiters to nested operators when needed. 
@@ -122,7 +130,7 @@ class _OperatorDelimiter:
     """
 
     def __init__(self, colorizer: 'PyvalColorizer', state: _ColorizerState, 
-                 node: Union[ast.UnaryOp, ast.BinOp, ast.BoolOp]) -> None:
+                 node: ast.expr,) -> None:
 
         self.discard = True
         """No parenthesis by default."""
@@ -132,16 +140,29 @@ class _OperatorDelimiter:
         self.marked = state.mark()
 
         # We use a hack to populate a "parent" attribute on AST nodes.
-        # See _Parentage class, applied in PyvalColorizer._colorize_ast()
-        parent_node: Optional[ast.AST] = getattr(node, 'parent', None)
-
-        if isinstance(parent_node, (ast.UnaryOp, ast.BinOp, ast.BoolOp)):
-            precedence = astor.op_util.get_op_precedence(node.op)
-            parent_precedence = astor.op_util.get_op_precedence(parent_node.op)
-            # Add parenthesis when precedences are equal to avoid confusions 
-            # and correctly handle the Pow special case without too much annoyance.
-            if precedence <= parent_precedence:
+        # See astutils.Parentage class, applied in PyvalColorizer._colorize_ast()
+        try:
+            parent_node: ast.AST = next(get_parents(node))
+        except StopIteration:
+            return
+        
+        # avoid needless parenthesis, since we now collect parents for every nodes 
+        if isinstance(parent_node, (ast.expr, ast.keyword, ast.comprehension)):
+            try:
+                precedence = op_util.get_op_precedence(getattr(node, 'op', node))
+            except KeyError:
                 self.discard = False
+            else:
+                try:
+                    parent_precedence = op_util.get_op_precedence(getattr(parent_node, 'op', parent_node))
+                    if isinstance(getattr(parent_node, 'op', None), ast.Pow) or isinstance(parent_node, ast.BoolOp):
+                        parent_precedence+=1
+                except KeyError:
+                    parent_precedence = colorizer.explicit_precedence.get(
+                        node, op_util.Precedence.highest)
+                    
+                if precedence < parent_precedence:
+                    self.discard = False
 
     def __enter__(self) -> '_OperatorDelimiter':
         return self
@@ -175,26 +196,27 @@ class ColorizedPyvalRepr(ParsedRstDocstring):
         List of warnings
         """
     
-    def to_stan(self, docstring_linker: DocstringLinker, compact:bool=False) -> Tag:
-        try:
-            return Tag('code')(super().to_stan(docstring_linker))
-        except Exception as e:
-            # Just in case...
-            self.warnings.append(f"Cannot convert repr to renderable object, error: {str(e)}. Using plaintext.")
-            return Tag('code')(gettext(self.to_node()))
+    def to_stan(self, docstring_linker: DocstringLinker) -> Tag:
+        return Tag('code')(super().to_stan(docstring_linker))
 
-def colorize_pyval(pyval: Any, linelen:Optional[int], maxlines:int, linebreakok:bool=True) -> ColorizedPyvalRepr:
+def colorize_pyval(pyval: Any, linelen:Optional[int], maxlines:int, linebreakok:bool=True, refmap:Optional[Dict[str, str]]=None) -> ColorizedPyvalRepr:
     """
+    Get a L{ColorizedPyvalRepr} instance for this piece of ast. 
+
+    @param refmap: A mapping that maps local names to full names. 
+        This can be used to explicitely links some objects by assigning an 
+        explicit 'refuri' value on the L{obj_reference} node.
+        This can be used for cases the where the linker might be wrong, obviously this is just a workaround.
     @return: A L{ColorizedPyvalRepr} describing the given pyval.
     """
-    return PyvalColorizer(linelen=linelen, maxlines=maxlines, linebreakok=linebreakok).colorize(pyval)
+    return PyvalColorizer(linelen=linelen, maxlines=maxlines, linebreakok=linebreakok, refmap=refmap).colorize(pyval)
 
-def colorize_inline_pyval(pyval: Any) -> ColorizedPyvalRepr:
+def colorize_inline_pyval(pyval: Any, refmap:Optional[Dict[str, str]]=None) -> ColorizedPyvalRepr:
     """
     Used to colorize type annotations and parameters default values.
     @returns: C{L{colorize_pyval}(pyval, linelen=None, linebreakok=False)}
     """
-    return colorize_pyval(pyval, linelen=None, maxlines=1, linebreakok=False)
+    return colorize_pyval(pyval, linelen=None, maxlines=1, linebreakok=False, refmap=refmap)
 
 def _get_str_func(pyval:  AnyStr) -> Callable[[str], AnyStr]:
     func = cast(Callable[[str], AnyStr], str if isinstance(pyval, str) else \
@@ -242,10 +264,14 @@ class PyvalColorizer:
     Syntax highlighter for Python values.
     """
 
-    def __init__(self, linelen:Optional[int], maxlines:int, linebreakok:bool=True):
+    def __init__(self, linelen:Optional[int], maxlines:int, linebreakok:bool=True, refmap:Optional[Dict[str, str]]=None):
         self.linelen: Optional[int] = linelen if linelen!=0 else None
         self.maxlines: Union[int, float] = maxlines if maxlines!=0 else float('inf')
         self.linebreakok = linebreakok
+        self.refmap = refmap if refmap is not None else {}
+        # some edge cases require to compute the precedence ahead of time and can't be 
+        # easily done with access only to the parent node of some operators.
+        self.explicit_precedence:Dict[ast.AST, int] = {}
 
     #////////////////////////////////////////////////////////////
     # Colorization Tags & other constants
@@ -279,6 +305,10 @@ class PyvalColorizer:
 
     RE_COMPILE_SIGNATURE = signature(re.compile)
 
+    def _set_precedence(self, precedence:int, *node:ast.AST) -> None:
+        for n in node:
+            self.explicit_precedence[n] = precedence
+
     def colorize(self, pyval: Any) -> ColorizedPyvalRepr:
         """
         Entry Point.
@@ -304,7 +334,7 @@ class PyvalColorizer:
             is_complete = True
         
         # Put it all together.
-        document = utils.new_document('pyval_repr')
+        document = new_document('pyval_repr')
         # This ensure the .parent and .document attributes of the child nodes are set correcly.
         set_node_attributes(document, children=[set_node_attributes(node, document=document) for node in state.result])
         return ColorizedPyvalRepr(document, is_complete, state.warnings)
@@ -336,10 +366,6 @@ class PyvalColorizer:
         elif pyvaltype is frozenset:
             self._multiline(self._colorize_iter, pyval,
                             state, prefix='frozenset([', suffix='])')
-        elif pyvaltype is dict:
-            self._multiline(self._colorize_dict,
-                            list(pyval.items()),
-                            state, prefix='{', suffix='}')
         elif pyvaltype is list:
             self._multiline(self._colorize_iter, pyval, state, prefix='[', suffix=']')
         elif issubclass(pyvaltype, ast.AST):
@@ -432,15 +458,20 @@ class PyvalColorizer:
         if suffix is not None:
             self._output(suffix, self.GROUP_TAG, state)
 
-    def _colorize_dict(self, items: Iterable[Tuple[Any, Any]], state: _ColorizerState, prefix: str, suffix: str) -> None:
+    def _colorize_ast_dict(self, items: Iterable[Tuple[Optional[ast.AST], ast.AST]], 
+                           state: _ColorizerState, prefix: str, suffix: str) -> None:
         self._output(prefix, self.GROUP_TAG, state)
         indent = state.charpos
         for i, (key, val) in enumerate(items):
             if i>=1:
                 self._insert_comma(indent, state)
             state.result.append(self.WORD_BREAK_OPPORTUNITY)
-            self._colorize(key, state)
-            self._output(': ', self.COLON_TAG, state)
+            if key:
+                self._set_precedence(op_util.Precedence.Comma, val)
+                self._colorize(key, state)
+                self._output(': ', self.COLON_TAG, state)
+            else:
+                self._output('**', None, state)
             self._colorize(val, state)
         self._output(suffix, self.GROUP_TAG, state)
     
@@ -488,19 +519,29 @@ class PyvalColorizer:
 
     @staticmethod
     def _is_ast_constant(node: ast.AST) -> bool:
-        return isinstance(node, (ast.Num, ast.Str, ast.Bytes, 
-                                 ast.Constant, ast.NameConstant, ast.Ellipsis))
+        if sys.version_info[:2] >= (3, 8):
+            return isinstance(node, ast.Constant)
+        else:
+            # TODO: remove me when python3.7 is not supported anymore
+            return isinstance(node, (ast.Num, ast.Str, ast.Bytes, 
+                    ast.Constant, ast.NameConstant, ast.Ellipsis))
     @staticmethod
     def _get_ast_constant_val(node: ast.AST) -> Any:
         # Deprecated since version 3.8: Replaced by Constant
-        if isinstance(node, ast.Num): 
-            return(node.n)
-        if isinstance(node, (ast.Str, ast.Bytes)):
-           return(node.s)
-        if isinstance(node, (ast.Constant, ast.NameConstant)):
-            return(node.value)
-        if isinstance(node, ast.Ellipsis):
-            return(...)
+        if sys.version_info[:2] >= (3, 8):
+            if isinstance(node, ast.Constant):
+                return node.value
+        else:
+            # TODO: remove me when python3.7 is not supported anymore
+            if isinstance(node, ast.Num): 
+                return(node.n)
+            if isinstance(node, (ast.Str, ast.Bytes)):
+                return(node.s)
+            if isinstance(node, (ast.Constant, ast.NameConstant)):
+                return(node.value)
+            if isinstance(node, ast.Ellipsis):
+                return(...)
+        raise RuntimeError(f'expected a constant: {ast.dump(node)}')
         
     def _colorize_ast_constant(self, pyval: ast.AST, state: _ColorizerState) -> None:
         val = self._get_ast_constant_val(pyval)
@@ -511,10 +552,12 @@ class PyvalColorizer:
             self._output('...', self.ELLIPSIS_TAG, state)
 
     def _colorize_ast(self, pyval: ast.AST, state: _ColorizerState) -> None:
-        # Check nodes parent is set.
-        # This is required to check precedences and add delimiters when needed.
-        if not hasattr(pyval, 'parent'):
-            pyval = parentage_ast_tree(pyval)
+        state.stack.append(pyval)
+        # Set nodes parent in order to check theirs precedences and add delimiters when needed.
+        try:
+            next(get_parents(pyval))
+        except StopIteration:
+            Parentage().visit(pyval)
 
         if self._is_ast_constant(pyval): 
             self._colorize_ast_constant(pyval, state)
@@ -532,7 +575,7 @@ class PyvalColorizer:
             self._multiline(self._colorize_iter, pyval.elts, state, prefix='set([', suffix='])')
         elif isinstance(pyval, ast.Dict):
             items = list(zip(pyval.keys, pyval.values))
-            self._multiline(self._colorize_dict, items, state, prefix='{', suffix='}')
+            self._multiline(self._colorize_ast_dict, items, state, prefix='{', suffix='}')
         elif isinstance(pyval, ast.Name):
             self._colorize_ast_name(pyval, state)
         elif isinstance(pyval, ast.Attribute):
@@ -553,6 +596,7 @@ class PyvalColorizer:
             self._colorize_ast(pyval.value, state)
         else:
             self._colorize_ast_generic(pyval, state)
+        assert state.stack.pop() is pyval
     
     def _colorize_ast_unary_op(self, pyval: ast.UnaryOp, state: _ColorizerState) -> None:
         with _OperatorDelimiter(self, state, pyval):
@@ -573,38 +617,16 @@ class PyvalColorizer:
     def _colorize_ast_binary_op(self, pyval: ast.BinOp, state: _ColorizerState) -> None:
         with _OperatorDelimiter(self, state, pyval):
             # Colorize first operand
+            mark = state.mark()
             self._colorize(pyval.left, state)
-
             # Colorize operator
-            if isinstance(pyval.op, ast.Sub):
-                self._output('-', None, state)
-            elif isinstance(pyval.op, ast.Add):
-                self._output('+', None, state)
-            elif isinstance(pyval.op, ast.Mult):
-                self._output('*', None, state)
-            elif isinstance(pyval.op, ast.Div):
-                self._output('/', None, state)
-            elif isinstance(pyval.op, ast.FloorDiv):
-                self._output('//', None, state)
-            elif isinstance(pyval.op, ast.Mod):
-                self._output('%', None, state)
-            elif isinstance(pyval.op, ast.Pow):
-                self._output('**', None, state)
-            elif isinstance(pyval.op, ast.LShift):
-                self._output('<<', None, state)
-            elif isinstance(pyval.op, ast.RShift):
-                self._output('>>', None, state)
-            elif isinstance(pyval.op, ast.BitOr):
-                self._output('|', None, state)
-            elif isinstance(pyval.op, ast.BitXor):
-                self._output('^', None, state)
-            elif isinstance(pyval.op, ast.BitAnd):
-                self._output('&', None, state)
-            elif isinstance(pyval.op, ast.MatMult):
-                self._output('@', None, state)
-            else:
+            try:
+                self._output(op_util.get_op_symbol(pyval.op, ' %s '), None, state)
+            except KeyError:
                 state.warnings.append(f"Unknow binary operator: {pyval}")
+                state.restore(mark)
                 self._colorize_ast_generic(pyval, state)
+                return
 
             # Colorize second operand
             self._colorize(pyval.right, state)
@@ -647,6 +669,8 @@ class PyvalColorizer:
             # In Python < 3.9, non-slices are always wrapped in an Index node.
             sub = sub.value
         self._output('[', self.GROUP_TAG, state)
+        self._set_precedence(op_util.Precedence.Subscript, node)
+        self._set_precedence(op_util.Precedence.Index, sub)
         if isinstance(sub, ast.Tuple):
             self._multiline(self._colorize_iter, sub.elts, state)
         else:
@@ -709,7 +733,8 @@ class PyvalColorizer:
             # Can raise ValueError or re.error
             # Value of type variable "AnyStr" cannot be "Union[bytes, str]": Yes it can.
             self._colorize_re_pattern_str(pat, state) #type:ignore[type-var]
-        except (ValueError, re.error) as e:
+        except (ValueError, sre_constants.error) as e:
+            # Make sure not to swallow control flow errors.
             # Colorize the ast.Call as any other node if the pattern parsing fails.
             state.restore(mark)
             state.warnings.append(f"Cannot colorize regular expression, error: {str(e)}")
@@ -725,7 +750,13 @@ class PyvalColorizer:
 
     def _colorize_ast_generic(self, pyval: ast.AST, state: _ColorizerState) -> None:
         try:
-            source = astor.to_source(pyval).strip()
+            # Always wrap the expression inside parenthesis because we can't be sure 
+            # if there are required since we don;t have support for all operators 
+            # See TODO comment in _OperatorDelimiter.
+            source = unparse(pyval).strip()
+            if sys.version_info > (3,9) and isinstance(pyval, 
+                    (ast.IfExp, ast.Compare, ast.Lambda)) and len(state.stack)>1:
+                source = f'({source})'
         except Exception: #  No defined handler for node of type <type>
             state.result.append(self.UNKNOWN_REPR)
         else:
@@ -805,7 +836,7 @@ class PyvalColorizer:
             op = elt[0]
             args = elt[1]
 
-            if op == sre_constants.LITERAL:
+            if op == sre_constants.LITERAL: #type:ignore[attr-defined]
                 c = chr(cast(int, args))
                 # Add any appropriate escaping.
                 if c in '.^$\\*+?{}[]|()\'': 
@@ -827,10 +858,10 @@ class PyvalColorizer:
                     c = rb'\x%02x' % ord(c) # type:ignore[assignment]
                 self._output(c, self.RE_CHAR_TAG, state)
 
-            elif op == sre_constants.ANY:
+            elif op == sre_constants.ANY: #type:ignore[attr-defined]
                 self._output('.', self.RE_CHAR_TAG, state)
 
-            elif op == sre_constants.BRANCH:
+            elif op == sre_constants.BRANCH: #type:ignore[attr-defined]
                 if args[0] is not None:
                     raise ValueError('Branch expected None arg but got %s'
                                      % args[0])
@@ -839,35 +870,35 @@ class PyvalColorizer:
                         self._output('|', self.RE_OP_TAG, state)
                     self._colorize_re_tree(item, state, True, groups)
 
-            elif op == sre_constants.IN:
-                if (len(args) == 1 and args[0][0] == sre_constants.CATEGORY):
+            elif op == sre_constants.IN: #type:ignore[attr-defined]
+                if (len(args) == 1 and args[0][0] == sre_constants.CATEGORY): #type:ignore[attr-defined]
                     self._colorize_re_tree(args, state, False, groups)
                 else:
                     self._output('[', self.RE_GROUP_TAG, state)
                     self._colorize_re_tree(args, state, True, groups)
                     self._output(']', self.RE_GROUP_TAG, state)
 
-            elif op == sre_constants.CATEGORY:
-                if args == sre_constants.CATEGORY_DIGIT: val = r'\d'
-                elif args == sre_constants.CATEGORY_NOT_DIGIT: val = r'\D'
-                elif args == sre_constants.CATEGORY_SPACE: val = r'\s'
-                elif args == sre_constants.CATEGORY_NOT_SPACE: val = r'\S'
-                elif args == sre_constants.CATEGORY_WORD: val = r'\w'
-                elif args == sre_constants.CATEGORY_NOT_WORD: val = r'\W'
+            elif op == sre_constants.CATEGORY: #type:ignore[attr-defined]
+                if args == sre_constants.CATEGORY_DIGIT: val = r'\d' #type:ignore[attr-defined]
+                elif args == sre_constants.CATEGORY_NOT_DIGIT: val = r'\D' #type:ignore[attr-defined]
+                elif args == sre_constants.CATEGORY_SPACE: val = r'\s' #type:ignore[attr-defined]
+                elif args == sre_constants.CATEGORY_NOT_SPACE: val = r'\S' #type:ignore[attr-defined]
+                elif args == sre_constants.CATEGORY_WORD: val = r'\w' #type:ignore[attr-defined]
+                elif args == sre_constants.CATEGORY_NOT_WORD: val = r'\W' #type:ignore[attr-defined]
                 else: raise ValueError('Unknown category %s' % args)
                 self._output(val, self.RE_CHAR_TAG, state)
 
-            elif op == sre_constants.AT:
-                if args == sre_constants.AT_BEGINNING_STRING: val = r'\A'
-                elif args == sre_constants.AT_BEGINNING: val = '^'
-                elif args == sre_constants.AT_END: val = '$'
-                elif args == sre_constants.AT_BOUNDARY: val = r'\b'
-                elif args == sre_constants.AT_NON_BOUNDARY: val = r'\B'
-                elif args == sre_constants.AT_END_STRING: val = r'\Z'
+            elif op == sre_constants.AT: #type:ignore[attr-defined]
+                if args == sre_constants.AT_BEGINNING_STRING: val = r'\A' #type:ignore[attr-defined]
+                elif args == sre_constants.AT_BEGINNING: val = '^' #type:ignore[attr-defined]
+                elif args == sre_constants.AT_END: val = '$' #type:ignore[attr-defined]
+                elif args == sre_constants.AT_BOUNDARY: val = r'\b' #type:ignore[attr-defined]
+                elif args == sre_constants.AT_NON_BOUNDARY: val = r'\B' #type:ignore[attr-defined]
+                elif args == sre_constants.AT_END_STRING: val = r'\Z' #type:ignore[attr-defined]
                 else: raise ValueError('Unknown position %s' % args)
                 self._output(val, self.RE_CHAR_TAG, state)
 
-            elif op in (sre_constants.MAX_REPEAT, sre_constants.MIN_REPEAT):
+            elif op in (sre_constants.MAX_REPEAT, sre_constants.MIN_REPEAT): #type:ignore[attr-defined]
                 minrpt = args[0]
                 maxrpt = args[1]
                 if maxrpt == sre_constants.MAXREPEAT:
@@ -881,13 +912,13 @@ class PyvalColorizer:
                     val = '{%d}' % (maxrpt)
                 else:
                     val = '{%d,%d}' % (minrpt, maxrpt)
-                if op == sre_constants.MIN_REPEAT:
+                if op == sre_constants.MIN_REPEAT: #type:ignore[attr-defined]
                     val += '?'
 
                 self._colorize_re_tree(args[2], state, False, groups)
                 self._output(val, self.RE_OP_TAG, state)
 
-            elif op == sre_constants.SUBPATTERN:
+            elif op == sre_constants.SUBPATTERN: #type:ignore[attr-defined]
                 if args[0] is None:
                     self._output(r'(?:', self.RE_GROUP_TAG, state)
                 elif args[0] in groups:
@@ -904,20 +935,20 @@ class PyvalColorizer:
                 self._colorize_re_tree(args[3], state, True, groups)
                 self._output(')', self.RE_GROUP_TAG, state)
 
-            elif op == sre_constants.GROUPREF:
+            elif op == sre_constants.GROUPREF: #type:ignore[attr-defined]
                 self._output('\\%d' % args, self.RE_REF_TAG, state)
 
-            elif op == sre_constants.RANGE:
-                self._colorize_re_tree( ((sre_constants.LITERAL, args[0]),),
+            elif op == sre_constants.RANGE: #type:ignore[attr-defined]
+                self._colorize_re_tree( ((sre_constants.LITERAL, args[0]),), #type:ignore[attr-defined]
                                         state, False, groups )
                 self._output('-', self.RE_OP_TAG, state)
-                self._colorize_re_tree( ((sre_constants.LITERAL, args[1]),),
+                self._colorize_re_tree( ((sre_constants.LITERAL, args[1]),), #type:ignore[attr-defined]
                                         state, False, groups )
 
-            elif op == sre_constants.NEGATE:
+            elif op == sre_constants.NEGATE: #type:ignore[attr-defined]
                 self._output('^', self.RE_OP_TAG, state)
 
-            elif op == sre_constants.ASSERT:
+            elif op == sre_constants.ASSERT: #type:ignore[attr-defined]
                 if args[0] > 0:
                     self._output('(?=', self.RE_GROUP_TAG, state)
                 else:
@@ -925,7 +956,7 @@ class PyvalColorizer:
                 self._colorize_re_tree(args[1], state, True, groups)
                 self._output(')', self.RE_GROUP_TAG, state)
 
-            elif op == sre_constants.ASSERT_NOT:
+            elif op == sre_constants.ASSERT_NOT: #type:ignore[attr-defined]
                 if args[0] > 0:
                     self._output('(?!', self.RE_GROUP_TAG, state)
                 else:
@@ -933,13 +964,13 @@ class PyvalColorizer:
                 self._colorize_re_tree(args[1], state, True, groups)
                 self._output(')', self.RE_GROUP_TAG, state)
 
-            elif op == sre_constants.NOT_LITERAL:
+            elif op == sre_constants.NOT_LITERAL: #type:ignore[attr-defined]
                 self._output('[^', self.RE_GROUP_TAG, state)
-                self._colorize_re_tree( ((sre_constants.LITERAL, args),),
+                self._colorize_re_tree( ((sre_constants.LITERAL, args),), #type:ignore[attr-defined]
                                         state, False, groups )
                 self._output(']', self.RE_GROUP_TAG, state)
             else:
-                raise RuntimeError(f"Error colorizing regexp, unknown element :{elt}")
+                raise ValueError(f"Unsupported element :{elt}")
         if len(tree) > 1 and not noparen:
             self._output(')', self.RE_GROUP_TAG, state)
 
@@ -989,7 +1020,11 @@ class PyvalColorizer:
                 state.charpos += segment_len
 
                 if link is True:
-                    element = obj_reference('', segment, refuid=segment)
+                    # Here, we bypass the linker if refmap contains the segment we're linking to. 
+                    # The linker can be problematic because it has some design blind spots when the same name is declared in the imports and in the module body.
+                    
+                    # Note that the argument name is 'refuri', not 'refuid. 
+                    element = obj_reference('', segment, refuri=self.refmap.get(segment, segment))
                 elif css_class is not None:
                     element = nodes.inline('', segment, classes=[css_class])
                 else:
@@ -1013,4 +1048,3 @@ class PyvalColorizer:
                 else:
                     element = nodes.Text(segment)
                 state.result += [element, self.LINEWRAP]
-	

@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+import warnings
 import pytest
 from io import StringIO
 
@@ -209,17 +210,52 @@ project-name = "Hello World!"
 
         options = Options.from_args(['-vv'])
 
-        assert options.verbosity == 3 # I would have expected 2
+        assert options.verbosity == 3 
         assert options.intersphinx == ["https://docs.python.org/3/objects.inv",]
         assert options.projectname == "Hello World!"
         assert options.projectversion == "2050.4C"
 
         options = Options.from_args(['-vv', '--intersphinx=https://twistedmatrix.com/documents/current/api/objects.inv', '--intersphinx=https://urllib3.readthedocs.io/en/latest/objects.inv'])
 
-        assert options.verbosity == 3 # I would have expected 2
+        assert options.verbosity == 3
         assert options.intersphinx == ["https://twistedmatrix.com/documents/current/api/objects.inv", "https://urllib3.readthedocs.io/en/latest/objects.inv"]
         assert options.projectname == "Hello World!"
         assert options.projectversion == "2050.4C"
 
     finally:
         os.chdir(cwd)
+
+def test_validations(tempDir:Path) -> None:
+    config = """
+[tool:pydoctor]
+# should be a string, but hard to detect - no warnings
+html-output = 1
+# should be a string, but hard to detect - no warnings
+project-name = true
+# should be a list, but configargparse is smart enought - no warnings
+privacy = HIDDEN:pydoctor.test
+# configargparse accepts int when it should be bool - no warnings
+warnings-as-errors = 0
+
+# no such option, here we warn
+not-found = 423
+"""
+
+    conf_file = (tempDir / "pydoctor_temp_conf")
+    with conf_file.open('w') as f:
+        f.write(config)
+
+    with warnings.catch_warnings(record=True) as catch_warnings:
+        warnings.simplefilter("always")
+        options = Options.from_args([f"--config={conf_file}"])
+
+    warn_messages = [str(w.message) for w in catch_warnings]    
+    assert len(warn_messages) == 1, warn_messages
+    assert warn_messages[0] == "No such config option: 'not-found'"
+    
+    assert options.docformat == 'epytext'
+    assert options.projectname == 'true'
+    assert options.privacy == [(model.PrivacyClass.HIDDEN, 'pydoctor.test')]
+    assert options.quietness == 0
+    assert options.warnings_as_errors == False
+    assert options.htmloutput == '1'

@@ -1,9 +1,10 @@
 """
 Code building ``all-documents.html``, ``searchindex.json`` and ``fullsearchindex.json``.
 """
+from __future__ import annotations
 
 from pathlib import Path
-from typing import Iterable, Iterator, List, Optional, Tuple, Type, Dict, TYPE_CHECKING
+from typing import Iterator, List, Optional, Tuple, Type, Dict, TYPE_CHECKING
 import json
 
 import attr
@@ -12,27 +13,32 @@ from pydoctor.templatewriter.pages import Page
 from pydoctor import model, epydoc2stan, node2stan
 
 from twisted.web.template import Tag, renderer
-from lunr import lunr, get_default_builder, stop_word_filter, stemmer
+from lunr import lunr, get_default_builder
 
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable
 
-def get_all_documents_flattenable(system: model.System) -> List[Dict[str, "Flattenable"]]:
+def get_all_documents_flattenable(system: model.System) -> Iterator[Dict[str, "Flattenable"]]:
     """
-    Get the all data to be writen into ``all-documents.html`` file.
+    Get a generator for all data to be writen into ``all-documents.html`` file.
     """
-    documents: List[Dict[str, "Flattenable"]] = [dict(
-                          id=ob.fullName(), 
-                          name=epydoc2stan.insert_break_points(ob.name), 
-                          fullName=epydoc2stan.insert_break_points(ob.fullName()), 
-                          kind=epydoc2stan.format_kind(ob.kind) if ob.kind else '', 
-                          type=str(ob.__class__.__name__),
-                          summary=epydoc2stan.format_summary(ob),
-                          url=ob.url, 
-                          privacy=str(ob.privacyClass.name))   
+    # This function accounts for a substantial proportion of pydoctor runtime. 
+    # So it's optimized.
+    insert_break_points = epydoc2stan.insert_break_points
+    format_kind = epydoc2stan.format_kind
+    format_summary = epydoc2stan.format_summary
 
-                          for ob in system.allobjects.values() if ob.isVisible]
-    return documents
+    return ({
+            'id':         ob.fullName(), 
+            'name':       ob.name, 
+            'fullName':   insert_break_points(ob.fullName()), 
+            'kind':       format_kind(ob.kind) if ob.kind else '', 
+            'type':       str(ob.__class__.__name__),
+            'summary':    format_summary(ob),
+            'url':        ob.url,
+            'privacy':    str(ob.privacyClass.name)}   
+
+            for ob in system.allobjects.values() if ob.isVisible)
 
 class AllDocuments(Page):
     
@@ -42,7 +48,7 @@ class AllDocuments(Page):
         return "All Documents"
 
     @renderer
-    def documents(self, request: None, tag: Tag) -> Iterable[Tag]:        
+    def documents(self, request: None, tag: Tag) -> Iterator[Tag]:        
         for doc in get_all_documents_flattenable(self.system):
             yield tag.clone().fillSlots(**doc)
 
@@ -57,13 +63,18 @@ class LunrIndexWriter:
     fields: List[str]
 
     _BOOSTS = {
-                'name':4,
-                'names': 2,
-                'qname':1,
+                'name':6,
+                'names': 1,
+                'qname':2,
                 'docstring':1,
                 'kind':-1
               }
-
+    
+    # For all pipeline functions, stop_word_filter, stemmer and trimmer, skip their action expect for the
+    # docstring field.
+    _SKIP_PIPELINES = list(_BOOSTS)
+    _SKIP_PIPELINES.remove('docstring')
+    
     @staticmethod
     def get_ob_boost(ob: model.Documentable) -> int:
         # Advantage container types because they hold more informations.
@@ -105,23 +116,17 @@ class LunrIndexWriter:
         return epydoc2stan.format_kind(ob.kind) if ob.kind else ''
 
     def get_corpus(self) -> List[Tuple[Dict[str, Optional[str]], Dict[str, int]]]:
-
-        documents: List[Tuple[Dict[str, Optional[str]], Dict[str, int]]] = []
-
-        for ob in (o for o in self.system.allobjects.values() if o.isVisible):
-
-            documents.append(
-                        (
-                            {
-                                f:self.format(ob, f) for f in self.fields
-                            }, 
-                            {
-                                "boost": self.get_ob_boost(ob)
-                            }
-                        )
-            )   
-        
-        return documents
+        return [
+            (
+                {
+                    f:self.format(ob, f) for f in self.fields
+                }, 
+                {
+                    "boost": self.get_ob_boost(ob)
+                }
+            )
+            for ob in (o for o in self.system.allobjects.values() if o.isVisible)
+        ]
 
     def write(self) -> None:
 
@@ -131,14 +136,13 @@ class LunrIndexWriter:
         # https://lunr.readthedocs.io/en/latest/customisation.html#skip-a-pipeline-function-for-specific-field-names
         
         # We want classes named like "For" to be indexed with their name, even if it's matching stop words.
-        builder.pipeline.skip(stop_word_filter.stop_word_filter, ["qname", "name", "kind", "names"])  
-
-        # We don't want "name" and related fields to be stemmed since the field "names"
-        # contains all cased breaked combinaisons and will be stemmed.
-        builder.pipeline.skip(stemmer.stemmer, ["name", "kind", "qname"])
+        # We don't want "name" and related fields to be stemmed since we're stemming ourselves the name.
+        # see https://github.com/twisted/pydoctor/issues/648 for why.
+        for pipeline_function in builder.pipeline.registered_functions.values():
+            builder.pipeline.skip(pipeline_function, self._SKIP_PIPELINES)  
 
         # Removing the stemmer from the search pipeline, see https://github.com/yeraydiazdiaz/lunr.py/issues/112
-        builder.search_pipeline.remove(stemmer.stemmer)
+        builder.search_pipeline.reset()
 
         index = lunr(
             ref='qname',
@@ -169,11 +173,18 @@ def write_lunr_index(output_dir: Path, system: model.System) -> None:
         fields=["name", "names", "qname", "docstring", "kind"]
         ).write()
 
+
 def stem_identifier(identifier: str) -> Iterator[str]:
+    # we are stemming the identifier ourselves because
+    # lunr is removing too much of important data. 
+    # See issue https://github.com/twisted/pydoctor/issues/648
+    yielded = set()
     parts = epydoc2stan._split_indentifier_parts_on_case(identifier)
     for p in parts:
         p = p.strip('_')
-        if p and p.lower() not in stop_word_filter.WORDS: 
-            yield p
+        if p:
+            if p not in yielded:
+                yielded.add(p)
+                yield p
 
 searchpages: List[Type[Page]] = [AllDocuments]

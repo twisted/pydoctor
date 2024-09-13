@@ -4,8 +4,8 @@ Google and Numpy
 .. toctree::
     :maxdepth: 1
     
-    google/google_demo
-    numpy/numpy_demo
+    google_demo/index
+    numpy_demo/index
 
 Pydoctor now supports numpydoc and google style docstrings!
 

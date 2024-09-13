@@ -1,6 +1,7 @@
 """
 The command-line parsing.
 """
+from __future__ import annotations
 
 import re
 from typing import Sequence, List, Optional, Type, Tuple, TYPE_CHECKING
@@ -17,9 +18,10 @@ from pydoctor.themes import get_themes
 from pydoctor.epydoc.markup import get_supported_docformats
 from pydoctor.sphinx import MAX_AGE_HELP, USER_INTERSPHINX_CACHE
 from pydoctor.utils import parse_path, findClassFromDottedName, parse_privacy_tuple, error
-from pydoctor._configparser import CompositeConfigParser, IniConfigParser, TomlConfigParser
+from pydoctor._configparser import CompositeConfigParser, IniConfigParser, TomlConfigParser, ValidatorParser
 
 if TYPE_CHECKING:
+    from typing import Literal
     from pydoctor import model
     from pydoctor.templatewriter import IWriter
 
@@ -47,8 +49,11 @@ def get_parser() -> ArgumentParser:
         description="API doc generator.",
         usage="pydoctor [options] SOURCEPATH...", 
         default_config_files=DEFAULT_CONFIG_FILES,
-        config_file_parser_class=PydoctorConfigParser, 
-        ignore_unknown_config_file_keys=True,)
+        config_file_parser_class=PydoctorConfigParser)
+    
+    # Add the validator to the config file parser, this is arguably a hack.
+    parser._config_file_parser = ValidatorParser(parser._config_file_parser, parser)
+    
     parser.add_argument(
         '-c', '--config', is_config_file=True,
         help=("Load config from this file (any command line"
@@ -232,6 +237,13 @@ def get_parser() -> ArgumentParser:
     parser.add_argument(
         '--system-class', dest='systemclass', default=DEFAULT_SYSTEM,
         help=("A dotted name of the class to use to make a system."))
+
+    parser.add_argument(
+        '--cls-member-order', dest='cls_member_order', default="alphabetical", choices=["alphabetical", "source"],
+        help=("Presentation order of class members. (default: alphabetical)"))
+    parser.add_argument(
+        '--mod-member-order', dest='mod_member_order', default="alphabetical", choices=["alphabetical", "source"],
+        help=("Presentation order of module/package members. (default: alphabetical)"))
     
     parser.add_argument('-V', '--version', action='version', version=f'%(prog)s {__version__}')
     
@@ -361,6 +373,8 @@ class Options:
     sidebarexpanddepth:     int                                     = attr.ib()
     sidebartocdepth:        int                                     = attr.ib()
     nosidebar:              int                                     = attr.ib()
+    cls_member_order:       'Literal["alphabetical", "source"]'     = attr.ib()
+    mod_member_order:       'Literal["alphabetical", "source"]'     = attr.ib()
 
     def __attrs_post_init__(self) -> None:
         # do some validations...

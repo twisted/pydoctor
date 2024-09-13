@@ -21,7 +21,9 @@ numpy.ndarray: super-dooper attribute"""
 
         errors: List[ParseError] = []
 
-        actual = flatten(parse_docstring(docstring, errors, False).fields[-1].body().to_stan(NotFoundLinker()))
+        parsed_doc = parse_docstring(docstring, errors)
+
+        actual = flatten(parsed_doc.fields[-1].body().to_stan(NotFoundLinker()))
         
         expected = """<code>numpy.ndarray</code>"""
 
@@ -39,7 +41,7 @@ numpy.ndarray: super-dooper attribute"""
 
         errors: List[ParseError] = []
 
-        assert not parse_docstring(docstring, errors, False).fields
+        assert not parse_docstring(docstring, errors).fields
 
     # the numpy inline attribute parsing is the same as google-style
     # as shown in the example_numpy.py from Sphinx docs
@@ -53,9 +55,11 @@ numpy.ndarray: super-dooper attribute"""
 numpy.ndarray: super-dooper attribute"""
 
         errors: List[ParseError] = []
-
-        actual = flatten(parse_docstring(docstring, errors, False).fields[-1].body().to_stan(NotFoundLinker()))
         
+        parsed_doc = parse_docstring(docstring, errors)
+
+        actual = flatten(parsed_doc.fields[-1].body().to_stan(NotFoundLinker()))
+
         expected = """<code>numpy.ndarray</code>"""
 
         self.assertEqual(expected, actual)
@@ -72,7 +76,7 @@ numpy.ndarray: super-dooper attribute"""
 
         errors: List[ParseError] = []
 
-        assert not parse_docstring(docstring, errors, False).fields
+        assert not parse_docstring(docstring, errors).fields
 
 
 class TestWarnings(TestCase):
@@ -115,7 +119,7 @@ Some more text.
 
         errors: List[ParseError] = []
 
-        parse_docstring(docstring, errors, False)
+        parse_docstring(docstring, errors)
         
         self.assertEqual(len(errors), 3)
         

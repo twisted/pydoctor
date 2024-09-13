@@ -4,8 +4,8 @@ pydoctor
 .. image:: https://img.shields.io/pypi/pyversions/pydoctor.svg
   :target: https://pypi.python.org/pypi/pydoctor
 
-.. image:: https://travis-ci.org/twisted/pydoctor.svg?branch=tox-travis-2
-  :target: https://travis-ci.org/twisted/pydoctor
+.. image:: https://github.com/twisted/pydoctor/actions/workflows/unit.yaml/badge.svg
+  :target: https://github.com/twisted/pydoctor/actions/workflows/unit.yaml
 
 .. image:: https://codecov.io/gh/twisted/pydoctor/branch/master/graph/badge.svg
   :target: https://codecov.io/gh/twisted/pydoctor
@@ -75,10 +75,128 @@ What's New?
 
 in development
 ^^^^^^^^^^^^^^
+
+* Trigger a warning when several docstrings are detected for the same object.
+
+pydoctor 24.3.3
+^^^^^^^^^^^^^^^
+
+* Fix release pipeline.
+
+pydoctor 24.3.0
+^^^^^^^^^^^^^^^
+
+This is the last major release to support Python 3.7.
+
+* Drop support for Python 3.6.
+* Add support for Python 3.12.
+* Astor is no longer a requirement starting at Python 3.9.
+* `ExtRegistrar.register_post_processor()` now supports a `priority` argument that is an int.
+  Highest priority callables will be called first during post-processing.
+* Fix too noisy ``--verbose`` mode (suppres some ambiguous annotations warnings).
+* Fix type processing inside restructuredtext consolidated fields.
+* Add options ``--cls-member-order`` and ``--mod-member-order`` to customize the presentation
+  order of class members and module/package members, the supported values are "alphabetical" or "source".
+  The default behavior is to sort all members alphabetically.
+* Make sure the line number coming from ast analysis has precedence over the line of a ``ivar`` field.
+* Ensure that all docutils generated css classes have the ``rst-`` prefix, the base theme have been updated accordingly.
+* Fix compatibility issue with docutils 0.21.x
+* Transform annotations to use python 3.10 style: ``typing.Union[x, y]`` -> ``x | y``; ``typing.Optional[x]`` -> ``x | None``; ``typing.List[x]`` -> ``list[x]``.
+* Do not output useless parenthesis when colourizing subscripts. 
+
+pydoctor 23.9.1
+^^^^^^^^^^^^^^^
+
+* Fix regression in link not found warnings' line numbers.
+
+pydoctor 23.9.0
+^^^^^^^^^^^^^^^
+
+This is the last major release to support Python 3.6.
+
+* Do not show `**kwargs` when keywords are specifically documented with the `keyword` field
+  and no specific documentation is given for the `**kwargs` entry.
+* Fix annotation resolution edge cases: names are resolved in the context of the module 
+  scope when possible, when impossible, the theoretical runtime scopes are used. A warning can
+  be reported when an annotation name is ambiguous (can be resolved to different names 
+  depending on the scope context) with option ``-v``.
+* Ensure that explicit annotation are honored when there are multiple declarations of the same name.
+* Use stricter verification before marking an attribute as constant: 
+   - instance variables are never marked as constant
+   - a variable that has several definitions will not be marked as constant
+   - a variable declaration under any kind of control flow block will not be marked as constant
+* Do not trigger warnings when pydoctor cannot make sense of a potential constant attribute 
+  (pydoctor is not a static checker).
+* Fix presentation of type aliases in string form.
+* Improve the AST colorizer to output less parenthesis when it's not required.
+* Fix colorization of dictionary unpacking.
+* Improve the class hierarchy such that it links top level names with intersphinx when possible.
+* Add highlighting when clicking on "View In Hierarchy" link from class page.
+* Recognize variadic generics type variables (PEP 646).
+* Fix support for introspection of cython3 generated modules.
+* Instance variables are marked as such across subclasses.
+
+pydoctor 23.4.1
+^^^^^^^^^^^^^^^
+
+* Pin ``urllib3`` version to keep compatibility with ``cachecontrol`` and python3.6.
+
+pydoctor 23.4.0
+^^^^^^^^^^^^^^^
+
+* Add support for Python 3.11
+* Add support for the ``@overload`` decorator.
+* Show type annotations in function's signatures.
+* If none of a function's parameters have documentation, do not render the parameter table.
+* Themes have been adjusted to render annotations more concisely.
+* Fix a rare crash in the type inference. 
+  Invalid python code like a set of lists would raise a uncaught TypeError in the evaluation.
+* Support when source path lies outside base directory (``--project-base-dir``).
+  Since pydoctor support generating docs for multiple packages, 
+  it is not certain that all of the source is even viewable below a single URL. 
+  We now allow to add arbitrary paths to the system, 
+  but only the objects inside a module wich path is relative to
+  the base directory can have a source control link generated.
+* Cache the default docutils settings on docutils>=0.19 to improve performance.
+* Improve the search bar user experience by automatically appending wildcard to each query terms
+  when no terms already contain a wildcard. 
+* Link recognized constructors in class page.
+* An invalid epytext docstring will be rederered as plaintext, just like invalid restructuredtext docstrings (finally).
+
+pydoctor 22.9.1
+^^^^^^^^^^^^^^^
+* ``pydoctor --help`` works again.
+
+pydoctor 22.9.0
+^^^^^^^^^^^^^^^
+
+* Add a special kind for exceptions (before, they were treated just like any other class).
+* The ZopeInterface features now renders again. A regression was introduced in pydoctor 22.7.0.
+* Python syntax errors are now logged as violations.
+* Fixed rare crash in the rendering of parsed elements (i.e. docstrings and ASTs). 
+  This is because XHTML entities like non-breaking spaces are not supported by Twisted's ``XMLString`` at the moment.
+* Show the value of type aliases and type variables.
+* The ``--prepend-package`` now work as documented. 
+  A regression was introduced in pydoctor 22.7.0 and it was not nesting new packages under the "fake" package.
+* `self` parameter is now removed only when the target is a method. In the previous version, it was always removed in any context.
+* `cls` parameter is now removed only when the target is a class method. In the previous version, it was always removed in any context.
+* Add anchors aside attributes and functions to ease 
+  the process of sharing links to these API docs.
+* Fix a bug in the return clause of google-style docstrings 
+  where the return type would be treated as the description 
+  when there is no explicit description.
+* Trigger warnings for unknown config options.
+* Fix minor UX issues in the search bar.
+* Fix deprecation in Docutils 0.19 frontend
+
+pydoctor 22.7.0
+^^^^^^^^^^^^^^^
+* Add support for generics in class hierarchies.
+* Fix long standing bugs in ``Class`` method resolution order.
 * Improve the extensibility of pydoctor (`more infos on extensions <https://pydoctor.readthedocs.io/en/latest/customize.html#use-a-custom-system-class>`_)
 * Fix line numbers in reStructuredText xref warnings.
 * Add support for `twisted.python.deprecated` (this was originally part of Twisted's customizations).
-* Add support for re-exporting names imported from a wildcard import.
+* Add support for re-exporting it names imported from a wildcard import.
 
 pydoctor 22.5.1
 ^^^^^^^^^^^^^^^

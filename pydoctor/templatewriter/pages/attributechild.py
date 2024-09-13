@@ -1,9 +1,11 @@
+from __future__ import annotations
+
 from typing import TYPE_CHECKING, List
 
 from twisted.web.iweb import ITemplateLoader
 from twisted.web.template import Tag, renderer, tags
 
-from pydoctor.model import Attribute, DocumentableKind
+from pydoctor.model import Attribute
 from pydoctor import epydoc2stan
 from pydoctor.templatewriter import TemplateElement, util
 from pydoctor.templatewriter.pages import format_decorators
@@ -19,7 +21,7 @@ class AttributeChild(TemplateElement):
     def __init__(self,
             docgetter: util.DocGetter,
             ob: Attribute,
-            extras: List[Tag],
+            extras: List["Flattenable"],
             loader: ITemplateLoader
             ):
         super().__init__(loader)
@@ -39,9 +41,14 @@ class AttributeChild(TemplateElement):
         return self.ob.fullName()
 
     @renderer
-    def shortFunctionAnchor(self, request: object, tag: Tag) -> "Flattenable":
+    def shortFunctionAnchor(self, request: object, tag: Tag) -> str:
         return self.ob.name
-
+    
+    @renderer
+    def anchorHref(self, request: object, tag: Tag) -> str:
+        name = self.shortFunctionAnchor(request, tag)
+        return f'#{name}'
+    
     @renderer
     def decorator(self, request: object, tag: Tag) -> "Flattenable":
         return list(format_decorators(self.ob))
@@ -62,7 +69,7 @@ class AttributeChild(TemplateElement):
             return ()
 
     @renderer
-    def objectExtras(self, request: object, tag: Tag) -> List[Tag]:
+    def objectExtras(self, request: object, tag: Tag) -> List["Flattenable"]:
         return self._functionExtras
 
     @renderer
@@ -71,7 +78,7 @@ class AttributeChild(TemplateElement):
 
     @renderer
     def constantValue(self, request: object, tag: Tag) -> "Flattenable":
-        if self.ob.kind is not DocumentableKind.CONSTANT or self.ob.value is None:
+        if self.ob.kind not in self.ob.system.show_attr_value or self.ob.value is None:
             return tag.clear()
-        # Attribute is a constant (with a value), then display it's value
+        # Attribute is a constant/type alias (with a value), then display it's value
         return epydoc2stan.format_constant_value(self.ob)

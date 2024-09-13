@@ -67,7 +67,7 @@ Make sure that unindented fields are allowed:
     <fieldlist><field lineno='2'><tag>foo</tag>
     <para>field</para></field></fieldlist>
 
-Make sure thta unindented lists are not allowed:
+Make sure that unindented lists are not allowed:
 
     >>> print(testparse("""
     ...     This is a paragraph.

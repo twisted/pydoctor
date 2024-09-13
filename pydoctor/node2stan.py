@@ -1,12 +1,14 @@
 """
 Helper function to convert L{docutils} nodes to Stan tree.
 """
+from __future__ import annotations
+
+from itertools import chain
 import re
 import optparse
 from typing import Any, Callable, ClassVar, Iterable, List, Optional, Union, TYPE_CHECKING
 from docutils.writers import html4css1
-from docutils import nodes
-from docutils.frontend import OptionParser
+from docutils import nodes, frontend, __version_info__ as docutils_version_info
 
 from twisted.web.template import Tag
 if TYPE_CHECKING:
@@ -17,15 +19,15 @@ from pydoctor.epydoc.docutils import get_lineno
 from pydoctor.epydoc.doctest import colorize_codeblock, colorize_doctest
 from pydoctor.stanutils import flatten, html2stan
 
-def node2html(node: nodes.Node, docstring_linker: 'DocstringLinker', compact:bool=True) -> List[str]:
+def node2html(node: nodes.Node, docstring_linker: 'DocstringLinker') -> List[str]:
     """
     Convert a L{docutils.nodes.Node} object to HTML strings.
     """
-    visitor = HTMLTranslator(node.document, docstring_linker, compact=compact)
+    visitor = HTMLTranslator(node.document, docstring_linker)
     node.walkabout(visitor)
     return visitor.body
 
-def node2stan(node: Union[nodes.Node, Iterable[nodes.Node]], docstring_linker: 'DocstringLinker', compact:bool=True) -> Tag:
+def node2stan(node: Union[nodes.Node, Iterable[nodes.Node]], docstring_linker: 'DocstringLinker') -> Tag:
     """
     Convert L{docutils.nodes.Node} objects to a Stan tree.
 
@@ -36,10 +38,10 @@ def node2stan(node: Union[nodes.Node, Iterable[nodes.Node]], docstring_linker: '
     """
     html = []
     if isinstance(node, nodes.Node):
-        html += node2html(node, docstring_linker, compact)
+        html += node2html(node, docstring_linker)
     else:
         for child in node:
-            html += node2html(child, docstring_linker, compact)
+            html += node2html(child, docstring_linker)
     return html2stan(''.join(html))
 
 
@@ -71,15 +73,23 @@ class HTMLTranslator(html4css1.HTMLTranslator):
 
     def __init__(self,
             document: nodes.document,
-            docstring_linker: 'DocstringLinker',
-            compact: bool = False, 
+            docstring_linker: 'DocstringLinker'
             ):
         self._linker = docstring_linker
 
         # Set the document's settings.
         if self.settings is None:
-            settings = OptionParser([html4css1.Writer()]).get_default_values()
+            if docutils_version_info >= (0,19):
+                # Direct access to OptionParser is deprecated from Docutils 0.19
+                # FIXME: https://github.com/twisted/pydoctor/issues/504
+                # Stubs are not up to date because we use pinned version of types-docutils
+                settings = frontend.get_default_settings(html4css1.Writer()) # type:ignore[attr-defined]
+            else:
+                settings = frontend.OptionParser([html4css1.Writer()]).get_default_values()
+            
+            # Save default settings as class attribute not to re-compute it all the times
             self.__class__.settings = settings
+        
         document.settings = self.settings
 
         super().__init__(document)
@@ -87,7 +97,6 @@ class HTMLTranslator(html4css1.HTMLTranslator):
         # don't allow <h1> tags, start at <h2>
         # h1 is reserved for the page nodes.title. 
         self.section_level += 1
-        self._compact = compact
 
     # Handle interpreted text (crossreferences)
     def visit_title_reference(self, node: nodes.Node) -> None:
@@ -119,13 +128,7 @@ class HTMLTranslator(html4css1.HTMLTranslator):
         raise nodes.SkipNode()
 
     def should_be_compact_paragraph(self, node: nodes.Node) -> bool:
-
-        # HTMLTranslator.should_be_compact_paragraph() used to always remove the
-        # p tag when there is only one element in the document. This is a good behaviour
-        # for colorizing AST values, etc, but for the docstring, we want to have at least
-        # one paragraph (for a better margin, so we use option compact=False). 
-
-        if self._compact is True and self.document.children == [node]:
+        if self.document.children == [node]:
             return True
         else:
             return super().should_be_compact_paragraph(node)  # type: ignore[no-any-return]
@@ -146,6 +149,11 @@ class HTMLTranslator(html4css1.HTMLTranslator):
           - hrefs not starting with C{'#'} are given target='_top'
           - all headings (C{<hM{n}>}) are given the css class C{'heading'}
         """
+
+        to_list_names = {'name':'names', 
+                         'id':'ids', 
+                         'class':'classes'}
+
         # Get the list of all attribute dictionaries we need to munge.
         attr_dicts = [attributes]
         if isinstance(node, nodes.Node):
@@ -156,15 +164,21 @@ class HTMLTranslator(html4css1.HTMLTranslator):
         # iterate through attributes one at a time because some
         # versions of docutils don't case-normalize attributes.
         for attr_dict in attr_dicts:
-            for key, val in list(attr_dict.items()):
-                # Prefix all CSS classes with "rst-"; and prefix all
+            # Prefix all CSS classes with "rst-"; and prefix all
                 # names with "rst-" to avoid conflicts.
+            done = set()
+            for key, val in tuple(attr_dict.items()):
                 if key.lower() in ('class', 'id', 'name'):
-                    if not val.startswith('rst-'):
-                        attr_dict[key] = f'rst-{val}'
-                elif key.lower() in ('classes', 'ids', 'names'):
+                    list_key = to_list_names[key.lower()]
+                    attr_dict[list_key] = [f'rst-{cls}' if not cls.startswith('rst-') 
+                                      else cls for cls in sorted(chain(val.split(), 
+                                        attr_dict.get(list_key, ())))]
+                    del attr_dict[key]
+                    done.add(list_key)
+            for key, val in tuple(attr_dict.items()):
+                if key.lower() in ('classes', 'ids', 'names') and key.lower() not in done:
                     attr_dict[key] = [f'rst-{cls}' if not cls.startswith('rst-') 
-                                      else cls for cls in val]
+                                      else cls for cls in sorted(val)]
                 elif key.lower() == 'href':
                     if attr_dict[key][:1]=='#':
                         href = attr_dict[key][1:]

@@ -3,6 +3,7 @@ Render types from L{docutils.nodes.document} objects.
 
 This module provides yet another L{ParsedDocstring} subclass.
 """
+from __future__ import annotations
 
 from typing import Callable, Dict, List, Tuple, Union
 
@@ -31,6 +32,7 @@ class ParsedTypeDocstring(TypeDocstring, ParsedDocstring):
 
             _tokens = self._tokenize_node_type_spec(annotation)
             self._tokens = self._build_tokens(_tokens)
+            self._trigger_warnings()
         else:
             TypeDocstring.__init__(self, annotation, warns_on_unknown_tokens)
         
@@ -48,49 +50,37 @@ class ParsedTypeDocstring(TypeDocstring, ParsedDocstring):
         """
         raise NotImplementedError()
 
-    def to_stan(self, docstring_linker: DocstringLinker, compact:bool=False) -> Tag:
+    def to_stan(self, docstring_linker: DocstringLinker) -> Tag:
         """
         Present the type as a stan tree. 
         """
         return self._convert_type_spec_to_stan(docstring_linker)
 
     def _tokenize_node_type_spec(self, spec: nodes.document) -> List[Union[str, nodes.Node]]:
+        def _warn_not_supported(n:nodes.Node) -> None:
+            self.warnings.append(f"Unexpected element in type specification field: element '{n.__class__.__name__}'. "
+                                    "This value should only contain text or inline markup.")
+
+        tokens: List[Union[str, nodes.Node]] = []
+        # Determine if the content is nested inside a paragraph
+        # this is generally the case, except for consolidated fields generate documents.
+        if spec.children and isinstance(spec.children[0], nodes.paragraph):
+            if len(spec.children)>1:
+                _warn_not_supported(spec.children[1])
+            children = spec.children[0].children
+        else:
+            children = spec.children
         
-        class Tokenizer(nodes.GenericNodeVisitor):
-            
-            def __init__(self, document: nodes.document) -> None:
-                super().__init__(document)
-                self.tokens: List[Union[str, nodes.Node]] = []
-                self.rest = nodes.document
-                self.warnings: List[str] = []
-
-            def default_visit(self, node: nodes.Node) -> None:
-                # Tokenize only the first level text in paragraph only,
-                # Simply warn and ignore the rest.
-
-                parent = node.parent
-                super_parent = parent.parent if parent else None
-                
-                # first level
-                if isinstance(parent, nodes.document) and not isinstance(node, nodes.paragraph):
-                    self.warnings.append(f"Unexpected element in type specification field: element '{node.__class__.__name__}'. "
-                                          "This value should only contain regular paragraphs with text or inline markup.")
-                    raise nodes.SkipNode()
-                
-                # second level
-                if isinstance(super_parent, nodes.document):
-                    # only text in paragraph nodes are taken into account
-                    if isinstance(node, nodes.Text):
-                        # Tokenize the Text node with the same method TypeDocstring uses.
-                        self.tokens.extend(TypeDocstring._tokenize_type_spec(node.astext()))
-                    else:
-                        self.tokens.append(node)
-                        raise nodes.SkipNode()
-    
-        tokenizer = Tokenizer(spec)
-        spec.walk(tokenizer)
-        self.warnings.extend(tokenizer.warnings)
-        return tokenizer.tokens
+        for child in children:
+            if isinstance(child, nodes.Text):
+                # Tokenize the Text node with the same method TypeDocstring uses.
+                tokens.extend(TypeDocstring._tokenize_type_spec(child.astext()))
+            elif isinstance(child, nodes.Inline):
+                tokens.append(child)
+            else:
+                _warn_not_supported(child)
+        
+        return tokens
 
     def _convert_obj_tokens_to_stan(self, tokens: List[Tuple[Union[str, nodes.Node], TokenType]], 
                                     docstring_linker: DocstringLinker) -> List[Tuple[Union[str, Tag, nodes.Node], TokenType]]:
@@ -161,8 +151,11 @@ class ParsedTypeDocstring(TypeDocstring, ParsedDocstring):
         converters: Dict[TokenType, Callable[[Union[str, Tag]], Union[str, Tag]]] = {
             TokenType.LITERAL:      lambda _token: tags.span(_token, class_="literal"),
             TokenType.CONTROL:      lambda _token: tags.em(_token),
-            TokenType.REFERENCE:    lambda _token: get_parser_by_name('restructuredtext')(_token, warnings, False).to_stan(docstring_linker) if isinstance(_token, str) else _token, 
-            TokenType.UNKNOWN:      lambda _token: get_parser_by_name('restructuredtext')(_token, warnings, False).to_stan(docstring_linker) if isinstance(_token, str) else _token, 
+            # We don't use safe_to_stan() here, if these converter functions raise an exception, 
+            # the whole type docstring will be rendered as plaintext.
+            # it does not crash on invalid xml entities
+            TokenType.REFERENCE:    lambda _token: get_parser_by_name('restructuredtext')(_token, warnings).to_stan(docstring_linker) if isinstance(_token, str) else _token, 
+            TokenType.UNKNOWN:      lambda _token: get_parser_by_name('restructuredtext')(_token, warnings).to_stan(docstring_linker) if isinstance(_token, str) else _token, 
             TokenType.OBJ:          lambda _token: _token, # These convertions (OBJ and DELIMITER) are done in _convert_obj_tokens_to_stan().
             TokenType.DELIMITER:    lambda _token: _token, 
             TokenType.ANY:          lambda _token: _token, 

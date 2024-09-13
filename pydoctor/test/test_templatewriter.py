@@ -1,5 +1,6 @@
 from io import BytesIO
-from typing import Callable, Union, Any, cast, TYPE_CHECKING
+import re
+from typing import Callable, Union, Any, cast, Type, TYPE_CHECKING
 import pytest
 import warnings
 import sys
@@ -7,15 +8,18 @@ import tempfile
 import os
 from pathlib import Path, PurePath
 
-from pydoctor import model, templatewriter, stanutils, __version__
+from pydoctor import model, templatewriter, stanutils, __version__, epydoc2stan
 from pydoctor.templatewriter import (FailedToCreateTemplate, StaticTemplate, pages, writer, util,
                                      TemplateLookup, Template, 
                                      HtmlTemplate, UnsupportedTemplateVersion, 
                                      OverrideTemplateNotAllowed)
 from pydoctor.templatewriter.pages.table import ChildTable
-from pydoctor.templatewriter.summary import isClassNodePrivate, isPrivate, moduleSummary
-from pydoctor.test.test_astbuilder import fromText
+from pydoctor.templatewriter.pages.attributechild import AttributeChild
+from pydoctor.templatewriter.summary import isClassNodePrivate, isPrivate, moduleSummary, ClassIndexPage
+from pydoctor.test.test_astbuilder import fromText, systemcls_param
 from pydoctor.test.test_packages import processPackage, testpackages
+from pydoctor.test.test_epydoc2stan import InMemoryInventory
+from pydoctor.test import CapSys
 from pydoctor.themes import get_themes
 
 if TYPE_CHECKING:
@@ -53,6 +57,12 @@ def getHTMLOf(ob: model.Documentable) -> str:
     wr._writeDocsForOne(ob, f)
     return f.getvalue().decode()
 
+def getHTMLOfAttribute(ob: model.Attribute) -> str:
+    assert isinstance(ob, model.Attribute)
+    tlookup = TemplateLookup(template_dir)
+    stan = AttributeChild(util.DocGetter(), ob, [], 
+        AttributeChild.lookup_loader(tlookup),)
+    return flatten(stan)
 
 def test_sidebar() -> None:
     src = '''
@@ -158,7 +168,9 @@ def test_missing_variable() -> None:
 
 @pytest.mark.parametrize(
     'className',
-    ['NewClassThatMultiplyInherits', 'OldClassThatMultiplyInherits'],
+    ['NewClassThatMultiplyInherits', 
+     'OldClassThatMultiplyInherits',
+     'Diamond'],
 )
 def test_multipleInheritanceNewClass(className: str) -> None:
     """
@@ -173,10 +185,44 @@ def test_multipleInheritanceNewClass(className: str) -> None:
         if cls.name == className
     )
 
+    assert isinstance(cls, model.Class)
     html = getHTMLOf(cls)
 
     assert "methodA" in html
     assert "methodB" in html
+
+    getob = system.allobjects.get
+
+    if className == 'Diamond':
+        assert util.class_members(cls) == [
+            (
+                (getob('multipleinheritance.mod.Diamond'),),
+                [getob('multipleinheritance.mod.Diamond.newMethod')]
+            ),
+            (
+                (getob('multipleinheritance.mod.OldClassThatMultiplyInherits'),
+                 getob('multipleinheritance.mod.Diamond')),
+                [getob('multipleinheritance.mod.OldClassThatMultiplyInherits.methodC')]
+            ),
+            (
+                (getob('multipleinheritance.mod.OldBaseClassA'),
+                getob('multipleinheritance.mod.OldClassThatMultiplyInherits'),
+                getob('multipleinheritance.mod.Diamond')),
+                [getob('multipleinheritance.mod.OldBaseClassA.methodA')]),
+                ((getob('multipleinheritance.mod.OldBaseClassB'),
+                getob('multipleinheritance.mod.OldBaseClassA'),
+                getob('multipleinheritance.mod.OldClassThatMultiplyInherits'),
+                getob('multipleinheritance.mod.Diamond')),
+                [getob('multipleinheritance.mod.OldBaseClassB.methodB')]),
+                ((getob('multipleinheritance.mod.CommonBase'),
+                getob('multipleinheritance.mod.NewBaseClassB'),
+                getob('multipleinheritance.mod.NewBaseClassA'),
+                getob('multipleinheritance.mod.NewClassThatMultiplyInherits'),
+                getob('multipleinheritance.mod.OldBaseClassB'),
+                getob('multipleinheritance.mod.OldBaseClassA'),
+                getob('multipleinheritance.mod.OldClassThatMultiplyInherits'),
+                getob('multipleinheritance.mod.Diamond')),
+                [getob('multipleinheritance.mod.CommonBase.fullName')]) ]
 
 def test_html_template_version() -> None:
     lookup = TemplateLookup(template_dir)
@@ -484,6 +530,31 @@ def test_isClassNodePrivate() -> None:
     assert not isClassNodePrivate(cast(model.Class, mod.contents['_BaseForPublic']))
     assert isClassNodePrivate(cast(model.Class, mod.contents['_BaseForPrivate']))
 
+@systemcls_param
+def test_format_function_def_overloads(systemcls: Type[model.System]) -> None:
+    mod = fromText("""
+        from typing import overload, Union
+        @overload
+        def parse(s: str) -> str:
+            ...
+        @overload
+        def parse(s: bytes) -> bytes:
+            ...
+        def parse(s: Union[str, bytes]) -> Union[str, bytes]:
+            pass
+        """, systemcls=systemcls)
+    func = mod.contents['parse']
+    assert isinstance(func, model.Function)
+    
+    # We intentionally remove spaces before comparing
+    overloads_html = stanutils.flatten_text(list(pages.format_overloads(func))).replace(' ','')
+    assert '''(s:str)->str:''' in overloads_html
+    assert '''(s:bytes)->bytes:''' in overloads_html
+
+    # Confirm the actual function definition is not rendered
+    function_def_html = stanutils.flatten_text(list(pages.format_function_def(func.name, func.is_async, func)))
+    assert function_def_html == ''
+
 def test_format_signature() -> None:
     """Test C{pages.format_signature}. 
     
@@ -493,9 +564,8 @@ def test_format_signature() -> None:
     def func(a:Union[bytes, str]=_get_func_default(str), b:Any=re.compile(r'foo|bar'), *args:str, **kwargs:Any) -> Iterator[Union[str, bytes]]:
         ...
     ''')
-    assert ("""(a=_get_func_default(<wbr></wbr>str), b=re.compile("""
-            """r<span class="rst-variable-quote">'</span>foo<span class="rst-re-op">|</span>"""
-            """bar<span class="rst-variable-quote">'</span>), *args, **kwargs)""") in flatten(pages.format_signature(cast(model.Function, mod.contents['func'])))
+    assert ("""(a:Union[bytes,str]=_get_func_default(str),b:Any=re.compile(r'foo|bar'),*args:str,**kwargs:Any)->Iterator[Union[str,bytes]]""") in \
+        stanutils.flatten_text(pages.format_signature(cast(model.Function, mod.contents['func']))).replace(' ','')
 
 def test_format_decorators() -> None:
     """Test C{pages.format_decorators}"""
@@ -574,7 +644,8 @@ def test_index_contains_infos(tmp_path: Path) -> None:
         for i in infos:
             assert i in page, page
 
-def test_objects_order_mixed_modules_and_packages() -> None:
+@pytest.mark.parametrize('_order', ["alphabetical", "source"])
+def test_objects_order_mixed_modules_and_packages(_order:str) -> None:
     """
     Packages and modules are mixed when sorting with objects_order.
     """
@@ -585,8 +656,257 @@ def test_objects_order_mixed_modules_and_packages() -> None:
     fromText('', parent_name='top', modname='bbb', system=system)
     fromText('', parent_name='top', modname='aba', system=system, is_package=True)
     
-    _sorted = sorted(top.contents.values(), key=pages.objects_order)
+    _sorted = sorted(top.contents.values(), key=util.objects_order(_order)) # type:ignore
     names = [s.name for s in _sorted]
 
     assert names == ['aaa', 'aba', 'bbb']
+
+def test_change_member_order() -> None:
+    """
+    Default behaviour is to sort everything by privacy, kind and then by name.
+    But we allow to customize the class and modules members independendly, 
+    the reason for this is to permit to match rustdoc behaviour, 
+    that is to sort class members by source, the rest by name.
+    """
+    system = model.System()
+    assert system.options.cls_member_order == system.options.mod_member_order == "alphabetical"
+    
+    mod = fromText('''\
+    class Foo:
+        def start():...
+        def process_link():...
+        def process_emphasis():...
+        def process_blockquote():...
+        def process_table():...
+        def end():...
+    
+    class Bar:...
+
+    b,a = 1,2
+    ''', system=system)
+
+    _sorted = sorted(mod.contents.values(), key=system.membersOrder(mod))
+    assert [s.name for s in _sorted] == ['Bar', 'Foo', 'a', 'b'] # default ordering is alphabetical
+
+    system.options.mod_member_order = 'source'
+    _sorted = sorted(mod.contents.values(), key=system.membersOrder(mod))
+    assert [s.name for s in _sorted] == ['Foo', 'Bar', 'b', 'a']
+    
+    Foo = mod.contents['Foo']
+
+    _sorted = sorted(Foo.contents.values(), key=system.membersOrder(Foo))
+    names = [s.name for s in _sorted]
+    
+    assert names ==['end',
+                    'process_blockquote',
+                    'process_emphasis',
+                    'process_link',
+                    'process_table',
+                    'start',]
+
+    system.options.cls_member_order = "source"
+    _sorted = sorted(Foo.contents.values(), key=system.membersOrder(Foo))
+    names = [s.name for s in _sorted]
+    
+    assert names == ['start', 
+                     'process_link', 
+                     'process_emphasis', 
+                     'process_blockquote', 
+                     'process_table', 
+                     'end']
+
+def test_ivar_field_order_precedence(capsys: CapSys) -> None:
+    """
+    We special case the linen umber coming from docstring fields such that they can get overriden
+    by AST linenumber.
+    """
+    system = model.System(model.Options.from_args(['--cls-member-order=source']))
+    mod = fromText('''
+    import attr
+    __docformat__ = 'restructuredtext'
+    @attr.s
+    class Foo:
+        """
+        :ivar a: `broken1 <>`_ Thing.
+        :ivar b: `broken2 <>`_ Stuff.
+        """
+
+        b = attr.ib()
+        a = attr.ib()
+    ''', system=system)
+    
+    Foo = mod.contents['Foo']
+    getHTMLOf(Foo)
+    assert Foo.docstring_lineno == 7
+    
+    assert Foo.parsed_docstring.fields[0].lineno == 0 # type:ignore
+    assert Foo.parsed_docstring.fields[1].lineno == 1 # type:ignore
+
+    assert Foo.contents['a'].linenumber == 12
+    assert Foo.contents['b'].linenumber == 11
+
+    assert Foo.contents['a'].docstring_lineno == 7
+    assert Foo.contents['b'].docstring_lineno == 8
+
+    _sorted = sorted(Foo.contents.values(), key=system.membersOrder(Foo))
+    names = [s.name for s in _sorted]
+    
+    assert names == ['b', 'a'] # should be 'b', 'a'.
+
+
+src_crash_xml_entities = '''\
+"""
+These are non-breaking spaces
+=============================
+
+docstring.
+"""
+
+A: Literal['These are non-breaking spaces.'] = True
+
+B = ({}, 'These are non-breaking spaces.')
+
+V = True
+"""
+These are non-breaking spaces.
+"""
+
+@thing('These are non-breaking spaces.')
+def g():
+    ...
+
+def h() -> Literal['These are non-breaking spaces.']:
+    ...
+
+
+def f(a:Literal['These are non-breaking spaces.']='These are non-breaking spaces.') -> int:
+    return {}
+
+def i():
+    """
+    Stuff
+
+    @rtype: V of C
+    """
+    ...
+
+class C(Literal['These are non-breaking spaces.']):
+    ...
+
+'''
+
+@pytest.mark.parametrize('processtypes', [True, False])
+def test_crash_xmlstring_entities(capsys:CapSys, processtypes:bool) -> None:
+    """
+    Crash test for https://github.com/twisted/pydoctor/issues/641
+    
+    This test might fail in the future, when twisted's XMLString supports XHTML entities (see https://github.com/twisted/twisted/issues/11581). 
+    But it will always fail for python 3.6 since twisted dropped support for these versions of python.
+    """
+    system = model.System()
+    system.options.verbosity = -1
+    system.options.processtypes=processtypes
+    mod = fromText(src_crash_xml_entities, system=system, modname='test')
+    for o in mod.system.allobjects.values():
+        epydoc2stan.ensure_parsed_docstring(o)
+    getHTMLOf(mod)
+    getHTMLOf(mod.contents['C'])
+    out = capsys.readouterr().out
+    warnings = '''\
+test:2: bad docstring: SAXParseException: <unknown>.+ undefined entity
+test:25: bad signature: SAXParseException: <unknown>.+ undefined entity
+test:17: bad rendering of decorators: SAXParseException: <unknown>.+ undefined entity
+test:21: bad signature: SAXParseException: <unknown>.+ undefined entity
+test:30: bad docstring: SAXParseException: <unknown>.+ undefined entity
+test:8: bad annotation: SAXParseException: <unknown>:.+ undefined entity
+test:10: bad rendering of constant: SAXParseException: <unknown>.+ undefined entity
+test:14: bad docstring: SAXParseException: <unknown>.+ undefined entity
+test:36: bad rendering of class signature: SAXParseException: <unknown>.+ undefined entity
+'''.splitlines()
+    
+    # Some how the type processing get rid of the non breaking spaces, but it's more an implementation
+    # detail rather than a fix for the bug.
+    if processtypes is True:
+        warnings.remove('test:30: bad docstring: SAXParseException: <unknown>.+ undefined entity')
+    
+    assert re.match('\n'.join(warnings), out)
+
+@pytest.mark.parametrize('processtypes', [True, False])
+def test_crash_xmlstring_entities_rst(capsys:CapSys, processtypes:bool) -> None:
+    """Idem for RST"""
+    system = model.System()
+    system.options.verbosity = -1
+    system.options.processtypes=processtypes
+    system.options.docformat = 'restructuredtext'
+    mod = fromText(src_crash_xml_entities.replace('@type', ':type').replace('@rtype', ':rtype').replace('==', "--"), modname='test', system=system)
+    for o in mod.system.allobjects.values():
+        epydoc2stan.ensure_parsed_docstring(o)
+    getHTMLOf(mod)
+    getHTMLOf(mod.contents['C'])
+    out = capsys.readouterr().out
+    warn_str = '''\
+test:2: bad docstring: SAXParseException: <unknown>.+ undefined entity
+test:25: bad signature: SAXParseException: <unknown>.+ undefined entity
+test:17: bad rendering of decorators: SAXParseException: <unknown>.+ undefined entity
+test:21: bad signature: SAXParseException: <unknown>.+ undefined entity
+test:30: bad docstring: SAXParseException: <unknown>.+ undefined entity
+test:8: bad annotation: SAXParseException: <unknown>.+ undefined entity
+test:10: bad rendering of constant: SAXParseException: <unknown>.+ undefined entity
+test:14: bad docstring: SAXParseException: <unknown>.+ undefined entity
+test:36: bad rendering of class signature: SAXParseException: <unknown>.+ undefined entity
+'''
+    warnings = warn_str.splitlines()
+
+    if processtypes is True:
+        warnings.remove('test:30: bad docstring: SAXParseException: <unknown>.+ undefined entity')
+    
+    assert re.match('\n'.join(warnings), out)
+
+def test_constructor_renders(capsys:CapSys) -> None:
+    src = '''\
+    class Animal(object):
+        # pydoctor can infer the constructor to be: "Animal(name)"
+        def __new__(cls, name):
+            ...
+    '''
+
+    mod = fromText(src)
+    html = getHTMLOf(mod.contents['Animal'])
+    assert 'Constructor: ' in html
+    assert 'Animal(name)' in html
+
+def test_typealias_string_form_linked() -> None:
+    """
+    The type aliases should be unstring before beeing presented to reader, such that
+    all elements can be linked. 
+    
+    Test for issue https://github.com/twisted/pydoctor/issues/704
+    """
+    
+    mod = fromText('''
+    from typing import Callable
+    ParserFunction = Callable[[str, List['ParseError']], 'ParsedDocstring']
+    class ParseError:
+        ...
+    class ParsedDocstring:
+        ...
+    ''', modname='pydoctor.epydoc.markup')
+
+    typealias = mod.contents['ParserFunction']
+    assert isinstance(typealias, model.Attribute)
+    html = getHTMLOfAttribute(typealias)
+    assert 'href="pydoctor.epydoc.markup.ParseError.html"' in html
+    assert 'href="pydoctor.epydoc.markup.ParsedDocstring.html"' in html
+
+def test_class_hierarchy_links_top_level_names() -> None:
+    system = model.System()
+    system.intersphinx = InMemoryInventory() # type:ignore
+    src = '''\
+    from socket import socket
+    class Stuff(socket):
+        ...
+    '''
+    mod = fromText(src, system=system)
+    index = flatten(ClassIndexPage(mod.system, TemplateLookup(template_dir)))
+    assert 'href="https://docs.python.org/3/library/socket.html#socket.socket"' in index
 

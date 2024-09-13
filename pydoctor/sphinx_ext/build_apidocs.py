@@ -21,6 +21,8 @@ The following format placeholders are resolved for C{pydoctor_args} at runtime:
 You must call pydoctor with C{--quiet} argument
 as otherwise any extra output is converted into Sphinx warnings.
 """
+from __future__ import annotations
+
 import os
 import pathlib
 import shutil
@@ -49,7 +51,7 @@ def on_build_finished(app: Sphinx, exception: Exception) -> None:
 
     runs = app.config.pydoctor_args
     placeholders = {
-        'outdir': app.outdir,
+        'outdir': str(app.outdir),
         }
 
     if not isinstance(runs, Mapping):
@@ -86,7 +88,7 @@ def on_builder_inited(app: Sphinx) -> None:
         raise ConfigError("Missing 'pydoctor_args'.")
 
     placeholders = {
-        'outdir': app.outdir,
+        'outdir': str(app.outdir),
         }
 
     runs = config.pydoctor_args

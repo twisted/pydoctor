@@ -35,7 +35,7 @@ def test_rtd_pydoctor_multiple_call():
     With the pydoctor Sphinx extension can call pydoctor for more than one
     API doc source.
     """
-    with open(BASE_DIR / 'docformat' / 'epytext' / 'index.html', 'r') as stream:
+    with open(BASE_DIR / 'docformat' / 'epytext_demo' / 'index.html', 'r') as stream:
         page = stream.read()
         assert '<a href="../epytext.html" class="projecthome">pydoctor-epytext-demo</a>' in page, page
 
@@ -76,7 +76,7 @@ def test_sphinx_object_inventory_version_epytext_demo():
     The Sphinx inventory for demo/showcase code has a fixed version and name,
     passed via docs/source/conf.py.
     """
-    with open(BASE_DIR / 'docformat' / 'epytext' / 'objects.inv', 'rb') as stream:
+    with open(BASE_DIR / 'docformat' / 'epytext_demo' / 'objects.inv', 'rb') as stream:
         page = stream.read()
         assert page.startswith(
             b'# Sphinx inventory version 2\n'
@@ -236,3 +236,19 @@ def test_pydoctor_test_is_hidden():
                 privacy = getText(liobj.findall('./div[@class=\'privacy\']')[0])
                 # check that it's indeed private
                 assert privacy == 'HIDDEN'
+
+def test_missing_subclasses():
+    """
+    Test for missing subclasses of ParsedDocstring, issue https://github.com/twisted/pydoctor/issues/528.
+    """
+
+    infos = ('pydoctor.epydoc.markup._types.ParsedTypeDocstring', 
+        'pydoctor.epydoc.markup.epytext.ParsedEpytextDocstring', 
+        'pydoctor.epydoc.markup.plaintext.ParsedPlaintextDocstring', 
+        'pydoctor.epydoc.markup.restructuredtext.ParsedRstDocstring', 
+        'pydoctor.epydoc2stan.ParsedStanOnly')
+
+    with open(BASE_DIR / 'api' / 'pydoctor.epydoc.markup.ParsedDocstring.html', 'r', encoding='utf-8') as stream:
+        page = stream.read()
+        for i in infos:
+            assert i in page, page

@@ -1,8 +1,8 @@
 from typing import List
 from textwrap import dedent
-from pydoctor.epydoc.docutils import _get_docutils_version
 from pydoctor.epydoc.markup import ParseError, get_parser_by_name
 from pydoctor.test.epydoc.test_restructuredtext import prettify
+from pydoctor.test.test_templatewriter import getHTMLOfAttribute
 from pydoctor.test import NotFoundLinker, CapSys
 from pydoctor.test.epydoc import parse_docstring
 from pydoctor.test.test_epydoc2stan import docstring2html
@@ -10,6 +10,7 @@ from pydoctor.test.test_astbuilder import fromText
 from pydoctor.stanutils import flatten
 from pydoctor.napoleon.docstring import TokenType
 from pydoctor.epydoc.markup._types import ParsedTypeDocstring
+import pydoctor.epydoc.markup
 from pydoctor import model
 from twisted.web.template import Tag
 
@@ -58,7 +59,7 @@ def test_parsed_type_convert_obj_tokens_to_stan() -> None:
 
 def typespec2htmlvianode(s: str, markup: str) -> str:
     err: List[ParseError] = []
-    parsed_doc = get_parser_by_name(markup)(s, err, False)
+    parsed_doc = get_parser_by_name(markup)(s, err)
     assert not err
     ann = ParsedTypeDocstring(parsed_doc.to_node(), warns_on_unknown_tokens=True)
     html = flatten(ann.to_stan(NotFoundLinker()))
@@ -275,19 +276,21 @@ def test_processtypes_corner_cases(capsys: CapSys) -> None:
     assert process('[,]')                                   == "[, ]"
     assert process('[[]]')                                  == "[[]]"
     assert process(', [str]')                               == ", [<code>str]</code>"
-    assert process(' of [str]')                             == "<code>of [str]</code>" # this is a bit weird
+    assert process(' of [str]')                             == "of[<code>str]</code>"
     assert process(' or [str]')                             == "or[<code>str]</code>"
     assert process(': [str]')                               == ": [<code>str]</code>"
     assert process("'hello'[str]")                          == "<span class=\"literal\">'hello'</span>[<code>str]</code>"
     assert process('"hello"[str]')                          == "<span class=\"literal\">\"hello\"</span>[<code>str]</code>"
     assert process('`hello`[str]')                          == "<code>hello</code>[<code>str]</code>"
-    assert process('`hello <https://github.com>`_[str]')    == """<a class="rst-reference external" href="https://github.com" target="_top">hello</a>[<code>str]</code>"""
+    assert process('`hello <https://github.com>`_[str]')    == """<a class="rst-external rst-reference" href="https://github.com" target="_top">hello</a>[<code>str]</code>"""
     assert process('**hello**[str]')                        == "<strong>hello</strong>[<code>str]</code>"
     assert process('["hello" or str, default: 2]')          == """[<span class="literal">"hello"</span> or <code>str</code>, <em>default</em>: <span class="literal">2</span>]"""
 
-    # HTML ids for problematic elements changed in docutils 0.18.0
-    if _get_docutils_version() >= (0,18,0):
-        assert process('Union[`hello <>`_[str]]')               == """<code>Union[</code><a href="#system-message-1"><span class="rst-problematic" id="rst-problematic-1">`hello &lt;&gt;`_</span></a>[<code>str]]</code>"""
+    # HTML ids for problematic elements changed in docutils 0.18.0, and again in 0.19.0, so we're not testing for the exact content anymore.
+    
+    problematic = process('Union[`hello <>`_[str]]')
+    assert "`hello &lt;&gt;`_" in problematic
+    assert "<code>str" in problematic
  
 def test_processtypes_warning_unexpected_element(capsys: CapSys) -> None:
     
@@ -312,7 +315,7 @@ def test_processtypes_warning_unexpected_element(capsys: CapSys) -> None:
     
     # Test epytext
     epy_errors: List[ParseError] = []
-    epy_parsed = get_parser_by_name('epytext')(epy_string, epy_errors, True)
+    epy_parsed = pydoctor.epydoc.markup.processtypes(get_parser_by_name('epytext'))(epy_string, epy_errors)
 
     assert len(epy_errors)==1
     assert "Unexpected element in type specification field: element 'doctest_block'" in epy_errors.pop().descr()
@@ -321,9 +324,103 @@ def test_processtypes_warning_unexpected_element(capsys: CapSys) -> None:
     
     # Test restructuredtext
     rst_errors: List[ParseError] = []
-    rst_parsed = get_parser_by_name('restructuredtext')(rst_string, rst_errors, True)
+    rst_parsed = pydoctor.epydoc.markup.processtypes(get_parser_by_name('restructuredtext'))(rst_string, rst_errors)
 
     assert len(rst_errors)==1
     assert "Unexpected element in type specification field: element 'doctest_block'" in rst_errors.pop().descr()
 
     assert flatten(rst_parsed.fields[-1].body().to_stan(NotFoundLinker())).replace('\n', ' ') == expected
+
+def test_napoleon_types_warnings(capsys: CapSys) -> None:
+    """
+    This is not the same as test_token_type_invalid() since 
+    this checks our integration with pydoctor and validates we **actually** trigger 
+    the warnings.
+    """
+    # from napoleon upstream:
+    # unbalanced parenthesis in type expression
+    # unbalanced square braces in type expression
+    # invalid value set (missing closing brace)
+    # invalid value set (missing opening brace)
+    # malformed string literal (missing closing quote)
+    # malformed string literal (missing opening quote)
+    # from our custom napoleon:
+    # invalid type: '{before_colon}'. Probably missing colon.
+    # from our integration with docutils:
+    # Unexpected element in type specification field
+
+    src = '''
+    __docformat__ = 'google'
+    def foo(**args):
+        """
+        Keyword Args:
+            a (list(str): thing
+            b (liststr]): stuff
+            c ({1,2,3): num
+            d ('1',2,3}): num or str
+            e (str, '1', '2): str
+            f (str, "1", 2"): str
+            docformat
+                Can be one of:
+                - "numpy"
+                - "google"
+            h: things
+            k: stuff
+        
+        :type h: stuff
+
+            >>> python
+        
+        :type k: a paragraph
+
+            another one
+        """
+    '''
+
+    mod = fromText(src, modname='warns')    
+    docstring2html(mod.contents['foo'])
+
+    # Filter docstring linker warnings
+    lines = [line for line in capsys.readouterr().out.splitlines() if 'Cannot find link target' not in line]
+    
+    # Line numbers are off because they are based on the reStructuredText version of the docstring
+    # which includes much more lines because of the :type arg: fields. 
+    assert '\n'.join(lines) == '''\
+warns:13: bad docstring: invalid type: 'docformatCan be one of'. Probably missing colon.
+warns:7: bad docstring: unbalanced parenthesis in type expression
+warns:9: bad docstring: unbalanced square braces in type expression
+warns:11: bad docstring: invalid value set (missing closing brace): {1
+warns:13: bad docstring: invalid value set (missing opening brace): 3}
+warns:15: bad docstring: malformed string literal (missing closing quote): '2
+warns:17: bad docstring: malformed string literal (missing opening quote): 2"
+warns:24: bad docstring: Unexpected element in type specification field: element 'doctest_block'. This value should only contain text or inline markup.
+warns:28: bad docstring: Unexpected element in type specification field: element 'paragraph'. This value should only contain text or inline markup.'''
+
+def test_process_types_with_consolidated_fields(capsys: CapSys) -> None:
+    """
+    Test for issue https://github.com/twisted/pydoctor/issues/765
+    """
+    src = '''
+    class V:
+        """
+        Doc. 
+
+        :CVariables:
+            `id` : int
+                Classvar doc.
+        """
+    '''
+    system = model.System()
+
+    system.options.processtypes = True
+    system.options.docformat = 'restructuredtext'
+
+    mod = fromText(src, modname='do_not_warn_please', system=system)
+    attr = mod.contents['V'].contents['id']
+    assert isinstance(attr, model.Attribute)
+    html = getHTMLOfAttribute(attr)
+    # Filter docstring linker warnings
+    lines = [line for line in capsys.readouterr().out.splitlines() if 'Cannot find link target' not in line]
+    assert not lines
+    assert '<code>int</code>' in html
+    

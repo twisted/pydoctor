@@ -1,4 +1,5 @@
 """Support for Zope interfaces."""
+from __future__ import annotations
 
 from typing import Iterable, Iterator, List, Optional, Union
 import ast
@@ -62,7 +63,7 @@ def _inheritedDocsources(obj: model.Documentable) -> Iterator[model.Documentable
         io = obj.system.objForFullName(interface)
         if io is not None:
             assert isinstance(io, ZopeInterfaceClass)
-            for io2 in io.allbases(include_self=True):
+            for io2 in io.mro():
                 if name in io2.contents:
                     yield io2.contents[name]
 
@@ -200,8 +201,6 @@ class ZopeInterfaceModuleVisitor(extensions.ModuleVisitorExt):
 
             interface.isinterface = True
             interface.implementedby_directly = []
-            interface.bases = []
-            interface.baseobjects = []
             self.visitor.builder.popClass()
 
     def _handleZopeInterfaceAssignmentInClass(self,
@@ -222,7 +221,7 @@ class ZopeInterfaceModuleVisitor(extensions.ModuleVisitorExt):
         if funcName == 'zope.interface.Attribute':
             attr.kind = model.DocumentableKind.ATTRIBUTE
             args = expr.args
-            if len(args) == 1 and isinstance(args[0], ast.Str):
+            if len(args) == 1 and isinstance(args[0], astutils.Str):
                 attr.setDocstring(args[0])
             else:
                 attr.report(
@@ -244,7 +243,7 @@ class ZopeInterfaceModuleVisitor(extensions.ModuleVisitorExt):
 
             keywords = {arg.arg: arg.value for arg in expr.keywords}
             descrNode = keywords.get('description')
-            if isinstance(descrNode, ast.Str):
+            if isinstance(descrNode, astutils.Str):
                 attr.setDocstring(descrNode)
             elif descrNode is not None:
                 attr.report(
@@ -252,8 +251,7 @@ class ZopeInterfaceModuleVisitor(extensions.ModuleVisitorExt):
                     section='zopeinterface')
     
     def _handleZopeInterfaceAssignment(self, node: Union[ast.Assign, ast.AnnAssign]) -> None:
-        for target in node.targets if isinstance(node, ast.Assign) else [node.target]:
-            dottedname = astutils.node2dottedname(target) 
+        for dottedname in astutils.iterassign(node):
             if dottedname and len(dottedname)==1:
                 # Here, we consider single name assignment only
                 current = self.visitor.builder.current

@@ -41,9 +41,10 @@ def test_twisted_python_deprecate(capsys: CapSys, systemcls: Type[model.System])
         @deprecate.deprecated(incremental.Version('Twisted', 16, 0, 0))
         def _bar():
             'should appear'
-        @deprecated(Version('Twisted', 14, 2, 3), replacement='stuff')
+        from twisted.python.versions import Version as AliasVersion
+        @deprecated(AliasVersion('Twisted', 14, 2, 3), replacement='stuff')
         class Baz:
-            @deprecatedProperty(Version('Twisted', 'NEXT', 0, 0), replacement='faam')
+            @deprecatedProperty(AliasVersion('Twisted', 'NEXT', 0, 0), replacement='faam')
             @property
             def foom(self):
                 ...
@@ -72,7 +73,7 @@ def test_twisted_python_deprecate(capsys: CapSys, systemcls: Type[model.System])
     assert len(_class.extra_info)==1
     assert re.match(_html_template_with_replacement.format(
         name='Baz', package='Twisted', version=r'14\.2\.3', replacement='stuff'
-    ), flatten_text(_class.extra_info[0].to_stan(mod.docstring_linker, False)).strip(), re.DOTALL)
+    ), flatten_text(_class.extra_info[0].to_stan(mod.docstring_linker)).strip(), re.DOTALL)
 
     assert re.match(_html_template_with_replacement.format(
         name='Baz', package='Twisted', version=r'14\.2\.3', replacement='stuff'
@@ -81,6 +82,27 @@ def test_twisted_python_deprecate(capsys: CapSys, systemcls: Type[model.System])
     assert re.match(_html_template_with_replacement.format(
         name='foom', package='Twisted', version=r'NEXT', replacement='faam'
     ), class_html_text, re.DOTALL), class_html_text
+
+@twisted_deprecated_systemcls_param
+def test_twisted_python_deprecate_arbitrary_text(capsys: CapSys, systemcls: Type[model.System]) -> None:
+    """
+    The deprecated object replacement can be given as a free form text as well, it does not have to be an identifier or an object.
+    """
+    system = systemcls()
+    system.options.verbosity = -1
+    
+    mod = fromText(
+    """
+    from twisted.python.deprecate import deprecated
+    from incremental import Version
+    @deprecated(Version('Twisted', 15, 0, 0), replacement='just use something else')
+    def foo(): ...
+    """, system=system, modname='mod')
+
+    mod_html = test_templatewriter.getHTMLOf(mod)
+
+    assert not capsys.readouterr().out
+    assert 'just use something else' in mod_html
 
 @twisted_deprecated_systemcls_param
 def test_twisted_python_deprecate_security(capsys: CapSys, systemcls: Type[model.System]) -> None:
@@ -100,7 +122,6 @@ def test_twisted_python_deprecate_security(capsys: CapSys, systemcls: Type[model
     mod_html = test_templatewriter.getHTMLOf(mod)
 
     assert capsys.readouterr().out == '''mod:4: Invalid package name: 'Twisted\\n.. raw:: html\\n\\n   <script>alert(1)</script>'
-mod:6: Invalid replacement name: '\\n.. raw:: html\\n\\n   <script>alert(1)</script>'
 ''', capsys.readouterr().out
     assert '<script>alert(1)</script>' not in mod_html
 

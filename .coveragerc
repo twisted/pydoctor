@@ -4,6 +4,7 @@ omit =
     pydoctor/sphinx_ext/*
     pydoctor/test/*
     pydoctor/epydoc/sre_parse36.py
+    pydoctor/epydoc/sre_constants36.py
 source =
     pydoctor
 
