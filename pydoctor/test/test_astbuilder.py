@@ -8,7 +8,7 @@ from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring
 from pydoctor.options import Options
 from pydoctor.stanutils import flatten, html2stan, flatten_text
 from pydoctor.epydoc.markup.epytext import Element, ParsedEpytextDocstring
-from pydoctor.epydoc2stan import format_summary, get_parsed_type
+from pydoctor.epydoc2stan import _get_docformat, format_summary, get_parsed_type
 from pydoctor.test.test_packages import processPackage
 from pydoctor.utils import partialclass
 
@@ -2828,7 +2828,7 @@ def test_does_not_misinterpret_string_as_documentation(systemcls: Type[model.Sys
             docs
         """
         def __init__(self):
-            self.cc_noopt = True
+            self.cc_noopt = x
 
             if True:
                 """
@@ -2837,5 +2837,6 @@ def test_does_not_misinterpret_string_as_documentation(systemcls: Type[model.Sys
     '''
 
     mod =  fromText(src, systemcls=systemcls)
+    assert _get_docformat(mod) == 'numpy'
     assert not capsys.readouterr().out
-    assert mod.contents['C'].contents['cc_noopt'].docstring == 'docs'
+    assert to_html(mod.contents['C'].contents['cc_noopt'].parsed_docstring) == 'docs'
