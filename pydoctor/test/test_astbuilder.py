@@ -2839,4 +2839,4 @@ def test_does_not_misinterpret_string_as_documentation(systemcls: Type[model.Sys
     mod =  fromText(src, systemcls=systemcls)
     assert _get_docformat(mod) == 'numpy'
     assert not capsys.readouterr().out
-    assert to_html(mod.contents['C'].contents['cc_noopt'].parsed_docstring) == 'docs'
+    assert to_html(mod.contents['C'].contents['cc_noopt'].parsed_docstring) == 'docs' #type:ignore
