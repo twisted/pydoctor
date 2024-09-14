@@ -796,22 +796,22 @@ class ModuleVistor(NodeVisitor):
         Find out the documentatble wich is the parent of the assignment's target as well as it's name. 
 
         @returns: Tuple C{parent, name}. 
-        @raises: L{ValueError} if the target does not bind a new variable.
+        @raises ValueError: if the target does not bind a new variable.
         """
         dottedname = node2dottedname(target)
         if not dottedname or len(dottedname) > 2:
-            raise ValueError()
+            raise ValueError('does not bind a new variable')
         parent: model.Documentable
         if len(dottedname) == 2 and dottedname[0] == 'self':
             # an instance variable.
             # TODO: This currently only works if the first argument of methods
             # is named 'self'.
             if (maybe_cls:=self._getClassFromMethodContext()) is None:
-                raise ValueError()
+                raise ValueError('using self in unsupported context')
             dottedname = dottedname[1:]
             parent = maybe_cls
         elif len(dottedname) != 1:
-            raise ValueError()
+            raise ValueError('does not bind a new variable')
         else:
             parent = self.builder.current
         return parent, dottedname[0]
