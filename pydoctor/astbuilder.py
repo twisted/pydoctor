@@ -575,7 +575,6 @@ class ModuleVistor(NodeVisitor):
         # We don't know how to handle this,
         # so we ignore it to document the original object. This means that we might document arguments 
         # that are in reality not existing because they have values in a partial() call for instance.
-        # TODO: Should we report a warning?
 
         if not isinstance(obj, model.Attribute):
             raise IgnoreAssignment()
