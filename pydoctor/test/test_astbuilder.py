@@ -2839,4 +2839,48 @@ def test_does_not_misinterpret_string_as_documentation(systemcls: Type[model.Sys
     mod =  fromText(src, systemcls=systemcls)
     assert _get_docformat(mod) == 'numpy'
     assert not capsys.readouterr().out
+    assert mod.contents['C'].contents['cc_noopt'].docstring is None 
+    # The docstring is None... this is the sad side effect of processing ivar fields :/
+
     assert to_html(mod.contents['C'].contents['cc_noopt'].parsed_docstring) == 'docs' #type:ignore
+
+@systemcls_param
+def test_unsupported_usage_of_self(systemcls: Type[model.System], capsys: CapSys) -> None:
+    src = '''
+    class C:
+        ...
+    def C_init(self):
+        self.x = True
+        self.y += False # erroneous usage of augassign
+    C.__init__ = C_init
+
+    self = object()
+    self.x = False
+    """
+    not documentation
+    """
+    '''
+    mod =  fromText(src, systemcls=systemcls)
+    assert not capsys.readouterr().out
+    assert list(mod.contents['C'].contents) == []
+    assert not mod.contents['self'].docstring
+
+@systemcls_param
+def test_inline_docstring_at_wrong_place(systemcls: Type[model.System], capsys: CapSys) -> None:
+    src = '''
+    a = objetc()
+    a.b = True
+    """
+    not documentation
+    """
+    b = object()
+    b.x: bool = False
+    """
+    still not documentation
+    """
+    '''
+    mod =  fromText(src, systemcls=systemcls)
+    assert not capsys.readouterr().out
+    assert list(mod.contents) == ['a', 'b']
+    assert not mod.contents['a'].docstring
+    assert not mod.contents['b'].docstring
