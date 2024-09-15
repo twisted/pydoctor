@@ -19,7 +19,7 @@ class DocutilsNodeVisitor(visitor.Visitor[nodes.Node]):
     @classmethod
     def get_children(cls, ob:nodes.Node) -> Iterable[nodes.Node]:
         if isinstance(ob, nodes.Element):
-            return ob.children # type:ignore[no-any-return]
+            return ob.children
         return []
 
 class MainVisitor(DocutilsNodeVisitor):

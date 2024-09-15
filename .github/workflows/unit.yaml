@@ -19,14 +19,9 @@ jobs:
 
     strategy:
       matrix:
-        # Re-enable 3.13-dev when https://github.com/zopefoundation/zope.interface/issues/292 is fixed
-        python-version: [pypy-3.8, 3.8, 3.9, '3.10', 3.11, '3.12']
-        os: [ubuntu-22.04]
-        include:
-          - os: windows-latest
-            python-version: 3.11
-          - os: macos-latest
-            python-version: 3.11
+        python-version: ['pypy-3.8', 'pypy-3.9', 'pypy-3.10', 
+                         '3.8', '3.9', '3.10', '3.11', '3.12', '3.13.0-rc.2']
+        os: [ubuntu-latest, windows-latest, macos-latest]
 
     steps:
     - uses: actions/checkout@v4
@@ -51,8 +46,7 @@ jobs:
       run: |
         tox -e test
 
-    - name: Run unit tests with latest Twisted version (only for python 3.8 and later)
-      if: matrix.python-version != '3.7' && matrix.python-version != 'pypy-3.7'
+    - name: Run unit tests with latest Twisted version
       run: |
         tox -e test-latest-twisted
 

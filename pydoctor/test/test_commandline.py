@@ -4,6 +4,8 @@ from pathlib import Path
 import re
 import sys
 
+import pytest
+
 from pydoctor.options import Options
 from pydoctor import driver
 
@@ -67,6 +69,7 @@ def test_projectbasedir_absolute(tmp_path: Path) -> None:
     assert options.projectbasedirectory.is_absolute()
 
 
+@pytest.mark.skipif("platform.python_implementation() == 'PyPy' and platform.system() == 'Windows'")
 def test_projectbasedir_symlink(tmp_path: Path) -> None:
     """
     The --project-base-dir option, when given a path containing a symbolic link,
@@ -206,6 +209,7 @@ def test_main_return_non_zero_on_warnings() -> None:
     assert 'report_module.py:9: Cannot find link target for "BadLink"' in stream.getvalue()
 
 
+@pytest.mark.skipif("platform.python_implementation() == 'PyPy' and platform.system() == 'Windows'")
 def test_main_symlinked_paths(tmp_path: Path) -> None:
     """
     The project base directory and package/module directories are normalized

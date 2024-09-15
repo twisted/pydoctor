@@ -430,14 +430,14 @@ class SummaryExtractor(nodes.NodeVisitor):
 
     _SENTENCE_RE_SPLIT = re.compile(r'( *[\.\?!][\'"\)\]]* *)')
 
-    def visit_paragraph(self, node: nodes.Node) -> None:
+    def visit_paragraph(self, node: nodes.paragraph) -> None:
         if self.summary is not None:
             # found a paragraph after the first one
             self.other_docs = True
             raise nodes.StopTraversal()
 
         summary_doc = new_document('summary')
-        summary_pieces = []
+        summary_pieces: list[nodes.Node] = []
 
         # Extract the first sentences from the first paragraph until maximum number 
         # of characters is reach or until the end of the paragraph.

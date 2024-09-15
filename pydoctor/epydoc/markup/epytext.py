@@ -1425,7 +1425,9 @@ class ParsedEpytextDocstring(ParsedDocstring):
             yield set_node_attributes(nodes.inline('', ''), document=self._document, children=variables)
         elif tree.tag == 'target':
             value, = variables
-            yield set_node_attributes(nodes.Text(value), document=self._document)
+            if not isinstance(value, nodes.Text):
+                raise AssertionError("target contents must be a simple text.")
+            yield set_node_attributes(value, document=self._document)
         elif tree.tag == 'italic':
             yield set_node_attributes(nodes.emphasis('', ''), document=self._document, children=variables)
         elif tree.tag == 'math':
@@ -1445,7 +1447,9 @@ class ParsedEpytextDocstring(ParsedDocstring):
         elif tree.tag == 'literalblock':
             yield set_node_attributes(nodes.literal_block('', ''), document=self._document, children=variables)
         elif tree.tag == 'doctestblock':
-            yield set_node_attributes(nodes.doctest_block(tree.children[0], tree.children[0]), document=self._document)
+            if not isinstance(contents:=tree.children[0], str):
+                raise AssertionError("doctest block contents is not a string")
+            yield set_node_attributes(nodes.doctest_block(contents, contents), document=self._document)
         elif tree.tag in ('fieldlist', 'tag', 'arg'):
             raise AssertionError("There should not be any field lists left")
         elif tree.tag == 'section':

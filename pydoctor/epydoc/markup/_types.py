@@ -5,7 +5,7 @@ This module provides yet another L{ParsedDocstring} subclass.
 """
 from __future__ import annotations
 
-from typing import Callable, Dict, List, Tuple, Union
+from typing import Any, Callable, Dict, List, Tuple, Union, cast
 
 from pydoctor.epydoc.markup import DocstringLinker, ParseError, ParsedDocstring, get_parser_by_name
 from pydoctor.node2stan import node2stan
@@ -21,8 +21,9 @@ class ParsedTypeDocstring(TypeDocstring, ParsedDocstring):
     """
 
     FIELDS = ('type', 'rtype', 'ytype', 'returntype', 'yieldtype')
-
-    _tokens: List[Tuple[Union[str, nodes.Node], TokenType]]
+    
+    #                                                   yes this overrides the superclass type!
+    _tokens: list[tuple[str | nodes.Node, TokenType]] # type: ignore
 
     def __init__(self, annotation: Union[nodes.document, str],
                  warns_on_unknown_tokens: bool = False, lineno: int = 0) -> None:
@@ -31,7 +32,8 @@ class ParsedTypeDocstring(TypeDocstring, ParsedDocstring):
             TypeDocstring.__init__(self, '', warns_on_unknown_tokens)
 
             _tokens = self._tokenize_node_type_spec(annotation)
-            self._tokens = self._build_tokens(_tokens)
+            self._tokens = cast('list[tuple[str | nodes.Node, TokenType]]', 
+                                self._build_tokens(_tokens))
             self._trigger_warnings()
         else:
             TypeDocstring.__init__(self, annotation, warns_on_unknown_tokens)
@@ -82,8 +84,8 @@ class ParsedTypeDocstring(TypeDocstring, ParsedDocstring):
         
         return tokens
 
-    def _convert_obj_tokens_to_stan(self, tokens: List[Tuple[Union[str, nodes.Node], TokenType]], 
-                                    docstring_linker: DocstringLinker) -> List[Tuple[Union[str, Tag, nodes.Node], TokenType]]:
+    def _convert_obj_tokens_to_stan(self, tokens: List[Tuple[Any, TokenType]], 
+                                    docstring_linker: DocstringLinker) -> list[tuple[Any, TokenType]]:
         """
         Convert L{TokenType.OBJ} and PEP 484 like L{TokenType.DELIMITER} type to stan, merge them together. Leave the rest untouched. 
 
@@ -96,12 +98,13 @@ class ParsedTypeDocstring(TypeDocstring, ParsedDocstring):
         @param tokens: List of tuples: C{(token, type)}
         """
 
-        combined_tokens: List[Tuple[Union[str, Tag], TokenType]] = []
+        combined_tokens: list[tuple[Any, TokenType]] = []
 
         open_parenthesis = 0
         open_square_braces = 0
 
         for _token, _type in tokens:
+            # The actual type of_token is str | Tag | Node. 
 
             if (_type is TokenType.DELIMITER and _token in ('[', '(', ')', ']')) \
                or _type is TokenType.OBJ: 
