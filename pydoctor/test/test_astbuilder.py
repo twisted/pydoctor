@@ -2850,8 +2850,8 @@ def test_unsupported_usage_of_self(systemcls: Type[model.System], capsys: CapSys
     class C:
         ...
     def C_init(self):
-        self.x = True
-        self.y += False # erroneous usage of augassign
+        self.x = True; 'not documentation'
+        self.y += False # erroneous usage of augassign; 'not documentation'
     C.__init__ = C_init
 
     self = object()
@@ -2878,9 +2878,27 @@ def test_inline_docstring_at_wrong_place(systemcls: Type[model.System], capsys: 
     """
     still not documentation
     """
+    c = {}
+    c[1] = True
+    """
+    Again not documenatation
+    """
+    d = {}
+    d[1].__init__ = True
+    """
+    Again not documenatation
+    """
+    e = {}
+    e[1].__init__ += True
+    """
+    Again not documenatation
+    """
     '''
     mod =  fromText(src, systemcls=systemcls)
     assert not capsys.readouterr().out
-    assert list(mod.contents) == ['a', 'b']
+    assert list(mod.contents) == ['a', 'b', 'c', 'd', 'e']
     assert not mod.contents['a'].docstring
     assert not mod.contents['b'].docstring
+    assert not mod.contents['c'].docstring
+    assert not mod.contents['d'].docstring
+    assert not mod.contents['e'].docstring

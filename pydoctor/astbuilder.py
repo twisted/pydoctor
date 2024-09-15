@@ -727,6 +727,9 @@ class ModuleVistor(NodeVisitor):
             lineno: int,
             augassign:Optional[ast.operator]=None,
             ) -> None:
+        """
+        @raises IgnoreAssignment: If the assignemnt should not be further processed.
+        """
         if isinstance(targetNode, ast.Name):
             target = targetNode.id
             scope = self.builder.current
@@ -742,6 +745,8 @@ class ModuleVistor(NodeVisitor):
                 raise IgnoreAssignment()
             elif isinstance(value, ast.Name) and value.id == 'self':
                 self._handleInstanceVar(targetNode.attr, annotation, expr, lineno)
+        else:
+            raise IgnoreAssignment()
 
     def visit_Assign(self, node: ast.Assign) -> None:
         lineno = node.lineno
