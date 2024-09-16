@@ -162,13 +162,14 @@ class DemoClass(ABC, SomeInterface, _PrivateClass):
     @read_and_write.setter
     def read_and_write(self, value: int) -> None:
         """
-        This is a docstring for setter.
+        This is a docstring for setter. 
+        Their are usually not explicitely documented though. 
         """
 
     @property
     def read_and_write_delete(self) -> int:
         """
-        This is a read-write-delete property.
+        This is the docstring of the property.
         """
         return 1
 
@@ -183,6 +184,14 @@ class DemoClass(ABC, SomeInterface, _PrivateClass):
         """
         This is a docstring for deleter.
         """
+    
+    @property
+    def undoc_prop(self) -> bytes:
+        """This property has a docstring only on the getter."""
+        return b''
+    @undoc_prop.setter
+    def undoc_prop(self, p) -> None: # type:ignore
+        ...
 
 
 class IContact(zope.interface.Interface):

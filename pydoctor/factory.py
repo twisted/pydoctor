@@ -70,6 +70,7 @@ class Factory(GenericFactory):
             'Module': model.Module,
             'Package': model.Package,
             'Attribute': model.Attribute,
+            'Property': model.Property,
         }
         super().__init__(bases=_bases)
 
@@ -112,4 +113,10 @@ class Factory(GenericFactory):
     def Attribute(self) -> Type['model.Attribute']:
         data = self.get_class('Attribute')
         assert issubclass(data, self.model.Attribute)
+        return data
+
+    @property
+    def Property(self) -> Type['model.Property']:
+        data = self.get_class('Property')
+        assert issubclass(data, self.model.Property)
         return data
