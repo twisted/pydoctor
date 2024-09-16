@@ -390,24 +390,25 @@ class PyvalColorizer:
         while num_chars > 0:
             if not result: 
                 return
-            if isinstance(result[-1], nodes.Element):
-                if len(result[-1].children) >= 1:
-                    data = result[-1][-1].astext()
+            if isinstance(r1:=result[-1], nodes.Element):
+                if len(r1.children) >= 1:
+                    data = r1[-1].astext()
                     trim = min(num_chars, len(data))
-                    result[-1][-1] = nodes.Text(data[:-trim])
-                    if not result[-1][-1].astext(): 
-                        if len(result[-1].children) == 1:
+                    r1[-1] = nodes.Text(data[:-trim])
+                    if not r1[-1].astext(): 
+                        if len(r1.children) == 1:
                             result.pop()
                         else:
-                            result[-1].pop()
+                            r1.pop()
                 else:
                     trim = 0
                     result.pop()
                 num_chars -= trim
             else:
                 # Must be Text if it's not an Element
-                trim = min(num_chars, len(result[-1]))
-                result[-1] = nodes.Text(result[-1].astext()[:-trim])
+                assert isinstance(r1, nodes.Text)
+                trim = min(num_chars, len(r1))
+                result[-1] = nodes.Text(r1.astext()[:-trim])
                 if not result[-1].astext(): 
                     result.pop()
                 num_chars -= trim
@@ -1012,6 +1013,7 @@ class PyvalColorizer:
             # If the segment fits on the current line, then just call
             # markup to tag it, and store the result.
             # Don't break links into separate segments, neither quotes.
+            element: nodes.Node
             if (self.linelen is None or 
                 state.charpos + segment_len <= self.linelen 
                 or link is True 

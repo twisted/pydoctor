@@ -139,6 +139,7 @@ def test_basic_package(tmp_path: Path) -> None:
     root, = system.rootobjects
     w._writeDocsFor(root)
     w.writeSummaryPages(system)
+    w.writeLinks(system)
     for ob in system.allobjects.values():
         url = ob.url
         if '#' in url:

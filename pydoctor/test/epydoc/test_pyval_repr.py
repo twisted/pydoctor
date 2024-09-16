@@ -15,7 +15,7 @@ from pydoctor.node2stan import gettext
 def color(v: Any, linebreakok:bool=True, maxlines:int=5, linelen:int=40) -> str:
     colorizer = PyvalColorizer(linelen=linelen, linebreakok=linebreakok, maxlines=maxlines)
     parsed_doc = colorizer.colorize(v)
-    return parsed_doc.to_node().pformat() #type: ignore
+    return parsed_doc.to_node().pformat()
 
 def colorhtml(v: Any, linebreakok:bool=True, maxlines:int=5, linelen:int=40) -> str:
     colorizer = PyvalColorizer(linelen=linelen, linebreakok=linebreakok, maxlines=maxlines)

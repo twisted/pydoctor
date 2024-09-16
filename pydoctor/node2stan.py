@@ -14,6 +14,7 @@ from twisted.web.template import Tag
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable
     from pydoctor.epydoc.markup import DocstringLinker
+    from pydoctor.epydoc.docutils import obj_reference
 
 from pydoctor.epydoc.docutils import get_lineno
 from pydoctor.epydoc.doctest import colorize_codeblock, colorize_doctest
@@ -23,7 +24,9 @@ def node2html(node: nodes.Node, docstring_linker: 'DocstringLinker') -> List[str
     """
     Convert a L{docutils.nodes.Node} object to HTML strings.
     """
-    visitor = HTMLTranslator(node.document, docstring_linker)
+    if (doc:=node.document) is None:
+        raise AssertionError(f'missing document attribute on {node}')
+    visitor = HTMLTranslator(doc, docstring_linker)
     node.walkabout(visitor)
     return visitor.body
 
@@ -81,16 +84,17 @@ class HTMLTranslator(html4css1.HTMLTranslator):
         if self.settings is None:
             if docutils_version_info >= (0,19):
                 # Direct access to OptionParser is deprecated from Docutils 0.19
-                # FIXME: https://github.com/twisted/pydoctor/issues/504
-                # Stubs are not up to date because we use pinned version of types-docutils
-                settings = frontend.get_default_settings(html4css1.Writer()) # type:ignore[attr-defined]
+                settings = frontend.get_default_settings(html4css1.Writer())
             else:
-                settings = frontend.OptionParser([html4css1.Writer()]).get_default_values()
+                settings = frontend.OptionParser([html4css1.Writer()]).get_default_values() # type: ignore
             
             # Save default settings as class attribute not to re-compute it all the times
             self.__class__.settings = settings
+        else:
+            #                        yes "optparse.Values" and "docutils.frontend.Values" are compatible.
+            settings = self.settings # type: ignore
         
-        document.settings = self.settings
+        document.settings = settings
 
         super().__init__(document)
 
@@ -99,15 +103,15 @@ class HTMLTranslator(html4css1.HTMLTranslator):
         self.section_level += 1
 
     # Handle interpreted text (crossreferences)
-    def visit_title_reference(self, node: nodes.Node) -> None:
+    def visit_title_reference(self, node: nodes.title_reference) -> None:
         lineno = get_lineno(node)
         self._handle_reference(node, link_func=lambda target, label: self._linker.link_xref(target, label, lineno))
     
     # Handle internal references
-    def visit_obj_reference(self, node: nodes.Node) -> None:
+    def visit_obj_reference(self, node: obj_reference) -> None:
         self._handle_reference(node, link_func=self._linker.link_to)
     
-    def _handle_reference(self, node: nodes.Node, link_func: Callable[[str, "Flattenable"], "Flattenable"]) -> None:
+    def _handle_reference(self, node: nodes.title_reference, link_func: Callable[[str, "Flattenable"], "Flattenable"]) -> None:
         label: "Flattenable"
         if 'refuri' in node.attributes:
             # Epytext parsed or manually constructed nodes.
@@ -127,16 +131,16 @@ class HTMLTranslator(html4css1.HTMLTranslator):
         self.body.append(flatten(link_func(target, label)))
         raise nodes.SkipNode()
 
-    def should_be_compact_paragraph(self, node: nodes.Node) -> bool:
+    def should_be_compact_paragraph(self, node: nodes.Element) -> bool:
         if self.document.children == [node]:
             return True
         else:
             return super().should_be_compact_paragraph(node)  # type: ignore[no-any-return]
 
-    def visit_document(self, node: nodes.Node) -> None:
+    def visit_document(self, node: nodes.document) -> None:
         pass
 
-    def depart_document(self, node: nodes.Node) -> None:
+    def depart_document(self, node: nodes.document) -> None:
         pass
 
     def starttag(self, node: nodes.Node, tagname: str, suffix: str = '\n', **attributes: Any) -> str:
@@ -156,7 +160,7 @@ class HTMLTranslator(html4css1.HTMLTranslator):
 
         # Get the list of all attribute dictionaries we need to munge.
         attr_dicts = [attributes]
-        if isinstance(node, nodes.Node):
+        if isinstance(node, nodes.Element):
             attr_dicts.append(node.attributes)
         if isinstance(node, dict):
             attr_dicts.append(node)
@@ -197,7 +201,7 @@ class HTMLTranslator(html4css1.HTMLTranslator):
 
         return super().starttag(node, tagname, suffix, **attributes)  # type: ignore[no-any-return]
 
-    def visit_doctest_block(self, node: nodes.Node) -> None:
+    def visit_doctest_block(self, node: nodes.doctest_block) -> None:
         pysrc = node[0].astext()
         if node.get('codeblock'):
             self.body.append(flatten(colorize_codeblock(pysrc)))
@@ -215,64 +219,64 @@ class HTMLTranslator(html4css1.HTMLTranslator):
 
     # this part of the HTMLTranslator is based on sphinx's HTMLTranslator:
     # https://github.com/sphinx-doc/sphinx/blob/3.x/sphinx/writers/html.py#L271
-    def _visit_admonition(self, node: nodes.Node, name: str) -> None:
+    def _visit_admonition(self, node: nodes.Element, name: str) -> None:
         self.body.append(self.starttag(
             node, 'div', CLASS=('admonition ' + _valid_identifier(name))))
         node.insert(0, nodes.title(name, name.title()))
         self.set_first_last(node)
 
-    def visit_note(self, node: nodes.Node) -> None:
+    def visit_note(self, node: nodes.Element) -> None:
         self._visit_admonition(node, 'note')
 
-    def depart_note(self, node: nodes.Node) -> None:
+    def depart_note(self, node: nodes.Element) -> None:
         self.depart_admonition(node)
 
-    def visit_warning(self, node: nodes.Node) -> None:
+    def visit_warning(self, node: nodes.Element) -> None:
         self._visit_admonition(node, 'warning')
 
-    def depart_warning(self, node: nodes.Node) -> None:
+    def depart_warning(self, node: nodes.Element) -> None:
         self.depart_admonition(node)
 
-    def visit_attention(self, node: nodes.Node) -> None:
+    def visit_attention(self, node: nodes.Element) -> None:
         self._visit_admonition(node, 'attention')
 
-    def depart_attention(self, node: nodes.Node) -> None:
+    def depart_attention(self, node: nodes.Element) -> None:
         self.depart_admonition(node)
 
-    def visit_caution(self, node: nodes.Node) -> None:
+    def visit_caution(self, node: nodes.Element) -> None:
         self._visit_admonition(node, 'caution')
 
-    def depart_caution(self, node: nodes.Node) -> None:
+    def depart_caution(self, node: nodes.Element) -> None:
         self.depart_admonition(node)
 
-    def visit_danger(self, node: nodes.Node) -> None:
+    def visit_danger(self, node: nodes.Element) -> None:
         self._visit_admonition(node, 'danger')
 
-    def depart_danger(self, node: nodes.Node) -> None:
+    def depart_danger(self, node: nodes.Element) -> None:
         self.depart_admonition(node)
 
-    def visit_error(self, node: nodes.Node) -> None:
+    def visit_error(self, node: nodes.Element) -> None:
         self._visit_admonition(node, 'error')
 
-    def depart_error(self, node: nodes.Node) -> None:
+    def depart_error(self, node: nodes.Element) -> None:
         self.depart_admonition(node)
 
-    def visit_hint(self, node: nodes.Node) -> None:
+    def visit_hint(self, node: nodes.Element) -> None:
         self._visit_admonition(node, 'hint')
 
-    def depart_hint(self, node: nodes.Node) -> None:
+    def depart_hint(self, node: nodes.Element) -> None:
         self.depart_admonition(node)
 
-    def visit_important(self, node: nodes.Node) -> None:
+    def visit_important(self, node: nodes.Element) -> None:
         self._visit_admonition(node, 'important')
 
-    def depart_important(self, node: nodes.Node) -> None:
+    def depart_important(self, node: nodes.Element) -> None:
         self.depart_admonition(node)
 
-    def visit_tip(self, node: nodes.Node) -> None:
+    def visit_tip(self, node: nodes.Element) -> None:
         self._visit_admonition(node, 'tip')
 
-    def depart_tip(self, node: nodes.Node) -> None:
+    def depart_tip(self, node: nodes.Element) -> None:
         self.depart_admonition(node)
 
     def visit_wbr(self, node: nodes.Node) -> None:
@@ -281,13 +285,13 @@ class HTMLTranslator(html4css1.HTMLTranslator):
     def depart_wbr(self, node: nodes.Node) -> None:
         pass
 
-    def visit_seealso(self, node: nodes.Node) -> None:
+    def visit_seealso(self, node: nodes.Element) -> None:
         self._visit_admonition(node, 'see also')
 
-    def depart_seealso(self, node: nodes.Node) -> None:
+    def depart_seealso(self, node: nodes.Element) -> None:
         self.depart_admonition(node)
 
-    def visit_versionmodified(self, node: nodes.Node) -> None:
+    def visit_versionmodified(self, node: nodes.Element) -> None:
         self.body.append(self.starttag(node, 'div', CLASS=node['type']))
 
     def depart_versionmodified(self, node: nodes.Node) -> None:
