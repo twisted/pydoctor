@@ -76,9 +76,15 @@ What's New?
 in development
 ^^^^^^^^^^^^^^
 
+* Drop Python 3.7 and support Python 3.13.
 * Add support for doc-comments as found in Sphinx. Use the special comment formatting ``#:`` to start the comment instead of just ``#``.
   Comments need to be either on a line of their own before the definition, or immediately after the assignment on the same line. 
 * Trigger a warning when several docstrings are detected for the same object.
+* Improve typing of docutils related code.
+* Run unit tests on all supported combinations of Python versions and platforms, including PyPy for Windows. Previously, tests where ran on all supported Python version for Linux, but not for MacOS and Windows.
+* Replace the deprecated dependency appdirs with platformdirs.
+* Fix WinError caused by the failure of the symlink creation process.
+  Pydoctor should now run on windows without the need to be administrator.
 
 pydoctor 24.3.3
 ^^^^^^^^^^^^^^^

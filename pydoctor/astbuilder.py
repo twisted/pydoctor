@@ -18,7 +18,7 @@ from pydoctor import epydoc2stan, model, node2stan, extensions, linker
 from pydoctor.epydoc.markup._pyval_repr import colorize_inline_pyval
 from pydoctor.astutils import (is_none_literal, is_typing_annotation, is_using_annotations, is_using_typing_final, node2dottedname, node2fullname, 
                                is__name__equals__main__, unstring_annotation, upgrade_annotation, iterassign, extract_docstring_linenum, infer_type, get_parents,
-                               get_docstring_node, unparse, extract_doc_comment_before, extract_doc_comment_after, NodeVisitor, Parentage, Str)
+                               get_docstring_node, get_assign_docstring_node, extract_doc_comment_before, extract_doc_comment_after, unparse, NodeVisitor, Parentage, Str)
 
 def parseFile(path: Path) -> tuple[ast.Module, Sequence[str]]:
     """
@@ -35,7 +35,6 @@ if sys.version_info >= (3,8):
 else:
     _parse = ast.parse
 
-
 def _maybeAttribute(cls: model.Class, name: str) -> bool:
     """Check whether a name is a potential attribute of the given class.
     This is used to prevent an assignment that wraps a method from
@@ -47,6 +46,10 @@ def _maybeAttribute(cls: model.Class, name: str) -> bool:
     obj = cls.find(name)
     return obj is None or isinstance(obj, model.Attribute)
 
+class IgnoreAssignment(Exception):
+    """
+    A control flow exception meaning that the assignment should not be further proccessed.
+    """
 
 def _handleAliasing(
         ctx: model.CanContainImportsDocumentable,
@@ -544,12 +547,6 @@ class ModuleVistor(NodeVisitor):
             else:
                 obj.value = new_value
     
-    def _storeCurrentAttr(self, obj:model.Attribute, 
-                          augassign:Optional[object]=None) -> None:
-        if not augassign:
-            self.builder.currentAttr = obj
-        else:
-            self.builder.currentAttr = None
 
     def _handleModuleVar(self,
             target: str,
@@ -561,7 +558,7 @@ class ModuleVistor(NodeVisitor):
         if target in MODULE_VARIABLES_META_PARSERS:
             # This is metadata, not a variable that needs to be documented,
             # and therefore doesn't need an Attribute instance.
-            return
+            raise IgnoreAssignment()
         parent = self.builder.current
         obj = parent.contents.get(target)
         if obj is None:
@@ -569,7 +566,8 @@ class ModuleVistor(NodeVisitor):
                 return
             obj = self.builder.addAttribute(name=target, 
                                             kind=model.DocumentableKind.VARIABLE, 
-                                            parent=parent)
+                                            parent=parent, 
+                                            lineno=lineno)
         
         # If it's not an attribute it means that the name is already denifed as function/class 
         # probably meaning that this attribute is a bound callable. 
@@ -583,7 +581,7 @@ class ModuleVistor(NodeVisitor):
         # that are in reality not existing because they have values in a partial() call for instance.
 
         if not isinstance(obj, model.Attribute):
-            return
+            raise IgnoreAssignment()
         
         self._setAttributeAnnotation(obj, annotation)
         
@@ -592,7 +590,6 @@ class ModuleVistor(NodeVisitor):
         self._handleConstant(obj, annotation, expr, lineno, 
                                   model.DocumentableKind.VARIABLE)
         self._storeAttrValue(obj, expr, augassign)
-        self._storeCurrentAttr(obj, augassign)
 
     def _handleAssignmentInModule(self,
             target: str,
@@ -606,7 +603,7 @@ class ModuleVistor(NodeVisitor):
         if not _handleAliasing(module, target, expr):
             self._handleModuleVar(target, annotation, expr, lineno, augassign=augassign)
         else:
-            self.builder.currentAttr = None
+            raise IgnoreAssignment()
 
     def _handleClassVar(self,
             name: str,
@@ -615,10 +612,11 @@ class ModuleVistor(NodeVisitor):
             lineno: int,
             augassign:Optional[ast.operator],
             ) -> None:
+        
         cls = self.builder.current
         assert isinstance(cls, model.Class)
         if not _maybeAttribute(cls, name):
-            return
+            raise IgnoreAssignment()
 
         # Class variables can only be Attribute, so it's OK to cast
         obj = cast(Optional[model.Attribute], cls.contents.get(name))
@@ -626,39 +624,35 @@ class ModuleVistor(NodeVisitor):
         if obj is None:
             if augassign:
                 return
-            obj = self.builder.addAttribute(name=name, kind=None, parent=cls)
+            obj = self.builder.addAttribute(name=name, kind=None, parent=cls, lineno=lineno)
 
         if obj.kind is None:
             obj.kind = model.DocumentableKind.CLASS_VARIABLE
 
         self._setAttributeAnnotation(obj, annotation)
-
+        
         obj.setLineNumber(lineno)
 
         self._handleConstant(obj, annotation, expr, lineno, 
                                   model.DocumentableKind.CLASS_VARIABLE)
         self._storeAttrValue(obj, expr, augassign)
-        self._storeCurrentAttr(obj, augassign)
 
+       
     def _handleInstanceVar(self,
             name: str,
             annotation: Optional[ast.expr],
             expr: Optional[ast.expr],
             lineno: int
             ) -> None:
-        func = self.builder.current
-        if not isinstance(func, model.Function):
-            return
-        cls = func.parent
-        if not isinstance(cls, model.Class):
-            return
+        if not (cls:=self._getClassFromMethodContext()):
+            raise IgnoreAssignment()
         if not _maybeAttribute(cls, name):
-            return
+            raise IgnoreAssignment()
 
         # Class variables can only be Attribute, so it's OK to cast because we used _maybeAttribute() above.
         obj = cast(Optional[model.Attribute], cls.contents.get(name))
         if obj is None:
-            obj = self.builder.addAttribute(name=name, kind=None, parent=cls)
+            obj = self.builder.addAttribute(name=name, kind=None, parent=cls, lineno=lineno)
 
         self._setAttributeAnnotation(obj, annotation)
 
@@ -666,7 +660,6 @@ class ModuleVistor(NodeVisitor):
         # undonditionnaly set the kind to ivar
         obj.kind = model.DocumentableKind.INSTANCE_VARIABLE
         self._storeAttrValue(obj, expr)
-        self._storeCurrentAttr(obj)
 
     def _handleAssignmentInClass(self,
             target: str,
@@ -680,7 +673,7 @@ class ModuleVistor(NodeVisitor):
         if not _handleAliasing(cls, target, expr):
             self._handleClassVar(target, annotation, expr, lineno, augassign=augassign)
         else:
-            self.builder.currentAttr = None
+            raise IgnoreAssignment()
 
     def _handleDocstringUpdate(self,
             targetNode: ast.expr,
@@ -737,6 +730,9 @@ class ModuleVistor(NodeVisitor):
             lineno: int,
             augassign:Optional[ast.operator]=None,
             ) -> None:
+        """
+        @raises IgnoreAssignment: If the assignemnt should not be further processed.
+        """
         if isinstance(targetNode, ast.Name):
             target = targetNode.id
             scope = self.builder.current
@@ -749,21 +745,21 @@ class ModuleVistor(NodeVisitor):
             value = targetNode.value
             if targetNode.attr == '__doc__':
                 self._handleDocstringUpdate(value, expr, lineno)
+                raise IgnoreAssignment()
             elif isinstance(value, ast.Name) and value.id == 'self':
                 self._handleInstanceVar(targetNode.attr, annotation, expr, lineno)
-    
-    def _handleDocComment(self, node: ast.Assign | ast.AnnAssign):
-        # it does not work with tuple unpacking statements or multiple names at the moment
-        # as we cannot tell which of the variables the docstring is
-        # for, and how to assign the right side to the variables on the left....
-        # Sphinx on the opposite will assigne the same docstring to all variables detected on the left hand side.
-        # We need PR  #585 before merging this feature!
-        targets = node.targets if isinstance(node, ast.Assign) else [node.target]
-        if any(isinstance(t, ast.Tuple) for t in targets) or len(targets) > 1:
-            return # should we trigger a warning if a valid doc_comment is found?
+        else:
+            raise IgnoreAssignment()
+
+    def _handleDocComment(self, node: ast.Assign | ast.AnnAssign, target: ast.expr):
+        # Process the doc-comments, this is very similiar to the inline docstrings.
+        try:
+            parent, name = self._contextualizeTarget(target)
+        except ValueError:
+            return
         
-        attr = self.builder.currentAttr
-        if attr is None:
+        # fetch the target of the inline docstring
+        if (attr:=parent.contents.get(name)) is None:
             return
         
         lines = self.builder.lines_collection[self.module]
@@ -786,34 +782,95 @@ class ModuleVistor(NodeVisitor):
                 ast.Constant(type_comment, lineno=lineno), self.builder.current), self.builder.current)
 
         for target in node.targets:
-            if isinstance(target, ast.Tuple):
-                for elem in target.elts:
-                    # Note: We skip type and aliasing analysis for this case,
-                    #       but we do record line numbers.
-                    self._handleAssignment(elem, None, None, lineno)
+            try:
+                if isTupleAssignment:=isinstance(target, ast.Tuple):
+                    for elem in target.elts:
+                        # Note: We skip type and aliasing analysis for this case,
+                        #       but we do record line numbers.
+                        self._handleAssignment(elem, None, None, lineno)
+                else:
+                    self._handleAssignment(target, annotation, expr, lineno)
+            except IgnoreAssignment:
+                continue
             else:
-                self._handleAssignment(target, annotation, expr, lineno)
-        self._handleDocComment(node)
+                if not isTupleAssignment:
+                    self._handleDocComment(node, target)
+                    self._handleInlineDocstrings(node, target)
+                else:
+                    for elem in cast(ast.Tuple, target).elts: # mypy is not as smart as pyright yet.
+                        self._handleDocComment(node, elem)
+                        self._handleInlineDocstrings(node, elem)
 
     def visit_AnnAssign(self, node: ast.AnnAssign) -> None:
         annotation = upgrade_annotation(unstring_annotation(
             node.annotation, self.builder.current), self.builder.current)
-        self._handleAssignment(node.target, annotation, node.value, node.lineno)
-        self._handleDocComment(node)
+        try:
+            self._handleAssignment(node.target, annotation, node.value, node.lineno)
+        except IgnoreAssignment:
+            return
+        else:
+            self._handleDocComment(node, node.target)
+            self._handleInlineDocstrings(node, node.target)
+
+    def _getClassFromMethodContext(self) -> Optional[model.Class]:
+        func = self.builder.current
+        if not isinstance(func, model.Function):
+            return None
+        cls = func.parent
+        if not isinstance(cls, model.Class):
+            return None
+        return cls
+    
+    def _contextualizeTarget(self, target:ast.expr) -> Tuple[model.Documentable, str]:
+        """
+        Find out the documentatble wich is the parent of the assignment's target as well as it's name. 
+
+        @returns: Tuple C{parent, name}. 
+        @raises ValueError: if the target does not bind a new variable.
+        """
+        dottedname = node2dottedname(target)
+        if not dottedname or len(dottedname) > 2:
+            raise ValueError('does not bind a new variable')
+        parent: model.Documentable
+        if len(dottedname) == 2 and dottedname[0] == 'self':
+            # an instance variable.
+            # TODO: This currently only works if the first argument of methods
+            # is named 'self'.
+            if (maybe_cls:=self._getClassFromMethodContext()) is None:
+                raise ValueError('using self in unsupported context')
+            dottedname = dottedname[1:]
+            parent = maybe_cls
+        elif len(dottedname) != 1:
+            raise ValueError('does not bind a new variable')
+        else:
+            parent = self.builder.current
+        return parent, dottedname[0]
+
+    def _handleInlineDocstrings(self, assign:Union[ast.Assign, ast.AnnAssign], target:ast.expr) -> None:
+        # Process the inline docstrings
+        try:
+            parent, name = self._contextualizeTarget(target)
+        except ValueError:
+            return
+        
+        docstring_node = get_assign_docstring_node(assign)
+        if docstring_node:
+            # fetch the target of the inline docstring
+            attr = parent.contents.get(name)
+            if attr:
+                attr.setDocstring(docstring_node)
     
     def visit_AugAssign(self, node:ast.AugAssign) -> None:
-        self._handleAssignment(node.target, None, node.value, 
-                               node.lineno, augassign=node.op)
+        try:
+            self._handleAssignment(node.target, None, node.value, 
+                                node.lineno, augassign=node.op)
+        except IgnoreAssignment:
+            pass
 
+    
     def visit_Expr(self, node: ast.Expr) -> None:
-        value = node.value
-        if isinstance(value, Str):
-            attr = self.builder.currentAttr
-            if attr is not None:
-                attr.setDocstring(value)
-                self.builder.currentAttr = None
+        # Visit's ast.Expr.value with the visitor, used by extensions to visit top-level calls.
         self.generic_visit(node)
-
 
     def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:
         self._handleFunctionDef(node, is_async=True)
@@ -978,7 +1035,8 @@ class ModuleVistor(NodeVisitor):
 
         attr = self.builder.addAttribute(name=node.name, 
                                          kind=model.DocumentableKind.PROPERTY, 
-                                         parent=self.builder.current)
+                                         parent=self.builder.current, 
+                                         lineno=lineno)
         attr.setLineNumber(lineno)
 
         if doc_node is not None:
@@ -1100,27 +1158,32 @@ class ASTBuilder:
         
         self.current = cast(model.Documentable, None) #: current visited object
         self.currentMod: Optional[model.Module] = None #: module, set when visiting ast.Module
-        self.currentAttr: Optional[model.Documentable] = None #: recently visited attribute object
         
         self._stack: List[model.Documentable] = []
         self.ast_cache: Dict[Path, Optional[ast.Module]] = {} #: avoids calling parse() twice for the same path
         self.lines_collection: dict[model.Module, Sequence[str] | None] = {} #: mapping from modules to source code lines 
 
-
-    def _push(self, cls: Type[DocumentableT], name: str, lineno: int) -> DocumentableT:
+    def _push(self, 
+              cls: Type[DocumentableT], 
+              name: str, 
+              lineno: int, 
+              parent:Optional[model.Documentable]=None) -> DocumentableT:
         """
         Create and enter a new object of the given type and add it to the system.
+
+        @param parent: Parent of the new documentable instance, it will use self.current if unspecified.
+            Used for attributes declared in methods, typically ``__init__``.
         """
-        obj = cls(self.system, name, self.current)
-        self.push(obj, lineno)
+        obj = cls(self.system, name, parent or self.current)
+        self.push(obj, lineno) 
+        # make sure push() is called before addObject() since addObject() can trigger a warning for duplicates
+        # and this relies on the correct parentMod attribute, which is set in push().
         self.system.addObject(obj)
-        self.currentAttr = None
         return obj
 
     def _pop(self, cls: Type[model.Documentable]) -> None:
         assert isinstance(self.current, cls)
         self.pop(self.current)
-        self.currentAttr = None
 
     def push(self, obj: model.Documentable, lineno: int) -> None:
         """
@@ -1175,18 +1238,17 @@ class ASTBuilder:
         self._pop(self.system.Function)
 
     def addAttribute(self,
-            name: str, kind: Optional[model.DocumentableKind], parent: model.Documentable
+            name: str, 
+            kind: Optional[model.DocumentableKind], 
+            parent: model.Documentable, 
+            lineno: int
             ) -> model.Attribute:
         """
-        Add a new attribute to the system, attributes cannot be "entered".
+        Add a new attribute to the system.
         """
-        system = self.system
-        parentMod = self.currentMod
-        attr = system.Attribute(system, name, parent)
+        attr = self._push(self.system.Attribute, name, lineno, parent=parent)
+        self._pop(self.system.Attribute)
         attr.kind = kind
-        attr.parentMod = parentMod
-        system.addObject(attr)
-        self.currentAttr = attr
         return attr
 
 

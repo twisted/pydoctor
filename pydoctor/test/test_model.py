@@ -340,7 +340,7 @@ def test_introspection_extension() -> None:
 
 testpackages = Path(__file__).parent / 'testpackages'
 
-@pytest.mark.skipif("platform.python_implementation() == 'PyPy'")
+@pytest.mark.skipif("platform.python_implementation() == 'PyPy' or platform.system() == 'Windows'")
 def test_c_module_text_signature(capsys:CapSys) -> None:
     
     c_module_invalid_text_signature = testpackages / 'c_module_invalid_text_signature'
@@ -379,7 +379,7 @@ def test_c_module_text_signature(capsys:CapSys) -> None:
         # cleanup
         subprocess.getoutput(f'rm -f {package_path}/*.so')
 
-@pytest.mark.skipif("platform.python_implementation() == 'PyPy'")
+@pytest.mark.skipif("platform.python_implementation() == 'PyPy' or platform.system() == 'Windows'")
 def test_c_module_python_module_name_clash(capsys:CapSys) -> None:
     c_module_python_module_name_clash = testpackages / 'c_module_python_module_name_clash'
     package_path = c_module_python_module_name_clash / 'mymod'

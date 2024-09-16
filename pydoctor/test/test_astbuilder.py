@@ -8,7 +8,7 @@ from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring
 from pydoctor.options import Options
 from pydoctor.stanutils import flatten, html2stan, flatten_text
 from pydoctor.epydoc.markup.epytext import Element, ParsedEpytextDocstring
-from pydoctor.epydoc2stan import format_summary, get_parsed_type
+from pydoctor.epydoc2stan import _get_docformat, format_summary, get_parsed_type
 from pydoctor.test.test_packages import processPackage
 from pydoctor.utils import partialclass
 
@@ -2757,7 +2757,7 @@ def test_doc_comment(systemcls: Type[model.System],  capsys: CapSys) -> None:
             '                  #: for attr4\n'
             '    #: comment before attr5\n'
             '    attr5 = None  #: attribute comment for attr5\n'
-            '    attr6, attr7 = 1, 2  #: this comment is ignored\n'
+            '    attr6, attr7 = 1, 2  #: this comment is not ignored\n'
             '\n'
             '    def __init__(self):\n'
             '       self.attr8 = None  #: first attribute comment (ignored)\n'
@@ -2787,8 +2787,8 @@ def test_doc_comment(systemcls: Type[model.System],  capsys: CapSys) -> None:
     assert docs('attr4') == 'long attribute comment'
     assert docs('attr4') == 'long attribute comment'
     assert docs('attr5') == 'attribute comment for attr5'
-    assert docs('attr6') == None #'this comment is ignored'
-    assert docs('attr7') == None #'this comment is ignored'
+    assert docs('attr6') == 'this comment is not ignored' 
+    assert docs('attr7') == 'this comment is not ignored'
     assert docs('attr8') == 'attribute comment for attr8'
     assert docs('attr9') == 'string after attr9'
     
@@ -2881,6 +2881,26 @@ def test_mutilple_docstring_with_doc_comments_warnings(systemcls: Type[model.Sys
     assert mod.contents['B2'].contents['a'].docstring == 're-re-docs'
 
 @systemcls_param
+def test_doc_comment_multiple_assigments(systemcls: Type[model.System], capsys: CapSys) -> None:
+    # TODO: this currently does not support nested tuple assignments.
+    src = '''
+    class C:
+        def __init__(self):
+            self.x, x = 1, 1 #: x docs
+            self.y = x = 1 #: y docs
+    x,y = 1,1 #: x and y docs
+    v = w = 1 #: v and w docs
+    '''
+    mod =  fromText(src, systemcls=systemcls)
+    assert not capsys.readouterr().out
+    assert mod.contents['x'].docstring == 'x and y docs'
+    assert mod.contents['y'].docstring == 'x and y docs'
+    assert mod.contents['v'].docstring == 'v and w docs'
+    assert mod.contents['w'].docstring == 'v and w docs'
+    assert mod.contents['C'].contents['x'].docstring == 'x docs'
+    assert mod.contents['C'].contents['y'].docstring == 'y docs'
+
+@systemcls_param
 def test_other_encoding(systemcls: Type[model.System], capsys: CapSys) -> None:
     # Test for issue https://github.com/twisted/pydoctor/issues/805
     # We're missing support for other kind of encodings.
@@ -2896,5 +2916,114 @@ def test_alias_resets_attribute_state(systemcls: Type[model.System], capsys:CapS
     A = E.a  #: trash1
     ABBR = E.abbr  #: trash2
     '''
-    mod = fromText(src, systemcls=systemcls)
+    fromText(src, systemcls=systemcls)
     assert not capsys.readouterr().out
+    
+@systemcls_param
+def test_inline_docstring_multiple_assigments(systemcls: Type[model.System], capsys: CapSys) -> None:
+    # TODO: this currently does not support nested tuple assignments.
+    src = '''
+    class C:
+        def __init__(self):
+            self.x, x = 1, 1; 'x docs'
+            self.y = x = 1; 'y docs'
+    x,y = 1,1; 'x and y docs'
+    v = w = 1; 'v and w docs'
+    '''
+    mod =  fromText(src, systemcls=systemcls)
+    assert not capsys.readouterr().out
+    assert mod.contents['x'].docstring == 'x and y docs'
+    assert mod.contents['y'].docstring == 'x and y docs'
+    assert mod.contents['v'].docstring == 'v and w docs'
+    assert mod.contents['w'].docstring == 'v and w docs'
+    assert mod.contents['C'].contents['x'].docstring == 'x docs'
+    assert mod.contents['C'].contents['y'].docstring == 'y docs'
+
+
+@systemcls_param
+def test_does_not_misinterpret_string_as_documentation(systemcls: Type[model.System], capsys: CapSys) -> None:
+    # exmaple from numpy/distutils/ccompiler_opt.py
+    src = '''
+    __docformat__ = 'numpy'
+    class C:
+        """
+        Attributes
+        ----------
+        cc_noopt : bool
+            docs
+        """
+        def __init__(self):
+            self.cc_noopt = x
+
+            if True:
+                """
+                this is not documentation
+                """
+    '''
+
+    mod =  fromText(src, systemcls=systemcls)
+    assert _get_docformat(mod) == 'numpy'
+    assert not capsys.readouterr().out
+    assert mod.contents['C'].contents['cc_noopt'].docstring is None 
+    # The docstring is None... this is the sad side effect of processing ivar fields :/
+
+    assert to_html(mod.contents['C'].contents['cc_noopt'].parsed_docstring) == 'docs' #type:ignore
+
+@systemcls_param
+def test_unsupported_usage_of_self(systemcls: Type[model.System], capsys: CapSys) -> None:
+    src = '''
+    class C:
+        ...
+    def C_init(self):
+        self.x = True; 'not documentation'
+        self.y += False # erroneous usage of augassign; 'not documentation'
+    C.__init__ = C_init
+
+    self = object()
+    self.x = False
+    """
+    not documentation
+    """
+    '''
+    mod =  fromText(src, systemcls=systemcls)
+    assert not capsys.readouterr().out
+    assert list(mod.contents['C'].contents) == []
+    assert not mod.contents['self'].docstring
+
+@systemcls_param
+def test_inline_docstring_at_wrong_place(systemcls: Type[model.System], capsys: CapSys) -> None:
+    src = '''
+    a = objetc()
+    a.b = True
+    """
+    not documentation
+    """
+    b = object()
+    b.x: bool = False
+    """
+    still not documentation
+    """
+    c = {}
+    c[1] = True
+    """
+    Again not documenatation
+    """
+    d = {}
+    d[1].__init__ = True
+    """
+    Again not documenatation
+    """
+    e = {}
+    e[1].__init__ += True
+    """
+    Again not documenatation
+    """
+    '''
+    mod =  fromText(src, systemcls=systemcls)
+    assert not capsys.readouterr().out
+    assert list(mod.contents) == ['a', 'b', 'c', 'd', 'e']
+    assert not mod.contents['a'].docstring
+    assert not mod.contents['b'].docstring
+    assert not mod.contents['c'].docstring
+    assert not mod.contents['d'].docstring
+    assert not mod.contents['e'].docstring

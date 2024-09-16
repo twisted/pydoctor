@@ -217,6 +217,32 @@ def is_using_annotations(expr: Optional[ast.AST],
                 return True
     return False
 
+def get_assign_docstring_node(assign:ast.Assign | ast.AnnAssign) -> Str | None:
+    """
+    Get the docstring for a L{ast.Assign} or L{ast.AnnAssign} node.
+
+    This helper function relies on the non-standard C{.parent} attribute on AST nodes
+    to navigate upward in the tree and determine this node direct siblings.
+    """
+    parent_node = getattr(assign, 'parent', None)
+    
+    if not parent_node:
+        assert False, "The 'parent' attribute is not correctly set up on ast nodes."
+
+    body = getattr(parent_node, 'body', None)
+    
+    if body:
+        assert isinstance(body, list)
+        assign_index = body.index(assign)
+        try:
+            right_sibling = body[assign_index+1]
+        except IndexError:
+            return None
+        if isinstance(right_sibling, ast.Expr) and \
+           get_str_value(right_sibling.value) is not None:
+            return cast(Str, right_sibling.value)
+    return None
+
 def is_none_literal(node: ast.expr) -> bool:
     """Does this AST node represent the literal constant None?"""
     if sys.version_info >= (3,8):

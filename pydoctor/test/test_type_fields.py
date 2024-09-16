@@ -48,7 +48,7 @@ def test_parsed_type_convert_obj_tokens_to_stan() -> None:
 
                 ([("list", TokenType.OBJ), ("(", TokenType.DELIMITER), ("int", TokenType.OBJ), (")", TokenType.DELIMITER), (", ", TokenType.DELIMITER), ("optional", TokenType.CONTROL)], 
                 [(Tag('code', children=['list', '(', 'int', ')']), TokenType.OBJ), (", ", TokenType.DELIMITER), ("optional", TokenType.CONTROL)]),
-            ] 
+            ]
 
     ann = ParsedTypeDocstring("")
 
