@@ -759,7 +759,7 @@ class ModuleVistor(NodeVisitor):
         # Sphinx on the opposite will assigne the same docstring to all variables detected on the left hand side.
         # We need PR  #585 before merging this feature!
         targets = node.targets if isinstance(node, ast.Assign) else [node.target]
-        if any(isinstance(t, ast.Tuple) for t in targets) or len(node.targets) > 1:
+        if any(isinstance(t, ast.Tuple) for t in targets) or len(targets) > 1:
             return # should we trigger a warning if a valid doc_comment is found?
         
         attr = self.builder.currentAttr
