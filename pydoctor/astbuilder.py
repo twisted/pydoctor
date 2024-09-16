@@ -751,14 +751,14 @@ class ModuleVistor(NodeVisitor):
         else:
             raise IgnoreAssignment()
 
-    def _handleDocComment(self, node: ast.Assign | ast.AnnAssign, target: ast.expr):
+    def _handleDocComment(self, node: ast.Assign | ast.AnnAssign, target: ast.expr) -> None:
         # Process the doc-comments, this is very similiar to the inline docstrings.
         try:
             parent, name = self._contextualizeTarget(target)
         except ValueError:
             return
         
-        # fetch the target of the inline docstring
+        # fetch the target of the doc-comment
         if (attr:=parent.contents.get(name)) is None:
             return
         

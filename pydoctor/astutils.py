@@ -836,18 +836,18 @@ class Token:
                                              self.value.strip())
 
 class TokenProcessor:
-    def __init__(self, buffers: List[str]) -> None:
+    def __init__(self, buffers: Sequence[str]) -> None:
         lines = iter(buffers)
         self.buffers = buffers
         self.tokens = generate_tokens(lambda: next(lines))
-        self.current = None     # type: Token
-        self.previous = None    # type: Token
+        self.current: Token | None = None
+        self.previous: Token | None = None
 
     def get_line(self, lineno: int) -> str:
         """Returns specified line."""
         return self.buffers[lineno - 1]
 
-    def fetch_token(self) -> Token:
+    def fetch_token(self) -> Token | None:
         """Fetch a next token from source code.
 
         Returns ``None`` if sequence finished.
@@ -867,6 +867,7 @@ class TokenProcessor:
         """
         tokens = []
         while self.fetch_token():
+            assert self.current
             tokens.append(self.current)
             if self.current == condition:
                 break
@@ -887,14 +888,15 @@ class AfterCommentParser(TokenProcessor):
     and returns the comments for variable if exists.
     """
 
-    def __init__(self, lines: List[str]) -> None:
+    def __init__(self, lines: Sequence[str]) -> None:
         super().__init__(lines)
-        self.comment = None  # type: str
+        self.comment: str | None = None 
 
-    def fetch_rvalue(self) -> List[Token]:
+    def fetch_rvalue(self) -> Sequence[Token]:
         """Fetch right-hand value of assignment."""
-        tokens = []
+        tokens: list[Token] = []
         while self.fetch_token():
+            assert self.current
             tokens.append(self.current)
             if self.current == [OP, '(']:
                 tokens += self.fetch_until([OP, ')'])
@@ -914,7 +916,7 @@ class AfterCommentParser(TokenProcessor):
     def parse(self) -> None:
         """Parse the code and obtain comment after assignment."""
         # skip lvalue (or whole of AnnAssign)
-        while not self.fetch_token().match([OP, '='], NEWLINE, COMMENT):
+        while (current:=self.fetch_token()) and not current.match([OP, '='], NEWLINE, COMMENT):
             assert self.current
 
         # skip rvalue (if exists)
@@ -922,6 +924,7 @@ class AfterCommentParser(TokenProcessor):
             self.fetch_rvalue()
 
         if self.current == COMMENT:
+            assert self.current
             self.comment = self.current.value
 
 comment_re = re.compile('^\\s*#: ?(.*)\r?\n?$')
@@ -938,8 +941,7 @@ def extract_doc_comment_after(node: ast.Assign | ast.AnnAssign, lines: Sequence[
     """
     # check doc comments after assignment
     current_line = lines[node.lineno - 1]
-    parser = AfterCommentParser([current_line[node.col_offset:]] +
-                                lines[node.lineno:])
+    parser = AfterCommentParser([current_line[node.col_offset:], *lines[node.lineno:]])
     parser.parse()
     if parser.comment and comment_re.match(parser.comment):
         docstring = comment_re.sub('\\1', parser.comment)
