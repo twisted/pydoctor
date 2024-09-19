@@ -761,6 +761,9 @@ class ModuleVistor(NodeVisitor):
         for target in node.targets:
             try:
                 if isTupleAssignment:=isinstance(target, ast.Tuple):
+                    # TODO: Only one level of nested tuple is taken into account...
+                    # ideally we would extract al the names declared in the lhs, not
+                    # only the first level ones.
                     for elem in target.elts:
                         # Note: We skip type and aliasing analysis for this case,
                         #       but we do record line numbers.
