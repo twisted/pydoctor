@@ -226,7 +226,7 @@ class ModuleVistor(NodeVisitor):
                 raise self.SkipChildren()
     
     def depart_If(self, node: ast.If) -> None:
-        # At this point the body of the Try node has already been visited
+        # At this point the body of the If node has already been visited
         # Visit the 'orelse' block of the If node, with override guard
         with self.override_guard():
             for n in node.orelse:
@@ -265,10 +265,10 @@ class ModuleVistor(NodeVisitor):
         # Ignore classes within functions.
         parent = self.builder.current
         if isinstance(parent, model.Function):
-            raise self.SkipNode()
+            raise self.SkipNodeAndExtensions()
         # Ignore in override guard
         if self._ignore_name(parent, node.name):
-            raise self.SkipNode(skip_extensions=True)
+            raise self.SkipNodeAndExtensions()
 
         rawbases = []
         initialbases = []
@@ -870,10 +870,10 @@ class ModuleVistor(NodeVisitor):
         # Ignore inner functions.
         parent = self.builder.current
         if isinstance(parent, model.Function):
-            raise self.SkipNode()
+            raise self.SkipNodeAndExtensions()
         # Ignore in override guard
         if self._ignore_name(parent, node.name):
-            raise self.SkipNode(skip_extensions=True)
+            raise self.SkipNodeAndExtensions()
 
         lineno = node.lineno
 
@@ -931,7 +931,7 @@ class ModuleVistor(NodeVisitor):
             # properties set for the primary function and not overloads.
             if existing_func.signature and is_overload_func:
                 existing_func.report(f'{existing_func.fullName()} overload appeared after primary function', lineno_offset=lineno-existing_func.linenumber)
-                raise self.SkipNode()
+                raise self.SkipNodeAndExtensions()
             # Do not recreate function object, just re-push it
             self.builder.push(existing_func, lineno)
             func = existing_func

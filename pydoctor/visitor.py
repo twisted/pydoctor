@@ -82,7 +82,6 @@ class Visitor(_BaseVisitor[T], abc.ABC):
     called from `Visitor.walkabout()` tree traversals to prune
     the tree traversed.
     """
-    skip_extensions = False
   class SkipChildren(_TreePruningException):
     """
     Do not visit any children of the current node.  The current node's
@@ -93,12 +92,10 @@ class Visitor(_BaseVisitor[T], abc.ABC):
     Do not visit the current node's children, and do not call the current
     node's ``depart_...`` method.
     """
-    def __init__(self, skip_extensions:bool=False) -> None:
-       """
-       :param skip_extensions: Whether to skip visitor extentions as well.
-       """
-       super().__init__()
-       self.skip_extensions = skip_extensions
+  class SkipNodeAndExtensions(_TreePruningException):
+     """
+     Like SkipNode() but also skips the extensions.
+     """
     
   def visit(self, ob: T) -> None:
     """Extend the base visit with extensions.
@@ -113,7 +110,7 @@ class Visitor(_BaseVisitor[T], abc.ABC):
     try:
       super().visit(ob)
     except self._TreePruningException as ex:
-      if ex.skip_extensions:
+      if isinstance(ex, self.SkipNodeAndExtensions):
         # this exception should be raised right away since it means
         # not visiting the extension visitors.
         raise
@@ -153,11 +150,10 @@ class Visitor(_BaseVisitor[T], abc.ABC):
     try:
       try:
         self.visit(ob)
-      except self.SkipNode as e:
-        if e.skip_extensions:
-          return
-        else:
-          call_depart = False
+      except self.SkipNode:
+        call_depart = False
+      except self.SkipNodeAndExtensions:
+         return
       else:
         for child in self.get_children(ob):
           self.walkabout(child)
