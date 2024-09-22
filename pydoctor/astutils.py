@@ -217,6 +217,25 @@ def is_using_annotations(expr: Optional[ast.AST],
                 return True
     return False
 
+def get_node_block(node: ast.AST) -> tuple[ast.AST, str]:
+    """
+    Tell in wich block the given node lives in. 
+    
+    A block is defined by a tuple: (parent node, fieldname)
+
+    @raise ValueError: If the assignment parent is missing or boggus.
+    """
+    try:
+        parent = next(get_parents(node))
+    except StopIteration:
+        raise ValueError(f'node has no parents: {node}')
+    for fieldname, value in ast.iter_fields(parent):
+        if value is node or (isinstance(value, (list, tuple)) and node in value):
+            break
+    else:
+        raise ValueError(f"node {node} not found in {parent}")
+    return parent, fieldname
+
 def get_assign_docstring_node(assign:ast.Assign | ast.AnnAssign) -> Str | None:
     """
     Get the docstring for a L{ast.Assign} or L{ast.AnnAssign} node.
@@ -224,18 +243,16 @@ def get_assign_docstring_node(assign:ast.Assign | ast.AnnAssign) -> Str | None:
     This helper function relies on the non-standard C{.parent} attribute on AST nodes
     to navigate upward in the tree and determine this node direct siblings.
     """
-    parent_node = getattr(assign, 'parent', None)
+    # this call raises an ValueError if we're doing something nasty with the ast... please report
+    parent_node, fieldname = get_node_block(assign)
+    statements = getattr(parent_node, fieldname, None)
     
-    if not parent_node:
-        assert False, "The 'parent' attribute is not correctly set up on ast nodes."
-
-    body = getattr(parent_node, 'body', None)
-    
-    if body:
-        assert isinstance(body, list)
-        assign_index = body.index(assign)
+    if isinstance(statements, Sequence):
+        # it must be a sequence if it's not None since an assignment 
+        # can only be a part of a compound statement.
+        assign_index = statements.index(assign)
         try:
-            right_sibling = body[assign_index+1]
+            right_sibling = statements[assign_index+1]
         except IndexError:
             return None
         if isinstance(right_sibling, ast.Expr) and \
