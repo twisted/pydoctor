@@ -85,6 +85,8 @@ in development
 * Replace the deprecated dependency appdirs with platformdirs.
 * Fix WinError caused by the failure of the symlink creation process.
   Pydoctor should now run on windows without the need to be administrator.
+* Fix a bug with inline docstrings, if there is comment in between an assignment and literal string, 
+  the string will not be misinterpreted as being a docstring.
 
 pydoctor 24.3.3
 ^^^^^^^^^^^^^^^
