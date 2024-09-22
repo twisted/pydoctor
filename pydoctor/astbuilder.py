@@ -18,7 +18,8 @@ from pydoctor import epydoc2stan, model, node2stan, extensions, linker
 from pydoctor.epydoc.markup._pyval_repr import colorize_inline_pyval
 from pydoctor.astutils import (is_none_literal, is_typing_annotation, is_using_annotations, is_using_typing_final, node2dottedname, node2fullname, 
                                is__name__equals__main__, unstring_annotation, upgrade_annotation, iterassign, extract_docstring_linenum, infer_type, get_parents,
-                               get_docstring_node, get_assign_docstring_node, extract_doc_comment_before, extract_doc_comment_after, unparse, NodeVisitor, Parentage, Str)
+                               get_docstring_node, get_assign_docstring_node, extract_doc_comment_before, extract_doc_comment_after, validate_inline_docstring_node, 
+                               unparse, NodeVisitor, Parentage, Str)
 
 def parseFile(path: Path) -> tuple[ast.Module, Sequence[str]]:
     """
@@ -857,11 +858,12 @@ class ModuleVistor(NodeVisitor):
             return
         
         docstring_node = get_assign_docstring_node(assign)
-        if docstring_node:
-            # fetch the target of the inline docstring
-            attr = parent.contents.get(name)
-            if attr:
-                attr.setDocstring(docstring_node)
+        # Validate the docstring, it's not valid if there is a comment in between...
+        if docstring_node and validate_inline_docstring_node(assign, 
+                docstring_node, self.builder.lines_collection[self.module]
+                       # fetch the target of the inline docstring
+                ) and (attr:=parent.contents.get(name)):
+            attr.setDocstring(docstring_node)
     
     def visit_AugAssign(self, node:ast.AugAssign) -> None:
         try:

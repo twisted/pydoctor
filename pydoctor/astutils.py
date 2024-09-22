@@ -242,6 +242,9 @@ def get_assign_docstring_node(assign:ast.Assign | ast.AnnAssign) -> Str | None:
 
     This helper function relies on the non-standard C{.parent} attribute on AST nodes
     to navigate upward in the tree and determine this node direct siblings.
+
+    @note: This does not validate whether there is a comment in between the assigment and the 
+        docstring node since the function operates on AST solely. Use L{validate_inline_docstring_node} for that.
     """
     # this call raises an ValueError if we're doing something nasty with the ast... please report
     parent_node, fieldname = get_node_block(assign)
@@ -985,3 +988,12 @@ def extract_doc_comment_before(node: ast.Assign | ast.AnnAssign, lines: Sequence
     return None
 
 # This was part of the sphinx.pycode.parser module.
+
+def validate_inline_docstring_node(node: ast.Assign | ast.AnnAssign, 
+                                   docstring: Str, 
+                                   lines: Sequence[str]) -> bool:
+    """
+    Returns False if the docstring node associated with the given assignment node is not valid. 
+    """
+    start, stop = node.lineno, docstring.lineno - 1
+    return not any(lines[i].lstrip().startswith('#') for i in range(start, stop))

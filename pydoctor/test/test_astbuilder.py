@@ -3029,3 +3029,41 @@ def test_inline_docstring_at_wrong_place(systemcls: Type[model.System], capsys: 
     assert not mod.contents['c'].docstring
     assert not mod.contents['d'].docstring
     assert not mod.contents['e'].docstring
+
+
+@systemcls_param
+def test_inline_docstring_is_invalid_when_there_is_a_comment_in_between(systemcls: Type[model.System], capsys: CapSys) -> None:
+    src = '''
+    a = True
+    #
+    'not documentation'
+
+    b = True
+    # b = False
+    'not documentation'
+
+    c = True
+
+    # c = False
+
+    'not documentation'
+
+    d = True
+
+    # d = False
+
+    """
+    not documentation
+    """
+
+    e = True
+    # e = False
+    """
+    not documentation
+    """
+    '''
+
+    mod =  fromText(src, systemcls=systemcls)
+    assert not capsys.readouterr().out
+    for o in 'abcde':
+        assert not mod.contents[o].docstring
