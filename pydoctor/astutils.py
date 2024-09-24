@@ -216,6 +216,47 @@ def is_using_annotations(expr: Optional[ast.AST],
                 return True
     return False
 
+def get_node_block(node: ast.AST) -> tuple[ast.AST, str]:
+    """
+    Tell in wich block the given node lives in. 
+    
+    A block is defined by a tuple: (parent node, fieldname)
+    """
+    try:
+        parent = next(get_parents(node))
+    except StopIteration:
+        raise ValueError(f'node has no parents: {node}')
+    for fieldname, value in ast.iter_fields(parent):
+        if value is node or (isinstance(value, (list, tuple)) and node in value):
+            break
+    else:
+        raise ValueError(f"node {node} not found in {parent}")
+    return parent, fieldname
+
+def get_assign_docstring_node(assign:ast.Assign | ast.AnnAssign) -> Str | None:
+    """
+    Get the docstring for a L{ast.Assign} or L{ast.AnnAssign} node.
+
+    This helper function relies on the non-standard C{.parent} attribute on AST nodes
+    to navigate upward in the tree and determine this node direct siblings.
+    """
+    # if this call raises an ValueError it means that we're doing something nasty with the ast...
+    parent_node, fieldname = get_node_block(assign)
+    statements = getattr(parent_node, fieldname, None)
+    
+    if isinstance(statements, Sequence):
+        # it must be a sequence if it's not None since an assignment 
+        # can only be a part of a compound statement.
+        assign_index = statements.index(assign)
+        try:
+            right_sibling = statements[assign_index+1]
+        except IndexError:
+            return None
+        if isinstance(right_sibling, ast.Expr) and \
+           get_str_value(right_sibling.value) is not None:
+            return cast(Str, right_sibling.value)
+    return None
+
 def is_none_literal(node: ast.expr) -> bool:
     """Does this AST node represent the literal constant None?"""
     if sys.version_info >= (3,8):

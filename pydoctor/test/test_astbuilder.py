@@ -8,7 +8,7 @@ from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring
 from pydoctor.options import Options
 from pydoctor.stanutils import flatten, html2stan, flatten_text
 from pydoctor.epydoc.markup.epytext import Element, ParsedEpytextDocstring
-from pydoctor.epydoc2stan import format_summary, get_parsed_type
+from pydoctor.epydoc2stan import _get_docformat, format_summary, get_parsed_type
 from pydoctor.test.test_packages import processPackage
 from pydoctor.utils import partialclass
 
@@ -2329,7 +2329,7 @@ def test_class_level_attributes_and_aliases_orelse(systemcls: Type[model.System]
         import klass
         from crazy27 import crazy_var as cv
 
-        # Wildcard imports are not processed 
+        # Wildcard imports are still processed 
         # in name override guard context
         from crazy import * 
 
@@ -2376,7 +2376,7 @@ def test_class_level_attributes_and_aliases_orelse(systemcls: Type[model.System]
     assert mod.expandName('thing') == 'object'
     assert mod.expandName('seven') == 'six.seven'
     assert 'klass' not in mod._localNameToFullName_map
-    assert 'crazy_var' not in mod._localNameToFullName_map
+    assert 'crazy_var' in mod._localNameToFullName_map # from the wildcard
 
 @systemcls_param
 def test_exception_kind(systemcls: Type[model.System], capsys: CapSys) -> None:
@@ -3141,3 +3141,112 @@ def test_import_all_inside_else_branch_is_processed(systemcls: Type[model.System
     assert list(main.localNames()) == ['sys', 'Callable', 'TypeAlias'] # type: ignore
     assert main.expandName('Callable') == 'typing.Callable'
     assert main.expandName('TypeAlias') == 'typing_extensions.TypeAlias'
+
+@systemcls_param
+def test_inline_docstring_multiple_assigments(systemcls: Type[model.System], capsys: CapSys) -> None:
+    # TODO: this currently does not support nested tuple assignments.
+    src = '''
+    class C:
+        def __init__(self):
+            self.x, x = 1, 1; 'x docs'
+            self.y = x = 1; 'y docs'
+    x,y = 1,1; 'x and y docs'
+    v = w = 1; 'v and w docs'
+    '''
+    mod =  fromText(src, systemcls=systemcls)
+    assert not capsys.readouterr().out
+    assert mod.contents['x'].docstring == 'x and y docs'
+    assert mod.contents['y'].docstring == 'x and y docs'
+    assert mod.contents['v'].docstring == 'v and w docs'
+    assert mod.contents['w'].docstring == 'v and w docs'
+    assert mod.contents['C'].contents['x'].docstring == 'x docs'
+    assert mod.contents['C'].contents['y'].docstring == 'y docs'
+
+
+@systemcls_param
+def test_does_not_misinterpret_string_as_documentation(systemcls: Type[model.System], capsys: CapSys) -> None:
+    # exmaple from numpy/distutils/ccompiler_opt.py
+    src = '''
+    __docformat__ = 'numpy'
+    class C:
+        """
+        Attributes
+        ----------
+        cc_noopt : bool
+            docs
+        """
+        def __init__(self):
+            self.cc_noopt = x
+
+            if True:
+                """
+                this is not documentation
+                """
+    '''
+
+    mod =  fromText(src, systemcls=systemcls)
+    assert _get_docformat(mod) == 'numpy'
+    assert not capsys.readouterr().out
+    assert mod.contents['C'].contents['cc_noopt'].docstring is None 
+    # The docstring is None... this is the sad side effect of processing ivar fields :/
+
+    assert to_html(mod.contents['C'].contents['cc_noopt'].parsed_docstring) == 'docs' #type:ignore
+
+@systemcls_param
+def test_unsupported_usage_of_self(systemcls: Type[model.System], capsys: CapSys) -> None:
+    src = '''
+    class C:
+        ...
+    def C_init(self):
+        self.x = True; 'not documentation'
+        self.y += False # erroneous usage of augassign; 'not documentation'
+    C.__init__ = C_init
+
+    self = object()
+    self.x = False
+    """
+    not documentation
+    """
+    '''
+    mod =  fromText(src, systemcls=systemcls)
+    assert not capsys.readouterr().out
+    assert list(mod.contents['C'].contents) == []
+    assert not mod.contents['self'].docstring
+
+@systemcls_param
+def test_inline_docstring_at_wrong_place(systemcls: Type[model.System], capsys: CapSys) -> None:
+    src = '''
+    a = objetc()
+    a.b = True
+    """
+    not documentation
+    """
+    b = object()
+    b.x: bool = False
+    """
+    still not documentation
+    """
+    c = {}
+    c[1] = True
+    """
+    Again not documenatation
+    """
+    d = {}
+    d[1].__init__ = True
+    """
+    Again not documenatation
+    """
+    e = {}
+    e[1].__init__ += True
+    """
+    Again not documenatation
+    """
+    '''
+    mod =  fromText(src, systemcls=systemcls)
+    assert not capsys.readouterr().out
+    assert list(mod.contents) == ['a', 'b', 'c', 'd', 'e']
+    assert not mod.contents['a'].docstring
+    assert not mod.contents['b'].docstring
+    assert not mod.contents['c'].docstring
+    assert not mod.contents['d'].docstring
+    assert not mod.contents['e'].docstring
