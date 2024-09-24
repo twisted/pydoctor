@@ -3110,3 +3110,34 @@ def test_mutilple_docstring_with_doc_comments_warnings(systemcls: Type[model.Sys
     fromText(src, systemcls=systemcls)
     # TODO: handle doc comments.x
     assert capsys.readouterr().out == '<test>:18: Existing docstring at line 14 is overriden\n'
+
+@systemcls_param
+def test_import_all_inside_else_branch_is_processed(systemcls: Type[model.System], capsys: CapSys) -> None:
+    src1 = '''
+    Callable = ...
+    '''
+
+    src2 = '''
+    Callable = ...
+    TypeAlias = ...
+    '''
+
+    src0 = '''
+    import sys
+    if sys.version_info > (3, 10):
+        from typing import *
+    else:
+        from typing_extensions import *
+    '''
+
+    system = systemcls()
+    builder = systemcls.systemBuilder(system)
+    builder.addModuleString(src0, 'main')
+    builder.addModuleString(src1, 'typing')
+    builder.addModuleString(src2, 'typing_extensions')
+    builder.buildModules()
+    # assert not capsys.readouterr().out
+    main = system.allobjects['main']
+    assert list(main.localNames()) == ['sys', 'Callable', 'TypeAlias'] # type: ignore
+    assert main.expandName('Callable') == 'typing.Callable'
+    assert main.expandName('TypeAlias') == 'typing_extensions.TypeAlias'

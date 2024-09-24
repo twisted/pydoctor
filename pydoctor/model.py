@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import abc
 import ast
-import attr
+from itertools import chain
 from collections import defaultdict
 import datetime
 import importlib
@@ -25,6 +25,8 @@ from typing import (
     Optional, Sequence, Set, Tuple, Type, TypeVar, Union, cast, overload
 )
 from urllib.parse import quote
+
+import attr
 
 from pydoctor.options import Options
 from pydoctor import factory, qnmatch, utils, linker, astutils, mro
@@ -468,6 +470,9 @@ class CanContainImportsDocumentable(Documentable):
         else:
             return False
     
+    def localNames(self) -> Iterator[str]:
+        return chain(self.contents.keys(),
+                     self._localNameToFullName_map.keys())
 
 class Module(CanContainImportsDocumentable):
     kind = DocumentableKind.MODULE

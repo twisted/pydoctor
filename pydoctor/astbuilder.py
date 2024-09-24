@@ -192,8 +192,7 @@ class ModuleVistor(NodeVisitor):
         ignore_override_init = self._override_guard_state
         # we list names only once to ignore new names added inside the block,
         # they should be overriden as usual.
-        self._override_guard_state = (ctx, set(chain(ctx.contents, 
-                                                     ctx._localNameToFullName_map)))
+        self._override_guard_state = (ctx, set(ctx.localNames()))
         yield
         self._override_guard_state = ignore_override_init
     
@@ -390,39 +389,36 @@ class ModuleVistor(NodeVisitor):
     def _importAll(self, modname: str) -> None:
         """Handle a C{from <modname> import *} statement."""
 
-        # Always ignore import * in override guard
-        if self._override_guard_state[0]:
-            self.builder.current.report(f"ignored import * from {modname}", thresh=1)
-            return
+        current = self.builder.current
 
         mod = self.system.getProcessedModule(modname)
         if mod is None:
             # We don't have any information about the module, so we don't know
             # what names to import.
-            self.builder.current.report(f"import * from unknown {modname}", thresh=1)
+            current.report(f"import * from unknown {modname}", thresh=1)
             return
 
-        self.builder.current.report(f"import * from {modname}", thresh=1)
+        current.report(f"import * from {modname}", thresh=1)
 
         # Get names to import: use __all__ if available, otherwise take all
         # names that are not private.
         names = mod.all
         if names is None:
-            names = [
-                name
-                for name in chain(mod.contents.keys(),
-                                  mod._localNameToFullName_map.keys())
-                if not name.startswith('_')
-                ]
+            names = [ name for name in mod.localNames() 
+                     if not name.startswith('_') ]
 
         # Fetch names to export.
         exports = self._getCurrentModuleExports()
 
         # Add imported names to our module namespace.
-        assert isinstance(self.builder.current, model.CanContainImportsDocumentable)
-        _localNameToFullName = self.builder.current._localNameToFullName_map
+        assert isinstance(current, model.CanContainImportsDocumentable)
+        _localNameToFullName = current._localNameToFullName_map
         expandName = mod.expandName
         for name in names:
+
+            # # Ignore in override guard
+            if self._ignore_name(current, name):
+                continue
 
             if self._handleReExport(exports, name, name, mod) is True:
                 continue
