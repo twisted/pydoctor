@@ -377,6 +377,7 @@ stick to the runtime version of the code instead.
 For these case, you might want to inverse the condition of if statement: 
  
  .. code:: python
+    
     if not TYPE_CHECKING:
         # main flow
         from ._implementation import Thing
