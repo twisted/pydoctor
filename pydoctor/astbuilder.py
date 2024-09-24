@@ -265,10 +265,10 @@ class ModuleVistor(NodeVisitor):
         # Ignore classes within functions.
         parent = self.builder.current
         if isinstance(parent, model.Function):
-            raise self.SkipNodeAndExtensions()
+            raise self.SkipNode()
         # Ignore in override guard
         if self._ignore_name(parent, node.name):
-            raise self.SkipNodeAndExtensions()
+            raise self.IgnoreNode()
 
         rawbases = []
         initialbases = []
@@ -870,10 +870,10 @@ class ModuleVistor(NodeVisitor):
         # Ignore inner functions.
         parent = self.builder.current
         if isinstance(parent, model.Function):
-            raise self.SkipNodeAndExtensions()
+            raise self.SkipNode()
         # Ignore in override guard
         if self._ignore_name(parent, node.name):
-            raise self.SkipNodeAndExtensions()
+            raise self.IgnoreNode()
 
         lineno = node.lineno
 
@@ -920,7 +920,7 @@ class ModuleVistor(NodeVisitor):
                 attr.report(f'{attr.fullName()} is both property and classmethod')
             if is_staticmethod:
                 attr.report(f'{attr.fullName()} is both property and staticmethod')
-            raise self.SkipNode()
+            raise self.SkipNode() # visitor extensions will still be called.
 
         # Check if it's a new func or exists with an overload
         existing_func = parent.contents.get(func_name)
@@ -931,7 +931,7 @@ class ModuleVistor(NodeVisitor):
             # properties set for the primary function and not overloads.
             if existing_func.signature and is_overload_func:
                 existing_func.report(f'{existing_func.fullName()} overload appeared after primary function', lineno_offset=lineno-existing_func.linenumber)
-                raise self.SkipNodeAndExtensions()
+                raise self.IgnoreNode()
             # Do not recreate function object, just re-push it
             self.builder.push(existing_func, lineno)
             func = existing_func
