@@ -2905,7 +2905,6 @@ def test_doc_comment_multiple_assigments(systemcls: Type[model.System], capsys: 
 @systemcls_param
 def test_other_encoding(systemcls: Type[model.System], capsys: CapSys) -> None:
     # Test for issue https://github.com/twisted/pydoctor/issues/805
-    # We're missing support for other kind of encodings.
     processPackage('coding_not_utf8', 
         systemcls=lambda: systemcls(model.Options.from_args(['-q'])))
     assert not capsys.readouterr().out
