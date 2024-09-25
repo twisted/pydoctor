@@ -2127,7 +2127,7 @@ def test_module_level_attributes_and_aliases(systemcls: Type[model.System]) -> N
     assert ast.literal_eval(v.value)==1
     assert v.kind == model.DocumentableKind.VARIABLE
 
-    # Test constant
+    # Test variable 2
     assert mod.expandName('VAR')=="mod.VAR"
     V = mod.resolveName('VAR')
     assert isinstance(V, model.Attribute)
@@ -2135,7 +2135,7 @@ def test_module_level_attributes_and_aliases(systemcls: Type[model.System]) -> N
     assert ast.literal_eval(V.value)==1
     assert V.kind == model.DocumentableKind.VARIABLE
 
-    # Test looks like constant but actually an alias.
+    # Test variable 3
     assert mod.expandName('ALIAS')=="twisted.internet.ssl"
     s = mod.resolveName('ALIAS')
     assert isinstance(s, model.Attribute)
@@ -2146,7 +2146,7 @@ def test_module_level_attributes_and_aliases(systemcls: Type[model.System]) -> N
 @systemcls_param
 def test_module_level_attributes_and_aliases_orelse(systemcls: Type[model.System]) -> None:
     """
-    We visit the orelse body and these names have priority over the names in the except handlers.
+    We visit the try orelse body and these names have priority over the names in the except handlers.
     """
     system = systemcls()
     builder = system.systemBuilder(system)
@@ -2211,7 +2211,7 @@ def test_module_level_attributes_and_aliases_orelse(systemcls: Type[model.System
     assert ast.literal_eval(v.value)==1
     assert v.kind == model.DocumentableKind.VARIABLE
 
-    # Test constant
+    # Test variable 2
     assert mod.expandName('VAR')=="mod.VAR"
     V = mod.resolveName('VAR')
     assert isinstance(V, model.Attribute)
@@ -2219,7 +2219,7 @@ def test_module_level_attributes_and_aliases_orelse(systemcls: Type[model.System
     assert ast.literal_eval(V.value)==1
     assert V.kind == model.DocumentableKind.VARIABLE
 
-    # Test looks like constant but actually an alias.
+    # Test variable 3
     assert mod.expandName('ALIAS')=="twisted.internet.ssl"
     s = mod.resolveName('ALIAS')
     assert isinstance(s, model.Attribute)
