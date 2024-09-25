@@ -7,7 +7,6 @@ import sys
 
 from functools import partial
 from inspect import Parameter, Signature
-from itertools import chain
 from pathlib import Path
 from typing import (
     Any, Callable, Collection, Dict, Iterable, Iterator, List, Mapping, Optional, Sequence, Tuple,
