@@ -40,9 +40,7 @@ with the appropriate information.
                 --project-name=(projectname) \
                 --project-url=https://github.com/$GITHUB_REPOSITORY \
                 --html-viewsource-base=https://github.com/$GITHUB_REPOSITORY/tree/$GITHUB_SHA \
-                --make-html \
                 --html-output=./apidocs \
-                --project-base-dir="$(pwd)" \
                 --docformat=restructuredtext \
                 --intersphinx=https://docs.python.org/3/objects.inv \
                 ./(packagedirectory)
