@@ -77,6 +77,11 @@ in development
 ^^^^^^^^^^^^^^
 
 * Drop Python 3.7 and support Python 3.13.
+* Improve collection of objects:
+  - Document objects declared in the ``else`` block of 'if' statements (previously they were ignored).
+  - Document objects declared in ``finalbody`` and ``else`` block of 'try' statements (previously they were ignored).
+  - Objects declared in the ``else`` block of if statements and in the ``handlers`` of 'try' statements
+    are ignored if a concurrent object is declared before (`more infos on branch priorities <https://pydoctor.readthedocs.io/en/latest/codedoc.html#branch-priorities>`_).
 * Trigger a warning when several docstrings are detected for the same object.
 * Improve typing of docutils related code.
 * Run unit tests on all supported combinations of Python versions and platforms, including PyPy for Windows. Previously, tests where ran on all supported Python version for Linux, but not for MacOS and Windows.
