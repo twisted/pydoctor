@@ -13,7 +13,7 @@ pydoctor
 .. image:: https://img.shields.io/badge/-documentation-blue
   :target: https://pydoctor.readthedocs.io/
 
-This is *pydoctor*, an API documentation generator that works by
+This is *pydoctor*, a standalone API documentation generator that works by
 static analysis.
 
 It was written primarily to replace ``epydoc`` for the purposes of the
@@ -27,15 +27,12 @@ Twisted, knows about ``zope.interface``'s declaration API and can present
 information about which classes implement which interface, and vice
 versa.
 
-.. contents:: Contents:
-
-
 Simple Usage
 ~~~~~~~~~~~~
 
 You can run pydoctor on your project like this::
 
-    $ pydoctor --make-html --html-output=docs/api src/mylib
+    $ pydoctor --html-output=docs/api src/mylib
 
 For more info, `Read The Docs <https://pydoctor.readthedocs.io/>`_.
 
@@ -79,6 +76,11 @@ in development
 * Drop Python 3.7 and support Python 3.13.
 * Add support for doc-comments as found in Sphinx. Use the special comment formatting ``#:`` to start the comment instead of just ``#``.
   Comments need to be either on a line of their own before the definition, or immediately after the assignment on the same line. 
+* Improve collection of objects:
+   - Document objects declared in the ``else`` block of 'if' statements (previously they were ignored).
+   - Document objects declared in ``finalbody`` and ``else`` block of 'try' statements (previously they were ignored).
+   - Objects declared in the ``else`` block of if statements and in the ``handlers`` of 'try' statements
+     are ignored if a concurrent object is declared before (`more infos on branch priorities <https://pydoctor.readthedocs.io/en/latest/codedoc.html#branch-priorities>`_).
 * Trigger a warning when several docstrings are detected for the same object.
 * Improve typing of docutils related code.
 * Run unit tests on all supported combinations of Python versions and platforms, including PyPy for Windows. Previously, tests where ran on all supported Python version for Linux, but not for MacOS and Windows.
