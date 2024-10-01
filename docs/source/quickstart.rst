@@ -29,6 +29,7 @@ The result looks like `this <api/index.html>`_.
         --project-version=1.2.0 \
         --project-url=https://github.com/twisted/pydoctor/ \
         --html-viewsource-base=https://github.com/twisted/pydoctor/tree/20.7.2 \
+        --html-base-url=https://pydoctor.readthedocs.io/en/latest/api \
         --html-output=docs/api \
         --docformat=epytext \
         --intersphinx=https://docs.python.org/3/objects.inv \
