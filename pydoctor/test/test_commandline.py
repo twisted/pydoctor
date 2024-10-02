@@ -318,5 +318,5 @@ def test_htmlbaseurl_option_all_pages(tmp_path: Path) -> None:
         filename = t.name
         if t.stem == 'basic':
             filename = 'index.html' # since we have only one module it's linked as index.html
-        assert f'<link rel="canonical" href="https://example.com.abcde/{filename}"' in t.read_text()
+        assert f'<link rel="canonical" href="https://example.com.abcde/{filename}"' in t.read_text(encoding='utf-8')
     
