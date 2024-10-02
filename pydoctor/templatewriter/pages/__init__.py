@@ -159,7 +159,6 @@ class Head(TemplateElement):
         if not self._baseurl:
             return ''
         canonical_link = urljoin(self._baseurl, self._pageurl)
-        print(f"{self._baseurl} + {self._pageurl} -> {canonical_link}")
         return tags.link(rel='canonical', href=canonical_link)
 
     @renderer
