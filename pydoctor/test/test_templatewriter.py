@@ -923,8 +923,8 @@ def test_canonical_links() -> None:
     html1 = getHTMLOf(mod)
     html2 = getHTMLOf(mod.contents['Cls'])
 
-    assert f'<link rel="canonical" href="https://example.org/t/docs/index.html"' in html1
-    assert f'<link rel="canonical" href="https://example.org/t/docs/t.Cls.html"' in html2
+    assert '<link rel="canonical" href="https://example.org/t/docs/index.html"' in html1
+    assert '<link rel="canonical" href="https://example.org/t/docs/t.Cls.html"' in html2
 
 def test_canonical_links_two_root_modules() -> None:
     src = '''
@@ -939,11 +939,11 @@ def test_canonical_links_two_root_modules() -> None:
     html1 = getHTMLOf(mod)
     html2 = getHTMLOf(mod.contents['Cls'])
 
-    assert f'<link rel="canonical" href="https://example.org/t/docs/t.html"' in html1
-    assert f'<link rel="canonical" href="https://example.org/t/docs/t.Cls.html"' in html2
+    assert '<link rel="canonical" href="https://example.org/t/docs/t.html"' in html1
+    assert '<link rel="canonical" href="https://example.org/t/docs/t.Cls.html"' in html2
 
     html3 = getHTMLOf(mod2)
     html4 = getHTMLOf(mod2.contents['Cls'])
 
-    assert f'<link rel="canonical" href="https://example.org/t/docs/t2.html"' in html3
-    assert f'<link rel="canonical" href="https://example.org/t/docs/t2.Cls.html"' in html4
+    assert '<link rel="canonical" href="https://example.org/t/docs/t2.html"' in html3
+    assert '<link rel="canonical" href="https://example.org/t/docs/t2.Cls.html"' in html4
