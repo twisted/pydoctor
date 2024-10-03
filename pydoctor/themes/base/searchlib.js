@@ -7,7 +7,7 @@
 // Other required ressources like lunr.js, searchindex.json and all-documents.html are passed as URL
 //      to functions. This makes the code reusable outside of pydoctor build directory.    
 // Implementation note: Searches are designed to be launched synchronously, if lunrSearch() is called sucessively (while already running),
-// old promise will never resolves and the searhc worker will be restarted.
+// old promise will never resolves and the search worker will be restarted.
 
 // Hacky way to make the worker code inline with the rest of the source file handling the search.
 // Worker message params are the following: 
@@ -34,6 +34,9 @@ onmessage = (message) => {
     }
     // Create index
     let index = lunr.Index.load(message.data.indexJSONData);
+
+    // Number of query clauses
+    var nb_clauses = undefined;
     
     // Declare query function building 
     function _queryfn(_query){ // _query is the Query object
@@ -41,7 +44,7 @@ onmessage = (message) => {
         // to remove the field 'kind' from the clause since this it's only useful when specifically requested.
         var parser = new lunr.QueryParser(message.data.query, _query)
         parser.parse()
-        var hasTraillingWildcard = false;
+        nb_clauses = _query.clauses.length;
         _query.clauses.forEach(clause => {
             if (clause.fields == _query.allFields){
                 // we change the query fields when they are applicable to all fields
@@ -51,23 +54,36 @@ onmessage = (message) => {
             }
             // clause.wildcard is actually always NONE due to https://github.com/olivernn/lunr.js/issues/495
             // But this works...
-            if (clause.term.slice(-1) == '*'){
-                // we want to avoid the auto wildcard system only if a trailling wildcard is already added
-                // not if a leading wildcard exists
-                hasTraillingWildcard = true
-            }
+
         });
         // Auto wilcard feature, see issue https://github.com/twisted/pydoctor/issues/648
         var new_clauses = [];
-        if ((message.data.autoWildcard == true) && (hasTraillingWildcard == false)){
+        if (message.data.autoWildcard == true){
             _query.clauses.forEach(clause => {
-                // Setting clause.wildcard is useless.
-                // But this works...
-                let new_clause = {...clause}
-                new_clause.term = new_clause.term + '*'
-                clause.boost = 2
-                new_clause.boost = 0
-                new_clauses.push(new_clause)
+                if (clause.presence === 1) { // ignore clauses that have explicit presence (+/-)
+                    // Setting clause.wildcard is useless.
+                    // But this works...
+                    if (clause.term.slice(-1) != '*'){
+                        let new_clause = {...clause}
+                        new_clause.term = new_clause.term + '*'
+                        clause.boost = 2
+                        new_clause.boost = 1
+                        new_clauses.push(new_clause)
+                    }
+                    
+                    // Adding a leading wildcard if the dot is included as well.
+                    if (clause.term.indexOf('.') != -1) {
+                        if (clause.term.slice(0,1) != '*'){
+                            let second_new_clause = {...clause}
+                            second_new_clause.boost = 1
+                            second_new_clause.term = '*' + second_new_clause.term
+                            if (clause.term.slice(-1) != '*'){
+                                second_new_clause.term = second_new_clause.term + '*'
+                            }
+                            new_clauses.push(second_new_clause)
+                        }
+                    }
+                }
             });
         }
         new_clauses.forEach(clause => {
@@ -78,8 +94,32 @@ onmessage = (message) => {
     }
 
     // Launch the search
-    let results = index.query(_queryfn)
+    var results = index.query(_queryfn)
     
+    // Post-prcocess multi clause queries such that the objects matching multiple clauses
+    // have a better ranking.
+    if (nb_clauses > 1){
+        var mapped = results.map(function (e, i) {
+            var v = 0;
+            message.data.defaultFields.forEach(f => {
+                Object.keys(e.matchData.metadata).forEach(matchkey =>{
+                    if (Object.hasOwn(e.matchData.metadata[matchkey], f)){
+                        v = v - 1
+                    }
+                });
+            });
+            return { index: i, value: v };
+            });
+        mapped.sort(function (a, b) {
+            if (a.value > b.value) {return 1;}
+            if (a.value < b.value) {return -1;}
+            return 0; 
+        });
+        results = mapped.map(function (e) {
+            return results[e.index];
+        })
+    }
+
     // Post message with results
     postMessage({'results':results});
 };
@@ -187,7 +227,7 @@ function lunrSearch(query, indexURL, defaultFields, lunrJsURL, searchDelay, auto
         searchEventsEnv.removeEventListener('abortSearch', this);
     });
 
-    // Pref:
+    // Perf:
     // Because this function can be called a lot of times in a very few moments, 
     // Actually launch search after a delay to let a chance to users to continue typing,
     // which would trigger a search abort event, which would avoid wasting a worker 
