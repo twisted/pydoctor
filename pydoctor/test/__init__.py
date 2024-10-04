@@ -11,7 +11,7 @@ from twisted.web.template import Tag, tags
 
 from pydoctor import epydoc2stan, model
 from pydoctor.templatewriter import IWriter, TemplateLookup
-from pydoctor.epydoc.markup import DocstringLinker
+from pydoctor.linker import NotFoundLinker
 
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable
@@ -87,18 +87,4 @@ class InMemoryWriter(IWriter):
 
         for o in ob.contents.values():
             self._writeDocsFor(o)
-
-
-class NotFoundLinker(DocstringLinker):
-    """A DocstringLinker implementation that cannot find any links."""
-
-    def link_to(self, target: str, label: "Flattenable") -> Tag:
-        return tags.transparent(label)
-
-    def link_xref(self, target: str, label: "Flattenable", lineno: int) -> Tag:
-        return tags.code(label)
-    
-    @contextlib.contextmanager
-    def switch_context(self, ob: Optional[model.Documentable]) -> Iterator[None]:
-        yield
         

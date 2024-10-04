@@ -1050,19 +1050,15 @@ input[type="search"]::-webkit-search-results-decoration { display: none; }
     padding: 5px 0 0 8px;
 }
 
-.search-help-hidden #search-help-box{
-    display: none!important;
-}
-
-#search-help-button{
+#apidocs-help-button{
     background-color: #e6e6e6;
 }
 
-.search-help-hidden #search-help-button{
+.search-help-hidden #apidocs-help-button{
     background-color: rgb(255, 255, 255);
 }
 
-.search-help-hidden #search-help-button:hover {
+.search-help-hidden #apidocs-help-button:hover {
     background-color: #e6e6e6;
 }
 

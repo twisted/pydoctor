@@ -303,3 +303,12 @@ def test_index_hardlink(tmp_path: Path) -> None:
     assert (tmp_path / 'basic.html').exists()
     assert not (tmp_path / 'basic.html').is_symlink()
     assert (tmp_path / 'basic.html').is_file()
+
+def test_apidocs_help(tmp_path: Path) -> None:
+    """
+    Checks that the help page is weel generated.
+    """
+    exit_code = driver.main(args=['--html-output', str(tmp_path), 'pydoctor/test/testpackages/basic/'])
+    assert exit_code == 0
+    help_page = (tmp_path / 'apidocs-help.html').read_text()
+    assert '<h2>Search</h2>' in help_page

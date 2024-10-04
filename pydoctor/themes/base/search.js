@@ -113,16 +113,6 @@ function showResultContainer(){
   updateClearSearchBtn();
 }
 
-function toggleSearchHelpText() {
-  document.body.classList.toggle("search-help-hidden");
-  if (document.body.classList.contains("search-help-hidden") && input.value.length==0){
-    hideResultContainer();
-  }
-  else{
-    showResultContainer();
-  }
-}
-
 function resetResultList(){
   resetLongSearchTimerInfo();
   results_list.innerHTML = '';
@@ -431,7 +421,6 @@ document.addEventListener('keyup', (evt) => {
 // we don't want to show it if the browser do not support JS.
 window.addEventListener('load', (event) => {
   document.getElementById('search-box-container').style.display = 'block';
-  document.getElementById('search-help-box').style.display = 'block';
   hideResultContainer();
 });
 
@@ -440,8 +429,7 @@ window.addEventListener("click", (event) => {
   if (event){
       // 1. Hide the dropdown if the user clicks outside of it  
       if (!event.target.closest('#search-results-container') 
-          && !event.target.closest('#search-box')
-          && !event.target.closest('#search-help-button')){
+          && !event.target.closest('#search-box')){
             hideResultContainer();
             return;
       }
