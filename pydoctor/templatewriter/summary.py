@@ -485,7 +485,7 @@ class HelpPage(Page):
         parsed = restructuredtext.parse_docstring(dedent(self.RST_SOURCE_TEMPLATE.substitute(
             kind_names=', '.join(f'"{k.name}"' for k in model.DocumentableKind)
         )), errs)
-        print ([e.descr() for e in errs])
+        assert not errs
         return parsed.to_stan(NotFoundLinker())
 
 def summaryPages(system: model.System) -> Iterable[Type[Page]]:
