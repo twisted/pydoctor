@@ -190,7 +190,7 @@ class _EpydocReader(StandaloneReader):
 
         self._errors.append(ParseError(msg, linenum, is_fatal))
 
-class _DocumentPseudoWriter(Writer):
+class _DocumentPseudoWriter(Writer[str]):
     """
     A pseudo-writer for the docutils framework, that can be used to
     access the document itself.  The output of C{_DocumentPseudoWriter}
