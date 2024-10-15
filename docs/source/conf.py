@@ -99,6 +99,7 @@ _common_args = [
 pydoctor_args = {
     'main': [
         '--html-output={outdir}/api/',  # Make sure to have a trailing delimiter for better usage coverage.
+        '--html-base-url=https://pydoctor.readthedocs.io/en/latest/api',
         '--project-name=pydoctor',
         f'--project-version={version}',
         '--docformat=epytext', 
@@ -108,6 +109,7 @@ pydoctor_args = {
         ] + _common_args,
     'custom_template_demo': [
         '--html-output={outdir}/custom_template_demo/',
+        '--html-base-url=https://pydoctor.readthedocs.io/en/latest/custom_template_demo',
         f'--project-version={version}',
         f'--template-dir={_pydoctor_root}/docs/sample_template',
         f'{_pydoctor_root}/pydoctor',
@@ -116,6 +118,7 @@ pydoctor_args = {
               '-qqq' ], # we don't want to hear any warnings from this custom template demo.
     'epydoc_demo': [
         '--html-output={outdir}/docformat/epytext_demo',
+        '--html-base-url=https://pydoctor.readthedocs.io/en/latest/docformat/epytext_demo',
         '--project-name=pydoctor-epytext-demo',
         '--project-version=1.3.0',
         '--docformat=epytext',
@@ -126,6 +129,7 @@ pydoctor_args = {
         ] + _common_args,
     'restructuredtext_demo': [
         '--html-output={outdir}/docformat/restructuredtext_demo',
+        '--html-base-url=https://pydoctor.readthedocs.io/en/latest/docformat/restructuredtext_demo',
         '--project-name=pydoctor-restructuredtext-demo',
         '--project-version=1.0.0',
         '--docformat=restructuredtext',
@@ -136,6 +140,7 @@ pydoctor_args = {
         ] + _common_args,
     'numpy_demo': [ # no need to pass --docformat here, we use __docformat__
         '--html-output={outdir}/docformat/numpy_demo',
+         '--html-base-url=https://pydoctor.readthedocs.io/en/latest/docformat/numpy_demo',
         '--project-name=pydoctor-numpy-style-demo',
         '--project-version=1.0.0',
         '--project-url=../google-numpy.html',
@@ -145,6 +150,7 @@ pydoctor_args = {
         ] + _common_args,
     'google_demo': [
         '--html-output={outdir}/docformat/google_demo',
+         '--html-base-url=https://pydoctor.readthedocs.io/en/latest/docformat/google_demo',
         '--project-name=pydoctor-google-style-demo',
         '--project-version=1.0.0',
         '--docformat=google',

@@ -76,6 +76,8 @@ in development
 * Drop Python 3.7 and support Python 3.13.
 * Add support for doc-comments as found in Sphinx. Use the special comment formatting ``#:`` to start the comment instead of just ``#``.
   Comments need to be either on a line of their own before the definition, or immediately after the assignment on the same line. 
+* Implement canonical HTML element (``<link rel="canonical" href="..."/>``) to help search engines reduce outdated content. 
+  Enable this feature by passing the base URL of the API documentation with option ``--html-base-url``.
 * Improve collection of objects:
    - Document objects declared in the ``else`` block of 'if' statements (previously they were ignored).
    - Document objects declared in ``finalbody`` and ``else`` block of 'try' statements (previously they were ignored).

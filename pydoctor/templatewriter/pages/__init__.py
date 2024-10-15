@@ -7,6 +7,7 @@ from typing import (
 )
 import ast
 import abc
+from urllib.parse import urljoin
 
 from twisted.web.iweb import IRenderable, ITemplateLoader, IRequest
 from twisted.web.template import Element, Tag, renderer, tags
@@ -146,9 +147,19 @@ class Head(TemplateElement):
 
     filename = 'head.html'
 
-    def __init__(self, title: str, loader: ITemplateLoader) -> None:
+    def __init__(self, title: str, baseurl: str | None, pageurl: str, 
+                 loader: ITemplateLoader) -> None:
         super().__init__(loader)
         self._title = title
+        self._baseurl = baseurl
+        self._pageurl = pageurl
+    
+    @renderer
+    def canonicalurl(self, request: IRequest, tag: Tag) -> Flattenable:
+        if not self._baseurl:
+            return ''
+        canonical_link = urljoin(self._baseurl, self._pageurl)
+        return tags.link(rel='canonical', href=canonical_link)
 
     @renderer
     def title(self, request: IRequest, tag: Tag) -> str:
@@ -171,6 +182,14 @@ class Page(TemplateElement):
         if not loader:
             loader = self.lookup_loader(template_lookup)
         super().__init__(loader)
+    
+    @property
+    def page_url(self) -> str:
+        # This MUST be overriden in CommonPage
+        """
+        The relative page url
+        """
+        return self.filename
 
     def render(self, request: Optional[IRequest]) -> Tag:
         return tags.transparent(super().render(request)).fillSlots(**self.slot_map)
@@ -197,7 +216,8 @@ class Page(TemplateElement):
 
     @renderer
     def head(self, request: IRequest, tag: Tag) -> IRenderable:
-        return Head(self.title(), Head.lookup_loader(self.template_lookup))
+        return Head(self.title(), self.system.options.htmlbaseurl, self.page_url, 
+                    loader=Head.lookup_loader(self.template_lookup))
 
     @renderer
     def nav(self, request: IRequest, tag: Tag) -> IRenderable:

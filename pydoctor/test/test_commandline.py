@@ -303,3 +303,20 @@ def test_index_hardlink(tmp_path: Path) -> None:
     assert (tmp_path / 'basic.html').exists()
     assert not (tmp_path / 'basic.html').is_symlink()
     assert (tmp_path / 'basic.html').is_file()
+
+def test_htmlbaseurl_option_all_pages(tmp_path: Path) -> None:
+    """
+    Check that the canonical link is included in all html pages, including summary pages.
+    """
+    exit_code = driver.main(args=[
+        '--html-base-url=https://example.com.abcde',
+        '--html-output', str(tmp_path), 'pydoctor/test/testpackages/basic/'])
+    assert exit_code == 0
+    for t in tmp_path.iterdir():
+        if not t.name.endswith('.html'):
+            continue
+        filename = t.name
+        if t.stem == 'basic':
+            filename = 'index.html' # since we have only one module it's linked as index.html
+        assert f'<link rel="canonical" href="https://example.com.abcde/{filename}"' in t.read_text(encoding='utf-8')
+    

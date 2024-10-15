@@ -911,3 +911,39 @@ def test_class_hierarchy_links_top_level_names() -> None:
     index = flatten(ClassIndexPage(mod.system, TemplateLookup(template_dir)))
     assert 'href="https://docs.python.org/3/library/socket.html#socket.socket"' in index
 
+def test_canonical_links() -> None:
+    src = '''
+    var = True
+    class Cls:
+        foo = False
+    '''
+    mod = fromText(src, modname='t', system=model.System(model.Options.from_args(
+        ['--html-base-url=https://example.org/t/docs']
+    )))
+    html1 = getHTMLOf(mod)
+    html2 = getHTMLOf(mod.contents['Cls'])
+
+    assert '<link rel="canonical" href="https://example.org/t/docs/index.html"' in html1
+    assert '<link rel="canonical" href="https://example.org/t/docs/t.Cls.html"' in html2
+
+def test_canonical_links_two_root_modules() -> None:
+    src = '''
+    var = True
+    class Cls:
+        foo = False
+    '''
+    mod = fromText(src, modname='t', system=model.System(model.Options.from_args(
+        ['--html-base-url=https://example.org/t/docs']
+    )))
+    mod2 = fromText(src, modname='t2', system=mod.system)
+    html1 = getHTMLOf(mod)
+    html2 = getHTMLOf(mod.contents['Cls'])
+
+    assert '<link rel="canonical" href="https://example.org/t/docs/t.html"' in html1
+    assert '<link rel="canonical" href="https://example.org/t/docs/t.Cls.html"' in html2
+
+    html3 = getHTMLOf(mod2)
+    html4 = getHTMLOf(mod2.contents['Cls'])
+
+    assert '<link rel="canonical" href="https://example.org/t/docs/t2.html"' in html3
+    assert '<link rel="canonical" href="https://example.org/t/docs/t2.Cls.html"' in html4
