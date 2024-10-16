@@ -193,7 +193,7 @@ class _EpydocReader(StandaloneReader):
 if TYPE_CHECKING:
     _StrWriter: TypeAlias = Writer[str]
 else:
-    _StrWiter = Writer
+    _StrWriter = Writer
 
 class _DocumentPseudoWriter(_StrWriter):
     """
