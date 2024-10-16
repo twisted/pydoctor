@@ -41,7 +41,10 @@ the list.
 from __future__ import annotations
 __docformat__ = 'epytext en'
 
-from typing import TYPE_CHECKING, Any, Iterable, List, Optional, Sequence, Set, TypeAlias, cast
+from typing import TYPE_CHECKING, Any, Iterable, List, Optional, Sequence, Set, cast
+if TYPE_CHECKING:
+    from typing import TypeAlias
+    
 import re
 from docutils import nodes
 
