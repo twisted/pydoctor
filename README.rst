@@ -87,6 +87,9 @@ in development
 * Replace the deprecated dependency appdirs with platformdirs.
 * Fix WinError caused by the failure of the symlink creation process.
   Pydoctor should now run on windows without the need to be administrator.
+* Adjust the sphinx extension to support Sphinx 8.1 (the intersphinx_mapping project name now defaults to 'main', 
+  use mapping instead of a list define your own project name).
+
 
 pydoctor 24.3.3
 ^^^^^^^^^^^^^^^
