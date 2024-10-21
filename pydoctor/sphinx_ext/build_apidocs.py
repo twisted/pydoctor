@@ -113,7 +113,7 @@ def on_builder_inited(app: Sphinx) -> None:
             intersphinx_mapping = config.intersphinx_mapping
             url = url_path.format(**{'rtd_version': rtd_version})
             inv = (str(temp_path / 'objects.inv'),)
-            intersphinx_mapping[f'{key}-api-docs'] = (None, (url, inv))
+            intersphinx_mapping[f'{key}-api-docs'] = (key, (url, inv))
 
         # Build the API docs in temporary path.
         shutil.rmtree(temp_path, ignore_errors=True)
