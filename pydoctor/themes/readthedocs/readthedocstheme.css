@@ -11,7 +11,7 @@ body {
 }
 
 .container-fluid {
-    max-width: 960px;
+    max-width: 880px;
 }
 
 body > nav {
@@ -41,7 +41,7 @@ body > .container-fluid, body > footer {
 body > footer {
     /* border-top: 1px solid rgb(210, 220, 216); */
     margin-top: 0px!important;
-    max-width: 960px;
+    max-width: 880px;
     margin-left: 300px!important;
 }
 
