@@ -31,7 +31,7 @@ body > nav::-webkit-scrollbar{
     width: 0;
 }
 
-body > div, body > footer {
+body > .container-fluid, body > footer {
     margin-left: 300px!important;
     padding: 0 40px 0 40px;
     background-color: rgb(252, 252, 252)!important;
@@ -667,7 +667,7 @@ nav.sidebar > div:nth-child(1) li li .tocChildrenToggle:checked ~ .expandableCon
         width: auto!important;
     }
     
-    body > div, body > footer {
+    body > .container-fluid, body > footer {
         margin-left: 0!important;
         width: auto!important;
         padding: 5px 15px 5px 15px;
