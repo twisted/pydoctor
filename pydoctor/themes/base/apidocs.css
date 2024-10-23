@@ -6,9 +6,10 @@ body {
 }
 
 .container-fluid{
-    max-width: 1380px;
+    max-width: 1250px;
     width: 100%;
     flex: auto;
+    margin-left: 0;
 }
 
 nav.navbar {
