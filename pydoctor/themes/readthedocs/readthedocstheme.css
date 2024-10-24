@@ -11,7 +11,32 @@ body {
 }
 
 .container-fluid {
-    max-width: 880px;
+    max-width: 1030px;
+}
+
+body > footer {
+    margin-top: 0px!important;
+    max-width: 1030px;
+    margin-left: 300px!important;
+}
+
+@media only screen and (max-width: 1850px) {
+    .container-fluid {
+        max-width: 980px;
+    }
+    body > footer {
+        max-width: 980px;
+    }
+}
+
+/* For laptop displays */
+@media only screen and (max-width: 1750px) {
+    .container-fluid {
+        max-width: 880px;
+    }
+    body > footer {
+        max-width: 880px;
+    }
 }
 
 body > nav {
@@ -36,13 +61,6 @@ body > .container-fluid, body > footer {
     padding: 0 40px 0 40px;
     background-color: rgb(252, 252, 252)!important;
     width: calc(100% - 380px)!important;
-}
-
-body > footer {
-    /* border-top: 1px solid rgb(210, 220, 216); */
-    margin-top: 0px!important;
-    max-width: 880px;
-    margin-left: 300px!important;
 }
 
 body > footer > hr {
