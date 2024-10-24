@@ -7,7 +7,7 @@ Here is an example of a simple ReadTheDocs integration to automatically
 generate your documentation with Pydoctor. 
 
 .. note:: This kind of integration should
-    not be confused with `Sphinx support <sphinx-integration.html>`_ that can also be used run 
+    not be confused with `Sphinx support <sphinx-integration.html>`_ that can also be used to run 
     pydoctor inside ReadTheDocs as part of the standard Sphinx build process. 
     
     This page, on the other hand, documents **how to simply run pydoctor 
