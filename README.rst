@@ -90,7 +90,7 @@ in development
 * Adjust the sphinx extension to support Sphinx 8.1. The entries dynamically added to the intersphinx config
   from the ``pydoctor_url_path`` config option now includes a project name which defaults to 'main' (instead of putting None), 
   use mapping instead of a list to define your own project name.
-* Fix the readthedocs theme so the adds injected by ReadTheDocs are rendered with the correct width.
+* Improve the themes so the adds injected by ReadTheDocs are rendered with the correct width and do not overlap too much with the main content.
 
 pydoctor 24.3.3
 ^^^^^^^^^^^^^^^
