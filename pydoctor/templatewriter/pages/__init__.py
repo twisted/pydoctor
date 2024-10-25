@@ -112,6 +112,10 @@ def format_overloads(func: model.Function) -> Iterator["Flattenable"]:
     """
     Format a function overloads definitions as nice HTML signatures.
     """
+    # TODO: Find a manner to wrap long overloads like the ones from temporalio.client.Client.start_workflow
+    # Maybe when there are more than one long overload, we create a fake overload without any annotations 
+    # expect the one that are the same accros all overloads, then this could be showed when clicking on the function name then all overloads
+    # could be showed on demand
     for overload in func.overloads:
         yield from format_decorators(overload)
         yield tags.div(format_function_def(func.name, func.is_async, overload))
@@ -130,13 +134,14 @@ def format_function_def(func_name: str, is_async: bool,
     def_stmt = 'async def' if is_async else 'def'
     if func_name.endswith('.setter') or func_name.endswith('.deleter'):
         func_name = func_name[:func_name.rindex('.')]
-    func_class = 'function-signature'
+    
+    func_signature_css_class = 'function-signature'
     if epydoc2stan.is_long_function_def(func):
-        func_class += ' expand-signature'
+        func_signature_css_class += ' expand-signature'
     r.extend([
         tags.span(def_stmt, class_='py-keyword'), ' ',
         tags.span(func_name, class_='py-defname'), 
-        tags.span(format_signature(func), class_=func_class), ':',
+        tags.span(format_signature(func), class_=func_signature_css_class), ':',
     ])
     return r
     
