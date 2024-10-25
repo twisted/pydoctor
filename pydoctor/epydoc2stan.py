@@ -1106,7 +1106,7 @@ def format_constructor_short_text(constructor: model.Function, forclass: model.C
         
         # Special casing __new__ because it's actually a static method
         if index==0 and (constructor.name in ('__new__', '__init__') or 
-                         constructor.kind is model.DocumentableKind.CLASS_METHOD):
+                         constructor.kind is _CLASS_METHOD):
             # Omit first argument (self/cls) from simplified signature.
             continue
         star = ''
@@ -1197,6 +1197,11 @@ def parsed_text_with_css(text:str, css_class: str) -> ParsedDocstring:
     return parsed_doc.with_tag(tags.span(class_=css_class))
 
 _empty = inspect.Parameter.empty
+_POSITIONAL_ONLY = inspect.Parameter.POSITIONAL_ONLY
+_POSITIONAL_OR_KEYWORD = inspect.Parameter.POSITIONAL_OR_KEYWORD
+_VAR_KEYWORD = inspect.Parameter.VAR_KEYWORD
+_VAR_POSITIONAL = inspect.Parameter.VAR_POSITIONAL
+_KEYWORD_ONLY = inspect.Parameter.KEYWORD_ONLY
 
 def _colorize_signature_annotation(annotation: object, 
                                    ctx: model.Documentable) -> ParsedDocstring:
@@ -1210,6 +1215,8 @@ def _colorize_signature_annotation(annotation: object,
                 # Make sure the generated <code> tags are not stripped by ParsedDocstring.combine.
                 ).with_tag(tags.transparent)
 
+_METHOD = model.DocumentableKind.METHOD
+_CLASS_METHOD = model.DocumentableKind.CLASS_METHOD
 def _is_less_important_param(param: inspect.Parameter, ctx: model.Documentable) -> bool:
     """
     Whether this parameter is the 'self' param of methods or 'cls' param of class methods.
@@ -1217,10 +1224,10 @@ def _is_less_important_param(param: inspect.Parameter, ctx: model.Documentable) 
     @Note: this does not check whether the parameter is the first of the signature.  
         This should be done before calling this function!
     """
-    if param.kind not in (inspect.Parameter.POSITIONAL_OR_KEYWORD, inspect.Parameter.POSITIONAL_ONLY):
+    if param.kind not in (_POSITIONAL_OR_KEYWORD, _POSITIONAL_ONLY):
         return False
-    if (param.name == 'self' and ctx.kind is model.DocumentableKind.METHOD) or (
-        param.name == 'cls' and ctx.kind is model.DocumentableKind.CLASS_METHOD):
+    if (param.name == 'self' and ctx.kind is _METHOD) or (
+        param.name == 'cls' and ctx.kind is _CLASS_METHOD):
         return param.annotation is _empty and param.default is _empty
     return False
 
@@ -1238,9 +1245,9 @@ def _colorize_signature_param(param: inspect.Parameter,
     """
     kind = param.kind
     result: list[ParsedDocstring] = []
-    if kind == inspect.Parameter.VAR_POSITIONAL:
+    if kind == _VAR_POSITIONAL:
         result.append(parsed_text(f'*{param.name}'))
-    elif kind == inspect.Parameter.VAR_KEYWORD:
+    elif kind == _VAR_KEYWORD:
         result.append(parsed_text(f'**{param.name}'))
     else:
         if is_first and _is_less_important_param(param, ctx):
@@ -1285,7 +1292,7 @@ def _colorize_signature(sig: inspect.Signature, ctx: model.Documentable) -> Pars
         kind = param.kind
         has_next = (i+1 < param_number)
 
-        if kind == inspect.Parameter.POSITIONAL_ONLY:
+        if kind == _POSITIONAL_ONLY:
             render_pos_only_separator = True
         elif render_pos_only_separator:
             # It's not a positional-only parameter, and the flag
@@ -1296,11 +1303,11 @@ def _colorize_signature(sig: inspect.Signature, ctx: model.Documentable) -> Pars
                 result.append(parsed_text_with_css('/', css_class='sig-symbol'))
             render_pos_only_separator = False
 
-        if kind == inspect.Parameter.VAR_POSITIONAL:
+        if kind == _VAR_POSITIONAL:
             # OK, we have an '*args'-like parameter, so we won't need
             # a '*' to separate keyword-only arguments
             render_kw_only_separator = False
-        elif kind == inspect.Parameter.KEYWORD_ONLY and render_kw_only_separator:
+        elif kind == _KEYWORD_ONLY and render_kw_only_separator:
             # We have a keyword-only parameter to render and we haven't
             # rendered an '*args'-like parameter before, so add a '*'
             # separator to the parameters list ("foo(arg1, *, arg2)" case)
@@ -1358,26 +1365,23 @@ def is_long_function_def(func: model.Function | model.FunctionOverload) -> bool:
 
     @see: L{LONG_FUNCTION_DEF}
     """
-    if func.signature is None:
+    if (sig:=func.signature) is None or (
+        psig:=get_parsed_signature(func)) is None:
         return False
-    nargs = len(func.signature.parameters)
+
+    nargs = len(sig.parameters)
     if nargs == 0:
         # no arguments at all -> never long
         return False
     ctx = func.primary if isinstance(func, model.FunctionOverload) else func
-    param1 = next(iter(func.signature.parameters.values()))
+    param1 = next(iter(sig.parameters.values()))
     if _is_less_important_param(param1, ctx):
         nargs -= 1
     if nargs == 0:
         # method with only unannotated self/cls parameter -> never long
         return False
     
-    sig = get_parsed_signature(func)
-    if sig is None:
-        # this should never happen since we checked if func.signature is None. 
-        return False
-    
     name_len = len(ctx.name)
-    signature_len = len(''.join(node2stan.gettext(sig.to_node())))
+    signature_len = len(''.join(node2stan.gettext(psig.to_node())))
     return LONG_FUNCTION_DEF - (name_len + signature_len) < 0
     
