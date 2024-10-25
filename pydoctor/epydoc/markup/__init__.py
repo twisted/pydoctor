@@ -33,6 +33,8 @@ each error.
 from __future__ import annotations
 __docformat__ = 'epytext en'
 
+from functools import cache
+from itertools import chain
 from typing import Callable, ContextManager, List, Optional, Sequence, Iterator, TYPE_CHECKING
 import abc
 import sys
@@ -147,7 +149,8 @@ class ParsedDocstring(abc.ABC):
         self._stan: Optional[Tag] = None
         self._summary: Optional['ParsedDocstring'] = None
 
-    @abc.abstractproperty
+    @property  
+    @abc.abstractmethod  
     def has_body(self) -> bool:
         """
         Does this docstring have a non-empty body?
@@ -202,6 +205,34 @@ class ParsedDocstring(abc.ABC):
             This method might raise L{NotImplementedError} in such cases. (i.e. L{pydoctor.epydoc.markup._types.ParsedTypeDocstring})
         """
         raise NotImplementedError()
+
+    def with_linker(self, linker: DocstringLinker) -> ParsedDocstring:
+        """
+        Pre-set the linker object for this parsed docstring. 
+        Whatever is passed to L{to_stan()} will be ignored.
+        """
+        return _EnforcedLinkerParsedDocstring(self, linker=linker)
+    
+    def with_tag(self, tag: Tag) -> ParsedDocstring:
+        """
+        Wraps the L{to_stan()} result inside the given tag. 
+        
+        This is useful because some code strips the main tag to keep only it's content. 
+        With this trick, the main tag is preserved. It can also be used to add
+        a custom CSS class on top of an existing parsed docstring.
+        """
+        # We double wrap it with a transparent tag so the added tags survives ParsedDocstring.combine 
+        # wich combines the content of the main div of the stan, not the div itself.
+        return _WrappedInTagParsedDocstring(
+            _WrappedInTagParsedDocstring(self, tag=tag), 
+            tag=tags.transparent)
+    
+    @classmethod
+    def combine(cls, elements: Sequence[ParsedDocstring]) -> ParsedDocstring:
+        """
+        Combine the contents of several parsed docstrings into one. 
+        """
+        return _CombinedParsedDocstring(elements)
     
     def get_summary(self) -> 'ParsedDocstring':
         """
@@ -218,11 +249,82 @@ class ParsedDocstring(abc.ABC):
             visitor = SummaryExtractor(_document)
             _document.walk(visitor)
         except Exception: 
+            # TODO: These could be replaced by parsed_text().with_tag(...)
             self._summary = epydoc2stan.ParsedStanOnly(tags.span(class_='undocumented')("Broken summary"))
         else:
             self._summary = visitor.summary or epydoc2stan.ParsedStanOnly(tags.span(class_='undocumented')("No summary"))
         return self._summary
 
+
+class _CombinedParsedDocstring(ParsedDocstring):
+    """
+    Wraps several parsed docstrings into a single one.
+    """
+
+    def __init__(self, elements: Sequence[ParsedDocstring]):
+        super().__init__(tuple(chain.from_iterable(e.fields for e in elements)))
+        self._elements = elements
+    
+    @property
+    def has_body(self) -> bool: 
+        return any(e.has_body for e in self._elements)
+
+    @cache
+    def to_node(self) -> nodes.document:
+        doc = new_document('composite')
+        for e in self._elements:
+            # TODO: Some parsed doctrings simply do not implement to_node() at this time.
+            # It should be really time to fix this...
+            subdoc = e.to_node()
+            # TODO: here all childrens might not have the same document property.
+            # this should not be a problem, but docutils is likely not meant to be used like that.
+            doc.children.extend(subdoc.children)
+        return doc
+
+    @cache
+    def to_stan(self, linker: DocstringLinker) -> Tag: 
+        stan = tags.transparent()
+        for e in self._elements:
+            stan(e.to_stan(linker).children)
+        return stan
+
+class _EnforcedLinkerParsedDocstring(ParsedDocstring):
+    """
+    Wraps an existing parsed docstring to be rendered with the 
+    given linker instead of whatever is passed to L{to_stan()}.
+    """
+    def __init__(self, other: ParsedDocstring, *, linker: DocstringLinker):
+        super().__init__(other.fields)
+        self.linker = linker
+        self._parsed = other
+    
+    @property
+    def has_body(self) -> bool: 
+        return self._parsed.has_body
+
+    def to_stan(self, _: object) -> Tag: 
+        return self._parsed.to_stan(self.linker)
+    
+    def to_node(self) -> nodes.document:
+        return self._parsed.to_node()
+
+
+class _WrappedInTagParsedDocstring(ParsedDocstring):
+    def __init__(self, other: ParsedDocstring, *, tag: Tag) -> None:
+        super().__init__(other.fields)
+        self._parsed = other
+        self._tag = tag
+    
+    @property
+    def has_body(self): 
+        return self._parsed.has_body
+    
+    def to_stan(self, linker: DocstringLinker) -> Tag: 
+        return self._tag(
+            self._parsed.to_stan(linker))
+    
+    def to_node(self) -> nodes.document:
+        return self._parsed.to_node()
       
 ##################################################
 ## Fields
