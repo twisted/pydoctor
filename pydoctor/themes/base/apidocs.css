@@ -400,8 +400,14 @@ table .private {
     word-spacing: -5px;
 }
 
-.function-signature code {
-    padding: 2px 1px;
+/* Force each parameter onto a new line */
+#childList a:target ~ .functionHeader .function-signature.expand-signature .sig-param {
+    display: block;
+    margin-left: 20px;
+}
+
+.sig-param .undocumented {
+    font-size: 93%;
 }
 
 /*

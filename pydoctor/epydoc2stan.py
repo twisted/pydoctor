@@ -5,12 +5,14 @@ from __future__ import annotations
 
 from collections import defaultdict
 import enum
+import inspect
 from typing import (
     TYPE_CHECKING, Any, Callable, ClassVar, DefaultDict, Dict, Generator,
     Iterator, List, Mapping, Optional, Sequence, Tuple, Union,
 )
 import ast
 import re
+from functools import cache
 
 import attr
 from docutils import nodes
@@ -1172,3 +1174,202 @@ def get_constructors_extra(cls:model.Class) -> ParsedDocstring | None:
     
     set_node_attributes(document, children=elements)
     return ParsedRstDocstring(document, ())
+
+@cache
+def parsed_text(text: str) -> ParsedDocstring:
+    """
+    Enacpsulate some raw text with no markup inside a L{ParsedDocstring}.
+    """
+    document = new_document('text')
+    txt_node = set_node_attributes(
+        nodes.Text(text),
+        document=document, 
+        lineno=1)
+    set_node_attributes(document, children=[txt_node])
+    return ParsedRstDocstring(document, ())
+
+
+def _colorize_signature_annotation(annotation: object, 
+                                   ctx: model.Documentable) -> ParsedDocstring:
+    """
+    Returns L{ParsedDocstring} with extra context to make
+    sure we resolve tha annotation correctly.
+    """
+    return colorize_inline_pyval(annotation
+                # Make sure to use the annotation linker in the context of an annotation.
+                ).with_linker(linker._AnnotationLinker(ctx)
+                # Make sure the generated <code> tags are not stripped by ParsedDocstring.combine.
+                ).with_tag(tags.transparent)
+
+def _is_less_important_param(param: inspect.Parameter, signature:inspect.Signature, ctx: model.Documentable) -> bool:
+    """
+    Whether this parameter is the 'self' param of methods or 'cls' param of class methods.
+    """
+    if param.kind not in (inspect.Parameter.POSITIONAL_OR_KEYWORD, inspect.Parameter.POSITIONAL_ONLY):
+        return False
+    if (param.name == 'self' and ctx.kind is model.DocumentableKind.METHOD) or (
+        param.name == 'cls' and ctx.kind is model.DocumentableKind.CLASS_METHOD):
+        if next(iter(signature.parameters.values())) is not param:
+            return False
+            # it's not the first param, so don't mark it less important
+        return param.annotation is inspect._empty and param.default is inspect._empty
+    return False
+
+# From inspect.Parameter.__str__() (Python 3.13)
+def _colorize_signature_param(param: inspect.Parameter, 
+                              signature: inspect.Signature, 
+                              ctx: model.Documentable, 
+                              has_next: bool) -> ParsedDocstring:
+    """
+    One parameter is converted to a series of ParsedDocstrings. 
+        
+        - one, the first, for the param name
+        - two others if the parameter is annotated: one for ': ' and one for the annotation
+        - two others if the paramter has a default value: one for ' = ' and one for the annotation
+    """
+    kind = param.kind
+    result: list[ParsedDocstring] = []
+    if kind == inspect.Parameter.VAR_POSITIONAL:
+        result += [parsed_text(f'*{param.name}')]
+    elif kind == inspect.Parameter.VAR_KEYWORD:
+        result += [parsed_text(f'**{param.name}')]
+    else:
+        if _is_less_important_param(param, signature, ctx):
+            result += [parsed_text(param.name).with_tag(
+                tags.span(class_="undocumented"))]
+        else:
+            result += [parsed_text(param.name)]
+    
+    # Add annotation and default value
+    if param.annotation is not inspect._empty:
+        result += [
+            parsed_text(': '), 
+            _colorize_signature_annotation(param.annotation, ctx)
+            ]
+
+    if param.default is not inspect._empty:
+        if param.annotation is not inspect._empty:
+            # TODO: should we keep these two different manners ?
+            result += [parsed_text(' = ')]
+        else:
+            result += [parsed_text('=')]
+        
+        result += [colorize_inline_pyval(param.default)]
+
+    if has_next:
+        result.append(parsed_text(', '))
+    
+    # use the same css class as Sphinx
+    return ParsedDocstring.combine(result).with_tag(
+        tags.span(class_='sig-param'))
+
+
+# From inspect.Signature.format() (Python 3.13)
+def _colorize_signature(sig: inspect.Signature, ctx: model.Documentable) -> ParsedDocstring:
+    """
+    Colorize this signature into a ParsedDocstring.
+    """
+    result: list[ParsedDocstring] = []
+    render_pos_only_separator = False
+    render_kw_only_separator = True
+    param_number = len(sig.parameters)
+    for i, param in enumerate(sig.parameters.values()):
+        kind = param.kind
+        has_next = (i+1 < param_number)
+
+        if kind == inspect.Parameter.POSITIONAL_ONLY:
+            render_pos_only_separator = True
+        elif render_pos_only_separator:
+            # It's not a positional-only parameter, and the flag
+            # is set to 'True' (there were pos-only params before.)
+            if has_next:
+                result.append(parsed_text('/, '))
+            else:
+                result.append(parsed_text('/'))
+            render_pos_only_separator = False
+
+        if kind == inspect.Parameter.VAR_POSITIONAL:
+            # OK, we have an '*args'-like parameter, so we won't need
+            # a '*' to separate keyword-only arguments
+            render_kw_only_separator = False
+        elif kind == inspect.Parameter.KEYWORD_ONLY and render_kw_only_separator:
+            # We have a keyword-only parameter to render and we haven't
+            # rendered an '*args'-like parameter before, so add a '*'
+            # separator to the parameters list ("foo(arg1, *, arg2)" case)
+            if has_next:
+                result.append(parsed_text('*, '))
+            else:
+                result.append(parsed_text('*'))
+            # This condition should be only triggered once, so
+            # reset the flag
+            render_kw_only_separator = False
+
+        result.append(_colorize_signature_param(param, sig, ctx, 
+                        has_next=has_next or render_pos_only_separator))
+    
+    if render_pos_only_separator:
+        # There were only positional-only parameters, hence the
+        # flag was not reset to 'False'
+        result.append(parsed_text('/'))
+     
+    result = [parsed_text('(')] + result + [parsed_text(')')]
+
+    if sig.return_annotation is not inspect._empty:
+        result += [parsed_text(' -> '), 
+                   _colorize_signature_annotation(sig.return_annotation, ctx)]
+
+    return ParsedDocstring.combine(result)
+
+@cache
+def get_parsed_signature(func: Union[model.Function, model.FunctionOverload]) -> ParsedDocstring | None:
+    signature = func.signature
+    if signature is None:
+        # TODO:When the value is None, it should probably not be cached 
+        # just yet because one could have called this function too
+        # early in the process when the signature property is not set yet.
+        # Is this possible ?
+        return None
+
+    ctx = func.primary if isinstance(func, model.FunctionOverload) else func
+    return _colorize_signature(signature, ctx)
+
+LONG_FUNCTION_DEF = 80 # this doesn't acount for the 'def ' and the ending ':'
+"""
+Maximum size of a function definition to be rendered on a single line. 
+The multiline formatting is only applied at the CSS level to stay customizable. 
+We add a css class to the signature HTML to signify the signature could possibly
+be better formatted on several lines.
+"""
+
+def is_long_function_def(func: model.Function | model.FunctionOverload) -> bool:
+    """
+    Whether this function definition is considered as long. 
+    The lenght of the a function def is defnied by the lenght of it's name plus the lenght of it's signature.
+    On top of that, a function or method that takes no argument (expect unannotated 'self' for methods, and 'cls' for classmethods) 
+    is never considered as long.
+
+    @see: L{LONG_FUNCTION_DEF}
+    """
+    if func.signature is None:
+        return False
+    nargs = len(func.signature.parameters)
+    if nargs == 0:
+        # no arguments at all -> never long
+        return False
+    ctx = func.primary if isinstance(func, model.FunctionOverload) else func
+    param1 = next(iter(func.signature.parameters.values()))
+    if _is_less_important_param(param1, func.signature, ctx):
+        nargs -= 1
+    if nargs == 0:
+        # method with only unannotated self/cls parameter -> never long
+        return False
+    
+    sig = get_parsed_signature(func)
+    if sig is None:
+        # this should never happen since we checked if func.signature is None. 
+        return False
+    
+    name_len = len(ctx.name)
+    signature_len = len(''.join(node2stan.gettext(sig.to_node())))
+    return LONG_FUNCTION_DEF - (name_len + signature_len) < 0
+    

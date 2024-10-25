@@ -869,14 +869,14 @@ class Function(Inheritable):
         self.signature = None
         self.overloads = []
 
-@attr.s(auto_attribs=True)
+@attr.s(auto_attribs=True, frozen=True)
 class FunctionOverload:
     """
     @note: This is not an actual documentable type. 
     """
     primary: Function
     signature: Signature
-    decorators: Sequence[ast.expr]
+    decorators: Sequence[ast.expr] = attr.ib(converter=tuple)
 
 class Attribute(Inheritable):
     kind: Optional[DocumentableKind] = DocumentableKind.ATTRIBUTE

@@ -14,7 +14,7 @@ from twisted.web.template import Element, Tag, renderer, tags
 from pydoctor.extensions import zopeinterface
 
 from pydoctor.stanutils import html2stan
-from pydoctor import epydoc2stan, model, linker, __version__
+from pydoctor import epydoc2stan, model, linker, __version__, node2stan
 from pydoctor.astbuilder import node2fullname
 from pydoctor.templatewriter import util, TemplateLookup, TemplateElement
 from pydoctor.templatewriter.pages.table import ChildTable
@@ -57,14 +57,19 @@ def format_signature(func: Union[model.Function, model.FunctionOverload]) -> "Fl
     Return a stan representation of a nicely-formatted source-like function signature for the given L{Function}.
     Arguments default values are linked to the appropriate objects when possible.
     """
-    broken = "(...)"
-    try:
-        return html2stan(str(func.signature)) if func.signature else broken
-    except Exception as e:
-        # We can't use safe_to_stan() here because we're using Signature.__str__ to generate the signature HTML.
-        epydoc2stan.reportErrors(func.primary if isinstance(func, model.FunctionOverload) else func, 
-            [epydoc2stan.get_to_stan_error(e)], section='signature')
-        return broken
+
+    parsed_sig = epydoc2stan.get_parsed_signature(func)
+    if parsed_sig is None:
+        return "(...)"
+    ctx = func.primary if isinstance(func, model.FunctionOverload) else func
+    return epydoc2stan.safe_to_stan(
+        parsed_sig, 
+        ctx.docstring_linker, 
+        ctx, 
+        fallback=lambda _, doc, ___: tags.transparent(
+            node2stan.gettext(doc.to_node())),
+        section='signature'
+    )
 
 def format_class_signature(cls: model.Class) -> "Flattenable":
     """
@@ -125,10 +130,13 @@ def format_function_def(func_name: str, is_async: bool,
     def_stmt = 'async def' if is_async else 'def'
     if func_name.endswith('.setter') or func_name.endswith('.deleter'):
         func_name = func_name[:func_name.rindex('.')]
+    func_class = 'function-signature'
+    if epydoc2stan.is_long_function_def(func):
+        func_class += ' expand-signature'
     r.extend([
         tags.span(def_stmt, class_='py-keyword'), ' ',
         tags.span(func_name, class_='py-defname'), 
-        tags.span(format_signature(func), class_='function-signature'), ':',
+        tags.span(format_signature(func), class_=func_class), ':',
     ])
     return r
     
