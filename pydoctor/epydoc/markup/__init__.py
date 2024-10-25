@@ -33,9 +33,8 @@ each error.
 from __future__ import annotations
 __docformat__ = 'epytext en'
 
-from functools import lru_cache
 from itertools import chain
-from typing import Callable, ContextManager, List, Optional, Sequence, Iterator, TYPE_CHECKING
+from typing import Callable, ContextManager, Iterable, List, Optional, Sequence, Iterator, TYPE_CHECKING
 import abc
 import sys
 import re
@@ -264,16 +263,17 @@ class _CombinedParsedDocstring(ParsedDocstring):
     def __init__(self, elements: Sequence[ParsedDocstring]):
         super().__init__(tuple(chain.from_iterable(e.fields for e in elements)))
         self._elements = elements
+        self._doc = self._document(elements)
     
     @property
     def has_body(self) -> bool: 
         return any(e.has_body for e in self._elements)
 
-    @lru_cache(maxsize=None)
-    def to_node(self) -> nodes.document:
+    @classmethod
+    def _document(cls, elements: Iterable[ParsedDocstring]) -> nodes.document:
         doc = new_document('composite')
-        for e in self._elements:
-            # TODO: Some parsed doctrings simply do not implement to_node() at this time.
+        for e in elements:
+            # TODO: Some parsed doctrings simply do not implement to_node().
             # It should be really time to fix this...
             subdoc = e.to_node()
             # TODO: here all childrens might not have the same document property.
@@ -281,7 +281,9 @@ class _CombinedParsedDocstring(ParsedDocstring):
             doc.children.extend(subdoc.children)
         return doc
 
-    @lru_cache(maxsize=None)
+    def to_node(self) -> nodes.document:
+        return self._doc
+
     def to_stan(self, linker: DocstringLinker) -> Tag: 
         stan = tags.transparent()
         for e in self._elements:
@@ -320,8 +322,7 @@ class _WrappedInTagParsedDocstring(ParsedDocstring):
         return self._parsed.has_body
     
     def to_stan(self, linker: DocstringLinker) -> Tag: 
-        return self._tag(
-            self._parsed.to_stan(linker))
+        return self._tag(self._parsed.to_stan(linker))
     
     def to_node(self) -> nodes.document:
         return self._parsed.to_node()

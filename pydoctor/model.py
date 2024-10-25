@@ -857,10 +857,12 @@ class Inheritable(Documentable):
 class Function(Inheritable):
     kind = DocumentableKind.FUNCTION
     is_async: bool
-    annotations: Mapping[str, Optional[ast.expr]]
-    decorators: Optional[Sequence[ast.expr]]
-    signature: Optional[Signature]
-    overloads: List['FunctionOverload']
+    annotations: Mapping[str, ast.expr | None]
+    decorators: Sequence[ast.expr] | None
+    signature: Signature | None
+    overloads: List[FunctionOverload]
+
+    parsed_signature: ParsedDocstring | None = None # set in get_parsed_signature()
 
     def setup(self) -> None:
         super().setup()
@@ -869,7 +871,7 @@ class Function(Inheritable):
         self.signature = None
         self.overloads = []
 
-@attr.s(auto_attribs=True, frozen=True)
+@attr.s(auto_attribs=True)
 class FunctionOverload:
     """
     @note: This is not an actual documentable type. 
@@ -877,6 +879,7 @@ class FunctionOverload:
     primary: Function
     signature: Signature
     decorators: Sequence[ast.expr] = attr.ib(converter=tuple)
+    parsed_signature: ParsedDocstring | None = None # set in get_parsed_signature()
 
 class Attribute(Inheritable):
     kind: Optional[DocumentableKind] = DocumentableKind.ATTRIBUTE

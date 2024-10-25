@@ -1175,7 +1175,7 @@ def get_constructors_extra(cls:model.Class) -> ParsedDocstring | None:
     set_node_attributes(document, children=elements)
     return ParsedRstDocstring(document, ())
 
-@lru_cache(maxsize=None)
+@lru_cache()
 def parsed_text(text: str) -> ParsedDocstring:
     """
     Enacpsulate some raw text with no markup inside a L{ParsedDocstring}.
@@ -1188,8 +1188,8 @@ def parsed_text(text: str) -> ParsedDocstring:
     set_node_attributes(document, children=[txt_node])
     return ParsedRstDocstring(document, ())
 
-# not using @cache here because it cause too munch trouble since the ParsedDocstring
-# are actually not immutable.
+# not using @cache here because we need new span tag for every call 
+# othewise it messes-up everything.
 def parsed_text_with_css(text:str, css_class: str) -> ParsedDocstring:
     parsed_doc = parsed_text(text)
     if not css_class:
@@ -1329,18 +1329,17 @@ def _colorize_signature(sig: inspect.Signature, ctx: model.Documentable) -> Pars
 
     return ParsedDocstring.combine(result)
 
-@lru_cache(maxsize=None)
 def get_parsed_signature(func: Union[model.Function, model.FunctionOverload]) -> ParsedDocstring | None:
-    signature = func.signature
-    if signature is None:
-        # TODO:When the value is None, it should probably not be cached 
-        # just yet because one could have called this function too
-        # early in the process when the signature property is not set yet.
-        # Is this possible ?
+    if (psig:=func.parsed_signature) is not None:
+        return psig
+    
+    if (signature:=func.signature) is None:
         return None
 
     ctx = func.primary if isinstance(func, model.FunctionOverload) else func
-    return _colorize_signature(signature, ctx)
+    psig = _colorize_signature(signature, ctx)
+    func.parsed_signature = psig
+    return psig
 
 LONG_FUNCTION_DEF = 80 # this doesn't acount for the 'def ' and the ending ':'
 """
