@@ -33,7 +33,7 @@ each error.
 from __future__ import annotations
 __docformat__ = 'epytext en'
 
-from functools import cache
+from functools import lru_cache
 from itertools import chain
 from typing import Callable, ContextManager, List, Optional, Sequence, Iterator, TYPE_CHECKING
 import abc
@@ -269,7 +269,7 @@ class _CombinedParsedDocstring(ParsedDocstring):
     def has_body(self) -> bool: 
         return any(e.has_body for e in self._elements)
 
-    @cache
+    @lru_cache(maxsize=None)
     def to_node(self) -> nodes.document:
         doc = new_document('composite')
         for e in self._elements:
@@ -281,7 +281,7 @@ class _CombinedParsedDocstring(ParsedDocstring):
             doc.children.extend(subdoc.children)
         return doc
 
-    @cache
+    @lru_cache(maxsize=None)
     def to_stan(self, linker: DocstringLinker) -> Tag: 
         stan = tags.transparent()
         for e in self._elements:
