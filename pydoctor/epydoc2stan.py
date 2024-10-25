@@ -12,7 +12,7 @@ from typing import (
 )
 import ast
 import re
-from functools import cache
+from functools import lru_cache
 
 import attr
 from docutils import nodes
@@ -1175,7 +1175,7 @@ def get_constructors_extra(cls:model.Class) -> ParsedDocstring | None:
     set_node_attributes(document, children=elements)
     return ParsedRstDocstring(document, ())
 
-@cache
+@lru_cache(maxsize=None)
 def parsed_text(text: str) -> ParsedDocstring:
     """
     Enacpsulate some raw text with no markup inside a L{ParsedDocstring}.
@@ -1329,7 +1329,7 @@ def _colorize_signature(sig: inspect.Signature, ctx: model.Documentable) -> Pars
 
     return ParsedDocstring.combine(result)
 
-@cache
+@lru_cache(maxsize=None)
 def get_parsed_signature(func: Union[model.Function, model.FunctionOverload]) -> ParsedDocstring | None:
     signature = func.signature
     if signature is None:
