@@ -400,14 +400,24 @@ table .private {
     word-spacing: -5px;
 }
 
-/* Force each parameter onto a new line */
-#childList a:target ~ .functionHeader .function-signature.expand-signature .sig-param {
-    display: block;
-    margin-left: 20px;
+.sig-param .undocumented {
+    /* self or cls params */
+    font-size: 93%;
 }
 
-.sig-param .undocumented {
-    font-size: 93%;
+/* When focuse, present each parameter onto a new line */
+#childList a:target ~ .functionHeader .function-signature.expand-signature .sig-param, 
+#childList a:target ~ .functionHeader .function-signature.expand-signature .sig-symbol {
+    display: block;
+    margin-left: 1.5em;
+    padding-left: 1.5em;
+    text-indent: -1.5em;
+}
+/* Except the 'self' or 'cls' params, which are rendered on the same line as the function def */
+#childList a:target ~ .functionHeader .function-signature.expand-signature .sig-param:has(.undocumented) {
+    display: initial;
+    margin-left: 0;
+    padding-left: 0;
 }
 
 /*
