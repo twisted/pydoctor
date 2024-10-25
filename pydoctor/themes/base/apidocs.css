@@ -5,11 +5,25 @@ body {
     overflow-y: scroll;
 }
 
-.container-fluid{
-    max-width: 1380px;
+.container-fluid {
+    max-width: 1400px;
     width: 100%;
     flex: auto;
+    margin-left: 0;
 }
+
+/* For laptop displays */
+@media only screen and (max-width: 1850px) {
+    .container-fluid {
+        max-width: 1350px;
+    }
+}
+@media only screen and (max-width: 1750px) {
+    .container-fluid {
+        max-width: 1250px;
+    }
+}
+
 
 nav.navbar {
     width:100%;
