@@ -211,7 +211,12 @@ class ParsedDocstring(abc.ABC):
         Pre-set the linker object for this parsed docstring. 
         Whatever is passed to L{to_stan()} will be ignored.
         """
-        return _EnforcedLinkerParsedDocstring(self, linker=linker)
+        to_stan = self.to_stan
+        use_linker = linker
+        def new_to_stan(_: DocstringLinker) -> Tag: 
+            return to_stan(use_linker)
+        self.to_stan = new_to_stan
+        return self
     
     def with_tag(self, tag: Tag) -> ParsedDocstring:
         """
@@ -221,11 +226,17 @@ class ParsedDocstring(abc.ABC):
         With this trick, the main tag is preserved. It can also be used to add
         a custom CSS class on top of an existing parsed docstring.
         """
-        # We double wrap it with a transparent tag so the added tags survives ParsedDocstring.combine 
-        # wich combines the content of the main div of the stan, not the div itself.
-        return _WrappedInTagParsedDocstring(
-            _WrappedInTagParsedDocstring(self, tag=tag), 
-            tag=tags.transparent)
+        to_stan = self.to_stan
+        # cloning the tag is really important otherwise since the stan results are cached
+        # we might end up adding the same to_stan result to the same tag instance which generate bogus output.
+        tag = tag.clone()
+        def new_to_stan(linker: DocstringLinker) -> Tag: 
+            # We double wrap it with a transparent tag so the added tags survives ParsedDocstring.combine 
+            # wich combines the content of the main div of the stan, not the div itself.
+            return tags.transparent(tag(to_stan(linker)))
+        self.to_stan = new_to_stan
+        return self
+
     
     @classmethod
     def combine(cls, elements: Sequence[ParsedDocstring]) -> ParsedDocstring:
@@ -288,44 +299,7 @@ class _CombinedParsedDocstring(ParsedDocstring):
             stan(e.to_stan(linker).children)
         return stan
 
-class _EnforcedLinkerParsedDocstring(ParsedDocstring):
-    """
-    Wraps an existing parsed docstring to be rendered with the 
-    given linker instead of whatever is passed to L{to_stan()}.
-    """
-    def __init__(self, other: ParsedDocstring, *, linker: DocstringLinker):
-        super().__init__(other.fields)
-        self.linker = linker
-        self._parsed = other
-    
-    @property
-    def has_body(self) -> bool: 
-        return self._parsed.has_body
 
-    def to_stan(self, _: object) -> Tag: 
-        return self._parsed.to_stan(self.linker)
-    
-    def to_node(self) -> nodes.document:
-        return self._parsed.to_node()
-
-
-class _WrappedInTagParsedDocstring(ParsedDocstring):
-    def __init__(self, other: ParsedDocstring, *, tag: Tag) -> None:
-        super().__init__(other.fields)
-        self._parsed = other
-        self._tag = tag
-    
-    @property
-    def has_body(self): 
-        return self._parsed.has_body
-    
-    def to_stan(self, linker: DocstringLinker) -> Tag: 
-        return self._tag(
-            self._parsed.to_stan(linker))
-    
-    def to_node(self) -> nodes.document:
-        return self._parsed.to_node()
-      
 ##################################################
 ## Fields
 ##################################################
