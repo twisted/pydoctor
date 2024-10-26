@@ -13,8 +13,7 @@ from typing import (
     Type, TypeVar, Union, Set, cast
 )
 
-from pydoctor import epydoc2stan, model, node2stan, extensions, linker
-from pydoctor.epydoc.markup._pyval_repr import colorize_inline_pyval
+from pydoctor import epydoc2stan, model, extensions
 from pydoctor.astutils import (is_none_literal, is_typing_annotation, is_using_annotations, is_using_typing_final, node2dottedname, node2fullname, 
                                is__name__equals__main__, unstring_annotation, upgrade_annotation, iterassign, extract_docstring_linenum, infer_type, get_parents,
                                get_docstring_node, get_assign_docstring_node, unparse, NodeVisitor, Parentage, Str)

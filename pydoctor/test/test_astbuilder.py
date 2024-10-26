@@ -8,7 +8,7 @@ from pydoctor import astbuilder, astutils, model, node2stan
 from pydoctor import epydoc2stan
 from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring
 from pydoctor.options import Options
-from pydoctor.stanutils import flatten, html2stan, flatten_text
+from pydoctor.stanutils import flatten, flatten_text
 from pydoctor.epydoc.markup.epytext import Element, ParsedEpytextDocstring
 from pydoctor.epydoc2stan import _get_docformat, format_summary, get_parsed_signature, get_parsed_type
 from pydoctor.templatewriter.pages import format_signature
