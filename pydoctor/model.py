@@ -878,7 +878,7 @@ class FunctionOverload:
     """
     primary: Function
     signature: Signature
-    decorators: Sequence[ast.expr] = attr.ib(converter=tuple)
+    decorators: Sequence[ast.expr]
     parsed_signature: ParsedDocstring | None = None # set in get_parsed_signature()
 
 class Attribute(Inheritable):

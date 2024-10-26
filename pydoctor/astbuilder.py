@@ -20,7 +20,7 @@ from pydoctor.astutils import (is_none_literal, is_typing_annotation, is_using_a
                                get_docstring_node, get_assign_docstring_node, unparse, NodeVisitor, Parentage, Str)
 
 class InvalidSignatureParamName(str):
-    def isidentifier(self):
+    def isidentifier(self) -> bool:
         return True
 
 def parseFile(path: Path) -> ast.Module:

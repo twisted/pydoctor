@@ -1977,9 +1977,9 @@ def test_class_level_type_alias() -> None:
     assert isinstance(f, model.Function)
     assert f.signature
     assert "href" in flatten(epydoc2stan._colorize_signature_annotation(
-        f.signature.parameters['x'].annotation, f).to_stan(None))
+        f.signature.parameters['x'].annotation, f).to_stan(NotFoundLinker()))
     assert "href" in flatten(epydoc2stan._colorize_signature_annotation(
-        f.signature.return_annotation, f).to_stan(None))
+        f.signature.return_annotation, f).to_stan(NotFoundLinker()))
 
     assert isinstance(var, model.Attribute)
     assert "href" in flatten(epydoc2stan.type2stan(var) or '')
@@ -2008,12 +2008,12 @@ def test_top_level_type_alias_wins_over_class_level(capsys:CapSys) -> None:
     assert isinstance(f, model.Function)
     assert f.signature
     assert 'href="index.html#typ"' in flatten(epydoc2stan._colorize_signature_annotation(
-        f.signature.parameters['x'].annotation, f).to_stan(None))
-    # the linker can be None here because the annotations uses with_linker()
+        f.signature.parameters['x'].annotation, f).to_stan(NotFoundLinker()))
+    # the linker can be NotFoundLinker() here because the annotations uses with_linker()
 
     assert 'href="index.html#typ"' in flatten(epydoc2stan._colorize_signature_annotation(
-        f.signature.return_annotation, f).to_stan(None))
-    # the linker can be None here because the annotations uses with_linker()
+        f.signature.return_annotation, f).to_stan(NotFoundLinker()))
+    # the linker can be NotFoundLinker() here because the annotations uses with_linker()
 
     assert isinstance(var, model.Attribute)
     assert 'href="index.html#typ"' in flatten(epydoc2stan.type2stan(var) or '')

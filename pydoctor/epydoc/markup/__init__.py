@@ -318,7 +318,7 @@ class _WrappedInTagParsedDocstring(ParsedDocstring):
         self._tag = tag
     
     @property
-    def has_body(self): 
+    def has_body(self) -> bool: 
         return self._parsed.has_body
     
     def to_stan(self, linker: DocstringLinker) -> Tag: 
