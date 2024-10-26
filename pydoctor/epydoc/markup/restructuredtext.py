@@ -41,7 +41,10 @@ the list.
 from __future__ import annotations
 __docformat__ = 'epytext en'
 
-from typing import Any, Iterable, List, Optional, Sequence, Set, cast
+from typing import TYPE_CHECKING, Any, Iterable, List, Optional, Sequence, Set, cast
+if TYPE_CHECKING:
+    from typing import TypeAlias
+    
 import re
 from docutils import nodes
 
@@ -190,7 +193,12 @@ class _EpydocReader(StandaloneReader):
 
         self._errors.append(ParseError(msg, linenum, is_fatal))
 
-class _DocumentPseudoWriter(Writer):
+if TYPE_CHECKING:
+    _StrWriter: TypeAlias = Writer[str]
+else:
+    _StrWriter = Writer
+
+class _DocumentPseudoWriter(_StrWriter):
     """
     A pseudo-writer for the docutils framework, that can be used to
     access the document itself.  The output of C{_DocumentPseudoWriter}

@@ -74,6 +74,8 @@ in development
 ^^^^^^^^^^^^^^
 
 * Drop Python 3.7 and support Python 3.13.
+* Implement canonical HTML element (``<link rel="canonical" href="..."/>``) to help search engines reduce outdated content. 
+  Enable this feature by passing the base URL of the API documentation with option ``--html-base-url``.
 * Improve collection of objects:
    - Document objects declared in the ``else`` block of 'if' statements (previously they were ignored).
    - Document objects declared in ``finalbody`` and ``else`` block of 'try' statements (previously they were ignored).
@@ -85,6 +87,10 @@ in development
 * Replace the deprecated dependency appdirs with platformdirs.
 * Fix WinError caused by the failure of the symlink creation process.
   Pydoctor should now run on windows without the need to be administrator.
+* Adjust the sphinx extension to support Sphinx 8.1. The entries dynamically added to the intersphinx config
+  from the ``pydoctor_url_path`` config option now includes a project name which defaults to 'main' (instead of putting None), 
+  use mapping instead of a list to define your own project name.
+* Improve the themes so the adds injected by ReadTheDocs are rendered with the correct width and do not overlap too much with the main content.
 
 pydoctor 24.3.3
 ^^^^^^^^^^^^^^^

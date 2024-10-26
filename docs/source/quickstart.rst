@@ -26,9 +26,10 @@ The result looks like `this <api/index.html>`_.
 
     pydoctor \
         --project-name=pydoctor \
-        --project-version=1.2.0 \
+        --project-version=20.7.2 \
         --project-url=https://github.com/twisted/pydoctor/ \
         --html-viewsource-base=https://github.com/twisted/pydoctor/tree/20.7.2 \
+        --html-base-url=https://pydoctor.readthedocs.io/en/latest/api \
         --html-output=docs/api \
         --docformat=epytext \
         --intersphinx=https://docs.python.org/3/objects.inv \
@@ -52,6 +53,9 @@ Output files are static HTML pages which require no extra server-side support.
 
 Here is a `GitHub Action example <publish-github-action.html>`_ to automatically
 publish your API documentation to your default GitHub Pages website.
+
+Here is a `ReadTheDocs configuration <publish-readthedocs.html>`_ to automatically
+publish your API documentation to ReadTheDocs
 
 Return codes
 ------------
