@@ -15,7 +15,7 @@ generate your documentation with Pydoctor.
 
 This example only includes a configuration file (``.readthedocs.yaml``), 
 but the repository must also have been 
-integrated to ReadTheDocs (by linking your Github account ans importing your project for 
+integrated to ReadTheDocs (by linking your Github account and importing your project for 
 instance or by `manual webhook configuration <https://stackoverflow.com/a/74959815>`_).
 
 The config file below assume you're cloning your repository with http(s) protocol 
