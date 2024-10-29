@@ -130,7 +130,7 @@ class ParsedDocstring(abc.ABC):
     markup parsers such as L{pydoctor.epydoc.markup.epytext.parse_docstring()}
     or L{pydoctor.epydoc.markup.restructuredtext.parse_docstring()}.
 
-    Subclasses must implement L{has_body()} and L{to_node()}.
+    Subclasses must at least implement L{has_body()} and L{to_node()}.
     
     A default implementation for L{to_stan()} method, relying on L{to_node()} is provided.
     But some subclasses override this behaviour.
@@ -204,13 +204,22 @@ class ParsedDocstring(abc.ABC):
             This method might raise L{NotImplementedError} in such cases. (i.e. L{pydoctor.epydoc.markup._types.ParsedTypeDocstring})
         """
         raise NotImplementedError()
+    
+    def to_text(self) -> str:
+        """
+        Translate this docstring to a string.
+        The default implementation depends on L{to_node}.
+        """
+        return ''.join(node2stan.gettext(self.to_node()))
 
     def with_linker(self, linker: DocstringLinker) -> ParsedDocstring:
         """
         Pre-set the linker object for this parsed docstring. 
         Whatever is passed to L{to_stan()} will be ignored.
         """
-        return _EnforcedLinkerParsedDocstring(self, linker=linker)
+        l = linker
+        return WrappedParsedDocstring(self, 
+                to_stan=lambda this, _: this.to_stan(l))
     
     def with_tag(self, tag: Tag) -> ParsedDocstring:
         """
@@ -222,16 +231,16 @@ class ParsedDocstring(abc.ABC):
         """
         # We double wrap it with a transparent tag so the added tags survives ParsedDocstring.combine 
         # wich combines the content of the main div of the stan, not the div itself.
-        return _WrappedInTagParsedDocstring(
-            _WrappedInTagParsedDocstring(self, tag=tag), 
-            tag=tags.transparent)
+        t =  tag
+        return WrappedParsedDocstring(self, 
+                lambda this, linker: tags.transparent(t(this.to_stan(linker))))
     
     @classmethod
     def combine(cls, elements: Sequence[ParsedDocstring]) -> ParsedDocstring:
         """
         Combine the contents of several parsed docstrings into one. 
         """
-        return _CombinedParsedDocstring(elements)
+        return _ParsedDocstringTree(elements)
     
     def get_summary(self) -> 'ParsedDocstring':
         """
@@ -255,22 +264,22 @@ class ParsedDocstring(abc.ABC):
         return self._summary
 
 
-class _CombinedParsedDocstring(ParsedDocstring):
+class _ParsedDocstringTree(ParsedDocstring):
     """
-    Wraps several parsed docstrings into a single one.
+    Several parsed docstrings into a single one.
     """
 
     def __init__(self, elements: Sequence[ParsedDocstring]):
         super().__init__(tuple(chain.from_iterable(e.fields for e in elements)))
         self._elements = elements
-        self._doc = self._document(elements)
+        self._doc: nodes.document | None = None
     
     @property
     def has_body(self) -> bool: 
         return any(e.has_body for e in self._elements)
 
     @classmethod
-    def _document(cls, elements: Iterable[ParsedDocstring]) -> nodes.document:
+    def _generate_document(cls, elements: Iterable[ParsedDocstring]) -> nodes.document:
         doc = new_document('composite')
         for e in elements:
             # TODO: Some parsed doctrings simply do not implement to_node().
@@ -282,6 +291,8 @@ class _CombinedParsedDocstring(ParsedDocstring):
         return doc
 
     def to_node(self) -> nodes.document:
+        if not self._doc:
+            self._doc = self._generate_document(self._elements)
         return self._doc
 
     def to_stan(self, linker: DocstringLinker) -> Tag: 
@@ -290,42 +301,32 @@ class _CombinedParsedDocstring(ParsedDocstring):
             stan(e.to_stan(linker).children)
         return stan
 
-class _EnforcedLinkerParsedDocstring(ParsedDocstring):
+class WrappedParsedDocstring(ParsedDocstring):
     """
-    Wraps an existing parsed docstring to be rendered with the 
-    given linker instead of whatever is passed to L{to_stan()}.
+    Wraps a parsed docstring to suppplement the to_stan() method.
     """
-    def __init__(self, other: ParsedDocstring, *, linker: DocstringLinker):
+    def __init__(self, 
+                 other: ParsedDocstring, 
+                 to_stan: Callable[[ParsedDocstring, DocstringLinker], Tag]):
         super().__init__(other.fields)
-        self.linker = linker
-        self._parsed = other
+        self.wrapped = other
+        """
+        The wrapped parsed docstring.
+        """
+        self._to_stan = to_stan
+
+    def to_stan(self, docstring_linker):
+        return self._to_stan(self.wrapped, docstring_linker)
+    
+    # Boring
+
+    def to_node(self) -> nodes.document:
+        return self.wrapped.to_node()
     
     @property
     def has_body(self) -> bool: 
-        return self._parsed.has_body
+        return self.wrapped.has_body
 
-    def to_stan(self, _: object) -> Tag: 
-        return self._parsed.to_stan(self.linker)
-    
-    def to_node(self) -> nodes.document:
-        return self._parsed.to_node()
-
-
-class _WrappedInTagParsedDocstring(ParsedDocstring):
-    def __init__(self, other: ParsedDocstring, *, tag: Tag) -> None:
-        super().__init__(other.fields)
-        self._parsed = other
-        self._tag = tag
-    
-    @property
-    def has_body(self) -> bool: 
-        return self._parsed.has_body
-    
-    def to_stan(self, linker: DocstringLinker) -> Tag: 
-        return self._tag(self._parsed.to_stan(linker))
-    
-    def to_node(self) -> nodes.document:
-        return self._parsed.to_node()
       
 ##################################################
 ## Fields
