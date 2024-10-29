@@ -1348,40 +1348,32 @@ def get_parsed_signature(func: Union[model.Function, model.FunctionOverload]) ->
     func.parsed_signature = psig
     return psig
 
-LONG_FUNCTION_DEF = 80 # this doesn't acount for the 'def ' and the ending ':'
-"""
-Maximum size of a function definition to be rendered on a single line. 
-The multiline formatting is only applied at the CSS level to stay customizable. 
-We add a css class to the signature HTML to signify the signature could possibly
-be better formatted on several lines.
-"""
-
-def is_long_function_def(func: model.Function | model.FunctionOverload) -> bool:
+def function_signature_len(func: model.Function | model.FunctionOverload) -> int:
     """
-    Whether this function definition is considered as long. 
     The lenght of the a function def is defnied by the lenght of it's name plus the lenght of it's signature.
     On top of that, a function or method that takes no argument (expect unannotated 'self' for methods, and 'cls' for classmethods) 
-    is never considered as long.
-
-    @see: L{LONG_FUNCTION_DEF}
+    will always have a lenght equals to the function name len plus two for 'function()'.
     """
+    ctx = func.primary if isinstance(func, model.FunctionOverload) else func
+    name_len = len(ctx.name)
+
     if (sig:=func.signature) is None or (
         psig:=get_parsed_signature(func)) is None:
-        return False
-
+        return name_len + 2 # bogus function def
+    
     nargs = len(sig.parameters)
     if nargs == 0:
-        # no arguments at all -> never long
-        return False
-    ctx = func.primary if isinstance(func, model.FunctionOverload) else func
+        # no arguments at all
+        return name_len + 2
+    
     param1 = next(iter(sig.parameters.values()))
     if _is_less_important_param(param1, ctx):
         nargs -= 1
     if nargs == 0:
-        # method with only unannotated self/cls parameter -> never long
-        return False
+        # method with only unannotated self/cls parameter
+        return name_len + 2
     
     name_len = len(ctx.name)
-    signature_len = len(''.join(node2stan.gettext(psig.to_node())))
-    return LONG_FUNCTION_DEF - (name_len + signature_len) < 0
+    signature_len = len(psig.to_text())
+    return name_len + signature_len
     

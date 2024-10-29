@@ -434,6 +434,47 @@ table .private {
     padding-left: 0;
 }
 
+/* Style for the "Expand/Collapse signtures" link */
+
+input[type=checkbox].overload-expand-checkbox:not(:checked) ~ label.overload-expand-link::after {
+    content: "Expand signatures";
+}
+
+input[type=checkbox].overload-expand-checkbox:checked ~ label.overload-expand-link::after {
+    content: "Collapse signatures";
+}
+
+input[type=checkbox].overload-expand-checkbox:not(:checked) ~ .collapse-overload .function-signature *
+{
+    display: inline-flex !important;
+    gap: 1px;
+    margin-left: 0 !important;
+    padding-left: 0 !important;
+    text-indent: 0 !important;
+    height: 1.2em;
+}
+
+input[type=checkbox].overload-expand-checkbox:not(:checked) ~ .collapse-overload .function-signature{
+    text-overflow: ellipsis;
+    word-wrap: break-word;
+    white-space: nowrap;
+    overflow: hidden;
+    display: inline-block;
+    width: -webkit-fill-available;
+    height: 1.3em;
+}
+
+.overload-expand-link {
+    float: right;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
+input[type=checkbox].overload-expand-checkbox:not(:checked) ~ .collapse-overload div:has(.function-signature) {
+    display: flex;
+    text-wrap-mode: nowrap;
+    gap: 8px;
+}
+
 /*
 - Links to class/function/etc names are nested like this:
     <code><a>label</a></code>
