@@ -37,6 +37,7 @@ def _format_decorators(obj: Union[model.Function, model.Attribute, model.Functio
             fn = node2fullname(dec.func, documentable_obj)
             # We don't want to show the deprecated decorator;
             # it shows up as an infobox.
+            # TODO: move this somewhere it can be customized.
             if fn in ("twisted.python.deprecate.deprecated",
                       "twisted.python.deprecate.deprecatedProperty"):
                 break
@@ -50,10 +51,10 @@ def _format_decorators(obj: Union[model.Function, model.Attribute, model.Functio
         # Report eventual warnings. It warns when we can't colorize the expression for some reason.
         epydoc2stan.reportWarnings(documentable_obj, doc.warnings, section='colorize decorator')
         
-        yield tags.span('@', stan.children, tags.br(), class_='function-decorator')
+        yield tags.span('@', stan.children, tags.br())
 
 def format_decorators(obj: Union[model.Function, model.Attribute, model.FunctionOverload]) -> Tag:
-    return tags.span(*_format_decorators(obj), class_='function-decorators')
+    return tags.span(*_format_decorators(obj), class_='func-decorators')
 
 def format_signature(func: Union[model.Function, model.FunctionOverload]) -> "Flattenable":
     """
@@ -111,84 +112,22 @@ def format_class_signature(cls: model.Class) -> "Flattenable":
         r.append(')')
     return r
 
-LONG_SIGNATURE = 80 # this doesn't acount for the 'def ' and the ending ':'
+LONG_SIGNATURE = 90 # this doesn't acount for the 'def ' and the ending ':'
 """
 Maximum size of a function definition to be rendered on a single line. 
 The multiline formatting is only applied at the CSS level to stay customizable. 
 We add a css class to the signature HTML to signify the signature could possibly
 be better formatted on several lines.
 """
-
-PRETTY_LONG_SIGNATURE = LONG_SIGNATURE * 2
-"""
-From that number of characters, a signature is considered pretty long.
-"""
-
-VERY_LONG_SIGNATURE = PRETTY_LONG_SIGNATURE * 3
-"""
-From that number of characters, a signature is considered very long.
-"""
-
-def _are_overloads_overwhelming(func: model.Function) -> bool:
-    # a manner to wrap long overloads like the ones from temporalio.client.Client.start_workflow
-    # Maybe when there are more than one long overload, we create a fake overload without any annotations 
-    # expect the one that are the same accros all overloads, then this could be showed when clicking on the function name then all overloads
-    # could be showed on demand
-
-    # The goal here is to hide overwhelming informations and only display it on demand. 
-    # The following code tries hard to determine if the overloads are overwhelming...
-    # First what is overwhelming overloads ?
-    # - If there are at least 2 very long signatures, it's overwhelming.
-    # - If there are at least 6 pretty long signatures, it's overwhelming.
-    # - If there are at least 10 long signatures, it's overwhelming.
-    # - If there are 16 or more signatures, it's overwhelming.
-    
-    if len(func.overloads) >= 16:
-        return True
-    
-    n_long, n_pretty_long, n_very_long = 0, 0, 0
-    for o in func.overloads:
-        siglen = epydoc2stan.function_signature_len(o)
-        if siglen > LONG_SIGNATURE:
-            n_long += 1
-            if siglen > PRETTY_LONG_SIGNATURE:
-                n_pretty_long += 1
-                if siglen > VERY_LONG_SIGNATURE:
-                    n_very_long += 1
-        if n_very_long >= 3:
-            return True
-        elif n_pretty_long >= 6:
-            return True
-        elif n_long >= 10:
-            return True
-
-    return False
-
-def _expand_overloads_link(ctx: model.Documentable) -> list[Tag]: 
-    _id = f'{ctx.fullName()}-overload-expand-link'
-    return [
-        tags.input(type='checkbox', id=_id, style="display: none;", class_="overload-expand-checkbox"),
-        tags.label(for_=_id, class_="overload-expand-link btn btn-link"),
-    ]
-
 def format_overloads(func: model.Function) -> Iterator["Flattenable"]:
     """
     Format a function overloads definitions as nice HTML signatures.
     """
-    # When the overloads are overwhelming, we only show the first and the last overloads. 
-    # the overloads in between are only showed with def x(...) and no decorators.
-
-    are_overwhelming = _are_overloads_overwhelming(func)
-    overload_class = 'function-overload'
-
-    if are_overwhelming:
-        yield from _expand_overloads_link(func)
-        overload_class += ' collapse-overload'
 
     for overload in func.overloads:
         yield tags.div(format_decorators(overload), 
             tags.div(format_function_def(func.name, func.is_async, overload)),   
-            class_=overload_class)
+            class_='function-overload')
 
 def format_function_def(func_name: str, is_async: bool, 
                         func: Union[model.Function, model.FunctionOverload]) -> List["Flattenable"]:
@@ -209,7 +148,8 @@ def format_function_def(func_name: str, is_async: bool,
     
     func_signature_css_class = 'function-signature'
     if epydoc2stan.function_signature_len(func) > LONG_SIGNATURE:
-        func_signature_css_class += ' expand-signature'
+        func_signature_css_class += ' long-signature'
+    
     r.extend([
         tags.span(def_stmt, class_='py-keyword'), ' ',
         tags.span(func_name, class_='py-defname'), 

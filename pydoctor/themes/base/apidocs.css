@@ -420,60 +420,20 @@ table .private {
 }
 
 /* When focuse, present each parameter onto a new line */
-#childList a:target ~ .functionHeader .function-signature.expand-signature .sig-param, 
-#childList a:target ~ .functionHeader .function-signature.expand-signature .sig-symbol {
+#childList a:target ~ .functionHeader .function-signature.long-signature .sig-param, 
+#childList a:target ~ .functionHeader .function-signature.long-signature .sig-symbol {
     display: block;
     margin-left: 1.5em;
     padding-left: 1.5em;
     text-indent: -1.5em;
 }
 /* Except the 'self' or 'cls' params, which are rendered on the same line as the function def */
-#childList a:target ~ .functionHeader .function-signature.expand-signature .sig-param:has(.undocumented) {
+#childList a:target ~ .functionHeader .function-signature.long-signature .sig-param:has(.undocumented) {
     display: initial;
     margin-left: 0;
     padding-left: 0;
 }
 
-/* Style for the "Expand/Collapse signtures" link */
-
-input[type=checkbox].overload-expand-checkbox:not(:checked) ~ label.overload-expand-link::after {
-    content: "Expand signatures";
-}
-
-input[type=checkbox].overload-expand-checkbox:checked ~ label.overload-expand-link::after {
-    content: "Collapse signatures";
-}
-
-input[type=checkbox].overload-expand-checkbox:not(:checked) ~ .collapse-overload .function-signature *
-{
-    display: inline-flex !important;
-    gap: 1px;
-    margin-left: 0 !important;
-    padding-left: 0 !important;
-    text-indent: 0 !important;
-    height: 1.2em;
-}
-
-input[type=checkbox].overload-expand-checkbox:not(:checked) ~ .collapse-overload .function-signature{
-    text-overflow: ellipsis;
-    word-wrap: break-word;
-    white-space: nowrap;
-    overflow: hidden;
-    display: inline-block;
-    width: -webkit-fill-available;
-    height: 1.3em;
-}
-
-.overload-expand-link {
-    float: right;
-    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-}
-
-input[type=checkbox].overload-expand-checkbox:not(:checked) ~ .collapse-overload div:has(.function-signature) {
-    display: flex;
-    text-wrap-mode: nowrap;
-    gap: 8px;
-}
 
 /*
 - Links to class/function/etc names are nested like this:
