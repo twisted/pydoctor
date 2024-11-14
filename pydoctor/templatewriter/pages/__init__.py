@@ -111,7 +111,7 @@ def format_class_signature(cls: model.Class) -> "Flattenable":
         r.append(')')
     return r
 
-LONG_SIGNATURE = 90 # this doesn't acount for the 'def ' and the ending ':'
+LONG_SIGNATURE = 120 # this doesn't acount for the 'def ' and the ending ':'
 """
 Maximum size of a function definition to be rendered on a single line. 
 The multiline formatting is only applied at the CSS level to stay customizable. 
