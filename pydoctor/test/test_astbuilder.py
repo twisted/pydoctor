@@ -112,7 +112,7 @@ def signature2str(func: model.Function | model.FunctionOverload) -> str:
     doc = get_parsed_signature(func)
     assert doc
     fromhtml = flatten_text(format_signature(func))
-    fromdocutils = ''.join(node2stan.gettext(doc.to_node()))
+    fromdocutils = doc.to_text()
     assert fromhtml == fromdocutils
     return fromhtml
 

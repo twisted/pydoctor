@@ -33,6 +33,7 @@ each error.
 from __future__ import annotations
 __docformat__ = 'epytext en'
 
+import contextlib
 from itertools import chain
 from typing import Callable, ContextManager, Iterable, List, Optional, Sequence, Iterator, TYPE_CHECKING
 import abc
@@ -209,7 +210,8 @@ class ParsedDocstring(abc.ABC):
         Translate this docstring to a string.
         The default implementation depends on L{to_node}.
         """
-        return ''.join(node2stan.gettext(self.to_node()))
+        doc = self.to_node()
+        return ''.join(node2stan.gettext(doc))
 
     def with_linker(self, linker: DocstringLinker) -> ParsedDocstring:
         """
@@ -424,6 +426,20 @@ class DocstringLinker(Protocol):
         Pass C{None} to always generate full URLs (for summaries for example), 
         in this case error will NOT be reported at all.
         """
+
+class NotFoundLinker(DocstringLinker):
+    """A DocstringLinker implementation that cannot find any links."""
+
+    def link_to(self, target: str, label: "Flattenable") -> Tag:
+        return tags.transparent(label)
+
+    def link_xref(self, target: str, label: "Flattenable", lineno: int) -> Tag:
+        return tags.code(label)
+    
+    @contextlib.contextmanager
+    def switch_context(self, ob: Documentable | None) -> Iterator[None]:
+        yield
+        
 
 ##################################################
 ## ParseError exceptions

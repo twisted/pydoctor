@@ -70,8 +70,7 @@ def format_signature(func: Union[model.Function, model.FunctionOverload]) -> "Fl
         parsed_sig, 
         ctx.docstring_linker, 
         ctx, 
-        fallback=lambda _, doc, ___: tags.transparent(
-            node2stan.gettext(doc.to_node())),
+        fallback=lambda _, doc, ___: tags.transparent(doc.to_text()),
         section='signature'
     )
 
