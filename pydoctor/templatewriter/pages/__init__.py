@@ -13,7 +13,7 @@ from twisted.web.iweb import IRenderable, ITemplateLoader, IRequest
 from twisted.web.template import Element, Tag, renderer, tags
 from pydoctor.extensions import zopeinterface
 
-from pydoctor import epydoc2stan, model, linker, __version__, node2stan
+from pydoctor import epydoc2stan, model, linker, __version__
 from pydoctor.astbuilder import node2fullname
 from pydoctor.templatewriter import util, TemplateLookup, TemplateElement
 from pydoctor.templatewriter.pages.table import ChildTable
@@ -51,10 +51,10 @@ def _format_decorators(obj: Union[model.Function, model.Attribute, model.Functio
         # Report eventual warnings. It warns when we can't colorize the expression for some reason.
         epydoc2stan.reportWarnings(documentable_obj, doc.warnings, section='colorize decorator')
         
-        yield tags.span('@', stan.children, tags.br())
+        yield tags.span('@', stan.children, tags.br(), class_='decorator')
 
 def format_decorators(obj: Union[model.Function, model.Attribute, model.FunctionOverload]) -> Tag:
-    return tags.span(*_format_decorators(obj), class_='func-decorators')
+    return tags.div(*_format_decorators(obj))
 
 def format_signature(func: Union[model.Function, model.FunctionOverload]) -> "Flattenable":
     """
