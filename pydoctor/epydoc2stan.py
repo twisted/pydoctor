@@ -687,7 +687,7 @@ def _get_parsed_summary(obj: model.Documentable) -> Tuple[Optional[model.Documen
 
     if source is None:
         summary_parsed_doc: ParsedDocstring = parsed_text_with_css(
-            format_undocumented_text(obj), 'undocumented')
+            format_undocumented_summary(obj), 'undocumented')
     else:
         # Tell mypy that if we found a docstring, we also have its source.
         assert obj.parsed_docstring is not None
@@ -815,7 +815,7 @@ def format_summary(obj: model.Documentable) -> Tag:
     return stan
 
 
-def format_undocumented_text(obj: model.Documentable) -> str:
+def format_undocumented_summary(obj: model.Documentable) -> str:
     """Generate a string representation for an object lacking a docstring."""
 
     sub_objects_with_docstring_count: DefaultDict[model.DocumentableKind, int] = defaultdict(int)
@@ -1255,10 +1255,7 @@ def _colorize_signature(sig: inspect.Signature, ctx: model.Documentable) -> Pars
         elif render_pos_only_separator:
             # It's not a positional-only parameter, and the flag
             # is set to 'True' (there were pos-only params before.)
-            if has_next:
-                result.append(parsed_text_with_css('/, ', css_class='sig-symbol'))
-            else:
-                result.append(parsed_text_with_css('/', css_class='sig-symbol'))
+            result.append(parsed_text_with_css('/, ', css_class='sig-symbol'))
             render_pos_only_separator = False
 
         if kind == _VAR_POSITIONAL:
@@ -1269,10 +1266,7 @@ def _colorize_signature(sig: inspect.Signature, ctx: model.Documentable) -> Pars
             # We have a keyword-only parameter to render and we haven't
             # rendered an '*args'-like parameter before, so add a '*'
             # separator to the parameters list ("foo(arg1, *, arg2)" case)
-            if has_next:
-                result.append(parsed_text_with_css('*, ', css_class='sig-symbol'))
-            else:
-                result.append(parsed_text_with_css('*', css_class='sig-symbol'))
+            result.append(parsed_text_with_css('*, ', css_class='sig-symbol'))
             # This condition should be only triggered once, so
             # reset the flag
             render_kw_only_separator = False

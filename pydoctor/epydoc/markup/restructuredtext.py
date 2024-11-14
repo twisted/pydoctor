@@ -138,6 +138,7 @@ def parsed_text(text: str) -> ParsedDocstring:
 
 # not using cache here because we need new span tag for every call 
 # othewise it messes-up everything.
+@lru_cache()
 def parsed_text_with_css(text:str, css_class: str) -> ParsedDocstring:
     return parsed_text(text).with_tag(tags.span(class_=css_class))
 

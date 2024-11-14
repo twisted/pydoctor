@@ -145,9 +145,7 @@ class ParsedDocstring(abc.ABC):
         A list of L{Field}s, each of which encodes a single field.
         The field's bodies are encoded as C{ParsedDocstring}s.
         """
-
         self._stan: Optional[Tag] = None
-        self._summary: Optional['ParsedDocstring'] = None
 
     @property  
     @abc.abstractmethod  
@@ -232,9 +230,16 @@ class ParsedDocstring(abc.ABC):
         """
         # We double wrap it with a transparent tag so the added tags survives ParsedDocstring.combine 
         # wich combines the content of the main div of the stan, not the div itself.
-        t =  tag
-        return WrappedParsedDocstring(self, 
-                lambda this, linker: tags.transparent(t(this.to_stan(linker))))
+        def to_stan(this: ParsedDocstring, linker: DocstringLinker) -> Tag:
+            # Since the stan is cached inside _stan attribute we can't simply use
+            # "lambda this, linker: tags.transparent(t(this.to_stan(linker)))" as the new to_stan method. 
+            # this would not behave correctly because each time to_stan will be called, the content would be duplicated.
+            if this._stan is not None:
+                return this._stan
+            this._stan = Tag('')(tag(this.to_stan(linker)))
+            return this._stan
+        
+        return WrappedParsedDocstring(self, to_stan)
     
     @classmethod
     def combine(cls, elements: Sequence[ParsedDocstring]) -> ParsedDocstring:
@@ -246,20 +251,15 @@ class ParsedDocstring(abc.ABC):
     def get_summary(self) -> 'ParsedDocstring':
         """
         Returns the summary of this docstring.
-        
-        @note: The summary is cached.
         """
-        if self._summary is not None:
-            return self._summary
         try: 
             _document = self.to_node()
             visitor = SummaryExtractor(_document)
             _document.walk(visitor)
         except Exception: 
-            self._summary = parsed_text_with_css('Broken summary', 'undocumented')
-        else:
-            self._summary = visitor.summary or parsed_text_with_css('No summary', 'undocumented')
-        return self._summary
+            return parsed_text_with_css('Broken summary', 'undocumented')
+        
+        return visitor.summary or parsed_text_with_css('No summary', 'undocumented')
 
 
 class _ParsedDocstringTree(ParsedDocstring):
@@ -313,7 +313,7 @@ class WrappedParsedDocstring(ParsedDocstring):
         """
         self._to_stan = to_stan
 
-    def to_stan(self, docstring_linker):
+    def to_stan(self, docstring_linker) -> Tag:
         return self._to_stan(self.wrapped, docstring_linker)
     
     # Boring

@@ -229,6 +229,9 @@ def test_function_async(systemcls: Type[model.System]) -> None:
     '(a, b=3, *c, **kw)',
     '(f=True)',
     '(x=0.1, y=-2)',
+    '(x, *v)',
+    '(x, *, v)',
+    '(x, *, v=1)',
     r"(s='theory', t='con\'text')",
     ))
 @systemcls_param
@@ -252,6 +255,9 @@ def test_function_signature(signature: str, systemcls: Type[model.System]) -> No
     '(x, y, /, z, w=42)',
     '(x, y, /, z=0, w=0)',
     '(x, y=3, /, z=5, w=7)',
+    '(x, /, *v)',
+    '(x, /, *, v)',
+    '(x, /, *, v=1)',
     '(x, /, *v, a=1, b=2)',
     '(x, /, *, a=1, b=2, **kwargs)',
     ))
