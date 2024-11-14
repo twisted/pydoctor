@@ -4,12 +4,14 @@ L{pydoctor.epydoc.markup.numpy} and L{pydoctor.epydoc.markup.google}.
 """
 from __future__ import annotations
 
-from typing import List, Optional, Type
+from typing import List, Optional, Type, TYPE_CHECKING
 
 from pydoctor.epydoc.markup import ParsedDocstring, ParseError, processtypes
 from pydoctor.epydoc.markup import restructuredtext
 from pydoctor.napoleon.docstring import GoogleDocstring, NumpyDocstring
-from pydoctor.model import Attribute, Documentable
+
+if TYPE_CHECKING:
+    from pydoctor.model import Documentable
 
 
 class NapoelonDocstringParser:
@@ -64,6 +66,8 @@ class NapoelonDocstringParser:
         errors: List[ParseError],
         docstring_cls: Type[GoogleDocstring],
     ) -> ParsedDocstring:
+        # TODO: would be best to avoid this import
+        from pydoctor.model import Attribute
 
         docstring_obj = docstring_cls(
             docstring, is_attribute=isinstance(self.obj, Attribute)

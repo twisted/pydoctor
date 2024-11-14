@@ -24,7 +24,7 @@ from pydoctor.epydoc.markup import Field as EpydocField, ParseError, get_parser_
 from twisted.web.template import Tag, tags
 from pydoctor.epydoc.markup import ParsedDocstring, DocstringLinker
 import pydoctor.epydoc.markup.plaintext
-from pydoctor.epydoc.markup.restructuredtext import ParsedRstDocstring
+from pydoctor.epydoc.markup.restructuredtext import ParsedRstDocstring, parsed_text, parsed_text_with_css
 from pydoctor.epydoc.markup._pyval_repr import colorize_pyval, colorize_inline_pyval
 
 if TYPE_CHECKING:
@@ -35,7 +35,8 @@ taglink = linker.taglink
 Alias to L{pydoctor.linker.taglink()}.
 """
 
-BROKEN = tags.p(class_="undocumented")('Broken description')
+BROKEN_TEXT = 'Broken description'
+BROKEN = tags.p(class_="undocumented")(BROKEN_TEXT)
 
 def _get_docformat(obj: model.Documentable) -> str:
     """
@@ -672,26 +673,6 @@ def ensure_parsed_docstring(obj: model.Documentable) -> Optional[model.Documenta
         return None
 
 
-class ParsedStanOnly(ParsedDocstring):
-    """
-    A L{ParsedDocstring} directly constructed from stan, for caching purposes.
-
-    L{to_stan} method simply returns back what's given to L{ParsedStanOnly.__init__}.
-    """
-    def __init__(self, stan: Tag):
-        super().__init__(fields=[])
-        self._fromstan = stan
-
-    @property
-    def has_body(self) -> bool:
-        return True
-
-    def to_stan(self, docstring_linker: Any) -> Tag:
-        return self._fromstan
-
-    def to_node(self) -> Any:
-        raise NotImplementedError()
-
 def _get_parsed_summary(obj: model.Documentable) -> Tuple[Optional[model.Documentable], ParsedDocstring]:
     """
     Ensures that the L{model.Documentable.parsed_summary} attribute of a documentable is set to it's final value.
@@ -705,7 +686,8 @@ def _get_parsed_summary(obj: model.Documentable) -> Tuple[Optional[model.Documen
         return (source, obj.parsed_summary)
 
     if source is None:
-        summary_parsed_doc: ParsedDocstring = ParsedStanOnly(format_undocumented(obj))
+        summary_parsed_doc: ParsedDocstring = parsed_text_with_css(
+            format_undocumented_text(obj), 'undocumented')
     else:
         # Tell mypy that if we found a docstring, we also have its source.
         assert obj.parsed_docstring is not None
@@ -811,10 +793,9 @@ def format_docstring(obj: model.Documentable) -> Tag:
     return ret
 
 def format_summary_fallback(errs: List[ParseError], parsed_doc:ParsedDocstring, ctx:model.Documentable) -> Tag:
-    stan = BROKEN
-    # override parsed_summary instance variable to remeber this one is broken.
-    ctx.parsed_summary = ParsedStanOnly(stan)
-    return stan
+    # override parsed_summary instance variable to remember this one is broken.
+    ctx.parsed_summary = parsed_text_with_css(BROKEN_TEXT, 'undocumented')
+    return BROKEN
 
 def format_summary(obj: model.Documentable) -> Tag:
     """Generate an shortened HTML representation of a docstring."""
@@ -834,8 +815,8 @@ def format_summary(obj: model.Documentable) -> Tag:
     return stan
 
 
-def format_undocumented(obj: model.Documentable) -> Tag:
-    """Generate an HTML representation for an object lacking a docstring."""
+def format_undocumented_text(obj: model.Documentable) -> str:
+    """Generate a string representation for an object lacking a docstring."""
 
     sub_objects_with_docstring_count: DefaultDict[model.DocumentableKind, int] = defaultdict(int)
     sub_objects_total_count: DefaultDict[model.DocumentableKind, int]  = defaultdict(int)
@@ -846,12 +827,11 @@ def format_undocumented(obj: model.Documentable) -> Tag:
             if sub_ob.docstring is not None:
                 sub_objects_with_docstring_count[kind] += 1
 
-    tag: Tag = tags.span(class_='undocumented')
     if sub_objects_with_docstring_count:
 
         kind = obj.kind
         assert kind is not None # if kind is None, object is invisible
-        tag(
+        return (
             "No ", format_kind(kind).lower(), " docstring; ",
             ', '.join(
                 f"{sub_objects_with_docstring_count[kind]}/{sub_objects_total_count[kind]} "
@@ -862,8 +842,7 @@ def format_undocumented(obj: model.Documentable) -> Tag:
             " documented"
             )
     else:
-        tag("Undocumented")
-    return tag
+        return "Undocumented"
 
 
 def type2stan(obj: model.Documentable) -> Optional[Tag]:
@@ -1174,27 +1153,6 @@ def get_constructors_extra(cls:model.Class) -> ParsedDocstring | None:
     
     set_node_attributes(document, children=elements)
     return ParsedRstDocstring(document, ())
-
-@lru_cache()
-def parsed_text(text: str) -> ParsedDocstring:
-    """
-    Enacpsulate some raw text with no markup inside a L{ParsedDocstring}.
-    """
-    document = new_document('text')
-    txt_node = set_node_attributes(
-        nodes.Text(text),
-        document=document, 
-        lineno=1)
-    set_node_attributes(document, children=[txt_node])
-    return ParsedRstDocstring(document, ())
-
-# not using @cache here because we need new span tag for every call 
-# othewise it messes-up everything.
-def parsed_text_with_css(text:str, css_class: str) -> ParsedDocstring:
-    parsed_doc = parsed_text(text)
-    if not css_class:
-        return parsed_doc
-    return parsed_doc.with_tag(tags.span(class_=css_class))
 
 _empty = inspect.Parameter.empty
 _POSITIONAL_ONLY = inspect.Parameter.POSITIONAL_ONLY

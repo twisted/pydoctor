@@ -132,7 +132,7 @@ __docformat__ = 'epytext en'
 #   4. helpers
 #   5. testing
 
-from typing import Any, Iterable, List, Optional, Sequence, Set, Union, cast
+from typing import Any, Iterable, List, Optional, Sequence, Set, Union, cast, TYPE_CHECKING
 import re
 import unicodedata
 
@@ -141,7 +141,9 @@ from twisted.web.template import Tag
 
 from pydoctor.epydoc.markup import Field, ParseError, ParsedDocstring, ParserFunction
 from pydoctor.epydoc.docutils import set_node_attributes, new_document
-from pydoctor.model import Documentable
+
+if TYPE_CHECKING:
+    from pydoctor.model import Documentable
 
 ##################################################
 ## Helper functions

@@ -6,11 +6,12 @@ Parser for google-style docstrings.
 """
 from __future__ import annotations
 
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 
 from pydoctor.epydoc.markup import ParserFunction
 from pydoctor.epydoc.markup._napoleon import NapoelonDocstringParser
-from pydoctor.model import Documentable
+if TYPE_CHECKING:
+    from pydoctor.model import Documentable
 
 
 def get_parser(obj: Optional[Documentable]) -> ParserFunction:

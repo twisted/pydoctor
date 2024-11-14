@@ -41,9 +41,11 @@ the list.
 from __future__ import annotations
 __docformat__ = 'epytext en'
 
+from functools import lru_cache
 from typing import TYPE_CHECKING, Any, Iterable, List, Optional, Sequence, Set, cast
 if TYPE_CHECKING:
     from typing import TypeAlias
+    from pydoctor.model import Documentable
     
 import re
 from docutils import nodes
@@ -58,8 +60,9 @@ from docutils.transforms import Transform, frontmatter
 
 from pydoctor.epydoc.markup import Field, ParseError, ParsedDocstring, ParserFunction
 from pydoctor.epydoc.markup.plaintext import ParsedPlaintextDocstring
-from pydoctor.epydoc.docutils import new_document
-from pydoctor.model import Documentable
+from pydoctor.epydoc.docutils import new_document, set_node_attributes
+
+from twisted.web.template import tags
 
 #: A dictionary whose keys are the "consolidated fields" that are
 #: recognized by epydoc; and whose values are the corresponding epydoc
@@ -119,6 +122,24 @@ def get_parser(obj:Documentable) -> ParserFunction:
     Get the L{parse_docstring} function. 
     """
     return parse_docstring
+
+@lru_cache()
+def parsed_text(text: str) -> ParsedDocstring:
+    """
+    Enacpsulate some raw text with no markup inside a L{ParsedDocstring}.
+    """
+    document = new_document('text')
+    txt_node = set_node_attributes(
+        nodes.Text(text),
+        document=document, 
+        lineno=1)
+    set_node_attributes(document, children=[txt_node])
+    return ParsedRstDocstring(document, ())
+
+# not using cache here because we need new span tag for every call 
+# othewise it messes-up everything.
+def parsed_text_with_css(text:str, css_class: str) -> ParsedDocstring:
+    return parsed_text(text).with_tag(tags.span(class_=css_class))
 
 class OptimizedReporter(Reporter):
     """A reporter that ignores all debug messages.  This is used to

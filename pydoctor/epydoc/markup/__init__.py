@@ -170,7 +170,6 @@ class ParsedDocstring(abc.ABC):
         docstring_toc = new_document('toc')
         if contents:
             docstring_toc.extend(contents)
-            from pydoctor.epydoc.markup.restructuredtext import ParsedRstDocstring
             return ParsedRstDocstring(docstring_toc, ())
         else:
             return None
@@ -248,8 +247,6 @@ class ParsedDocstring(abc.ABC):
         
         @note: The summary is cached.
         """
-        # Avoid rare cyclic import error, see https://github.com/twisted/pydoctor/pull/538#discussion_r845668735
-        from pydoctor import epydoc2stan
         if self._summary is not None:
             return self._summary
         try: 
@@ -257,10 +254,9 @@ class ParsedDocstring(abc.ABC):
             visitor = SummaryExtractor(_document)
             _document.walk(visitor)
         except Exception: 
-            # TODO: These could be replaced by parsed_text().with_tag(...)
-            self._summary = epydoc2stan.ParsedStanOnly(tags.span(class_='undocumented')("Broken summary"))
+            self._summary = parsed_text_with_css('Broken summary', 'undocumented')
         else:
-            self._summary = visitor.summary or epydoc2stan.ParsedStanOnly(tags.span(class_='undocumented')("No summary"))
+            self._summary = visitor.summary or parsed_text_with_css('No summary', 'undocumented')
         return self._summary
 
 
@@ -579,7 +575,6 @@ class SummaryExtractor(nodes.NodeVisitor):
             set_node_attributes(nodes.paragraph('', ''), document=summary_doc, lineno=1, 
             children=summary_pieces)])
 
-        from pydoctor.epydoc.markup.restructuredtext import ParsedRstDocstring
         self.summary = ParsedRstDocstring(summary_doc, fields=[])
 
     def visit_field(self, node: nodes.Node) -> None:
@@ -587,3 +582,6 @@ class SummaryExtractor(nodes.NodeVisitor):
 
     def unknown_visit(self, node: nodes.Node) -> None:
         '''Ignore all unknown nodes'''
+
+
+from pydoctor.epydoc.markup.restructuredtext import ParsedRstDocstring, parsed_text_with_css
