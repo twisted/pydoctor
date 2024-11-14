@@ -313,7 +313,7 @@ class WrappedParsedDocstring(ParsedDocstring):
         """
         self._to_stan = to_stan
 
-    def to_stan(self, docstring_linker) -> Tag:
+    def to_stan(self, docstring_linker: DocstringLinker) -> Tag:
         return self._to_stan(self.wrapped, docstring_linker)
     
     # Boring

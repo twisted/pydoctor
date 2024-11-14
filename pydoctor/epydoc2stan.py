@@ -831,14 +831,14 @@ def format_undocumented_summary(obj: model.Documentable) -> str:
         kind = obj.kind
         assert kind is not None # if kind is None, object is invisible
         return (
-            "No ", format_kind(kind).lower(), " docstring; ",
-            ', '.join(
+            f"No {format_kind(kind).lower()} docstring; "
+            + ', '.join(
                 f"{sub_objects_with_docstring_count[kind]}/{sub_objects_total_count[kind]} "
                 f"{format_kind(kind, plural=sub_objects_with_docstring_count[kind]>=2).lower()}"
 
                 for kind in sorted(sub_objects_total_count, key=(lambda x:x.value))
-                ),
-            " documented"
+                )
+            + " documented"
             )
     else:
         return "Undocumented"
