@@ -54,7 +54,9 @@ def _format_decorators(obj: Union[model.Function, model.Attribute, model.Functio
         yield tags.span('@', stan.children, tags.br(), class_='decorator')
 
 def format_decorators(obj: Union[model.Function, model.Attribute, model.FunctionOverload]) -> Tag:
-    return tags.div(*_format_decorators(obj))
+    if decs:=list(_format_decorators(obj)):
+        return tags.div(decs)
+    return tags.transparent
 
 def format_signature(func: Union[model.Function, model.FunctionOverload]) -> "Flattenable":
     """
