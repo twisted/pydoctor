@@ -434,6 +434,9 @@ table .private {
     padding-left: 0;
 }
 
+#childList > div .functionHeader {
+    word-break: break-word;
+}
 
 /*
 - Links to class/function/etc names are nested like this:

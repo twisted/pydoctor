@@ -10,7 +10,7 @@ import abc
 from urllib.parse import urljoin
 
 from twisted.web.iweb import IRenderable, ITemplateLoader, IRequest
-from twisted.web.template import Element, Tag, renderer, tags
+from twisted.web.template import Element, Tag, renderer, tags, CharRef
 from pydoctor.extensions import zopeinterface
 
 from pydoctor import epydoc2stan, model, linker, __version__
@@ -130,6 +130,7 @@ def format_overloads(func: model.Function) -> Iterator["Flattenable"]:
             tags.div(format_function_def(func.name, func.is_async, overload)),   
             class_='function-overload')
 
+_nbsp = CharRef(160) # non-breaking space.
 def format_function_def(func_name: str, is_async: bool, 
                         func: Union[model.Function, model.FunctionOverload]) -> List["Flattenable"]:
     """
@@ -143,7 +144,7 @@ def format_function_def(func_name: str, is_async: bool,
     # signature because the overloaded signatures will be shown instead.
     if isinstance(func, model.Function) and func.overloads:
         return r
-    def_stmt = 'async def' if is_async else 'def'
+    def_stmt = ['async', _nbsp, 'def'] if is_async else ['def']
     if func_name.endswith('.setter') or func_name.endswith('.deleter'):
         func_name = func_name[:func_name.rindex('.')]
     
@@ -152,7 +153,7 @@ def format_function_def(func_name: str, is_async: bool,
         func_signature_css_class += ' long-signature'
     
     r.extend([
-        tags.span(def_stmt, class_='py-keyword'), ' ',
+        tags.span(def_stmt, class_='py-keyword'), _nbsp,
         tags.span(func_name, class_='py-defname'), 
         tags.span(format_signature(func), ':', 
                   class_=func_signature_css_class),
