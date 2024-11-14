@@ -12,12 +12,11 @@ from typing import (
 )
 import ast
 import re
-from functools import lru_cache
 
 import attr
 from docutils import nodes
 
-from pydoctor import model, linker, node2stan
+from pydoctor import model, linker
 from pydoctor.astutils import is_none_literal
 from pydoctor.epydoc.docutils import new_document, set_node_attributes
 from pydoctor.epydoc.markup import Field as EpydocField, ParseError, get_parser_by_name, processtypes

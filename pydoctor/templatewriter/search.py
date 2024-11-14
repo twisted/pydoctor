@@ -10,7 +10,7 @@ import json
 import attr
 
 from pydoctor.templatewriter.pages import Page
-from pydoctor import model, epydoc2stan, node2stan
+from pydoctor import model, epydoc2stan
 
 from twisted.web.template import Tag, renderer
 from lunr import lunr, get_default_builder
