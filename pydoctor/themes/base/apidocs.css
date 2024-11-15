@@ -254,8 +254,15 @@ ul ul ul ul ul ul ul {
 
 /* Argument name + type column table  */
 .fieldTable tr td.fieldArgContainer {
-    width: 325px;
     word-break: break-word;
+    /* It not seems to work with percentage values
+    so I used px values, these are just indications for the
+    CSS auto layour table algo not to create tables 
+    with rather unbalanced columns width. */
+    max-width: 400px;
+}
+.fieldTable tr td.fieldArgDesc {
+    max-width: 600px;
 }
 
 /* parameters names in parameters table */
@@ -306,7 +313,13 @@ ul ul ul ul ul ul ul {
     #splitTables > table tr td:nth-child(3) {
         width: auto;
     }
-
+    .fieldTable{
+        table-layout: fixed;
+    }
+    /* Argument name + type column table  */
+    .fieldTable tr td.fieldArgContainer {
+        width: 34%;
+    }
 }
 
 @media only screen and (max-width: 820px) {
@@ -321,23 +334,12 @@ ul ul ul ul ul ul ul {
     #splitTables > table tr td:nth-child(2) {
         width: 160px;
     }
-    /* Argument name + type column table  */
-    .fieldTable tr td.fieldArgContainer {
-        width: 170px;
-    } 
-    .fieldTable {
-        table-layout: fixed;
-    }
 }
 
 @media only screen and (max-width: 450px) {
     /* Attr name column table  */
     #splitTables > table tr td:nth-child(2) {
         width: 100px;
-    }
-    /* Argument name + type column table  */
-    .fieldTable tr td.fieldArgContainer {
-        width: 125px;
     }
 }
 
