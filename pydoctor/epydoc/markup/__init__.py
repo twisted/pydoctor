@@ -211,15 +211,6 @@ class ParsedDocstring(abc.ABC):
         doc = self.to_node()
         return ''.join(node2stan.gettext(doc))
 
-    def with_linker(self, linker: DocstringLinker) -> ParsedDocstring:
-        """
-        Pre-set the linker object for this parsed docstring. 
-        Whatever is passed to L{to_stan()} will be ignored.
-        """
-        l = linker
-        return WrappedParsedDocstring(self, 
-                to_stan=lambda this, _: this.to_stan(l))
-    
     def with_tag(self, tag: Tag) -> ParsedDocstring:
         """
         Wraps the L{to_stan()} result inside the given tag. 
@@ -228,18 +219,7 @@ class ParsedDocstring(abc.ABC):
         With this trick, the main tag is preserved. It can also be used to add
         a custom CSS class on top of an existing parsed docstring.
         """
-        # We double wrap it with a transparent tag so the added tags survives ParsedDocstring.combine 
-        # wich combines the content of the main div of the stan, not the div itself.
-        def to_stan(this: ParsedDocstring, linker: DocstringLinker) -> Tag:
-            # Since the stan is cached inside _stan attribute we can't simply use
-            # "lambda this, linker: tags.transparent(t(this.to_stan(linker)))" as the new to_stan method. 
-            # this would not behave correctly because each time to_stan will be called, the content would be duplicated.
-            if this._stan is not None:
-                return this._stan
-            this._stan = Tag('')(tag(this.to_stan(linker)))
-            return this._stan
-        
-        return WrappedParsedDocstring(self, to_stan)
+        return _ParsedDocstringWithTag(self, tag)
     
     @classmethod
     def combine(cls, elements: Sequence[ParsedDocstring]) -> ParsedDocstring:
@@ -299,28 +279,36 @@ class _ParsedDocstringTree(ParsedDocstring):
             stan(e.to_stan(linker).children)
         return stan
 
-class WrappedParsedDocstring(ParsedDocstring):
+class _ParsedDocstringWithTag(ParsedDocstring):
     """
-    Wraps a parsed docstring to suppplement the to_stan() method.
+    Wraps a parsed docstring to wrap the result of the 
+    the to_stan() method inside a custom Tag.
     """
     def __init__(self, 
                  other: ParsedDocstring, 
-                 to_stan: Callable[[ParsedDocstring, DocstringLinker], Tag]):
+                 tag: Tag):
         super().__init__(other.fields)
         self.wrapped = other
         """
         The wrapped parsed docstring.
         """
-        self._to_stan = to_stan
+        self._tag = tag
+        self._stan: Tag | None = None
 
-    def to_stan(self, docstring_linker: DocstringLinker) -> Tag:
-        return self._to_stan(self.wrapped, docstring_linker)
+    # We double wrap it with a transparent tag so the added tags survives ParsedDocstring.combine 
+    # wich combines the content of the main div of the stan, not the div itself.
+    def to_stan(self, linker: DocstringLinker) -> Tag:
+        # Since the stan is cached inside _stan attribute we can't simply use
+        # "lambda this, linker: tags.transparent(self._tag(this.to_stan(linker)))" as the new to_stan method. 
+        # this would not behave correctly because each time to_stan will be called, the content would be duplicated.
+        if (stan:=self._stan) is not None:
+            return stan
+        self._stan = stan = Tag('')(self._tag(self.wrapped.to_stan(linker)))
+        return stan
     
     # Boring
-
     def to_node(self) -> nodes.document:
         return self.wrapped.to_node()
-    
     @property
     def has_body(self) -> bool: 
         return self.wrapped.has_body
@@ -388,7 +376,7 @@ class DocstringLinker(Protocol):
     target URL for crossreference links.
     """
 
-    def link_to(self, target: str, label: "Flattenable") -> Tag:
+    def link_to(self, target: str, label: "Flattenable", *, is_annotation: bool = False) -> Tag:
         """
         Format a link to a Python identifier.
         This will resolve the identifier like Python itself would.
@@ -396,6 +384,8 @@ class DocstringLinker(Protocol):
         @param target: The name of the Python identifier that
             should be linked to.
         @param label: The label to show for the link.
+        @param is_annotation: Generated links will give precedence to the module
+            defined varaible rather the nested definitions when there are name colisions.
         @return: The link, or just the label if the target was not found.
         """
 
@@ -430,7 +420,7 @@ class DocstringLinker(Protocol):
 class NotFoundLinker(DocstringLinker):
     """A DocstringLinker implementation that cannot find any links."""
 
-    def link_to(self, target: str, label: "Flattenable") -> Tag:
+    def link_to(self, target: str, label: "Flattenable", *, is_annotation: bool = False) -> Tag:
         return tags.transparent(label)
 
     def link_xref(self, target: str, label: "Flattenable", lineno: int) -> Tag:

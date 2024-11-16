@@ -1303,28 +1303,6 @@ def test_EpydocLinker_warnings(capsys: CapSys) -> None:
     # No warnings are logged when generating the summary.
     assert captured == ''
 
-def test_AnnotationLinker_xref(capsys: CapSys) -> None:
-    """
-    Even if the annotation linker is not designed to resolve xref,
-    it will still do the right thing by forwarding any xref requests to
-    the initial object's linker.
-    """
-
-    mod = fromText('''
-    class C:
-        var="don't use annotation linker for xref!"
-    ''')
-    mod.system.intersphinx = cast(SphinxInventory, InMemoryInventory())
-    _linker = linker._AnnotationLinker(mod.contents['C'])
-    
-    url = flatten(_linker.link_xref('socket.socket', 'socket', 0))
-    assert 'https://docs.python.org/3/library/socket.html#socket.socket' in url
-    assert not capsys.readouterr().out
-
-    url = flatten(_linker.link_xref('var', 'var', 0))
-    assert 'href="#var"' in url
-    assert not capsys.readouterr().out
-
 def test_xref_not_found_epytext(capsys: CapSys) -> None:
     """
     When a link in an epytext docstring cannot be resolved, the reference
@@ -1414,7 +1392,7 @@ class RecordingAnnotationLinker(NotFoundLinker):
     def __init__(self) -> None:
         self.requests: List[str] = []
 
-    def link_to(self, target: str, label: "Flattenable") -> Tag:
+    def link_to(self, target: str, label: "Flattenable", *, is_annotation: bool = False) -> Tag:
         self.requests.append(target)
         return tags.transparent(label)
 
@@ -1977,9 +1955,9 @@ def test_class_level_type_alias() -> None:
     assert isinstance(f, model.Function)
     assert f.signature
     assert "href" in flatten(epydoc2stan._colorize_signature_annotation(
-        f.signature.parameters['x'].annotation, f).to_stan(NotFoundLinker()))
+        f.signature.parameters['x'].annotation, f).to_stan(f.docstring_linker))
     assert "href" in flatten(epydoc2stan._colorize_signature_annotation(
-        f.signature.return_annotation, f).to_stan(NotFoundLinker()))
+        f.signature.return_annotation, f).to_stan(f.docstring_linker))
 
     assert isinstance(var, model.Attribute)
     assert "href" in flatten(epydoc2stan.type2stan(var) or '')
@@ -2000,7 +1978,6 @@ def test_top_level_type_alias_wins_over_class_level(capsys:CapSys) -> None:
         var: typ
     '''
     system = model.System()
-    system.options.verbosity = 1
     mod = fromText(src, modname='m', system=system)
     f = mod.system.allobjects['m.C.f']
     var = mod.system.allobjects['m.C.var']
@@ -2008,21 +1985,15 @@ def test_top_level_type_alias_wins_over_class_level(capsys:CapSys) -> None:
     assert isinstance(f, model.Function)
     assert f.signature
     assert 'href="index.html#typ"' in flatten(epydoc2stan._colorize_signature_annotation(
-        f.signature.parameters['x'].annotation, f).to_stan(NotFoundLinker()))
-    # the linker can be NotFoundLinker() here because the annotations uses with_linker()
+        f.signature.parameters['x'].annotation, f).to_stan(f.docstring_linker))
 
     assert 'href="index.html#typ"' in flatten(epydoc2stan._colorize_signature_annotation(
-        f.signature.return_annotation, f).to_stan(NotFoundLinker()))
-    # the linker can be NotFoundLinker() here because the annotations uses with_linker()
+        f.signature.return_annotation, f).to_stan(f.docstring_linker))
 
     assert isinstance(var, model.Attribute)
     assert 'href="index.html#typ"' in flatten(epydoc2stan.type2stan(var) or '')
 
-    assert capsys.readouterr().out == """\
-m:5: ambiguous annotation 'typ', could be interpreted as 'm.C.typ' instead of 'm.typ'
-m:5: ambiguous annotation 'typ', could be interpreted as 'm.C.typ' instead of 'm.typ'
-m:7: ambiguous annotation 'typ', could be interpreted as 'm.C.typ' instead of 'm.typ'
-"""
+    # Pydoctor is not a checker so no warning is beeing reported.
 
 def test_not_found_annotation_does_not_create_link() -> None:
     """

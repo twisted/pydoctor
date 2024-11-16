@@ -11,8 +11,8 @@ from pydoctor.epydoc.markup._pyval_repr import PyvalColorizer, colorize_inline_p
 from pydoctor.test import NotFoundLinker
 from pydoctor.stanutils import flatten, flatten_text, html2stan
 
-def color(v: Any, linebreakok:bool=True, maxlines:int=5, linelen:int=40) -> str:
-    colorizer = PyvalColorizer(linelen=linelen, linebreakok=linebreakok, maxlines=maxlines)
+def color(v: Any, linebreakok:bool=True, maxlines:int=5, linelen:int=40, is_annotation: bool = False) -> str:
+    colorizer = PyvalColorizer(linelen=linelen, linebreakok=linebreakok, maxlines=maxlines, is_annotation=is_annotation)
     parsed_doc = colorizer.colorize(v)
     return parsed_doc.to_node().pformat()
 
@@ -1576,3 +1576,24 @@ def test_expressions_parens(subtests:Any) -> None:
     check_src("{**({} == {})}")
     check_src("{**{'y': 2}, 'x': 1, None: True}")
     check_src("{**{'y': 2}, **{'x': 1}}")
+
+
+def test_is_annotation_flag() -> None:
+
+    # If a line goes beyond linelen, it is wrapped using the ``&crarr;`` element. 
+    # Check that the last line gets a ``&crarr;`` when maxlines is exceeded:
+
+    assert color(extract_expr(ast.parse('list[dict] + set()')), is_annotation=True) == '''<document source="pyval_repr">
+    <obj_reference is_annotation="True" refuri="list">
+        list
+    [
+    <wbr>
+    <obj_reference is_annotation="True" refuri="dict">
+        dict
+    ]
+     + 
+    <obj_reference is_annotation="True" refuri="set">
+        set
+    (
+    )
+'''

@@ -274,10 +274,10 @@ class FieldHandler:
     def set_param_types_from_annotations(
             self, annotations: Mapping[str, Optional[ast.expr]]
             ) -> None:
-        _linker = linker._AnnotationLinker(self.obj)
+        _linker = self.obj.docstring_linker
         formatted_annotations = {
             name: None if value is None
-                       else ParamType(safe_to_stan(colorize_inline_pyval(value), _linker,
+                       else ParamType(safe_to_stan(colorize_inline_pyval(value, is_annotation=True), _linker,
                                 self.obj, fallback=colorized_pyval_fallback, section='annotation', report=False),
                                 # don't spam the log, invalid annotation are going to be reported when the signature gets colorized
                                 origin=FieldOrigin.FROM_AST)
@@ -853,8 +853,7 @@ def type2stan(obj: model.Documentable) -> Optional[Tag]:
     if parsed_type is None:
         return None
     else:
-        _linker = linker._AnnotationLinker(obj)
-        return safe_to_stan(parsed_type, _linker, obj,
+        return safe_to_stan(parsed_type, obj.docstring_linker, obj,
             fallback=colorized_pyval_fallback, section='annotation')
 
 def get_parsed_type(obj: model.Documentable) -> Optional[ParsedDocstring]:
@@ -868,7 +867,7 @@ def get_parsed_type(obj: model.Documentable) -> Optional[ParsedDocstring]:
     # Only Attribute instances have the 'annotation' attribute.
     annotation: Optional[ast.expr] = getattr(obj, 'annotation', None)
     if annotation is not None:
-        return colorize_inline_pyval(annotation)
+        return colorize_inline_pyval(annotation, is_annotation=True)
 
     return None
 
@@ -1166,9 +1165,7 @@ def _colorize_signature_annotation(annotation: object,
     Returns L{ParsedDocstring} with extra context to make
     sure we resolve tha annotation correctly.
     """
-    return colorize_inline_pyval(annotation
-                # Make sure to use the annotation linker in the context of an annotation.
-                ).with_linker(linker._AnnotationLinker(ctx)
+    return colorize_inline_pyval(annotation, is_annotation=True, 
                 # Make sure the generated <code> tags are not stripped by ParsedDocstring.combine.
                 ).with_tag(tags.transparent)
 

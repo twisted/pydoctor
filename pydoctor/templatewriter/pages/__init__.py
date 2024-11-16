@@ -13,7 +13,7 @@ from twisted.web.iweb import IRenderable, ITemplateLoader, IRequest
 from twisted.web.template import Element, Tag, renderer, tags, CharRef
 from pydoctor.extensions import zopeinterface
 
-from pydoctor import epydoc2stan, model, linker, __version__
+from pydoctor import epydoc2stan, model, __version__
 from pydoctor.astbuilder import node2fullname
 from pydoctor.templatewriter import util, TemplateLookup, TemplateElement
 from pydoctor.templatewriter.pages.table import ChildTable
@@ -85,7 +85,7 @@ def format_class_signature(cls: model.Class) -> "Flattenable":
     # the linker will only be used to resolve the generic arguments of the base classes, 
     # it won't actually resolve the base classes (see comment few lines below).
     # this is why we're using the annotation linker.
-    _linker = linker._AnnotationLinker(cls)
+    _linker = cls.docstring_linker
     if cls.rawbases:
         r.append('(')
         
@@ -105,7 +105,8 @@ def format_class_signature(cls: model.Class) -> "Flattenable":
                 
             # link to external class, using the colorizer here
             # to link to classes with generics (subscripts and other AST expr).
-            stan = epydoc2stan.safe_to_stan(colorize_inline_pyval(base_node, refmap=refmap), _linker, cls, 
+            # we use is_annotation=True because bases are unstringed, they can contain annotations. 
+            stan = epydoc2stan.safe_to_stan(colorize_inline_pyval(base_node, refmap=refmap, is_annotation=True), _linker, cls, 
                 fallback=epydoc2stan.colorized_pyval_fallback, 
                 section='rendering of class signature')
             r.extend(stan.children)
