@@ -1579,10 +1579,7 @@ def test_expressions_parens(subtests:Any) -> None:
 
 
 def test_is_annotation_flag() -> None:
-
-    # If a line goes beyond linelen, it is wrapped using the ``&crarr;`` element. 
-    # Check that the last line gets a ``&crarr;`` when maxlines is exceeded:
-
+    # the is_annotation attribut is added to all links when is_annotation=True is passed.
     assert color(extract_expr(ast.parse('list[dict] + set()')), is_annotation=True) == '''<document source="pyval_repr">
     <obj_reference is_annotation="True" refuri="list">
         list
