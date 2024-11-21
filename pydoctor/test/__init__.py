@@ -12,7 +12,7 @@ from pydoctor.linker import NotFoundLinker
 
 posonlyargs = pytest.mark.skipif(sys.version_info < (3, 8), reason="requires python 3.8")
 typecomment = pytest.mark.skipif(sys.version_info < (3, 8), reason="requires python 3.8")
-
+NotFoundLinker = NotFoundLinker
 
 # Because pytest 6.1 does not yet export types for fixtures, we define
 # approximations that are good enough for our test cases:
