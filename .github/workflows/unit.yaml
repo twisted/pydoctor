@@ -42,9 +42,9 @@ jobs:
         python -c "print('\nENVIRONMENT VARIABLES\n=====================\n')"
         python -c "import os; [print(f'{k}={v}') for k, v in os.environ.items()]"
 
-    - name: Run unit tests
+    - name: Run unit tests and coverage reports
       run: |
-        tox -e test
+        tox -e test-cov
 
     - name: Run unit tests with latest Twisted version
       run: |
