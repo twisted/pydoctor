@@ -307,7 +307,7 @@ def test_index_hardlink(tmp_path: Path) -> None:
 
 def test_apidocs_help(tmp_path: Path) -> None:
     """
-    Checks that the help page is weel generated.
+    Checks that the help page is well generated.
     """
     exit_code = driver.main(args=['--html-output', str(tmp_path), 'pydoctor/test/testpackages/basic/'])
     assert exit_code == 0
