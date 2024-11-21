@@ -489,7 +489,7 @@ class HelpPage(Page):
         return parsed.to_stan(NotFoundLinker())
 
 def summaryPages(system: model.System) -> Iterable[Type[Page]]:
-    pages = [
+    pages: list[type[Page]] = [
         ModuleIndexPage,
         ClassIndexPage,
         NameIndexPage,
