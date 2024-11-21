@@ -35,16 +35,13 @@ onmessage = (message) => {
     // Create index
     let index = lunr.Index.load(message.data.indexJSONData);
 
-    // Number of query clauses
-    var nb_clauses = undefined;
-    
     // Declare query function building 
     function _queryfn(_query){ // _query is the Query object
         // Edit the parsed query clauses that are applicable for all fields (default) in order
         // to remove the field 'kind' from the clause since this it's only useful when specifically requested.
         var parser = new lunr.QueryParser(message.data.query, _query)
         parser.parse()
-        nb_clauses = _query.clauses.length;
+
         _query.clauses.forEach(clause => {
             if (clause.fields == _query.allFields){
                 // we change the query fields when they are applicable to all fields
@@ -52,8 +49,6 @@ onmessage = (message) => {
                 // which should not be matched by default.
                 clause.fields = message.data.defaultFields;
             }
-            // clause.wildcard is actually always NONE due to https://github.com/olivernn/lunr.js/issues/495
-            // But this works...
 
         });
         // Auto wilcard feature, see issue https://github.com/twisted/pydoctor/issues/648
@@ -61,7 +56,8 @@ onmessage = (message) => {
         if (message.data.autoWildcard == true){
             _query.clauses.forEach(clause => {
                 if (clause.presence === 1) { // ignore clauses that have explicit presence (+/-)
-                    // Setting clause.wildcard is useless.
+                    // Setting clause.wildcard is useless, and clause.wildcard is actually always NONE 
+                    // due to https://github.com/olivernn/lunr.js/issues/495
                     // But this works...
                     if (clause.term.slice(-1) != '*'){
                         let new_clause = {...clause}
@@ -95,30 +91,6 @@ onmessage = (message) => {
 
     // Launch the search
     var results = index.query(_queryfn)
-    
-    // Post-prcocess multi clause queries such that the objects matching multiple clauses
-    // have a better ranking.
-    if (nb_clauses > 1){
-        var mapped = results.map(function (e, i) {
-            var v = 0;
-            message.data.defaultFields.forEach(f => {
-                Object.keys(e.matchData.metadata).forEach(matchkey =>{
-                    if (Object.hasOwn(e.matchData.metadata[matchkey], f)){
-                        v = v - 1
-                    }
-                });
-            });
-            return { index: i, value: v };
-            });
-        mapped.sort(function (a, b) {
-            if (a.value > b.value) {return 1;}
-            if (a.value < b.value) {return -1;}
-            return 0; 
-        });
-        results = mapped.map(function (e) {
-            return results[e.index];
-        })
-    }
 
     // Post message with results
     postMessage({'results':results});
