@@ -312,7 +312,7 @@ def test_apidocs_help(tmp_path: Path) -> None:
     exit_code = driver.main(args=['--html-output', str(tmp_path), 'pydoctor/test/testpackages/basic/'])
     assert exit_code == 0
     help_page = (tmp_path / 'apidocs-help.html').read_text()
-    assert '<h2>Search</h2>' in help_page
+    assert '>Search</h2>' in help_page
 
 def test_htmlbaseurl_option_all_pages(tmp_path: Path) -> None:
     """
