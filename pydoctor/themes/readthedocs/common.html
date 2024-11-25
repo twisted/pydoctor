@@ -28,37 +28,6 @@
 
         <div t:render="subheader" />
 
-        <div id="search-results-container" style="display: none;">
-        
-          <div id="search-buttons">
-            <span class="label label-default" id="search-docstrings-button">
-            <label class="checkbox-inline">
-              <input type="checkbox" id="toggle-search-in-docstrings-checkbox" value="false" onclick="toggleSearchInDocstrings()">
-                search in docstrings
-              </input>
-            </label>
-            </span>
-            
-          </div>
-          
-          <noscript>
-              <h1>Cannot search: JavaScript is not supported/enabled in your browser.</h1>
-          </noscript>
-  
-          <div id="search-status"> </div>
-  
-          <div class="warning" id="search-warn-box" style="display: none;">
-            <p class="rst-last"><span id="search-warn"></span></p>
-          </div>
-  
-          <table id="search-results">
-            <!-- Filled dynamically by JS -->
-          </table>
-          
-          <div style="margin-top:10px;">
-            <p>For more information on the search, visit the <a href="apidocs-help.html#rst-search">help page</a>.</p>
-          </div>
-        </div>
 
         <div class="page-header">
           <t:slot name="heading"><h1>Heading</h1></t:slot>

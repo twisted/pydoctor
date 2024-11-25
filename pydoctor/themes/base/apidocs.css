@@ -60,7 +60,6 @@ nav.navbar .navbar-header {
     margin-bottom: 3px;
     border-bottom: 0;
     box-shadow: 0 0 8px 8px #fff;
-    z-index: 99;
 }
 
 .navbar-brand {
