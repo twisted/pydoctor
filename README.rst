@@ -91,6 +91,10 @@ in development
   from the ``pydoctor_url_path`` config option now includes a project name which defaults to 'main' (instead of putting None), 
   use mapping instead of a list to define your own project name.
 * Improve the themes so the adds injected by ReadTheDocs are rendered with the correct width and do not overlap too much with the main content.
+* Fix an issue in the readthedocs theme that prevented to use the search bar from the summary pages (like the class hierarchy).
+* The generated documentation now includes a help page under the path ``/apidocs-help.html``. 
+  This page is accessible by clicking on the information icon in the navbar (``ℹ``).
+* Improve the ``search.js`` micro library to better understand terms that contains a dot (``.``).
 
 pydoctor 24.3.3
 ^^^^^^^^^^^^^^^
