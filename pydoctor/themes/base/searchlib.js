@@ -72,6 +72,9 @@ onmessage = (message) => {
                         if (clause.term.slice(0,1) != '*'){
                             let second_new_clause = {...clause}
                             second_new_clause.boost = 1
+                            if (clause.term.slice(0,1) != '.'){ 
+                                second_new_clause.term = '.' + second_new_clause.term
+                            }
                             second_new_clause.term = '*' + second_new_clause.term
                             if (clause.term.slice(-1) != '*'){
                                 second_new_clause.term = second_new_clause.term + '*'

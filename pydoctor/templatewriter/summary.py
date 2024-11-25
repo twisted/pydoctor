@@ -395,7 +395,7 @@ class HelpPage(Page):
     Module Index
     ~~~~~~~~~~~~
     
-    Provides a hight level overview of the packages and modules structure.
+    Provides a high level overview of the packages and modules structure.
     
     Class Hierarchy
     ~~~~~~~~~~~~~~~
