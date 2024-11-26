@@ -443,7 +443,7 @@ window.addEventListener("click", (event) => {
       
       // 3.Hide the dropdown if the user clicks on a link that brings them to the same page.
       // This includes links in summaries.
-      link = event.target.closest('#search-results a')
+      link = event.target.closest('#search-results-container a')
       if (link){
         page_parts = document.location.pathname.split('/')
         current_page = page_parts[page_parts.length-1]
