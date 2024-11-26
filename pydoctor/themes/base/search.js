@@ -159,7 +159,7 @@ function _stopSearchingProcess(){
 
 // Values configuring the search-as-you-type feature.
 var SEARCH_DEFAULT_DELAY = 150; // in miliseconds
-var SEARCH_INCREASED_DELAY = 400; // in miliseconds
+var SEARCH_INCREASED_DELAY = 300; // in miliseconds
 var SEARCH_INDEX_SIZE_TRESH_INCREASE_DELAY = 15; // in MB
 var SEARCH_INDEX_SIZE_TRESH_DISABLE_SEARCH_AS_YOU_TYPE = 25; // in MB
 
