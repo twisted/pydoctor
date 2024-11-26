@@ -14,7 +14,6 @@
 // - query: string
 // - indexJSONData: dict
 // - defaultFields: list of strings
-// - autoWildcard: boolean
 let _lunrWorkerCode = `
 
 // The lunr.js code will be inserted here.
@@ -29,9 +28,7 @@ onmessage = (message) => {
     if (!message.data.defaultFields) {
         throw new Error('No default fields provided.');
     }
-    if (!message.data.hasOwnProperty('autoWildcard')){
-        throw new Error('No value for auto wildcard provided.');
-    }
+
     // Create index
     let index = lunr.Index.load(message.data.indexJSONData);
 
@@ -53,38 +50,40 @@ onmessage = (message) => {
         });
         // Auto wilcard feature, see issue https://github.com/twisted/pydoctor/issues/648
         var new_clauses = [];
-        if (message.data.autoWildcard == true){
-            _query.clauses.forEach(clause => {
-                if (clause.presence === 1) { // ignore clauses that have explicit presence (+/-)
-                    // Setting clause.wildcard is useless, and clause.wildcard is actually always NONE 
-                    // due to https://github.com/olivernn/lunr.js/issues/495
-                    // But this works...
-                    if (clause.term.slice(-1) != '*'){
-                        let new_clause = {...clause}
-                        new_clause.term = new_clause.term + '*'
-                        clause.boost = 2
-                        new_clause.boost = 1
-                        new_clauses.push(new_clause)
-                    }
-                    
-                    // Adding a leading wildcard if the dot is included as well.
-                    if (clause.term.indexOf('.') != -1) {
-                        if (clause.term.slice(0,1) != '*'){
-                            let second_new_clause = {...clause}
-                            second_new_clause.boost = 1
-                            if (clause.term.slice(0,1) != '.'){ 
-                                second_new_clause.term = '.' + second_new_clause.term
-                            }
-                            second_new_clause.term = '*' + second_new_clause.term
-                            if (clause.term.slice(-1) != '*'){
-                                second_new_clause.term = second_new_clause.term + '*'
-                            }
-                            new_clauses.push(second_new_clause)
+
+        _query.clauses.forEach(clause => {
+            if (clause.presence === 1) { // ignore clauses that have explicit presence (+/-)
+                // Setting clause.wildcard is useless, and clause.wildcard is actually always NONE 
+                // due to https://github.com/olivernn/lunr.js/issues/495
+                // But this works...
+                if (clause.term.slice(-1) != '*'){
+                    let new_clause = {...clause}
+                    new_clause.term = new_clause.term + '*'
+                    clause.boost = 2
+                    new_clause.boost = 1
+                    new_clauses.push(new_clause)
+                }
+                
+                // Adding a leading wildcard if the dot is included as well.
+                // This should only apply to terms that are applicable to name-like fields. 
+                // so we refer to the default fields
+                if (clause.term.indexOf('.') != -1) {
+                    if (clause.term.slice(0,1) != '*'){
+                        let second_new_clause = {...clause}
+                        second_new_clause.boost = 1
+                        if (clause.term.slice(0,1) != '.'){ 
+                            second_new_clause.term = '.' + second_new_clause.term
                         }
+                        second_new_clause.term = '*' + second_new_clause.term
+                        if (clause.term.slice(-1) != '*'){
+                            second_new_clause.term = second_new_clause.term + '*'
+                        }
+                        new_clauses.push(second_new_clause)
                     }
                 }
-            });
-        }
+            }
+        });
+
         new_clauses.forEach(clause => {
             _query.clauses.push(clause)
         });
@@ -189,9 +188,8 @@ function _getWorkerPromise(lunJsSourceCode){ // -> Promise of a fresh worker to 
  * @param lunrJsURL: URL pointing to a copy of lunr.js.
  * @param searchDelay: Number of miliseconds to wait before actually launching the query. This is useful to set for "search as you type" kind of search box
  *                     because it let a chance to users to continue typing without triggering useless searches (because previous search is aborted on launching a new one).
- * @param autoWildcard: Whether to automatically append wildcards to all query clauses when no wildcard is already specified. boolean.
- */
-function lunrSearch(query, indexURL, defaultFields, lunrJsURL, searchDelay, autoWildcard){
+*/
+function lunrSearch(query, indexURL, defaultFields, lunrJsURL, searchDelay){
     // Abort ongoing search
     abortSearch();
 
@@ -235,7 +233,6 @@ function lunrSearch(query, indexURL, defaultFields, lunrJsURL, searchDelay, auto
                 'query': query,
                 'indexJSONData': lunrIndexData,
                 'defaultFields': defaultFields,
-                'autoWildcard': autoWildcard, 
             }
             
             if (!_aborted){
