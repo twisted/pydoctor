@@ -19,6 +19,7 @@ from typing import Any, Callable, Deque, Dict, Iterator, List, Optional, Tuple, 
 
 import attr
 
+from pydoctor.epydoc.markup import ObjClass
 from pydoctor.napoleon.iterators import modify_iter, peek_iter
 
 __docformat__ = "numpy en"
@@ -526,7 +527,7 @@ class GoogleDocstring:
 
     # overriden
     def __init__(self, docstring: Union[str, List[str]], 
-        is_attribute: bool = False, 
+        objclass: ObjClass | None = None,
         process_type_fields: bool = False,
     ) -> None:
         """
@@ -535,15 +536,13 @@ class GoogleDocstring:
         docstring : str or list of str
             The docstring to parse, given either as a string or split into
             individual lines.
-        is_attribute: bool
-            If the documented object is an attribute,
-            it will use the `_parse_attribute_docstring` method.
+        objclass: ObjClass
+            The class of the object.
         process_type_fields: bool
             Whether to process the type fields or to leave them untouched (default) in order to be processed later.
             Value ``process_type_fields=False`` is currently only used in the tests.
         """
-
-        self._is_attribute = is_attribute
+        self._objclass = objclass
         self._process_type_fields = process_type_fields
         
         if isinstance(docstring, str):
@@ -1011,12 +1010,12 @@ class GoogleDocstring:
             )
         )
 
-    # overriden: call _parse_attribute_docstring if self._is_attribute is True
+    # overriden: call _parse_attribute_docstring if the object is an attribute
     # and add empty blank lines when required
     def _parse(self) -> None:
         self._parsed_lines = self._consume_empty()
 
-        if self._is_attribute:
+        if self._objclass is ObjClass.Attribute:
             # Implicit stop using StopIteration no longer allowed in
             # Python 3.7; see PEP 479
             res = []  # type: List[str]
@@ -1069,9 +1068,10 @@ class GoogleDocstring:
     # TODO: add 'vartype' and 'kwtype' as aliases of 'type' and use them here to output
     #       the most correct reStructuredText.
     def _parse_attributes_section(self, section: str) -> List[str]:
+        fieldname = 'var' if self._objclass is ObjClass.Module else 'ivar'
         lines = []
         for f in self._consume_fields():
-            field = f":ivar {f.name}: "
+            field = f":{fieldname} {f.name}: "
             lines.extend(self._format_block(field, f.content))
             if f.type:
                 lines.append(f":type {f.name}: {self._convert_type(f.type, lineno=f.lineno)}")

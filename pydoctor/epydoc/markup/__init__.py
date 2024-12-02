@@ -33,6 +33,7 @@ each error.
 from __future__ import annotations
 __docformat__ = 'epytext en'
 
+import enum
 from typing import Callable, ContextManager, List, Optional, Sequence, Iterator, TYPE_CHECKING
 import abc
 import sys
@@ -71,6 +72,17 @@ else:
 # 4. ParseError exceptions
 #
 
+class ObjClass(enum.Enum):
+    """
+    A simpler version of L{DocumentableKind} used for docstring parsing only.
+    Names should strictly follow L{Documentable} concrete subtypes names.
+    """
+    Module = enum.auto()
+    Package = Module
+    Class = enum.auto()
+    Function = enum.auto()
+    Attribute = enum.auto()
+
 ParserFunction = Callable[[str, List['ParseError']], 'ParsedDocstring']
 
 def get_supported_docformats() -> Iterator[str]:
@@ -84,7 +96,7 @@ def get_supported_docformats() -> Iterator[str]:
         else:
             yield moduleName
 
-def get_parser_by_name(docformat: str, obj: Optional['Documentable'] = None) -> ParserFunction:
+def get_parser_by_name(docformat: str, objclass: ObjClass | None = None) -> ParserFunction:
     """
     Get the C{parse_docstring(str, List[ParseError], bool) -> ParsedDocstring} function based on a parser name. 
 
@@ -92,8 +104,10 @@ def get_parser_by_name(docformat: str, obj: Optional['Documentable'] = None) -> 
         or it could be that the docformat name do not match any know L{pydoctor.epydoc.markup} submodules.
     """
     mod = import_module(f'pydoctor.epydoc.markup.{docformat}')
-    # We can safely ignore this mypy warning, since we can be sure the 'get_parser' function exist and is "correct".
-    return mod.get_parser(obj) # type:ignore[no-any-return]
+    # We can be sure the 'get_parser' function exist and is "correct" 
+    # since the docformat is validated beforehand.
+    get_parser: Callable[[ObjClass | None], ParserFunction] = mod.get_parser
+    return get_parser(objclass)
 
 def processtypes(parse:ParserFunction) -> ParserFunction:
     """

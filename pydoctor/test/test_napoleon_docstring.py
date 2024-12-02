@@ -9,6 +9,7 @@ from typing import Type, Union
 from unittest import TestCase
 from textwrap import dedent
 
+from pydoctor.epydoc.markup import ObjClass
 from pydoctor.napoleon.docstring import (GoogleDocstring as _GoogleDocstring, 
         NumpyDocstring as _NumpyDocstring, 
         TokenType, TypeDocstring, is_type, is_google_typed_arg)
@@ -328,7 +329,7 @@ class InlineAttributeTest(BaseDocstringTest):
 data member description:
 - a: b
 """
-        actual = str(GoogleDocstring(docstring, is_attribute=True))
+        actual = str(GoogleDocstring(docstring, objclass=ObjClass.Attribute))
         expected = """\
 data member description:
 - a: b"""   
@@ -341,12 +342,12 @@ data member description:
         But still, it feels a bit off.
         """
         docstring = """:Returns one of: ``"Yes"`` or ``No``."""
-        actual = str(GoogleDocstring(docstring, is_attribute=True))
+        actual = str(GoogleDocstring(docstring, objclass=ObjClass.Attribute))
         expected = """Returns one of: ``"Yes"`` or ``No``."""
         self.assertEqual(expected.rstrip(), actual)
 
         docstring = """Returns one of: ``"Yes"`` or ``No``."""
-        actual = str(GoogleDocstring(docstring, is_attribute=True))
+        actual = str(GoogleDocstring(docstring, objclass=ObjClass.Attribute))
         expected = """``"Yes"`` or ``No``.\n\n:type: Returns one of"""
         self.assertEqual(expected.rstrip(), actual)
 
@@ -357,7 +358,7 @@ data member description:
                      'a :ref:`reference`, '
                      'a `link <https://foo.bar>`_, '
                      'an host:port and HH:MM strings.')
-        actual = str(GoogleDocstring(docstring, is_attribute=True))
+        actual = str(GoogleDocstring(docstring, objclass=ObjClass.Attribute))
         expected = ("""\
 data member description with :ref:`reference` inline description with ``a : in code``, a :ref:`reference`, a `link <https://foo.bar>`_, an host:port and HH:MM strings.
 
@@ -366,20 +367,46 @@ data member description with :ref:`reference` inline description with ``a : in c
 
     def test_class_data_member_inline_no_type(self):
         docstring = """data with ``a : in code`` and :ref:`reference` and no type"""
-        actual = str(GoogleDocstring(docstring, is_attribute=True))
+        actual = str(GoogleDocstring(docstring, objclass=ObjClass.Attribute))
         expected = """data with ``a : in code`` and :ref:`reference` and no type"""
 
         self.assertEqual(expected.rstrip(), actual)
 
     def test_class_data_member_inline_ref_in_type(self):
         docstring = """:class:`int`: data member description"""
-        actual = str(GoogleDocstring(docstring, is_attribute=True))
+        actual = str(GoogleDocstring(docstring, objclass=ObjClass.Attribute))
         expected = ("""\
 data member description
 
 :type: :class:`int`""")
         self.assertEqual(expected.rstrip(), actual)
 
+
+class AttributesSectionTest(BaseDocstringTest):
+    # tests for https://github.com/twisted/pydoctor/issues/842
+    def test_attributes_in_module(self):
+        docstring = """\
+Attributes:
+    in_attr: super-dooper attribute
+"""
+
+        actual = str(GoogleDocstring(docstring, objclass=ObjClass.Module))
+        expected = """\
+:var in_attr: super-dooper attribute
+"""
+        self.assertEqual(expected.rstrip(), actual)
+    
+    def test_attributes_in_class(self):
+        docstring = """\
+Attributes:
+    in_attr: super-dooper attribute
+"""
+
+        actual = str(GoogleDocstring(docstring, objclass=ObjClass.Class))
+        expected = """\
+:ivar in_attr: super-dooper attribute
+"""
+        self.assertEqual(expected.rstrip(), actual)
 
 class GoogleDocstringTest(BaseDocstringTest):
     docstrings = [(
@@ -1436,7 +1463,7 @@ Returns:
         self.assertAlmostEqualSphinxDocstring(expected, docstring,
             type_=SphinxGoogleDocstring)
 
-        actual = str(GoogleDocstring(docstring, is_attribute=True))
+        actual = str(GoogleDocstring(docstring, objclass=ObjClass.Attribute))
         self.assertEqual(expected.rstrip(), actual)
 
         docstring2 = """Put *key* and *value* into a dictionary.
@@ -1454,7 +1481,7 @@ Returns:
         self.assertAlmostEqualSphinxDocstring(expected2, docstring2,
             type_=SphinxGoogleDocstring)
 
-        actual = str(GoogleDocstring(docstring2, is_attribute=True))
+        actual = str(GoogleDocstring(docstring2, objclass=ObjClass.Attribute))
         self.assertEqual(expected2.rstrip(), actual)
 
     def test_multiline_types(self):

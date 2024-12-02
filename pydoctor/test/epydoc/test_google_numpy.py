@@ -4,6 +4,7 @@ from unittest import TestCase
 from pydoctor.test import NotFoundLinker
 from pydoctor.model import Attribute, System, Function
 from pydoctor.stanutils import flatten
+from pydoctor.epydoc2stan import _objclass_for_docstring_parsing
 from pydoctor.epydoc.markup.google import get_parser as get_google_parser
 from pydoctor.epydoc.markup.numpy import get_parser as get_numpy_parser
 
@@ -14,7 +15,7 @@ class TestGetParser(TestCase):
 
         obj = Attribute(system = System(), name='attr1')
 
-        parse_docstring = get_google_parser(obj)
+        parse_docstring = get_google_parser(_objclass_for_docstring_parsing(obj))
 
         docstring = """\
 numpy.ndarray: super-dooper attribute"""
@@ -34,7 +35,7 @@ numpy.ndarray: super-dooper attribute"""
 
         obj = Function(system = System(), name='whatever')
 
-        parse_docstring = get_google_parser(obj)
+        parse_docstring = get_google_parser(_objclass_for_docstring_parsing(obj))
 
         docstring = """\
 numpy.ndarray: super-dooper attribute"""
@@ -49,7 +50,7 @@ numpy.ndarray: super-dooper attribute"""
 
         obj = Attribute(system = System(), name='attr1')
 
-        parse_docstring = get_numpy_parser(obj)
+        parse_docstring = get_numpy_parser(_objclass_for_docstring_parsing(obj))
 
         docstring = """\
 numpy.ndarray: super-dooper attribute"""
@@ -69,7 +70,7 @@ numpy.ndarray: super-dooper attribute"""
 
         obj = Function(system = System(), name='whatever')
 
-        parse_docstring = get_numpy_parser(obj)
+        parse_docstring = get_numpy_parser(_objclass_for_docstring_parsing(obj))
 
         docstring = """\
 numpy.ndarray: super-dooper attribute"""
@@ -85,7 +86,7 @@ class TestWarnings(TestCase):
         
         obj = Function(system = System(), name='func')
 
-        parse_docstring = get_numpy_parser(obj)
+        parse_docstring = get_numpy_parser(_objclass_for_docstring_parsing(obj))
 
         docstring = """
 Description of the function. 
