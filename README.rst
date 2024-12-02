@@ -73,6 +73,9 @@ What's New?
 in development
 ^^^^^^^^^^^^^^
 
+* Fix a bug in google and numpy "Attributes" section in module docstring: 
+  the module attributes now shows as "Variables" instead of "Instance Variables".
+
 pydoctor 24.11.0
 ^^^^^^^^^^^^^^^^
 
