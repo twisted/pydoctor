@@ -585,7 +585,7 @@ def reportErrors(obj: model.Documentable, errs: Sequence[ParseError], section:st
 
 def _objclass_for_docstring_parsing(obj: model.Documentable) -> ObjClass | None:
     """
-    This relies on the fact that L{Documentable} class name are matching enum members in L{ObjKind}.
+    This relies on the fact that L{Documentable} class name are matching enum members in L{ObjClass}.
     """
     try:
         return ObjClass[type(obj).__name__]

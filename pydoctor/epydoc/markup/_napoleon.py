@@ -23,7 +23,7 @@ class NapoelonDocstringParser:
 
     def __init__(self, objclass: ObjClass | None = None):
         """
-        @param obj: Documentable object we're parsing the docstring for.
+        @param objclass: Class of the documentable object we're parsing the docstring for.
         """
         self.objclass = objclass
 
