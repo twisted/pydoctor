@@ -15,12 +15,11 @@ from enum import Enum, auto
 import re
 
 from functools import partial
-from typing import Any, Callable, Deque, Dict, Iterator, List, Optional, Tuple, Union
+from typing import Any, Callable, Deque, Dict, Iterator, List, Literal, Optional, Tuple, Union
 
 import attr
 
-from pydoctor.epydoc.markup import ObjClass
-from pydoctor.napoleon.iterators import modify_iter, peek_iter
+from .iterators import modify_iter, peek_iter
 
 __docformat__ = "numpy en"
 
@@ -527,7 +526,7 @@ class GoogleDocstring:
 
     # overriden
     def __init__(self, docstring: Union[str, List[str]], 
-        objclass: ObjClass | None = None,
+        what: Literal['function', 'module', 'class', 'attribute'] | None = None,
         process_type_fields: bool = False,
     ) -> None:
         """
@@ -536,13 +535,13 @@ class GoogleDocstring:
         docstring : str or list of str
             The docstring to parse, given either as a string or split into
             individual lines.
-        objclass: 
-            The class of the object.
+        what: 
+            String representing the type of object we're documenting.
         process_type_fields: bool
             Whether to process the type fields or to leave them untouched (default) in order to be processed later.
             Value ``process_type_fields=False`` is currently only used in the tests.
         """
-        self._objclass = objclass
+        self._what = what
         self._process_type_fields = process_type_fields
         
         if isinstance(docstring, str):
@@ -1015,7 +1014,7 @@ class GoogleDocstring:
     def _parse(self) -> None:
         self._parsed_lines = self._consume_empty()
 
-        if self._objclass is ObjClass.Attribute:
+        if self._what == 'attribute':
             # Implicit stop using StopIteration no longer allowed in
             # Python 3.7; see PEP 479
             res = []  # type: List[str]
@@ -1068,7 +1067,7 @@ class GoogleDocstring:
     # TODO: add 'vartype' and 'kwtype' as aliases of 'type' and use them here to output
     #       the most correct reStructuredText.
     def _parse_attributes_section(self, section: str) -> List[str]:
-        fieldname = 'var' if self._objclass is ObjClass.Module else 'ivar'
+        fieldname = 'var' if self._what == 'module' else 'ivar'
         lines = []
         for f in self._consume_fields():
             field = f":{fieldname} {f.name}: "

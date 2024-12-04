@@ -64,7 +64,7 @@ class NapoelonDocstringParser:
 
         docstring_obj = docstring_cls(
             docstring, 
-            objclass=self.objclass
+            what=self.objclass.name.lower() if self.objclass else None
         )
 
         return self._parse_docstring_obj(docstring_obj, errors)
