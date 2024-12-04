@@ -536,7 +536,7 @@ class GoogleDocstring:
         docstring : str or list of str
             The docstring to parse, given either as a string or split into
             individual lines.
-        objclass: ObjClass
+        objclass: 
             The class of the object.
         process_type_fields: bool
             Whether to process the type fields or to leave them untouched (default) in order to be processed later.
