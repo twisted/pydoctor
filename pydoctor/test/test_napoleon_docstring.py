@@ -9,7 +9,6 @@ from typing import Type, Union
 from unittest import TestCase
 from textwrap import dedent
 
-from pydoctor.epydoc.markup import ObjClass
 from pydoctor.napoleon.docstring import (GoogleDocstring as _GoogleDocstring, 
         NumpyDocstring as _NumpyDocstring, 
         TokenType, TypeDocstring, is_type, is_google_typed_arg)
