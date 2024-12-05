@@ -584,13 +584,16 @@ def reportErrors(obj: model.Documentable, errs: Sequence[ParseError], section:st
                 )
 
 def _objclass_for_docstring_parsing(obj: model.Documentable) -> ObjClass | None:
-    """
-    This relies on the fact that L{Documentable} class name are matching enum members in L{ObjClass}.
-    """
-    try:
-        return ObjClass[type(obj).__name__]
-    except KeyError:
-        return None
+    # There is only 4 main kinds of objects
+    if isinstance(obj, model.Module):
+        return 'module'
+    if isinstance(obj, model.Class):
+        return 'class'
+    if isinstance(obj, model.Attribute):
+        return 'attribute'
+    if isinstance(obj, model.Function):
+        return 'function'
+    return None
 
 _docformat_skip_processtypes = ('google', 'numpy', 'plaintext')
 def parse_docstring(

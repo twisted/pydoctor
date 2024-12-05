@@ -2,7 +2,7 @@ from typing import List
 from pydoctor.epydoc.markup import ParseError
 from unittest import TestCase
 from pydoctor.test import NotFoundLinker
-from pydoctor.model import Attribute, System, Function
+from pydoctor.model import Attribute, Class, Module, System, Function
 from pydoctor.stanutils import flatten
 from pydoctor.epydoc2stan import _objclass_for_docstring_parsing
 from pydoctor.epydoc.markup.google import get_parser as get_google_parser
@@ -79,6 +79,40 @@ numpy.ndarray: super-dooper attribute"""
 
         assert not parse_docstring(docstring, errors).fields
 
+
+    def test_get_parser_for_modules_does_not_generates_ivar(self) -> None:
+        
+        obj = Module(system = System(), name='thing')
+
+        parse_docstring = get_google_parser(_objclass_for_docstring_parsing(obj))
+
+        docstring = """\
+Attributes:
+  i: struff
+  j: thing
+  """
+
+        errors: List[ParseError] = []
+        parsed_doc = parse_docstring(docstring, errors)
+        fields_names = [f.tag() for f in parsed_doc.fields]
+        assert fields_names == ['var', 'var']
+
+    def test_get_parser_for_classes_generates_ivar(self) -> None:
+        
+        obj = Class(system = System(), name='thing')
+
+        parse_docstring = get_google_parser(_objclass_for_docstring_parsing(obj))
+
+        docstring = """\
+Attributes:
+  i: struff
+  j: thing
+  """
+
+        errors: List[ParseError] = []
+        parsed_doc = parse_docstring(docstring, errors)
+        fields_names = [f.tag() for f in parsed_doc.fields]
+        assert fields_names == ['ivar', 'ivar']
 
 class TestWarnings(TestCase):
 
