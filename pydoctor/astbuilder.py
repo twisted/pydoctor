@@ -221,10 +221,10 @@ class ModuleVistor(NodeVisitor):
                 attrib.annotation = infer_type(attrib.value)
     
     def _tweak_constants_annotations(self, scope: model.Documentable) -> None:
-        # tweak constants annotations whenwe leave the scope so we can still
+        # tweak constants annotations when we leave the scope so we can still
         # check whether the annotation uses Final while we're visiting other nodes.
         for attrib in scope.contents.values():
-            if not isinstance(attrib, model.Attribute):
+            if not isinstance(attrib, model.Attribute) or attrib.kind is not model.DocumentableKind.CONSTANT :
                 continue
             self._tweak_constant_annotation(attrib)
 
