@@ -73,6 +73,9 @@ What's New?
 in development
 ^^^^^^^^^^^^^^
 
+* Fixes a bug that would cause a variable marked as `Final` not beeing considered as a constant if
+  it was declared under a control-flow block.
+
 pydoctor 24.11.0
 ^^^^^^^^^^^^^^^^
 

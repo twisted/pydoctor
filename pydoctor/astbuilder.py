@@ -88,9 +88,11 @@ def is_constant(obj: model.Attribute,
     
     @note: Must be called after setting obj.annotation to detect variables using Final.
     """
+    if is_using_typing_final(annotation, obj):
+        return True
     if not is_attribute_overridden(obj, value) and value:
         if not any(isinstance(n, _CONTROL_FLOW_BLOCKS) for n in get_parents(value)):
-            return obj.name.isupper() or is_using_typing_final(annotation, obj)
+            return obj.name.isupper()
     return False
 
 class TypeAliasVisitorExt(extensions.ModuleVisitorExt):
@@ -217,6 +219,14 @@ class ModuleVistor(NodeVisitor):
             if attrib.annotation is None and attrib.value is not None:
                 # do not override explicit annotation
                 attrib.annotation = infer_type(attrib.value)
+    
+    def _tweak_constants_annotations(self, scope: model.Documentable) -> None:
+        # tweak constants annotations whenwe leave the scope so we can still
+        # check whether the annotation uses Final while we're visiting other nodes.
+        for attrib in scope.contents.values():
+            if not isinstance(attrib, model.Attribute):
+                continue
+            self._tweak_constant_annotation(attrib)
 
     def visit_If(self, node: ast.If) -> None:
         if isinstance(node.test, ast.Compare):
@@ -259,6 +269,7 @@ class ModuleVistor(NodeVisitor):
             epydoc2stan.extract_fields(self.module)
 
     def depart_Module(self, node: ast.Module) -> None:
+        self._tweak_constants_annotations(self.builder.current)
         self._infer_attr_annotations(self.builder.current)
         self.builder.pop(self.module)
 
@@ -347,6 +358,7 @@ class ModuleVistor(NodeVisitor):
 
 
     def depart_ClassDef(self, node: ast.ClassDef) -> None:
+        self._tweak_constants_annotations(self.builder.current)
         self._infer_attr_annotations(self.builder.current)
         self.builder.popClass()
 
@@ -563,29 +575,31 @@ class ModuleVistor(NodeVisitor):
                              defaultKind:model.DocumentableKind) -> None:
         if is_constant(obj, annotation=annotation, value=value):
             obj.kind = model.DocumentableKind.CONSTANT
-            cls._tweakConstantAnnotation(obj=obj, annotation=annotation, 
-                                value=value, lineno=lineno)
+            # do not call tweak annotation just yet...
         elif obj.kind is model.DocumentableKind.CONSTANT:
-            obj.kind = defaultKind
+            # reset to the default kind only for attributes that were heuristically
+            # declared as constants
+            if not is_using_typing_final(obj.annotation, obj):
+                obj.kind = defaultKind
     
     @staticmethod
-    def _tweakConstantAnnotation(obj: model.Attribute, annotation:Optional[ast.expr], 
-                        value: Optional[ast.expr], lineno: int) -> None:
+    def _tweak_constant_annotation(obj: model.Attribute) -> None:
         # Display variables annotated with Final with the real type instead.
+        annotation = obj.annotation
         if is_using_typing_final(annotation, obj):
             if isinstance(annotation, ast.Subscript):
                 try:
                     annotation = extract_final_subscript(annotation)
                 except ValueError as e:
-                    obj.report(str(e), section='ast', lineno_offset=lineno-obj.linenumber)
-                    obj.annotation = infer_type(value) if value else None
+                    obj.report(str(e), section='ast', lineno_offset=annotation.lineno-obj.linenumber)
+                    obj.annotation = infer_type(obj.value) if obj.value else None
                 else:
                     # Will not display as "Final[str]" but rather only "str"
                     obj.annotation = annotation
             else:
                 # Just plain "Final" annotation.
                 # Simply ignore it because it's duplication of information.
-                obj.annotation = infer_type(value) if value else None
+                obj.annotation = infer_type(obj.value) if obj.value else None
 
     @staticmethod
     def _setAttributeAnnotation(obj: model.Attribute, 
