@@ -4,7 +4,8 @@ from unittest import TestCase
 from pydoctor.test import NotFoundLinker
 from pydoctor.model import Attribute, Class, Module, System, Function
 from pydoctor.stanutils import flatten
-from pydoctor.epydoc2stan import _objclass_for_docstring_parsing
+from pydoctor.epydoc2stan import _objclass
+
 from pydoctor.epydoc.markup.google import get_parser as get_google_parser
 from pydoctor.epydoc.markup.numpy import get_parser as get_numpy_parser
 
@@ -15,7 +16,8 @@ class TestGetParser(TestCase):
 
         obj = Attribute(system = System(), name='attr1')
 
-        parse_docstring = get_google_parser(_objclass_for_docstring_parsing(obj))
+        parse_docstring = get_google_parser(_objclass(obj))
+
 
         docstring = """\
 numpy.ndarray: super-dooper attribute"""
@@ -35,7 +37,8 @@ numpy.ndarray: super-dooper attribute"""
 
         obj = Function(system = System(), name='whatever')
 
-        parse_docstring = get_google_parser(_objclass_for_docstring_parsing(obj))
+        parse_docstring = get_google_parser(_objclass(obj))
+
 
         docstring = """\
 numpy.ndarray: super-dooper attribute"""
@@ -50,7 +53,8 @@ numpy.ndarray: super-dooper attribute"""
 
         obj = Attribute(system = System(), name='attr1')
 
-        parse_docstring = get_numpy_parser(_objclass_for_docstring_parsing(obj))
+        parse_docstring = get_numpy_parser(_objclass(obj))
+
 
         docstring = """\
 numpy.ndarray: super-dooper attribute"""
@@ -70,7 +74,8 @@ numpy.ndarray: super-dooper attribute"""
 
         obj = Function(system = System(), name='whatever')
 
-        parse_docstring = get_numpy_parser(_objclass_for_docstring_parsing(obj))
+        parse_docstring = get_numpy_parser(_objclass(obj))
+
 
         docstring = """\
 numpy.ndarray: super-dooper attribute"""
@@ -84,7 +89,8 @@ numpy.ndarray: super-dooper attribute"""
         
         obj = Module(system = System(), name='thing')
 
-        parse_docstring = get_google_parser(_objclass_for_docstring_parsing(obj))
+        parse_docstring = get_google_parser(_objclass(obj))
+
 
         docstring = """\
 Attributes:
@@ -94,14 +100,15 @@ Attributes:
 
         errors: List[ParseError] = []
         parsed_doc = parse_docstring(docstring, errors)
-        fields_names = [f.tag() for f in parsed_doc.fields]
-        assert fields_names == ['var', 'var']
+        assert [f.tag() for f in parsed_doc.fields] == ['var', 'var']
+
 
     def test_get_parser_for_classes_generates_ivar(self) -> None:
         
         obj = Class(system = System(), name='thing')
 
-        parse_docstring = get_google_parser(_objclass_for_docstring_parsing(obj))
+        parse_docstring = get_google_parser(_objclass(obj))
+
 
         docstring = """\
 Attributes:
@@ -111,8 +118,8 @@ Attributes:
 
         errors: List[ParseError] = []
         parsed_doc = parse_docstring(docstring, errors)
-        fields_names = [f.tag() for f in parsed_doc.fields]
-        assert fields_names == ['ivar', 'ivar']
+        assert [f.tag() for f in parsed_doc.fields] == ['ivar', 'ivar']
+
 
 class TestWarnings(TestCase):
 
@@ -120,7 +127,8 @@ class TestWarnings(TestCase):
         
         obj = Function(system = System(), name='func')
 
-        parse_docstring = get_numpy_parser(_objclass_for_docstring_parsing(obj))
+        parse_docstring = get_numpy_parser(_objclass(obj))
+
 
         docstring = """
 Description of the function. 

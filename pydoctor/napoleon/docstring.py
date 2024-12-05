@@ -536,7 +536,7 @@ class GoogleDocstring:
             The docstring to parse, given either as a string or split into
             individual lines.
         what: 
-            String representing the type of object we're documenting.
+            Optional string representing the type of object we're documenting.
         process_type_fields: bool
             Whether to process the type fields or to leave them untouched (default) in order to be processed later.
             Value ``process_type_fields=False`` is currently only used in the tests.
@@ -1067,10 +1067,10 @@ class GoogleDocstring:
     # TODO: add 'vartype' and 'kwtype' as aliases of 'type' and use them here to output
     #       the most correct reStructuredText.
     def _parse_attributes_section(self, section: str) -> List[str]:
-        fieldname = 'var' if self._what == 'module' else 'ivar'
+        fieldtag = 'var' if self._what == 'module' else 'ivar'
         lines = []
         for f in self._consume_fields():
-            field = f":{fieldname} {f.name}: "
+            field = f":{fieldtag} {f.name}: "
             lines.extend(self._format_block(field, f.content))
             if f.type:
                 lines.append(f":type {f.name}: {self._convert_type(f.type, lineno=f.lineno)}")

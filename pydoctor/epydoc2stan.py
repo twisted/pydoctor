@@ -583,7 +583,7 @@ def reportErrors(obj: model.Documentable, errs: Sequence[ParseError], section:st
                 section=section
                 )
 
-def _objclass_for_docstring_parsing(obj: model.Documentable) -> ObjClass | None:
+def _objclass(obj: model.Documentable) -> ObjClass | None:
     # There is only 4 main kinds of objects
     if isinstance(obj, model.Module):
         return 'module'
@@ -617,7 +617,7 @@ def parse_docstring(
 
     # fetch the parser function
     try:
-        parser = get_parser_by_name(docformat, _objclass_for_docstring_parsing(obj))
+        parser = get_parser_by_name(docformat, _objclass(obj))
     except (ImportError, AttributeError) as e:
         _err = 'Error trying to fetch %r parser:\n\n    %s: %s\n\nUsing plain text formatting only.'%(
             docformat, e.__class__.__name__, e)
