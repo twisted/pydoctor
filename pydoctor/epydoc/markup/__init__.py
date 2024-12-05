@@ -33,13 +33,19 @@ each error.
 from __future__ import annotations
 __docformat__ = 'epytext en'
 
-import enum
 from typing import Callable, ContextManager, List, Optional, Sequence, Iterator, TYPE_CHECKING
 import abc
 import sys
 import re
 from importlib import import_module
 from inspect import getmodulename
+
+if sys.version_info >= (3,11):
+    from enum import StrEnum
+else:
+    from enum import Enum
+    class StrEnum(str, Enum):
+        ...
 
 from docutils import nodes
 from twisted.web.template import Tag, tags
@@ -72,16 +78,16 @@ else:
 # 4. ParseError exceptions
 #
 
-class ObjClass(enum.Enum):
+class ObjClass(StrEnum):
     """
     A simpler version of L{DocumentableKind} used for docstring parsing only.
     Names should strictly follow L{Documentable} concrete subtypes names.
     """
-    Module = enum.auto()
+    Module = 'module'
     Package = Module
-    Class = enum.auto()
-    Function = enum.auto()
-    Attribute = enum.auto()
+    Class = 'class'
+    Function = 'function'
+    Attribute = 'attribute'
 
 ParserFunction = Callable[[str, List['ParseError']], 'ParsedDocstring']
 
