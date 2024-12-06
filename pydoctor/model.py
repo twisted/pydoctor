@@ -624,7 +624,7 @@ def compute_mro(cls:'Class', cleanup_generics: bool = False) -> Sequence[Class |
             o._finalbases = finalbases
     
     # Since the typing.Generic can be listed more than once in the class hierarchy: 
-    # ignore the ones after the first discovered one.
+    # ignore the ones after the first discovered one. Then sort the MRO to put typing.Generic at the end.
     _bases: dict[Class | str, list[Class | str]] = {}
     _has_generic: bool = False
     def _getbases(o:'Class', ignore_generic: bool = False) -> Iterator[Class | str]:
