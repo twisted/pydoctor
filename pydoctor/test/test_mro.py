@@ -130,6 +130,50 @@ cycle:3: Cycle found while computing inheritance hierarchy: cycle.C -> cycle.A -
 cycle:4: Cycle found while computing inheritance hierarchy: cycle.D -> cycle.C -> cycle.A -> cycle.D
 '''
 
+@systemcls_param
+def test_mro_generic(systemcls: Type[model.System], capsys:CapSys) -> None:
+    src = '''
+    from typing import Generic, TypeVar
+    T = TypeVar('T')
+    class A: ...
+    class B(Generic[T]): ...
+    class C(A, Generic[T], B[T]): ...
+    '''
+    mod = fromText(src, modname='t', systemcls=systemcls)
+    assert not capsys.readouterr().out
+    assert_mro_equals(mod.contents['C'], 
+                      ["t.C", "t.A", "t.B", "typing.Generic"])
+
+@systemcls_param
+def test_mro_generic_2(systemcls: Type[model.System], capsys:CapSys) -> None:
+    src = '''
+    from typing import Generic, TypeVar
+    T1 = TypeVar('T1')
+    T2 = TypeVar('T2')
+    class A(Generic[T1]): ...
+    class B(Generic[T2]): ...
+    class C(A[T1], B[T2]): ...
+    '''
+    mod = fromText(src, modname='t', systemcls=systemcls)
+    assert not capsys.readouterr().out
+    assert_mro_equals(mod.contents['C'], 
+                      ["t.C", "t.A", "t.B", "typing.Generic"])
+
+@systemcls_param
+def test_mro_generic_3(systemcls: Type[model.System], capsys:CapSys) -> None:
+    src = '''
+    from typing import Generic as TGeneric, TypeVar
+    T = TypeVar('T')
+    class Generic: ...
+    class A(Generic): ...
+    class B(TGeneric[T]): ...
+    class C(A, B[T]): ...
+    '''
+    mod = fromText(src, modname='t', systemcls=systemcls)
+    assert not capsys.readouterr().out
+    assert_mro_equals(mod.contents['C'], 
+                      ["t.C", "t.A", "t.Generic", "t.B", "typing.Generic"])
+
 def test_inherited_docsources()-> None:
     simple = fromText("""\
     class A:

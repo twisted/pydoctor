@@ -73,6 +73,9 @@ What's New?
 in development
 ^^^^^^^^^^^^^^
 
+* Fix a bug in the MRO computing code that would result in an incorrect  
+  ``Cannot compute linearization of the class inheritance hierarchy`` message 
+  for valid types extending ``typing.Generic`` as well as other generic classes.
 * Fix a bug that would cause a variable marked as `Final` not being considered as a constant if
   it was declared under a control-flow block.
 * Fix a bug in google and numpy "Attributes" section in module docstring: 

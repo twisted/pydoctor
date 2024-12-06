@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import abc
 import ast
+from functools import partial
 from itertools import chain
 from collections import defaultdict
 import datetime
@@ -582,7 +583,7 @@ def is_exception(cls: 'Class') -> bool:
             return True
     return False
 
-def compute_mro(cls:'Class') -> Sequence[Union['Class', str]]:
+def compute_mro(cls:'Class', cleanup_generics: bool = False) -> Sequence[Class | str]:
     """
     Compute the method resolution order for this class.
     This function will also set the 
@@ -622,23 +623,59 @@ def compute_mro(cls:'Class') -> Sequence[Union['Class', str]]:
             o._finalbaseobjects = finalbaseobjects
             o._finalbases = finalbases
     
-    def localbases(o:'Class') -> Iterator[Union['Class', str]]:
+    # Since the typing.Generic can be listed more than once in the class hierarchy: 
+    # ignore the ones after the first discovered one.
+    _bases: dict[Class | str, list[Class | str]] = {}
+    _has_generic: bool = False
+    def _getbases(o:'Class', ignore_generic: bool = False) -> Iterator[Class | str]:
         """
-        Like L{Class.baseobjects} but fallback to the expanded name if the base is not resolved to a L{Class} object.
+        Like L{Class.baseobjects} but fallback to the expanded 
+        name if the base is not resolved to a L{Class} object.
+
+        As well as handle multiple typing.Generic case, 
+        see https://github.com/twisted/pydoctor/issues/846.
         """
         for s,b in zip(o.bases, o.baseobjects):
             if isinstance(b, Class):
                 yield b
             else:
-                yield s
+                # yield s
+                # Should we make it work event when typing.py is part of the system ? 
+                # since pydoctor is not used to document the standard library
+                # it's probably not worth it...
+                if s == 'typing.Generic':
+                    nonlocal _has_generic
+                    _has_generic = True
+                    if not ignore_generic:
+                        yield s
+                    else:
+                        continue
+                else:
+                    yield s
 
-    def getbases(o:Union['Class', str]) -> List[Union['Class', str]]:
+    def getbases(o:Class | str) -> list[Class | str]:
+        nonlocal _getbases
+
         if isinstance(o, str):
             return []
-        return list(localbases(o))
+        
+        if o in _bases:
+            return _bases[o]
+        
+        r = list(_getbases(o))
+        _bases[o] = r
+
+        if _has_generic and cleanup_generics:
+            _getbases = partial(_getbases, ignore_generic=True)
+        
+        return r
 
     init_finalbaseobjects(cls)
-    return mro.mro(cls, getbases)
+    _mro =  mro.mro(cls, getbases)
+    
+    if cleanup_generics:
+        _mro.sort(key=lambda c: c == 'typing.Generic')
+    return _mro
 
 def _find_dunder_constructor(cls:'Class') -> Optional['Function']:
     """
@@ -698,7 +735,7 @@ class Class(CanContainImportsDocumentable):
     # set in post-processing:
     _finalbaseobjects: Optional[List[Optional['Class']]] = None 
     _finalbases: Optional[List[str]] = None
-    _mro: Optional[Sequence[Union['Class', str]]] = None
+    _mro: Optional[Sequence[Class | str]] = None
 
     def setup(self) -> None:
         super().setup()
@@ -714,15 +751,18 @@ class Class(CanContainImportsDocumentable):
         """
         try:
             self._mro = compute_mro(self)
-        except ValueError as e:
-            self.report(str(e), 'mro')
-            self._mro = list(self.allbases(True))
+        except ValueError:
+            try:
+                self._mro = compute_mro(self, cleanup_generics=True)
+            except ValueError as e:
+                self.report(str(e), 'mro')
+                self._mro = list(self.allbases(True))
     
     @overload
-    def mro(self, include_external:'Literal[True]', include_self:bool=True) -> Sequence[Union['Class', str]]:...
+    def mro(self, include_external:'Literal[True]', include_self:bool=True) -> Sequence[Class | str]:...
     @overload
     def mro(self, include_external:'Literal[False]'=False, include_self:bool=True) -> Sequence['Class']:...
-    def mro(self, include_external:bool=False, include_self:bool=True) -> Sequence[Union['Class', str]]:
+    def mro(self, include_external:bool=False, include_self:bool=True) -> Sequence[Class | str]:
         """
         Get the method resution order of this class. 
 
