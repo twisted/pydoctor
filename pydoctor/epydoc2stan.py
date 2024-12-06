@@ -20,7 +20,7 @@ from pydoctor.astutils import is_none_literal
 from pydoctor.epydoc.docutils import new_document, set_node_attributes
 from pydoctor.epydoc.markup import Field as EpydocField, ParseError, get_parser_by_name, processtypes
 from twisted.web.template import Tag, tags
-from pydoctor.epydoc.markup import ParsedDocstring, DocstringLinker
+from pydoctor.epydoc.markup import ParsedDocstring, DocstringLinker, ObjClass
 import pydoctor.epydoc.markup.plaintext
 from pydoctor.epydoc.markup.restructuredtext import ParsedRstDocstring
 from pydoctor.epydoc.markup._pyval_repr import colorize_pyval, colorize_inline_pyval
@@ -583,6 +583,18 @@ def reportErrors(obj: model.Documentable, errs: Sequence[ParseError], section:st
                 section=section
                 )
 
+def _objclass(obj: model.Documentable) -> ObjClass | None:
+    # There is only 4 main kinds of objects
+    if isinstance(obj, model.Module):
+        return 'module'
+    if isinstance(obj, model.Class):
+        return 'class'
+    if isinstance(obj, model.Attribute):
+        return 'attribute'
+    if isinstance(obj, model.Function):
+        return 'function'
+    return None
+
 _docformat_skip_processtypes = ('google', 'numpy', 'plaintext')
 def parse_docstring(
         obj: model.Documentable,
@@ -605,9 +617,9 @@ def parse_docstring(
 
     # fetch the parser function
     try:
-        parser = get_parser_by_name(docformat, obj)
-    except ImportError as e:
-        _err = 'Error trying to import %r parser:\n\n    %s: %s\n\nUsing plain text formatting only.'%(
+        parser = get_parser_by_name(docformat, _objclass(obj))
+    except (ImportError, AttributeError) as e:
+        _err = 'Error trying to fetch %r parser:\n\n    %s: %s\n\nUsing plain text formatting only.'%(
             docformat, e.__class__.__name__, e)
         obj.system.msg('epydoc2stan', _err, thresh=-1, once=True)
         parser = pydoctor.epydoc.markup.plaintext.parse_docstring
