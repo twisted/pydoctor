@@ -670,7 +670,7 @@ def compute_mro(cls:'Class', cleanup_generics: bool = False) -> Sequence[Class |
         return r
 
     init_finalbaseobjects(cls)
-    _mro =  mro.mro(cls, getbases)
+    _mro: list[Class | str] =  mro.mro(cls, getbases)
     
     if cleanup_generics:
         _mro.sort(key=lambda c: c == 'typing.Generic')
