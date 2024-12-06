@@ -639,7 +639,6 @@ def compute_mro(cls:'Class', cleanup_generics: bool = False) -> Sequence[Class |
             if isinstance(b, Class):
                 yield b
             else:
-                # yield s
                 # Should we make it work event when typing.py is part of the system ? 
                 # since pydoctor is not used to document the standard library
                 # it's probably not worth it...
