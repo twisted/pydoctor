@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import abc
 import ast
-from functools import partial
 from itertools import chain
 from collections import defaultdict
 import datetime

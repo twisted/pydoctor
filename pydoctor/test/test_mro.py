@@ -1,5 +1,4 @@
 from typing import List, Optional, Type
-import pytest
 
 from pydoctor import model, stanutils
 from pydoctor.templatewriter import pages, util

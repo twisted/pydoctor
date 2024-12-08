@@ -27,7 +27,7 @@ from __future__ import annotations
 
 from collections import deque
 from itertools import islice
-from typing import Callable, List, Tuple, Optional, TypeVar
+from typing import List, Tuple, Optional, TypeVar
 
 T = TypeVar('T')
 
