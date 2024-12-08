@@ -103,7 +103,7 @@ class DependencyList:
                 i.popleft()
 
 
-def _merge(*lists) -> list:
+def c3_merge(*lists) -> list:
     result: List[Optional[T]] = []
     linearizations = DependencyList(*lists)
 
@@ -123,14 +123,3 @@ def _merge(*lists) -> list:
             # Loop never broke, no linearization could possibly be found
             raise ValueError('Cannot compute linearization of the class inheritance hierarchy')
 
-
-def mro(cls: T, getbases: Callable[[T], List[T]]) -> List[T]:
-    """
-    Return a list of classes in order corresponding to Python's MRO.
-    """
-    result = [cls]
-
-    if not getbases(cls):
-        return result
-    else:
-        return result + _merge(*[mro(kls, getbases) for kls in getbases(cls)], getbases(cls))

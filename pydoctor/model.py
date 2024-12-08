@@ -22,7 +22,7 @@ from enum import Enum
 from inspect import signature, Signature
 from pathlib import Path
 from typing import (
-    TYPE_CHECKING, Any, Collection, Dict, Iterator, List, Mapping, Callable, 
+    TYPE_CHECKING, Any, Collection, Dict, Iterable, Iterator, List, Mapping, Callable, 
     Optional, Sequence, Set, Tuple, Type, TypeVar, Union, cast, overload
 )
 from urllib.parse import quote
@@ -33,9 +33,10 @@ from pydoctor.options import Options
 from pydoctor import factory, qnmatch, utils, linker, astutils, mro
 from pydoctor.epydoc.markup import ParsedDocstring
 from pydoctor.sphinx import CacheT, SphinxInventory
+from pydoctor.topsort import topsort
 
 if TYPE_CHECKING:
-    from typing_extensions import Literal, Protocol
+    from typing import Literal, Protocol, TypeAlias
     from pydoctor.astbuilder import ASTBuilder, DocumentableT
 else:
     Literal = {True: bool, False: bool}
@@ -583,21 +584,27 @@ def is_exception(cls: 'Class') -> bool:
             return True
     return False
 
-def compute_mro(cls:'Class', cleanup_generics: bool = False) -> Sequence[Class | str]:
+_ClassOrStr: TypeAlias = 'Class | str'
+
+class ClassHierarchyFinalizer:
     """
-    Compute the method resolution order for this class.
-    This function will also set the 
-    C{_finalbaseobjects} and C{_finalbases} attributes on 
-    this class and all it's superclasses.
+    Encapsulate code related to class hierarchies post-processing.
     """
-    def init_finalbaseobjects(o: 'Class', path:Optional[List['Class']]=None) -> None:
+
+    @staticmethod
+    def _init_finalbaseobjects(o: Class, path:list[Class] | None = None) -> None:
+        """
+        The base objects are computed in two passes, first the ast visitor sets C{_initialbaseobjects}, 
+        then we set C{_finalbaseobjects} from this function which should be called during post-processing.
+        """
         if not path:
             path = []
         if o in path:
-            cycle_str = " -> ".join([o.fullName() for o in path[path.index(cls):] + [cls]])
+            cycle_str = " -> ".join([c.fullName() for c in path[path.index(o):] + [o]])
             raise ValueError(f"Cycle found while computing inheritance hierarchy: {cycle_str}")
         path.append(o)
         if o._finalbaseobjects is not None:
+            # we already computed these, so skip.
             return
         if o.rawbases:
             finalbaseobjects: List[Optional[Class]] = []
@@ -619,62 +626,88 @@ def compute_mro(cls:'Class', cleanup_generics: bool = False) -> Sequence[Class |
                         finalbases.append(o._initialbases[i])
                 if base:
                     # Recurse on super classes
-                    init_finalbaseobjects(base, path.copy())
+                    ClassHierarchyFinalizer._init_finalbaseobjects(base, path.copy())
             o._finalbaseobjects = finalbaseobjects
             o._finalbases = finalbases
-    
-    # Since the typing.Generic can be listed more than once in the class hierarchy: 
-    # ignore the ones after the first discovered one.
-    _bases: dict[Class | str, list[Class | str]] = {}
-    _has_generic: bool = False
-    def _getbases(o:'Class', ignore_generic: bool = False) -> Iterator[Class | str]:
+
+    @staticmethod
+    def _getbases(o: Class) -> Iterator[_ClassOrStr]:
         """
         Like L{Class.baseobjects} but fallback to the expanded 
         name if the base is not resolved to a L{Class} object.
-
-        As well as handle multiple typing.Generic case, 
-        see https://github.com/twisted/pydoctor/issues/846.
         """
         for s,b in zip(o.bases, o.baseobjects):
             if isinstance(b, Class):
                 yield b
             else:
-                # Should we make it work event when typing.py is part of the system ? 
-                # since pydoctor is not used to document the standard library
-                # it's probably not worth it...
-                if s == 'typing.Generic':
-                    nonlocal _has_generic
-                    _has_generic = True
-                    if not ignore_generic:
-                        yield s
-                    else:
-                        continue
-                else:
-                    yield s
-
-    def getbases(o:Class | str) -> list[Class | str]:
-        nonlocal _getbases
-
-        if isinstance(o, str):
-            return []
-        
-        if o in _bases:
-            return _bases[o]
-        
-        r = list(_getbases(o))
-        _bases[o] = r
-
-        if _has_generic and cleanup_generics:
-            _getbases = partial(_getbases, ignore_generic=True)
-        
-        return r
-
-    init_finalbaseobjects(cls)
-    _mro: list[Class | str] =  mro.mro(cls, getbases)
+                yield s
     
-    if cleanup_generics:
-        _mro.sort(key=lambda c: c == 'typing.Generic')
-    return _mro
+    def __init__(self, classes: Iterable[Class]) -> None:
+        # this calls _init_finalbaseobjects for every class and 
+        # create the graph object for the ones that did not raised
+        # a cycle-error.
+        self.graph: dict[_ClassOrStr, list[_ClassOrStr]]  = {}
+        self.computed_mros: dict[_ClassOrStr, list[_ClassOrStr]] = {}
+        
+        for cls in classes:
+            try:
+                self._init_finalbaseobjects(cls)
+            except ValueError as e:
+                # Set the MRO right away in case of cycles. 
+                # They should not be in the graph though!
+                cls.report(str(e), 'mro')
+                self.computed_mros[cls] = cls._mro = list(cls.allbases(True))
+            else:
+                self.graph[cls] = bases = []
+                for b in self._getbases(cls):
+                    bases.append(b)
+
+                    # string should explicitely be part of the graph
+                    if isinstance(b, str):
+                        self.graph[b] = []
+                        self.computed_mros[b] = []
+
+    def compute_mros(self) -> None:
+        
+        # If this raises a CycleError, our code is boggus since we already
+        # checked for cycles ourself.
+        static_order: Iterable[_ClassOrStr] = topsort(self.graph)
+        
+        for cls in static_order:
+            if cls in self.computed_mros:
+                continue
+            # All strings bases are already pre-computed to the empty string, 
+            # so the cls varible must be a Class at this point
+            assert isinstance(cls, Class)
+            self.computed_mros[cls] = cls._mro = self._compute_mro(cls)
+
+    def _compute_mro(self, cls: Class) -> list[_ClassOrStr]:
+        """
+        Compute the method resolution order for this class.
+        This assumes that the MRO of the bases of the class 
+        have already been computed and stored in C{self.computed_mros}.
+        """
+        result = [cls]
+
+        if not (bases:=self.graph[cls]):
+            return result
+        
+        # since we compute all MRO in topoligical orer, we can safely assume
+        # that self.computed_mros contains all the MROs of the bases of this class.
+        bases_mros = [self.computed_mros[kls] for kls in bases]
+
+        # handle multiple typing.Generic case, 
+        # see https://github.com/twisted/pydoctor/issues/846.
+        if 'typing.Generic' in bases and any('typing.Generic' in _mro for _mro in bases_mros):
+            bases.remove('typing.Generic')
+        
+        try:
+            return result + mro.c3_merge(*bases_mros, bases)
+        
+        except ValueError as e:
+            cls.report(f'{e} of {cls.fullName()!r}', 'mro')
+            return list(cls.allbases(True))
+    
 
 def _find_dunder_constructor(cls:'Class') -> Optional['Function']:
     """
@@ -743,19 +776,6 @@ class Class(CanContainImportsDocumentable):
         self.subclasses: List[Class] = []
         self._initialbases: List[str] = []
         self._initialbaseobjects: List[Optional['Class']] = []
-    
-    def _init_mro(self) -> None:
-        """
-        Compute the correct value of the method resolution order returned by L{mro()}.
-        """
-        try:
-            self._mro = compute_mro(self)
-        except ValueError:
-            try:
-                self._mro = compute_mro(self, cleanup_generics=True)
-            except ValueError as e:
-                self.report(str(e), 'mro')
-                self._mro = list(self.allbases(True))
     
     @overload
     def mro(self, include_external:'Literal[True]', include_self:bool=True) -> Sequence[Class | str]:...
@@ -1541,10 +1561,15 @@ class System:
             self.intersphinx.update(cache, url)
 
 def defaultPostProcess(system:'System') -> None:
-    for cls in system.objectsOfType(Class):
-        # Initiate the MROs
-        cls._init_mro()
 
+    # Init class graph and final bases.
+    class_finalizer = ClassHierarchyFinalizer(
+        system.objectsOfType(Class))
+    
+    # Compute MROs
+    class_finalizer.compute_mros()
+
+    for cls in system.objectsOfType(Class):
         # Compute subclasses
         for b in cls.baseobjects:
             if b is not None:

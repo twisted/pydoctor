@@ -11,7 +11,7 @@ def assert_mro_equals(klass: Optional[model.Documentable], expected_mro: List[st
     assert [member.fullName() if isinstance(member, model.Documentable) else member for member in klass.mro(True)] == expected_mro
 
 @systemcls_param
-def test_mro(systemcls: Type[model.System],) -> None:
+def test_mro(systemcls: Type[model.System], capsys:CapSys) -> None:
     mod = fromText("""\
     from mod import External
     class C: pass
@@ -111,12 +111,11 @@ def test_mro(systemcls: Type[model.System],) -> None:
         'mro.WheelBoat',
         'mro.Boat'])
 
-    with pytest.raises(ValueError, match="Cannot compute linearization"):
-        model.compute_mro(mod.contents["F1"]) # type:ignore
-    with pytest.raises(ValueError, match="Cannot compute linearization"):
-        model.compute_mro(mod.contents["G1"]) # type:ignore
-    with pytest.raises(ValueError, match="Cannot compute linearization"):
-        model.compute_mro(mod.contents["Duplicates"]) # type:ignore
+    assert capsys.readouterr().out == '''mro:31: Cannot compute linearization of the class inheritance hierarchy of 'mro.Duplicates'
+mro:9: Cannot compute linearization of the class inheritance hierarchy of 'mro.F1'
+mro:10: Cannot compute linearization of the class inheritance hierarchy of 'mro.G1'
+'''
+    
 
 def test_mro_cycle(capsys:CapSys) -> None:
     fromText("""\
@@ -130,8 +129,7 @@ cycle:3: Cycle found while computing inheritance hierarchy: cycle.C -> cycle.A -
 cycle:4: Cycle found while computing inheritance hierarchy: cycle.D -> cycle.C -> cycle.A -> cycle.D
 '''
 
-@systemcls_param
-def test_mro_generic(systemcls: Type[model.System], capsys:CapSys) -> None:
+def test_mro_generic(capsys:CapSys) -> None:
     src = '''
     from typing import Generic, TypeVar
     T = TypeVar('T')
@@ -139,13 +137,26 @@ def test_mro_generic(systemcls: Type[model.System], capsys:CapSys) -> None:
     class B(Generic[T]): ...
     class C(A, Generic[T], B[T]): ...
     '''
-    mod = fromText(src, modname='t', systemcls=systemcls)
+    mod = fromText(src, modname='t')
     assert not capsys.readouterr().out
     assert_mro_equals(mod.contents['C'], 
                       ["t.C", "t.A", "t.B", "typing.Generic"])
 
-@systemcls_param
-def test_mro_generic_2(systemcls: Type[model.System], capsys:CapSys) -> None:
+def test_mro_generic_4(capsys:CapSys) -> None:
+    src = '''
+    from typing import Generic, TypeVar
+    T = TypeVar('T')
+    class A: ...
+    class Z: ...
+    class B(Generic[T], Z): ...
+    class C(A, Generic[T], B[T]): ...
+    '''
+    mod = fromText(src, modname='t')
+    assert not capsys.readouterr().out
+    assert_mro_equals(mod.contents['C'], 
+                      ["t.C", "t.A", "t.B", "typing.Generic", "t.Z"])
+
+def test_mro_generic_2(capsys:CapSys) -> None:
     src = '''
     from typing import Generic, TypeVar
     T1 = TypeVar('T1')
@@ -154,13 +165,12 @@ def test_mro_generic_2(systemcls: Type[model.System], capsys:CapSys) -> None:
     class B(Generic[T2]): ...
     class C(A[T1], B[T2]): ...
     '''
-    mod = fromText(src, modname='t', systemcls=systemcls)
+    mod = fromText(src, modname='t')
     assert not capsys.readouterr().out
     assert_mro_equals(mod.contents['C'], 
                       ["t.C", "t.A", "t.B", "typing.Generic"])
 
-@systemcls_param
-def test_mro_generic_3(systemcls: Type[model.System], capsys:CapSys) -> None:
+def test_mro_generic_3(capsys:CapSys) -> None:
     src = '''
     from typing import Generic as TGeneric, TypeVar
     T = TypeVar('T')
@@ -169,7 +179,7 @@ def test_mro_generic_3(systemcls: Type[model.System], capsys:CapSys) -> None:
     class B(TGeneric[T]): ...
     class C(A, B[T]): ...
     '''
-    mod = fromText(src, modname='t', systemcls=systemcls)
+    mod = fromText(src, modname='t')
     assert not capsys.readouterr().out
     assert_mro_equals(mod.contents['C'], 
                       ["t.C", "t.A", "t.Generic", "t.B", "typing.Generic"])
