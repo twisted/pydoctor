@@ -1,6 +1,8 @@
 """
 This module offer a compatibility layer on top of L{graphlib.TopologicalSorter.static_order}.
 """
+from __future__ import annotations
+
 import sys
 from typing import TypeVar, TYPE_CHECKING
 
