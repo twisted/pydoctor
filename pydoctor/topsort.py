@@ -4,7 +4,7 @@ This module offer a compatibility layer on top of L{graphlib.TopologicalSorter.s
 from __future__ import annotations
 
 import sys
-from typing import TypeVar, TYPE_CHECKING
+from typing import Iterable, TypeVar, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from typing import TypeAlias
@@ -261,7 +261,7 @@ else:
 
 # API
 
-def topsort(graph: Graph) -> list[T]:
+def topsort(graph: Graph[T]) -> Iterable[T]:
     """
     Wrapper for L{graphlib.TopologicalSorter.static_order}.
     """

@@ -686,7 +686,7 @@ class ClassHierarchyFinalizer:
         This assumes that the MRO of the bases of the class 
         have already been computed and stored in C{self.computed_mros}.
         """
-        result = [cls]
+        result: list[_ClassOrStr] = [cls]
 
         if not (bases:=self.graph[cls]):
             return result
