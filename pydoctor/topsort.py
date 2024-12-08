@@ -8,7 +8,7 @@ if TYPE_CHECKING:
     from typing import TypeAlias
 
 T = TypeVar('T')
-Graph: TypeAlias = dict[T, list[T]]
+Graph: TypeAlias = 'dict[T, list[T]]'
 
 if sys.version_info >= (3, 9):
     from graphlib import TopologicalSorter, CycleError
