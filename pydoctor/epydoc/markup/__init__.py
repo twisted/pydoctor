@@ -49,10 +49,7 @@ from pydoctor.epydoc.docutils import set_node_attributes, build_table_of_content
 
 # In newer Python versions, use importlib.resources from the standard library.
 # On older versions, a compatibility package must be installed from PyPI.
-if sys.version_info < (3, 9):
-    import importlib_resources
-else:
-    import importlib.resources as importlib_resources
+import importlib.resources as importlib_resources
 
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable

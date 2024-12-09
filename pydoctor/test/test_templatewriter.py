@@ -24,19 +24,12 @@ from pydoctor.themes import get_themes
 
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable
-
     # Newer APIs from importlib_resources should arrive to stdlib importlib.resources in Python 3.9.
-    if sys.version_info >= (3, 9):
-        from importlib.abc import Traversable
-    else:
-        Traversable = Any
+    from importlib.abc import Traversable
 else:
     Traversable = object
 
-if sys.version_info < (3, 9):
-    import importlib_resources
-else:
-    import importlib.resources as importlib_resources
+import importlib.resources as importlib_resources
 
 template_dir = importlib_resources.files("pydoctor.themes") / "base"
 

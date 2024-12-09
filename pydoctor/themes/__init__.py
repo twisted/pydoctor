@@ -10,10 +10,7 @@ from typing import Iterator
 
 # In newer Python versions, use importlib.resources from the standard library.
 # On older versions, a compatibility package must be installed from PyPI.
-if sys.version_info < (3, 9):
-    import importlib_resources
-else:
-    import importlib.resources as importlib_resources
+import importlib.resources as importlib_resources
 
 def get_themes() -> Iterator[str]:
     """
