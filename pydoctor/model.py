@@ -685,7 +685,7 @@ class ClassHierarchyFinalizer:
             if cls in self.computed_mros:
                 continue
             # All strings bases are already pre-computed to the empty list, 
-            # so the cls varible must be a Class at this point
+            # so the cls variable must be a Class at this point
             assert isinstance(cls, Class)
             self.computed_mros[cls] = cls._mro = self._compute_mro(cls)
 
