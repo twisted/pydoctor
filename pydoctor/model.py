@@ -13,7 +13,6 @@ from itertools import chain
 from collections import defaultdict
 import datetime
 import importlib
-import platform
 import sys
 import textwrap
 import types
@@ -54,12 +53,6 @@ else:
 #       Classes
 #   Functions can't contain anything.
 
-
-_string_lineno_is_end = sys.version_info < (3,8) \
-                    and platform.python_implementation() != 'PyPy'
-"""True iff the 'lineno' attribute of an AST string node points to the last
-line in the string, rather than the first line.
-"""
 
 class LineFromAst(int):
     "Simple L{int} wrapper for linenumbers coming from ast analysis."
