@@ -38,7 +38,6 @@ __docformat__ = 'epytext en'
 import re
 import ast
 import functools
-import sys
 from inspect import signature
 from typing import Any, AnyStr, Union, Callable, Dict, Iterable, Sequence, Optional, List, Tuple, cast
 

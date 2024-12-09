@@ -1,6 +1,5 @@
 from typing import Optional, Tuple, Type, List, overload, cast
 import ast
-import sys
 
 from pydoctor import astbuilder, astutils, model
 from pydoctor import epydoc2stan

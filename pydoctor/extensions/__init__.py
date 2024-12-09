@@ -6,7 +6,6 @@ An extension can be composed by mixin classes, AST builder visitor extensions an
 from __future__ import annotations
 
 import importlib
-import sys
 from typing import Any, Callable, Dict, Iterable, Iterator, List, Optional, Tuple, Type, Union, TYPE_CHECKING, cast
 
 # In newer Python versions, use importlib.resources from the standard library.

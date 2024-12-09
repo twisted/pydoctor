@@ -5,7 +5,6 @@ Usage example:
 
 >>> template_lookup = TemplateLookup(importlib_resources.files('pydoctor.themes') / 'base')
 """
-import sys
 from typing import Iterator
 
 # In newer Python versions, use importlib.resources from the standard library.

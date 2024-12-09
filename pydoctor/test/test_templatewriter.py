@@ -1,9 +1,8 @@
 from io import BytesIO
 import re
-from typing import Callable, Union, Any, cast, Type, TYPE_CHECKING
+from typing import Callable, Union, cast, Type, TYPE_CHECKING
 import pytest
 import warnings
-import sys
 import tempfile
 import os
 from pathlib import Path, PurePath

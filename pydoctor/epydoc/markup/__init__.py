@@ -35,7 +35,6 @@ __docformat__ = 'epytext en'
 
 from typing import Callable, ContextManager, List, Optional, Sequence, Iterator, TYPE_CHECKING
 import abc
-import sys
 import re
 from importlib import import_module
 from inspect import getmodulename
