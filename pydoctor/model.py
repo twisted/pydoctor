@@ -32,7 +32,6 @@ from pydoctor.options import Options
 from pydoctor import factory, qnmatch, utils, linker, astutils, mro
 from pydoctor.epydoc.markup import ParsedDocstring
 from pydoctor.sphinx import CacheT, SphinxInventory
-from pydoctor.topsort import topsort
 
 if TYPE_CHECKING:
     from typing import Literal, Protocol, TypeAlias
@@ -41,6 +40,7 @@ else:
     Literal = {True: bool, False: bool}
     ASTBuilder = Protocol = object
 
+T = TypeVar('T')
 
 # originally when I started to write pydoctor I had this idea of a big
 # tree of Documentables arranged in an almost arbitrary tree.
@@ -583,7 +583,34 @@ def is_exception(cls: 'Class') -> bool:
             return True
     return False
 
-_ClassOrStr: TypeAlias = 'Class | str'
+Graph: TypeAlias = 'dict[T, list[T]]'
+
+if sys.version_info >= (3, 9):
+    from graphlib import TopologicalSorter
+    def topsort(graph: Graph[T]) -> Iterable[T]:
+        """
+        Wrapper for L{graphlib.TopologicalSorter.static_order}.
+        """
+        return TopologicalSorter(graph).static_order()
+else:
+    from collections import deque
+    def topsort(graph: Graph[T]) -> Iterable[T]:
+        result = deque()
+        visited = set()
+        stack = [[key for key in graph]]
+        while stack:
+            for i in stack[-1]: 
+                if i in visited and i not in result: 
+                    result.appendleft(i)
+                if i not in visited:
+                    visited.add(i)
+                    stack.append(graph[i]) 
+                    break
+            else: 
+                stack.pop() 
+        return result
+
+ClassOrStr: TypeAlias = 'Class | str'
 
 class ClassHierarchyFinalizer:
     """
@@ -630,7 +657,7 @@ class ClassHierarchyFinalizer:
             o._finalbases = finalbases
 
     @staticmethod
-    def _getbases(o: Class) -> Iterator[_ClassOrStr]:
+    def _getbases(o: Class) -> Iterator[ClassOrStr]:
         """
         Like L{Class.baseobjects} but fallback to the expanded 
         name if the base is not resolved to a L{Class} object.
@@ -645,8 +672,8 @@ class ClassHierarchyFinalizer:
         # this calls _init_finalbaseobjects for every class and 
         # create the graph object for the ones that did not raised
         # a cycle-error.
-        self.graph: dict[_ClassOrStr, list[_ClassOrStr]]  = {}
-        self.computed_mros: dict[_ClassOrStr, list[_ClassOrStr]] = {}
+        self.graph: dict[ClassOrStr, list[ClassOrStr]]  = {}
+        self.computed_mros: dict[ClassOrStr, list[ClassOrStr]] = {}
         
         for cls in classes:
             try:
@@ -670,7 +697,7 @@ class ClassHierarchyFinalizer:
         
         # If this raises a CycleError, our code is boggus since we already
         # checked for cycles ourself.
-        static_order: Iterable[_ClassOrStr] = topsort(self.graph)
+        static_order: Iterable[ClassOrStr] = topsort(self.graph)
         
         for cls in static_order:
             if cls in self.computed_mros:
@@ -680,13 +707,13 @@ class ClassHierarchyFinalizer:
             assert isinstance(cls, Class)
             self.computed_mros[cls] = cls._mro = self._compute_mro(cls)
 
-    def _compute_mro(self, cls: Class) -> list[_ClassOrStr]:
+    def _compute_mro(self, cls: Class) -> list[ClassOrStr]:
         """
         Compute the method resolution order for this class.
         This assumes that the MRO of the bases of the class 
         have already been computed and stored in C{self.computed_mros}.
         """
-        result: list[_ClassOrStr] = [cls]
+        result: list[ClassOrStr] = [cls]
 
         if not (bases:=self.graph[cls]):
             return result
@@ -950,8 +977,6 @@ class Attribute(Inheritable):
 # Work around the attributes of the same name within the System class.
 _ModuleT = Module
 _PackageT = Package
-
-T = TypeVar('T')
 
 def import_mod_from_file_location(module_full_name:str, path: Path) -> types.ModuleType:
     spec = importlib.util.spec_from_file_location(module_full_name, path)
