@@ -709,7 +709,8 @@ class ClassHierarchyFinalizer:
         # support documenting typing.py module by using allobject.get.
         generic = cls.system.allobjects.get(d:='typing.Generic', d)
         if generic in bases and any(generic in _mro for _mro in bases_mros):
-            bases.remove(generic)
+            # this is cafe since we checked 'generic in bases'.
+            bases.remove(generic) # type: ignore[arg-type]
         
         try:
             return result + mro.c3_merge(*bases_mros, bases)
