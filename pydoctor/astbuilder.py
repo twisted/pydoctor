@@ -148,24 +148,14 @@ def is_attribute_overridden(obj: model.Attribute, new_value: Optional[ast.expr])
     """
     return obj.value is not None and new_value is not None
 
-def _extract_annotation_subscript(annotation: ast.Subscript) -> ast.AST:
-    """
-    Extract the "str, bytes" part from annotations like  "Union[str, bytes]".
-    """
-    ann_slice = annotation.slice
-    if sys.version_info < (3,9) and isinstance(ann_slice, ast.Index):
-        return ann_slice.value
-    else:
-        return ann_slice
-
 def extract_final_subscript(annotation: ast.Subscript) -> ast.expr:
     """
     Extract the "str" part from annotations like  "Final[str]".
 
     @raises ValueError: If the "Final" annotation is not valid.
     """ 
-    ann_slice = _extract_annotation_subscript(annotation)
-    if isinstance(ann_slice, (ast.ExtSlice, ast.Slice, ast.Tuple)):
+    ann_slice = annotation.slice
+    if isinstance(ann_slice, (ast.Slice, ast.Tuple)):
         raise ValueError("Annotation is invalid, it should not contain slices.")
     else:
         assert isinstance(ann_slice, ast.expr)
@@ -1031,8 +1021,7 @@ class ModuleVistor(NodeVisitor):
         elif is_classmethod:
             func.kind = model.DocumentableKind.CLASS_METHOD
 
-        # Position-only arguments were introduced in Python 3.8.
-        posonlyargs: Sequence[ast.arg] = getattr(node.args, 'posonlyargs', ())
+        posonlyargs: Sequence[ast.arg] = node.args.posonlyargs
 
         num_pos_args = len(posonlyargs) + len(node.args.args)
         defaults = node.args.defaults
@@ -1138,11 +1127,7 @@ class ModuleVistor(NodeVisitor):
         """
         def _get_all_args() -> Iterator[ast.arg]:
             base_args = func.args
-            # New on Python 3.8 -- handle absence gracefully
-            try:
-                yield from base_args.posonlyargs
-            except AttributeError:
-                pass
+            yield from base_args.posonlyargs
             yield from base_args.args
             varargs = base_args.vararg
             if varargs:

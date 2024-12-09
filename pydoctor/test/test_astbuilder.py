@@ -1,6 +1,5 @@
 from typing import Optional, Tuple, Type, List, overload, cast
 import ast
-import sys
 
 from pydoctor import astbuilder, astutils, model
 from pydoctor import epydoc2stan
@@ -12,7 +11,7 @@ from pydoctor.epydoc2stan import _get_docformat, format_summary, get_parsed_type
 from pydoctor.test.test_packages import processPackage
 from pydoctor.utils import partialclass
 
-from . import CapSys, NotFoundLinker, posonlyargs, typecomment
+from . import CapSys, NotFoundLinker
 import pytest
 
 class SimpleSystem(model.System):
@@ -235,7 +234,6 @@ def test_function_signature(signature: str, systemcls: Type[model.System]) -> No
     text = flatten_text(html2stan(str(docfunc.signature)))
     assert text == signature
 
-@posonlyargs
 @pytest.mark.parametrize('signature', (
     '(x, y, /)',
     '(x, y=0, /)',
@@ -1361,7 +1359,6 @@ def test_annotated_variables(systemcls: Type[model.System]) -> None:
     assert m.docstring == """module-level"""
     assert type2html(m) == '<code>bytes</code>'
 
-@typecomment
 @systemcls_param
 def test_type_comment(systemcls: Type[model.System], capsys: CapSys) -> None:
     mod = fromText('''
@@ -2941,7 +2938,7 @@ def test_augmented_assignment(systemcls: Type[model.System]) -> None:
     attr = mod.contents['var']
     assert isinstance(attr, model.Attribute)
     assert attr.value
-    assert astutils.unparse(attr.value).strip() == '1 + 3' if sys.version_info >= (3,9) else '(1 + 3)'
+    assert astutils.unparse(attr.value).strip() == '1 + 3'
 
 @systemcls_param
 def test_augmented_assignment_in_class(systemcls: Type[model.System]) -> None:
@@ -2953,7 +2950,7 @@ def test_augmented_assignment_in_class(systemcls: Type[model.System]) -> None:
     attr = mod.contents['c'].contents['var']
     assert isinstance(attr, model.Attribute)
     assert attr.value
-    assert astutils.unparse(attr.value).strip() == '1 + 3' if sys.version_info >= (3,9) else '(1 + 3)'
+    assert astutils.unparse(attr.value).strip() == '1 + 3'
 
 
 @systemcls_param
@@ -2971,7 +2968,7 @@ def test_augmented_assignment_conditionnal_else_ignored(systemcls: Type[model.Sy
     attr = mod.contents['var']
     assert isinstance(attr, model.Attribute)
     assert attr.value
-    assert astutils.unparse(attr.value).strip() == '1 + 3' if sys.version_info >= (3,9) else '(1 + 3)'
+    assert astutils.unparse(attr.value).strip() == '1 + 3'
 
 @systemcls_param
 def test_augmented_assignment_conditionnal_multiple_assignments(systemcls: Type[model.System]) -> None:
@@ -2989,7 +2986,7 @@ def test_augmented_assignment_conditionnal_multiple_assignments(systemcls: Type[
     attr = mod.contents['var']
     assert isinstance(attr, model.Attribute)
     assert attr.value
-    assert astutils.unparse(attr.value).strip() == '1 + 3 + 4' if sys.version_info >= (3,9) else '(1 + 3 + 4)'
+    assert astutils.unparse(attr.value).strip() == '1 + 3 + 4'
 
 @systemcls_param
 def test_augmented_assignment_instance_var(systemcls: Type[model.System]) -> None:
@@ -3005,7 +3002,7 @@ def test_augmented_assignment_instance_var(systemcls: Type[model.System]) -> Non
     attr = mod.contents['c'].contents['var']
     assert isinstance(attr, model.Attribute)
     assert attr.value
-    assert astutils.unparse(attr.value).strip() == '1' if sys.version_info >= (3,9) else '(1)'
+    assert astutils.unparse(attr.value).strip() == '1'
 
 @systemcls_param
 def test_augmented_assignment_not_suitable_for_inline_docstring(systemcls: Type[model.System]) -> None:

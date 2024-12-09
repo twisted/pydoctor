@@ -38,7 +38,6 @@ __docformat__ = 'epytext en'
 import re
 import ast
 import functools
-import sys
 from inspect import signature
 from typing import Any, AnyStr, Union, Callable, Dict, Iterable, Sequence, Optional, List, Tuple, cast
 
@@ -517,35 +516,9 @@ class PyvalColorizer:
     #   comparators, 
     #   generator expressions, 
     #   Slice and ExtSlice
-
-    @staticmethod
-    def _is_ast_constant(node: ast.AST) -> bool:
-        if sys.version_info[:2] >= (3, 8):
-            return isinstance(node, ast.Constant)
-        else:
-            # TODO: remove me when python3.7 is not supported anymore
-            return isinstance(node, (ast.Num, ast.Str, ast.Bytes, 
-                    ast.Constant, ast.NameConstant, ast.Ellipsis))
-    @staticmethod
-    def _get_ast_constant_val(node: ast.AST) -> Any:
-        # Deprecated since version 3.8: Replaced by Constant
-        if sys.version_info[:2] >= (3, 8):
-            if isinstance(node, ast.Constant):
-                return node.value
-        else:
-            # TODO: remove me when python3.7 is not supported anymore
-            if isinstance(node, ast.Num): 
-                return(node.n)
-            if isinstance(node, (ast.Str, ast.Bytes)):
-                return(node.s)
-            if isinstance(node, (ast.Constant, ast.NameConstant)):
-                return(node.value)
-            if isinstance(node, ast.Ellipsis):
-                return(...)
-        raise RuntimeError(f'expected a constant: {ast.dump(node)}')
         
-    def _colorize_ast_constant(self, pyval: ast.AST, state: _ColorizerState) -> None:
-        val = self._get_ast_constant_val(pyval)
+    def _colorize_ast_constant(self, pyval: ast.Constant, state: _ColorizerState) -> None:
+        val = pyval.value
         # Handle elipsis
         if val != ...:
             self._colorize(val, state)
@@ -560,7 +533,7 @@ class PyvalColorizer:
         except StopIteration:
             Parentage().visit(pyval)
 
-        if self._is_ast_constant(pyval): 
+        if isinstance(pyval, ast.Constant): 
             self._colorize_ast_constant(pyval, state)
         elif isinstance(pyval, ast.UnaryOp):
             self._colorize_ast_unary_op(pyval, state)
@@ -666,9 +639,6 @@ class PyvalColorizer:
         self._colorize(node.value, state)
 
         sub: ast.AST = node.slice
-        if sys.version_info < (3,9) and isinstance(sub, ast.Index):
-            # In Python < 3.9, non-slices are always wrapped in an Index node.
-            sub = sub.value
         self._output('[', self.GROUP_TAG, state)
         self._set_precedence(op_util.Precedence.Subscript, node)
         self._set_precedence(op_util.Precedence.Index, sub)
@@ -712,11 +682,11 @@ class PyvalColorizer:
         ast_pattern = args.arguments['pattern']
 
         # Cannot colorize regex
-        if not self._is_ast_constant(ast_pattern):
+        if not isinstance(ast_pattern, ast.Constant):
             self._colorize_ast_call_generic(node, state)
             return
 
-        pat = self._get_ast_constant_val(ast_pattern)
+        pat = ast_pattern.value
         
         # Just in case regex pattern is not valid type
         if not isinstance(pat, (bytes, str)):
@@ -755,8 +725,7 @@ class PyvalColorizer:
             # if there are required since we don;t have support for all operators 
             # See TODO comment in _OperatorDelimiter.
             source = unparse(pyval).strip()
-            if sys.version_info > (3,9) and isinstance(pyval, 
-                    (ast.IfExp, ast.Compare, ast.Lambda)) and len(state.stack)>1:
+            if isinstance(pyval, (ast.IfExp, ast.Compare, ast.Lambda)) and len(state.stack)>1:
                 source = f'({source})'
         except Exception: #  No defined handler for node of type <type>
             state.result.append(self.UNKNOWN_REPR)

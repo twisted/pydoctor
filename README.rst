@@ -73,9 +73,11 @@ What's New?
 in development
 ^^^^^^^^^^^^^^
 
+* Drop support for Python 3.8.
 * Fix a bug in the MRO computing code that would result in an incorrect  
   ``Cannot compute linearization of the class inheritance hierarchy`` message 
   for valid types extending ``typing.Generic`` as well as other generic classes.
+
 
 pydoctor 24.11.1
 ^^^^^^^^^^^^^^^^
