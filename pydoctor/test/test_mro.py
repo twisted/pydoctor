@@ -141,6 +141,21 @@ def test_mro_generic(capsys:CapSys) -> None:
     assert_mro_equals(mod.contents['C'], 
                       ["t.C", "t.A", "t.B", "typing.Generic"])
 
+def test_mro_generic_in_system(capsys:CapSys) -> None:
+    src = '''
+    class TypeVar:...
+    class Generic: ...
+    T = TypeVar('T')
+    class A: ...
+    class B(Generic[T]): ...
+    class C(A, Generic[T], B[T]): ...
+    '''
+    mod = fromText(src, modname='typing')
+    assert not capsys.readouterr().out
+    assert_mro_equals(mod.contents['C'], 
+                      ["typing.C", "typing.A", "typing.B", "typing.Generic"])
+
+
 def test_mro_generic_4(capsys:CapSys) -> None:
     src = '''
     from typing import Generic, TypeVar
