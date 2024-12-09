@@ -24,6 +24,7 @@ from typing import (
     TYPE_CHECKING, Any, Collection, Dict, Iterable, Iterator, List, Mapping, Callable, 
     Optional, Sequence, Set, Tuple, Type, TypeVar, Union, cast, overload
 )
+from graphlib import TopologicalSorter
 from urllib.parse import quote
 
 import attr
@@ -585,30 +586,11 @@ def is_exception(cls: 'Class') -> bool:
 
 Graph: TypeAlias = 'dict[T, list[T]]'
 
-if sys.version_info >= (3, 9):
-    from graphlib import TopologicalSorter
-    def topsort(graph: Graph[T]) -> Iterable[T]:
-        """
-        Wrapper for L{graphlib.TopologicalSorter.static_order}.
-        """
-        return TopologicalSorter(graph).static_order()
-else:
-    from collections import deque
-    def topsort(graph: Graph[T]) -> Iterable[T]:
-        result = deque()
-        visited = set()
-        stack = [[key for key in graph]]
-        while stack:
-            for i in stack[-1]: 
-                if i in visited and i not in result: 
-                    result.appendleft(i)
-                if i not in visited:
-                    visited.add(i)
-                    stack.append(graph[i]) 
-                    break
-            else: 
-                stack.pop() 
-        return result
+def topsort(graph: Graph[T]) -> Iterable[T]:
+    """
+    Wrapper for L{graphlib.TopologicalSorter.static_order}.
+    """
+    return TopologicalSorter(graph).static_order()
 
 ClassOrStr: TypeAlias = 'Class | str'
 
@@ -724,8 +706,10 @@ class ClassHierarchyFinalizer:
 
         # handle multiple typing.Generic case, 
         # see https://github.com/twisted/pydoctor/issues/846.
-        if 'typing.Generic' in bases and any('typing.Generic' in _mro for _mro in bases_mros):
-            bases.remove('typing.Generic')
+        # support documenting typing.py module by using allobject.get.
+        generic = cls.system.allobjects.get(d:='typing.Generic', d)
+        if generic in bases and any(generic in _mro for _mro in bases_mros):
+            bases.remove(generic)
         
         try:
             return result + mro.c3_merge(*bases_mros, bases)
