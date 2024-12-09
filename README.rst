@@ -73,6 +73,8 @@ What's New?
 in development
 ^^^^^^^^^^^^^^
 
+* Drop support for Python 3.8.
+
 pydoctor 24.11.1
 ^^^^^^^^^^^^^^^^
 
