@@ -684,7 +684,7 @@ class ClassHierarchyFinalizer:
         for cls in static_order:
             if cls in self.computed_mros:
                 continue
-            # All strings bases are already pre-computed to the empty string, 
+            # All strings bases are already pre-computed to the empty list, 
             # so the cls varible must be a Class at this point
             assert isinstance(cls, Class)
             self.computed_mros[cls] = cls._mro = self._compute_mro(cls)
@@ -700,7 +700,7 @@ class ClassHierarchyFinalizer:
         if not (bases:=self.graph[cls]):
             return result
         
-        # since we compute all MRO in topoligical orer, we can safely assume
+        # since we compute all MRO in topological order, we can safely assume
         # that self.computed_mros contains all the MROs of the bases of this class.
         bases_mros = [self.computed_mros[kls] for kls in bases]
 
