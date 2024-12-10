@@ -1,0 +1,12 @@
+[tool.black]
+line-length = 120
+skip-string-normalization = 1
+required-version = 24
+target-version = ['py39']
+
+# 'extend-exclude' excludes files or directories in addition to the defaults
+extend-exclude = '''
+(
+  .+/sre_.+.py | .+/testpackages/.+
+)
+'''
