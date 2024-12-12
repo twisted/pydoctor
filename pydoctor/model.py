@@ -577,11 +577,12 @@ def is_exception(cls: 'Class') -> bool:
             return True
     return False
 
-Graph: TypeAlias = 'dict[Any, Sequence[T]]'
-
-def topsort(graph: Graph[T]) -> Iterable[T]:
+def topsort(graph: Mapping[Any, Sequence[T]]) -> Iterable[T]:
     """
-    Wrapper for L{graphlib.TopologicalSorter.static_order}.
+    Given a mapping where each keys corespond to a node 
+    and keys the predecessors of the node, return the topological order of the nodes.
+
+    This is a simpple wrapper for L{graphlib.TopologicalSorter.static_order}.
     """
     return TopologicalSorter(graph).static_order()
 
@@ -669,7 +670,7 @@ class ClassHierarchyFinalizer:
         
         # If this raises a CycleError, our code is boggus since we already
         # checked for cycles ourself.
-        static_order: Iterable[ClassOrStr] = topsort(self.graph)
+        static_order = topsort(self.graph)
         
         for cls in static_order:
             if cls in self.computed_mros or isinstance(cls, str):
