@@ -50,7 +50,13 @@ class TableRow(Element):
     @renderer
     def name(self, request: object, tag: Tag) -> Tag:
         return tag.clear()(
-            tags.code(epydoc2stan.taglink(self.child, self.ob.url, epydoc2stan.insert_break_points(self.child.name)))
+            tags.code(
+                epydoc2stan.taglink(
+                    self.child,
+                    self.ob.url,
+                    epydoc2stan.insert_break_points(self.child.name),
+                )
+            )
         )
 
     @renderer
@@ -84,4 +90,8 @@ class ChildTable(TemplateElement):
 
     @renderer
     def rows(self, request: object, tag: Tag) -> "Flattenable":
-        return [TableRow(TagLoader(tag), self.docgetter, self.ob, child) for child in self.children if child.isVisible]
+        return [
+            TableRow(TagLoader(tag), self.docgetter, self.ob, child)
+            for child in self.children
+            if child.isVisible
+        ]

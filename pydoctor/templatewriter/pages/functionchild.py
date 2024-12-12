@@ -7,7 +7,11 @@ from twisted.web.template import Tag, renderer
 
 from pydoctor.model import Function
 from pydoctor.templatewriter import TemplateElement, util
-from pydoctor.templatewriter.pages import format_decorators, format_function_def, format_overloads
+from pydoctor.templatewriter.pages import (
+    format_decorators,
+    format_function_def,
+    format_overloads,
+)
 
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable
@@ -17,7 +21,13 @@ class FunctionChild(TemplateElement):
 
     filename = 'function-child.html'
 
-    def __init__(self, docgetter: util.DocGetter, ob: Function, extras: List["Flattenable"], loader: ITemplateLoader):
+    def __init__(
+        self,
+        docgetter: util.DocGetter,
+        ob: Function,
+        extras: List["Flattenable"],
+        loader: ITemplateLoader,
+    ):
         super().__init__(loader)
         self.docgetter = docgetter
         self.ob = ob

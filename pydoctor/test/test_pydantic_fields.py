@@ -51,7 +51,9 @@ class PydanticSystem2(model.System):
 import pytest
 from pydoctor.test.test_astbuilder import fromText, PydanticSystem
 
-pydantic_systemcls_param = pytest.mark.parametrize('systemcls', (PydanticSystem, PydanticSystem2))
+pydantic_systemcls_param = pytest.mark.parametrize(
+    'systemcls', (PydanticSystem, PydanticSystem2)
+)
 
 
 @pydantic_systemcls_param
@@ -68,7 +70,19 @@ def test_pydantic_fields(systemcls: Type[model.System]) -> None:
 
     mod = fromText(src, modname='mod', systemcls=systemcls)
 
-    assert mod.contents['Model'].contents['a'].kind == model.DocumentableKind.INSTANCE_VARIABLE
-    assert mod.contents['Model'].contents['b'].kind == model.DocumentableKind.INSTANCE_VARIABLE
-    assert mod.contents['Model'].contents['name'].kind == model.DocumentableKind.INSTANCE_VARIABLE
-    assert mod.contents['Model'].contents['kind'].kind == model.DocumentableKind.CLASS_VARIABLE
+    assert (
+        mod.contents['Model'].contents['a'].kind
+        == model.DocumentableKind.INSTANCE_VARIABLE
+    )
+    assert (
+        mod.contents['Model'].contents['b'].kind
+        == model.DocumentableKind.INSTANCE_VARIABLE
+    )
+    assert (
+        mod.contents['Model'].contents['name'].kind
+        == model.DocumentableKind.INSTANCE_VARIABLE
+    )
+    assert (
+        mod.contents['Model'].contents['kind'].kind
+        == model.DocumentableKind.CLASS_VARIABLE
+    )

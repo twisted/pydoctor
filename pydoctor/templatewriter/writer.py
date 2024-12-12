@@ -9,7 +9,15 @@ from typing import IO, Iterable, Type, TYPE_CHECKING
 
 from pydoctor import model
 from pydoctor.extensions import zopeinterface
-from pydoctor.templatewriter import DOCTYPE, pages, summary, search, TemplateLookup, IWriter, StaticTemplate
+from pydoctor.templatewriter import (
+    DOCTYPE,
+    pages,
+    summary,
+    search,
+    TemplateLookup,
+    IWriter,
+    StaticTemplate,
+)
 
 from twisted.python.failure import Failure
 from twisted.web.template import flattenString
@@ -105,7 +113,9 @@ class TemplateWriter(IWriter):
             # If there is just a single root module it is written to index.html to produce nicer URLs.
             # To not break old links we also create a link from the full module name to the index.html
             # file. This is also good for consistency: every module is accessible by <full module name>.html
-            root_module_path = self.build_directory / (list(system.root_names)[0] + '.html')
+            root_module_path = self.build_directory / (
+                list(system.root_names)[0] + '.html'
+            )
             root_module_path.unlink(missing_ok=True)  # introduced in Python 3.8
 
             try:
@@ -114,7 +124,10 @@ class TemplateWriter(IWriter):
                     # to jump directly to the hardlink part.
                     raise OSError()
                 root_module_path.symlink_to('index.html')
-            except (OSError, NotImplementedError):  # symlink is not implemented for windows on pypy :/
+            except (
+                OSError,
+                NotImplementedError,
+            ):  # symlink is not implemented for windows on pypy :/
                 hardlink_path = self.build_directory / 'index.html'
                 shutil.copy(hardlink_path, root_module_path)
 
@@ -158,5 +171,7 @@ class TemplateWriter(IWriter):
         ob.system.msg('html', str(ob), thresh=1)
         page = pclass(ob=ob, template_lookup=self.template_lookup)
         self.written_pages += 1
-        ob.system.progress('html', self.written_pages, self.total_pages, 'pages written')
+        ob.system.progress(
+            'html', self.written_pages, self.total_pages, 'pages written'
+        )
         flattenToFile(fobj, page)

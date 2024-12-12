@@ -123,7 +123,9 @@ def _merge(*lists) -> list:
                 break
         else:
             # Loop never broke, no linearization could possibly be found
-            raise ValueError('Cannot compute linearization of the class inheritance hierarchy')
+            raise ValueError(
+                'Cannot compute linearization of the class inheritance hierarchy'
+            )
 
 
 def mro(cls: T, getbases: Callable[[T], List[T]]) -> List[T]:
@@ -135,4 +137,6 @@ def mro(cls: T, getbases: Callable[[T], List[T]]) -> List[T]:
     if not getbases(cls):
         return result
     else:
-        return result + _merge(*[mro(kls, getbases) for kls in getbases(cls)], getbases(cls))
+        return result + _merge(
+            *[mro(kls, getbases) for kls in getbases(cls)], getbases(cls)
+        )

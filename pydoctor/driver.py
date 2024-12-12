@@ -39,7 +39,9 @@ def get_system(options: model.Options) -> model.System:
     # Support source date epoch:
     # https://reproducible-builds.org/specs/source-date-epoch/
     try:
-        system.buildtime = datetime.datetime.utcfromtimestamp(int(os.environ['SOURCE_DATE_EPOCH']))
+        system.buildtime = datetime.datetime.utcfromtimestamp(
+            int(os.environ['SOURCE_DATE_EPOCH'])
+        )
     except ValueError as e:
         error(str(e))
     except KeyError:
@@ -47,7 +49,9 @@ def get_system(options: model.Options) -> model.System:
     # Load custom buildtime
     if options.buildtime:
         try:
-            system.buildtime = datetime.datetime.strptime(options.buildtime, BUILDTIME_FORMAT)
+            system.buildtime = datetime.datetime.strptime(
+                options.buildtime, BUILDTIME_FORMAT
+            )
         except ValueError as e:
             error(str(e))
 
@@ -95,17 +99,25 @@ def make(system: model.System) -> None:
         system.msg(
             'html',
             'writing html to %s using %s.%s'
-            % (options.htmloutput, options.htmlwriter.__module__, options.htmlwriter.__name__),
+            % (
+                options.htmloutput,
+                options.htmlwriter.__module__,
+                options.htmlwriter.__name__,
+            ),
         )
 
         writer: IWriter
 
         # Always init the writer with the 'base' set of templates at least.
-        template_lookup = TemplateLookup(importlib_resources.files('pydoctor.themes') / 'base')
+        template_lookup = TemplateLookup(
+            importlib_resources.files('pydoctor.themes') / 'base'
+        )
 
         # Handle theme selection, 'classic' by default.
         if system.options.theme != 'base':
-            template_lookup.add_templatedir(importlib_resources.files('pydoctor.themes') / system.options.theme)
+            template_lookup.add_templatedir(
+                importlib_resources.files('pydoctor.themes') / system.options.theme
+            )
 
         # Handle custom HTML templates
         if system.options.templatedir:
@@ -179,7 +191,10 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
             def p(msg: str) -> None:
                 system.msg('docstring-summary', msg, thresh=-1, topthresh=1)
 
-            p("these %s objects' docstrings contain syntax errors:" % (len(docstring_syntax_errors),))
+            p(
+                "these %s objects' docstrings contain syntax errors:"
+                % (len(docstring_syntax_errors),)
+            )
             for fn in sorted(docstring_syntax_errors):
                 p('    ' + fn)
 

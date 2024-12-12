@@ -81,7 +81,9 @@ class IgnoreAssignment(Exception):
     """
 
 
-def _handleAliasing(ctx: model.CanContainImportsDocumentable, target: str, expr: Optional[ast.expr]) -> bool:
+def _handleAliasing(
+    ctx: model.CanContainImportsDocumentable, target: str, expr: Optional[ast.expr]
+) -> bool:
     """If the given expression is a name assigned to a target that is not yet
     in use, create an alias.
     @return: L{True} iff an alias was created.
@@ -113,7 +115,9 @@ if sys.version_info >= (3, 11):
     _CONTROL_FLOW_BLOCKS += (ast.TryStar,)
 
 
-def is_constant(obj: model.Attribute, annotation: Optional[ast.expr], value: Optional[ast.expr]) -> bool:
+def is_constant(
+    obj: model.Attribute, annotation: Optional[ast.expr], value: Optional[ast.expr]
+) -> bool:
     """
     Detect if the given assignment is a constant.
 
@@ -153,7 +157,9 @@ class TypeAliasVisitorExt(extensions.ModuleVisitorExt):
         Return C{True} if the Attribute is a type alias.
         """
         if ob.value is not None:
-            if is_using_annotations(ob.annotation, ('typing.TypeAlias', 'typing_extensions.TypeAlias'), ob):
+            if is_using_annotations(
+                ob.annotation, ('typing.TypeAlias', 'typing_extensions.TypeAlias'), ob
+            ):
                 return True
             if is_typing_annotation(ob.value, ob.parent):
                 return True
@@ -188,7 +194,9 @@ class TypeAliasVisitorExt(extensions.ModuleVisitorExt):
     visit_AnnAssign = visit_Assign
 
 
-def is_attribute_overridden(obj: model.Attribute, new_value: Optional[ast.expr]) -> bool:
+def is_attribute_overridden(
+    obj: model.Attribute, new_value: Optional[ast.expr]
+) -> bool:
     """
     Detect if the optional C{new_value} expression override the one already stored in the L{Attribute.value} attribute.
     """
@@ -216,7 +224,10 @@ class ModuleVistor(NodeVisitor):
         self.builder = builder
         self.system = builder.system
         self.module = module
-        self._override_guard_state: Tuple[Optional[model.Documentable], Set[str]] = (None, set())
+        self._override_guard_state: Tuple[Optional[model.Documentable], Set[str]] = (
+            None,
+            set(),
+        )
 
     @contextlib.contextmanager
     def override_guard(self) -> Iterator[None]:
@@ -262,7 +273,10 @@ class ModuleVistor(NodeVisitor):
         # tweak constants annotations when we leave the scope so we can still
         # check whether the annotation uses Final while we're visiting other nodes.
         for attrib in scope.contents.values():
-            if not isinstance(attrib, model.Attribute) or attrib.kind is not model.DocumentableKind.CONSTANT:
+            if (
+                not isinstance(attrib, model.Attribute)
+                or attrib.kind is not model.DocumentableKind.CONSTANT
+            ):
                 continue
             self._tweak_constant_annotation(attrib)
 
@@ -335,7 +349,9 @@ class ModuleVistor(NodeVisitor):
                 name_node = base_node.value
 
             str_base = '.'.join(
-                node2dottedname(name_node)  # Fallback on unparse() if the expression is unknown by node2dottedname().
+                node2dottedname(
+                    name_node
+                )  # Fallback on unparse() if the expression is unknown by node2dottedname().
                 or [unparse(base_node).strip()]
             )
 
@@ -418,7 +434,10 @@ class ModuleVistor(NodeVisitor):
                 parent = parent.parent
             if parent is None:
                 assert ctx.parentMod is not None
-                ctx.parentMod.report("relative import level (%d) too high" % node.level, lineno_offset=node.lineno)
+                ctx.parentMod.report(
+                    "relative import level (%d) too high" % node.level,
+                    lineno_offset=node.lineno,
+                )
                 return
             if modname is None:
                 modname = parent.fullName()
@@ -484,7 +503,11 @@ class ModuleVistor(NodeVisitor):
         return exports
 
     def _handleReExport(
-        self, curr_mod_exports: Collection[str], origin_name: str, as_name: str, origin_module: model.Module
+        self,
+        curr_mod_exports: Collection[str],
+        origin_name: str,
+        as_name: str,
+        origin_module: model.Module,
     ) -> bool:
         """
         Move re-exported objects into current module.
@@ -497,12 +520,20 @@ class ModuleVistor(NodeVisitor):
         if as_name in curr_mod_exports:
             # In case of duplicates names, we can't rely on resolveName,
             # So we use content.get first to resolve non-alias names.
-            ob = origin_module.contents.get(origin_name) or origin_module.resolveName(origin_name)
+            ob = origin_module.contents.get(origin_name) or origin_module.resolveName(
+                origin_name
+            )
             if ob is None:
-                current.report("cannot resolve re-exported name :" f'{modname}.{origin_name}', thresh=1)
+                current.report(
+                    "cannot resolve re-exported name :" f'{modname}.{origin_name}',
+                    thresh=1,
+                )
             else:
                 if origin_module.all is None or origin_name not in origin_module.all:
-                    self.system.msg("astbuilder", "moving %r into %r" % (ob.fullName(), current.fullName()))
+                    self.system.msg(
+                        "astbuilder",
+                        "moving %r into %r" % (ob.fullName(), current.fullName()),
+                    )
                     # Must be a Module since the exports is set to an empty list if it's not.
                     assert isinstance(current, model.Module)
                     ob.reparent(current, as_name)
@@ -534,7 +565,10 @@ class ModuleVistor(NodeVisitor):
             # are processed (getProcessedModule() ignores non-modules).
             if isinstance(mod, model.Package):
                 self.system.getProcessedModule(f'{modname}.{orgname}')
-            if mod is not None and self._handleReExport(exports, orgname, asname, mod) is True:
+            if (
+                mod is not None
+                and self._handleReExport(exports, orgname, asname, mod) is True
+            ):
                 continue
 
             _localNameToFullName[asname] = f'{modname}.{orgname}'
@@ -568,7 +602,9 @@ class ModuleVistor(NodeVisitor):
                 continue
             _localNameToFullName[asname] = targetname
 
-    def _handleOldSchoolMethodDecoration(self, target: str, expr: Optional[ast.expr]) -> bool:
+    def _handleOldSchoolMethodDecoration(
+        self, target: str, expr: Optional[ast.expr]
+    ) -> bool:
         if not isinstance(expr, ast.Call):
             return False
         func = expr.func
@@ -622,7 +658,11 @@ class ModuleVistor(NodeVisitor):
                 try:
                     annotation = extract_final_subscript(annotation)
                 except ValueError as e:
-                    obj.report(str(e), section='ast', lineno_offset=annotation.lineno - obj.linenumber)
+                    obj.report(
+                        str(e),
+                        section='ast',
+                        lineno_offset=annotation.lineno - obj.linenumber,
+                    )
                     obj.annotation = infer_type(obj.value) if obj.value else None
                 else:
                     # Will not display as "Final[str]" but rather only "str"
@@ -644,7 +684,9 @@ class ModuleVistor(NodeVisitor):
 
     @staticmethod
     def _storeAttrValue(
-        obj: model.Attribute, new_value: Optional[ast.expr], augassign: Optional[ast.operator] = None
+        obj: model.Attribute,
+        new_value: Optional[ast.expr],
+        augassign: Optional[ast.operator] = None,
     ) -> None:
         if new_value:
             if augassign:
@@ -675,7 +717,10 @@ class ModuleVistor(NodeVisitor):
             if augassign:
                 return
             obj = self.builder.addAttribute(
-                name=target, kind=model.DocumentableKind.VARIABLE, parent=parent, lineno=lineno
+                name=target,
+                kind=model.DocumentableKind.VARIABLE,
+                parent=parent,
+                lineno=lineno,
             )
 
         # If it's not an attribute it means that the name is already denifed as function/class
@@ -696,7 +741,9 @@ class ModuleVistor(NodeVisitor):
 
         obj.setLineNumber(lineno)
 
-        self._handleConstant(obj, annotation, expr, lineno, model.DocumentableKind.VARIABLE)
+        self._handleConstant(
+            obj, annotation, expr, lineno, model.DocumentableKind.VARIABLE
+        )
         self._storeAttrValue(obj, expr, augassign)
 
     def _handleAssignmentInModule(
@@ -734,7 +781,9 @@ class ModuleVistor(NodeVisitor):
         if obj is None:
             if augassign:
                 return
-            obj = self.builder.addAttribute(name=name, kind=None, parent=cls, lineno=lineno)
+            obj = self.builder.addAttribute(
+                name=name, kind=None, parent=cls, lineno=lineno
+            )
 
         if obj.kind is None:
             obj.kind = model.DocumentableKind.CLASS_VARIABLE
@@ -743,11 +792,17 @@ class ModuleVistor(NodeVisitor):
 
         obj.setLineNumber(lineno)
 
-        self._handleConstant(obj, annotation, expr, lineno, model.DocumentableKind.CLASS_VARIABLE)
+        self._handleConstant(
+            obj, annotation, expr, lineno, model.DocumentableKind.CLASS_VARIABLE
+        )
         self._storeAttrValue(obj, expr, augassign)
 
     def _handleInstanceVar(
-        self, name: str, annotation: Optional[ast.expr], expr: Optional[ast.expr], lineno: int
+        self,
+        name: str,
+        annotation: Optional[ast.expr],
+        expr: Optional[ast.expr],
+        lineno: int,
     ) -> None:
         if not (cls := self._getClassFromMethodContext()):
             raise IgnoreAssignment()
@@ -759,7 +814,9 @@ class ModuleVistor(NodeVisitor):
         # Class variables can only be Attribute, so it's OK to cast because we used _maybeAttribute() above.
         obj = cast(Optional[model.Attribute], cls.contents.get(name))
         if obj is None:
-            obj = self.builder.addAttribute(name=name, kind=None, parent=cls, lineno=lineno)
+            obj = self.builder.addAttribute(
+                name=name, kind=None, parent=cls, lineno=lineno
+            )
 
         self._setAttributeAnnotation(obj, annotation)
 
@@ -783,7 +840,9 @@ class ModuleVistor(NodeVisitor):
         else:
             raise IgnoreAssignment()
 
-    def _handleDocstringUpdate(self, targetNode: ast.expr, expr: Optional[ast.expr], lineno: int) -> None:
+    def _handleDocstringUpdate(
+        self, targetNode: ast.expr, expr: Optional[ast.expr], lineno: int
+    ) -> None:
         def warn(msg: str) -> None:
             module = self.builder.currentMod
             assert module is not None
@@ -804,7 +863,8 @@ class ModuleVistor(NodeVisitor):
             obj = self.system.objForFullName(full_name)
             if obj is None:
                 warn(
-                    "Unable to figure out target for __doc__ assignment: " "computed full name not found: " + full_name
+                    "Unable to figure out target for __doc__ assignment: "
+                    "computed full name not found: " + full_name
                 )
 
         # Determine docstring value.
@@ -815,7 +875,10 @@ class ModuleVistor(NodeVisitor):
                 raise ValueError()
             docstring: object = ast.literal_eval(expr)
         except ValueError:
-            warn("Unable to figure out value for __doc__ assignment, " "maybe too complex")
+            warn(
+                "Unable to figure out value for __doc__ assignment, "
+                "maybe too complex"
+            )
             return
         if not isinstance(docstring, str):
             warn("Ignoring value assigned to __doc__: not a string")
@@ -844,10 +907,14 @@ class ModuleVistor(NodeVisitor):
             if self._ignore_name(scope, target):
                 raise IgnoreAssignment()
             if isinstance(scope, model.Module):
-                self._handleAssignmentInModule(target, annotation, expr, lineno, augassign=augassign)
+                self._handleAssignmentInModule(
+                    target, annotation, expr, lineno, augassign=augassign
+                )
             elif isinstance(scope, model.Class):
                 if augassign or not self._handleOldSchoolMethodDecoration(target, expr):
-                    self._handleAssignmentInClass(target, annotation, expr, lineno, augassign=augassign)
+                    self._handleAssignmentInClass(
+                        target, annotation, expr, lineno, augassign=augassign
+                    )
         elif isinstance(targetNode, ast.Attribute) and not augassign:
             value = targetNode.value
             if targetNode.attr == '__doc__':
@@ -867,7 +934,9 @@ class ModuleVistor(NodeVisitor):
             annotation = None
         else:
             annotation = upgrade_annotation(
-                unstring_annotation(ast.Constant(type_comment, lineno=lineno), self.builder.current),
+                unstring_annotation(
+                    ast.Constant(type_comment, lineno=lineno), self.builder.current
+                ),
                 self.builder.current,
             )
 
@@ -889,12 +958,15 @@ class ModuleVistor(NodeVisitor):
                 if not isTupleAssignment:
                     self._handleInlineDocstrings(node, target)
                 else:
-                    for elem in cast(ast.Tuple, target).elts:  # mypy is not as smart as pyright yet.
+                    for elem in cast(
+                        ast.Tuple, target
+                    ).elts:  # mypy is not as smart as pyright yet.
                         self._handleInlineDocstrings(node, elem)
 
     def visit_AnnAssign(self, node: ast.AnnAssign) -> None:
         annotation = upgrade_annotation(
-            unstring_annotation(node.annotation, self.builder.current), self.builder.current
+            unstring_annotation(node.annotation, self.builder.current),
+            self.builder.current,
         )
         try:
             self._handleAssignment(node.target, annotation, node.value, node.lineno)
@@ -937,7 +1009,9 @@ class ModuleVistor(NodeVisitor):
             parent = self.builder.current
         return parent, dottedname[0]
 
-    def _handleInlineDocstrings(self, assign: Union[ast.Assign, ast.AnnAssign], target: ast.expr) -> None:
+    def _handleInlineDocstrings(
+        self, assign: Union[ast.Assign, ast.AnnAssign], target: ast.expr
+    ) -> None:
         # Process the inline docstrings
         try:
             parent, name = self._contextualizeTarget(target)
@@ -953,7 +1027,9 @@ class ModuleVistor(NodeVisitor):
 
     def visit_AugAssign(self, node: ast.AugAssign) -> None:
         try:
-            self._handleAssignment(node.target, None, node.value, node.lineno, augassign=node.op)
+            self._handleAssignment(
+                node.target, None, node.value, node.lineno, augassign=node.op
+            )
         except IgnoreAssignment:
             pass
 
@@ -967,7 +1043,9 @@ class ModuleVistor(NodeVisitor):
     def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
         self._handleFunctionDef(node, is_async=False)
 
-    def _handleFunctionDef(self, node: Union[ast.AsyncFunctionDef, ast.FunctionDef], is_async: bool) -> None:
+    def _handleFunctionDef(
+        self, node: Union[ast.AsyncFunctionDef, ast.FunctionDef], is_async: bool
+    ) -> None:
         # Ignore inner functions.
         parent = self.builder.current
         if isinstance(parent, model.Function):
@@ -1000,7 +1078,9 @@ class ModuleVistor(NodeVisitor):
                 if deco_name is None:
                     continue
                 if isinstance(parent, model.Class):
-                    if deco_name[-1].endswith('property') or deco_name[-1].endswith('Property'):
+                    if deco_name[-1].endswith('property') or deco_name[-1].endswith(
+                        'Property'
+                    ):
                         is_property = True
                     elif deco_name == ['classmethod']:
                         is_classmethod = True
@@ -1011,7 +1091,10 @@ class ModuleVistor(NodeVisitor):
                         # the property object.
                         func_name = '.'.join(deco_name[-2:])
                 # Determine if the function is decorated with overload
-                if parent.expandName('.'.join(deco_name)) in ('typing.overload', 'typing_extensions.overload'):
+                if parent.expandName('.'.join(deco_name)) in (
+                    'typing.overload',
+                    'typing_extensions.overload',
+                ):
                     is_overload_func = True
 
         if is_property:
@@ -1048,7 +1131,8 @@ class ModuleVistor(NodeVisitor):
             if is_overload_func:
                 docline = extract_docstring_linenum(doc_node)
                 func.report(
-                    f'{func.fullName()} overload has docstring, unsupported', lineno_offset=docline - func.linenumber
+                    f'{func.fullName()} overload has docstring, unsupported',
+                    lineno_offset=docline - func.linenumber,
                 )
             else:
                 func.setDocstring(doc_node)
@@ -1076,14 +1160,22 @@ class ModuleVistor(NodeVisitor):
         parameters: List[Parameter] = []
 
         def add_arg(name: str, kind: Any, default: Optional[ast.expr]) -> None:
-            default_val = Parameter.empty if default is None else _ValueFormatter(default, ctx=func)
+            default_val = (
+                Parameter.empty
+                if default is None
+                else _ValueFormatter(default, ctx=func)
+            )
             # this cast() is safe since we're checking if annotations.get(name) is None first
             annotation = (
                 Parameter.empty
                 if annotations.get(name) is None
-                else _AnnotationValueFormatter(cast(ast.expr, annotations[name]), ctx=func)
+                else _AnnotationValueFormatter(
+                    cast(ast.expr, annotations[name]), ctx=func
+                )
             )
-            parameters.append(Parameter(name, kind, default=default_val, annotation=annotation))
+            parameters.append(
+                Parameter(name, kind, default=default_val, annotation=annotation)
+            )
 
         for index, arg in enumerate(posonlyargs):
             add_arg(arg.arg, Parameter.POSITIONAL_ONLY, get_default(index))
@@ -1120,7 +1212,9 @@ class ModuleVistor(NodeVisitor):
         # Only set main function signature if it is a non-overload
         if is_overload_func:
             func.overloads.append(
-                model.FunctionOverload(primary=func, signature=signature, decorators=node.decorator_list)
+                model.FunctionOverload(
+                    primary=func, signature=signature, decorators=node.decorator_list
+                )
             )
         else:
             func.signature = signature
@@ -1132,11 +1226,17 @@ class ModuleVistor(NodeVisitor):
         self.builder.popFunction()
 
     def _handlePropertyDef(
-        self, node: Union[ast.AsyncFunctionDef, ast.FunctionDef], doc_node: Optional[Str], lineno: int
+        self,
+        node: Union[ast.AsyncFunctionDef, ast.FunctionDef],
+        doc_node: Optional[Str],
+        lineno: int,
     ) -> model.Attribute:
 
         attr = self.builder.addAttribute(
-            name=node.name, kind=model.DocumentableKind.PROPERTY, parent=self.builder.current, lineno=lineno
+            name=node.name,
+            kind=model.DocumentableKind.PROPERTY,
+            parent=self.builder.current,
+            lineno=lineno,
         )
         attr.setLineNumber(lineno)
 
@@ -1159,7 +1259,9 @@ class ModuleVistor(NodeVisitor):
             attr.parsed_docstring = pdoc
 
         if node.returns is not None:
-            attr.annotation = upgrade_annotation(unstring_annotation(node.returns, attr), attr)
+            attr.annotation = upgrade_annotation(
+                unstring_annotation(node.returns, attr), attr
+            )
         attr.decorators = node.decorator_list
 
         return attr
@@ -1202,7 +1304,10 @@ class ModuleVistor(NodeVisitor):
             name: (
                 None
                 if value is None
-                else upgrade_annotation(unstring_annotation(value, self.builder.current), self.builder.current)
+                else upgrade_annotation(
+                    unstring_annotation(value, self.builder.current),
+                    self.builder.current,
+                )
             )
             for name, value in _get_all_ast_annotations()
         }
@@ -1266,13 +1371,19 @@ class ASTBuilder:
         self.system = system
 
         self.current = cast(model.Documentable, None)  # current visited object.
-        self.currentMod: Optional[model.Module] = None  # current module, set when visiting ast.Module.
+        self.currentMod: Optional[model.Module] = (
+            None  # current module, set when visiting ast.Module.
+        )
 
         self._stack: List[model.Documentable] = []
         self.ast_cache: Dict[Path, Optional[ast.Module]] = {}
 
     def _push(
-        self, cls: Type[DocumentableT], name: str, lineno: int, parent: Optional[model.Documentable] = None
+        self,
+        cls: Type[DocumentableT],
+        name: str,
+        lineno: int,
+        parent: Optional[model.Documentable] = None,
     ) -> DocumentableT:
         """
         Create and enter a new object of the given type and add it to the system.
@@ -1344,7 +1455,11 @@ class ASTBuilder:
         self._pop(self.system.Function)
 
     def addAttribute(
-        self, name: str, kind: Optional[model.DocumentableKind], parent: model.Documentable, lineno: int
+        self,
+        name: str,
+        kind: Optional[model.DocumentableKind],
+        parent: model.Documentable,
+        lineno: int,
     ) -> model.Attribute:
         """
         Add a new attribute to the system.
@@ -1400,7 +1515,11 @@ def findModuleLevelAssign(mod_ast: ast.Module) -> Iterator[Tuple[str, ast.Assign
     Yields tuples containing the assigment name and the Assign node.
     """
     for node in mod_ast.body:
-        if isinstance(node, ast.Assign) and len(node.targets) == 1 and isinstance(node.targets[0], ast.Name):
+        if (
+            isinstance(node, ast.Assign)
+            and len(node.targets) == 1
+            and isinstance(node.targets[0], ast.Name)
+        ):
             yield (node.targets[0].id, node)
 
 
@@ -1409,7 +1528,11 @@ def parseAll(node: ast.Assign, mod: model.Module) -> None:
     C{__all__} variable of a module's AST and set L{Module.all} accordingly."""
 
     if not isinstance(node.value, (ast.List, ast.Tuple)):
-        mod.report('Cannot parse value assigned to "__all__"', section='all', lineno_offset=node.lineno)
+        mod.report(
+            'Cannot parse value assigned to "__all__"',
+            section='all',
+            lineno_offset=node.lineno,
+        )
         return
 
     names = []
@@ -1417,19 +1540,28 @@ def parseAll(node: ast.Assign, mod: model.Module) -> None:
         try:
             name: object = ast.literal_eval(item)
         except ValueError:
-            mod.report(f'Cannot parse element {idx} of "__all__"', section='all', lineno_offset=node.lineno)
+            mod.report(
+                f'Cannot parse element {idx} of "__all__"',
+                section='all',
+                lineno_offset=node.lineno,
+            )
         else:
             if isinstance(name, str):
                 names.append(name)
             else:
                 mod.report(
-                    f'Element {idx} of "__all__" has ' f'type "{type(name).__name__}", expected "str"',
+                    f'Element {idx} of "__all__" has '
+                    f'type "{type(name).__name__}", expected "str"',
                     section='all',
                     lineno_offset=node.lineno,
                 )
 
     if mod.all is not None:
-        mod.report('Assignment to "__all__" overrides previous assignment', section='all', lineno_offset=node.lineno)
+        mod.report(
+            'Assignment to "__all__" overrides previous assignment',
+            section='all',
+            lineno_offset=node.lineno,
+        )
     mod.all = names
 
 
@@ -1484,7 +1616,9 @@ def parseDocformat(node: ast.Assign, mod: model.Module) -> None:
     mod.docformat = value
 
 
-MODULE_VARIABLES_META_PARSERS: Mapping[str, Callable[[ast.Assign, model.Module], None]] = {
+MODULE_VARIABLES_META_PARSERS: Mapping[
+    str, Callable[[ast.Assign, model.Module], None]
+] = {
     '__all__': parseAll,
     '__docformat__': parseDocformat,
 }

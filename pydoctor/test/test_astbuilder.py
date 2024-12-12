@@ -115,7 +115,9 @@ def unwrap(parsed_docstring: Optional[ParsedDocstring]) -> str:
     return value
 
 
-def to_html(parsed_docstring: ParsedDocstring, linker: DocstringLinker = NotFoundLinker()) -> str:
+def to_html(
+    parsed_docstring: ParsedDocstring, linker: DocstringLinker = NotFoundLinker()
+) -> str:
     return flatten(parsed_docstring.to_stan(linker))
 
 
@@ -282,13 +284,17 @@ def test_function_signature(signature: str, systemcls: Type[model.System]) -> No
     ),
 )
 @systemcls_param
-def test_function_signature_posonly(signature: str, systemcls: Type[model.System]) -> None:
+def test_function_signature_posonly(
+    signature: str, systemcls: Type[model.System]
+) -> None:
     test_function_signature(signature, systemcls)
 
 
 @pytest.mark.parametrize('signature', ('(a, a)',))
 @systemcls_param
-def test_function_badsig(signature: str, systemcls: Type[model.System], capsys: CapSys) -> None:
+def test_function_badsig(
+    signature: str, systemcls: Type[model.System], capsys: CapSys
+) -> None:
     """When a function has an invalid signature, an error is logged and
     the empty signature is returned.
 
@@ -390,7 +396,9 @@ def test_relative_import_in_package(systemcls: Type[model.System]) -> None:
     system = systemcls()
     top = fromText(top_src, modname='top', is_package=True, system=system)
     mod = fromText(mod_src, modname='top.pkg.mod', system=system)
-    pkg = fromText(pkg_src, modname='pkg', parent_name='top', is_package=True, system=system)
+    pkg = fromText(
+        pkg_src, modname='pkg', parent_name='top', is_package=True, system=system
+    )
 
     assert pkg.resolveName('f') is top.contents['f']
     assert pkg.resolveName('g') is mod.contents['g']
@@ -398,7 +406,9 @@ def test_relative_import_in_package(systemcls: Type[model.System]) -> None:
 
 @systemcls_param
 @pytest.mark.parametrize('level', (1, 2, 3, 4))
-def test_relative_import_past_top(systemcls: Type[model.System], level: int, capsys: CapSys) -> None:
+def test_relative_import_past_top(
+    systemcls: Type[model.System], level: int, capsys: CapSys
+) -> None:
     """A warning is logged when a relative import goes beyond the top-level
     package.
     """
@@ -604,7 +614,9 @@ def test_inherit_names(systemcls: Type[model.System]) -> None:
 
 
 @systemcls_param
-def test_nested_class_inheriting_from_same_module(systemcls: Type[model.System]) -> None:
+def test_nested_class_inheriting_from_same_module(
+    systemcls: Type[model.System],
+) -> None:
     src = '''
     class A:
         pass
@@ -660,7 +672,10 @@ def test_docformat_warn_not_str(systemcls: Type[model.System], capsys: CapSys) -
         modname='mod',
     )
     captured = capsys.readouterr().out
-    assert captured == 'mod:2: Cannot parse value assigned to "__docformat__": not a string\n'
+    assert (
+        captured
+        == 'mod:2: Cannot parse value assigned to "__docformat__": not a string\n'
+    )
     assert mod.docformat is None
     assert '__docformat__' not in mod.contents
 
@@ -679,7 +694,10 @@ def test_docformat_warn_not_str2(systemcls: Type[model.System], capsys: CapSys) 
         modname='mod',
     )
     captured = capsys.readouterr().out
-    assert captured == 'mod:2: Cannot parse value assigned to "__docformat__": not a string\n'
+    assert (
+        captured
+        == 'mod:2: Cannot parse value assigned to "__docformat__": not a string\n'
+    )
     assert mod.docformat == None
     assert '__docformat__' not in mod.contents
 
@@ -698,13 +716,18 @@ def test_docformat_warn_empty(systemcls: Type[model.System], capsys: CapSys) -> 
         modname='mod',
     )
     captured = capsys.readouterr().out
-    assert captured == 'mod:2: Cannot parse value assigned to "__docformat__": empty value\n'
+    assert (
+        captured
+        == 'mod:2: Cannot parse value assigned to "__docformat__": empty value\n'
+    )
     assert mod.docformat == None
     assert '__docformat__' not in mod.contents
 
 
 @systemcls_param
-def test_docformat_warn_overrides(systemcls: Type[model.System], capsys: CapSys) -> None:
+def test_docformat_warn_overrides(
+    systemcls: Type[model.System], capsys: CapSys
+) -> None:
     mod = fromText(
         '''
     __docformat__ = 'numpy'
@@ -718,7 +741,10 @@ def test_docformat_warn_overrides(systemcls: Type[model.System], capsys: CapSys)
         modname='mod',
     )
     captured = capsys.readouterr().out
-    assert captured == 'mod:7: Assignment to "__docformat__" overrides previous assignment\n'
+    assert (
+        captured
+        == 'mod:7: Assignment to "__docformat__" overrides previous assignment\n'
+    )
     assert mod.docformat == 'restructuredtext'
     assert '__docformat__' not in mod.contents
 
@@ -921,7 +947,9 @@ def test_methoddecorator(systemcls: Type[model.System], capsys: CapSys) -> None:
     assert C.contents['method_static'].kind is model.DocumentableKind.STATIC_METHOD
     assert C.contents['method_class'].kind is model.DocumentableKind.CLASS_METHOD
     captured = capsys.readouterr().out
-    assert captured == "mod:14: mod.C.method_both is both classmethod and staticmethod\n"
+    assert (
+        captured == "mod:14: mod.C.method_both is both classmethod and staticmethod\n"
+    )
 
 
 @systemcls_param
@@ -1236,7 +1264,16 @@ def test_inline_docstring_instancevar(systemcls: Type[model.System]) -> None:
         systemcls=systemcls,
     )
     C = mod.contents['C']
-    assert sorted(C.contents.keys()) == ['__init__', '_b', 'a', 'c', 'd', 'e', 'f', 'set_f']
+    assert sorted(C.contents.keys()) == [
+        '__init__',
+        '_b',
+        'a',
+        'c',
+        'd',
+        'e',
+        'f',
+        'set_f',
+    ]
     a = C.contents['a']
     assert a.docstring == """inline doc for a"""
     assert a.privacyClass is model.PrivacyClass.PUBLIC
@@ -1344,7 +1381,9 @@ def test_docstring_assignment(systemcls: Type[model.System], capsys: CapSys) -> 
 
 
 @systemcls_param
-def test_docstring_assignment_detuple(systemcls: Type[model.System], capsys: CapSys) -> None:
+def test_docstring_assignment_detuple(
+    systemcls: Type[model.System], capsys: CapSys
+) -> None:
     """We currently don't trace values for detupling assignments, so when
     assigning to __doc__ we get a warning about the unknown value.
     """
@@ -1359,7 +1398,9 @@ def test_docstring_assignment_detuple(systemcls: Type[model.System], capsys: Cap
         systemcls=systemcls,
     )
     captured = capsys.readouterr().out
-    assert captured == ("test:5: Unable to figure out value for __doc__ assignment, maybe too complex\n")
+    assert captured == (
+        "test:5: Unable to figure out value for __doc__ assignment, maybe too complex\n"
+    )
 
 
 @systemcls_param
@@ -1579,7 +1620,10 @@ def test_type_comment(systemcls: Type[model.System], capsys: CapSys) -> None:
     ''',
         systemcls=systemcls,
     )
-    assert type2str(cast(model.Attribute, mod.contents['d']).annotation) == 'dict[str, int]'
+    assert (
+        type2str(cast(model.Attribute, mod.contents['d']).annotation)
+        == 'dict[str, int]'
+    )
     # We don't use ignore comments for anything at the moment,
     # but do verify that their presence doesn't break things.
     assert type2str(cast(model.Attribute, mod.contents['i']).annotation) == 'list'
@@ -1639,7 +1683,9 @@ def test_upgrade_annotation(systemcls: Type[model.System]) -> None:
 
 @pytest.mark.parametrize('annotation', ("[", "pass", "1 ; 2"))
 @systemcls_param
-def test_bad_string_annotation(annotation: str, systemcls: Type[model.System], capsys: CapSys) -> None:
+def test_bad_string_annotation(
+    annotation: str, systemcls: Type[model.System], capsys: CapSys
+) -> None:
     """Invalid string annotations must be reported as syntax errors."""
     mod = fromText(
         f'''
@@ -1855,7 +1901,9 @@ def test_property_custom(systemcls: Type[model.System], capsys: CapSys) -> None:
 
 @pytest.mark.parametrize('decoration', ('classmethod', 'staticmethod'))
 @systemcls_param
-def test_property_conflict(decoration: str, systemcls: Type[model.System], capsys: CapSys) -> None:
+def test_property_conflict(
+    decoration: str, systemcls: Type[model.System], capsys: CapSys
+) -> None:
     """Warn when a method is decorated as both property and class/staticmethod.
     These decoration combinations do not create class/static properties.
     """
@@ -1926,13 +1974,27 @@ def test_overload(systemcls: Type[model.System], capsys: CapSys) -> None:
     func = mod.contents['parse']
     assert isinstance(func, model.Function)
     # Work around different space arrangements in Signature.__str__ between python versions
-    assert flatten_text(html2stan(str(func.signature).replace(' ', ''))) == '(s:Union[str,bytes])->Union[str,bytes]'
+    assert (
+        flatten_text(html2stan(str(func.signature).replace(' ', '')))
+        == '(s:Union[str,bytes])->Union[str,bytes]'
+    )
     assert [astbuilder.node2dottedname(d) for d in (func.decorators or ())] == []
     assert len(func.overloads) == 2
-    assert [astbuilder.node2dottedname(d) for d in func.overloads[0].decorators] == [['dec'], ['overload']]
-    assert [astbuilder.node2dottedname(d) for d in func.overloads[1].decorators] == [['overload']]
-    assert flatten_text(html2stan(str(func.overloads[0].signature).replace(' ', ''))) == '(s:str)->str'
-    assert flatten_text(html2stan(str(func.overloads[1].signature).replace(' ', ''))) == '(s:bytes)->bytes'
+    assert [astbuilder.node2dottedname(d) for d in func.overloads[0].decorators] == [
+        ['dec'],
+        ['overload'],
+    ]
+    assert [astbuilder.node2dottedname(d) for d in func.overloads[1].decorators] == [
+        ['overload']
+    ]
+    assert (
+        flatten_text(html2stan(str(func.overloads[0].signature).replace(' ', '')))
+        == '(s:str)->str'
+    )
+    assert (
+        flatten_text(html2stan(str(func.overloads[1].signature).replace(' ', '')))
+        == '(s:bytes)->bytes'
+    )
     assert capsys.readouterr().out.splitlines() == [
         '<test>:11: <test>.parse overload has docstring, unsupported',
         '<test>:15: <test>.parse overload appeared after primary function',
@@ -1976,7 +2038,9 @@ def test_constant_module_with_final(systemcls: Type[model.System]) -> None:
 
 
 @systemcls_param
-def test_constant_module_with_typing_extensions_final(systemcls: Type[model.System]) -> None:
+def test_constant_module_with_typing_extensions_final(
+    systemcls: Type[model.System],
+) -> None:
     """
     Module variables annotated with typing_extensions.Final are recognized as constants.
     """
@@ -2037,7 +2101,9 @@ def test_constant_module_with_final_subscript2(systemcls: Type[model.System]) ->
 
 
 @systemcls_param
-def test_constant_module_with_final_subscript_invalid_warns(systemcls: Type[model.System], capsys: CapSys) -> None:
+def test_constant_module_with_final_subscript_invalid_warns(
+    systemcls: Type[model.System], capsys: CapSys
+) -> None:
     """
     It warns if there is an invalid Final annotation.
     """
@@ -2062,7 +2128,9 @@ def test_constant_module_with_final_subscript_invalid_warns(systemcls: Type[mode
 
 
 @systemcls_param
-def test_constant_module_with_final_subscript_invalid_warns2(systemcls: Type[model.System], capsys: CapSys) -> None:
+def test_constant_module_with_final_subscript_invalid_warns2(
+    systemcls: Type[model.System], capsys: CapSys
+) -> None:
     """
     It warns if there is an invalid Final annotation.
     """
@@ -2087,7 +2155,9 @@ def test_constant_module_with_final_subscript_invalid_warns2(systemcls: Type[mod
 
 
 @systemcls_param
-def test_constant_module_with_final_annotation_gets_infered(systemcls: Type[model.System]) -> None:
+def test_constant_module_with_final_annotation_gets_infered(
+    systemcls: Type[model.System],
+) -> None:
     """
     It can recognize constants defined with typing.Final.
     It will infer the type of the constant if Final do not use subscripts.
@@ -2128,7 +2198,9 @@ def test_constant_class(systemcls: Type[model.System]) -> None:
 
 
 @systemcls_param
-def test_all_caps_variable_in_instance_is_not_a_constant(systemcls: Type[model.System], capsys: CapSys) -> None:
+def test_all_caps_variable_in_instance_is_not_a_constant(
+    systemcls: Type[model.System], capsys: CapSys
+) -> None:
     """
     Currently, it does not mark instance members as constants, never.
     """
@@ -2152,7 +2224,9 @@ def test_all_caps_variable_in_instance_is_not_a_constant(systemcls: Type[model.S
 
 
 @systemcls_param
-def test_constant_override_in_instace(systemcls: Type[model.System], capsys: CapSys) -> None:
+def test_constant_override_in_instace(
+    systemcls: Type[model.System], capsys: CapSys
+) -> None:
     """
     When an instance variable overrides a CONSTANT, it's flagged as INSTANCE_VARIABLE and no warning is raised.
     """
@@ -2174,7 +2248,9 @@ def test_constant_override_in_instace(systemcls: Type[model.System], capsys: Cap
 
 
 @systemcls_param
-def test_constant_override_in_instace_bis(systemcls: Type[model.System], capsys: CapSys) -> None:
+def test_constant_override_in_instace_bis(
+    systemcls: Type[model.System], capsys: CapSys
+) -> None:
     """
     When an instance variable overrides a CONSTANT, it's flagged as INSTANCE_VARIABLE and no warning is raised.
     """
@@ -2198,7 +2274,9 @@ def test_constant_override_in_instace_bis(systemcls: Type[model.System], capsys:
 
 
 @systemcls_param
-def test_constant_override_in_module(systemcls: Type[model.System], capsys: CapSys) -> None:
+def test_constant_override_in_module(
+    systemcls: Type[model.System], capsys: CapSys
+) -> None:
 
     mod = fromText(
         '''
@@ -2335,7 +2413,9 @@ def test__name__equals__main__is_skipped(systemcls: Type[model.System]) -> None:
 
 
 @systemcls_param
-def test__name__equals__main__is_skipped_but_orelse_processes(systemcls: Type[model.System]) -> None:
+def test__name__equals__main__is_skipped_but_orelse_processes(
+    systemcls: Type[model.System],
+) -> None:
     """
     Code inside of C{if __name__ == '__main__'} should be skipped, but the else block should be processed.
     """
@@ -2439,9 +2519,17 @@ def test_reexport_wildcard(systemcls: Type[model.System]) -> None:
 
     builder.buildModules()
 
-    assert system.allobjects['top._impl'].resolveName('f') == system.allobjects['top'].contents['f']
-    assert system.allobjects['_impl2'].resolveName('i') == system.allobjects['top'].contents['i']
-    assert all(n in system.allobjects['top'].contents for n in ['f', 'g', 'h', 'i', 'j'])
+    assert (
+        system.allobjects['top._impl'].resolveName('f')
+        == system.allobjects['top'].contents['f']
+    )
+    assert (
+        system.allobjects['_impl2'].resolveName('i')
+        == system.allobjects['top'].contents['i']
+    )
+    assert all(
+        n in system.allobjects['top'].contents for n in ['f', 'g', 'h', 'i', 'j']
+    )
 
 
 @systemcls_param
@@ -2513,7 +2601,9 @@ def test_module_level_attributes_and_aliases(systemcls: Type[model.System]) -> N
 
 
 @systemcls_param
-def test_module_level_attributes_and_aliases_orelse(systemcls: Type[model.System]) -> None:
+def test_module_level_attributes_and_aliases_orelse(
+    systemcls: Type[model.System],
+) -> None:
     """
     We visit the try orelse body and these names have priority over the names in the except handlers.
     """
@@ -2603,7 +2693,11 @@ def test_module_level_attributes_and_aliases_orelse(systemcls: Type[model.System
     assert s.kind == model.DocumentableKind.VARIABLE
 
     # Test if override guard
-    func, klass, var2 = mod.resolveName('func'), mod.resolveName('klass'), mod.resolveName('var2')
+    func, klass, var2 = (
+        mod.resolveName('func'),
+        mod.resolveName('klass'),
+        mod.resolveName('var2'),
+    )
     assert isinstance(func, model.Function)
     assert func.docstring == 'func doc'
     assert isinstance(klass, model.Class)
@@ -2692,7 +2786,9 @@ def test_method_level_orelse_handlers_use_case2(systemcls: Type[model.System]) -
 
 
 @systemcls_param
-def test_class_level_attributes_and_aliases_orelse(systemcls: Type[model.System]) -> None:
+def test_class_level_attributes_and_aliases_orelse(
+    systemcls: Type[model.System],
+) -> None:
     system = systemcls()
     builder = system.systemBuilder(system)
     builder.addModuleString('crazy_var=2', modname='crazy')
@@ -2800,7 +2896,9 @@ def test_exception_kind(systemcls: Type[model.System], capsys: CapSys) -> None:
 
 
 @systemcls_param
-def test_exception_kind_corner_cases(systemcls: Type[model.System], capsys: CapSys) -> None:
+def test_exception_kind_corner_cases(
+    systemcls: Type[model.System], capsys: CapSys
+) -> None:
 
     src1 = '''\
     class Exception:...
@@ -2880,8 +2978,13 @@ def test_type_alias(systemcls: Type[model.System]) -> None:
     assert mod.contents['F'].contents['_j'].kind == model.DocumentableKind.TYPE_ALIAS
 
     # Type variables in instance variables are not recognized
-    assert mod.contents['F'].contents['Pouet'].kind == model.DocumentableKind.INSTANCE_VARIABLE
-    assert mod.contents['F'].contents['Q'].kind == model.DocumentableKind.INSTANCE_VARIABLE
+    assert (
+        mod.contents['F'].contents['Pouet'].kind
+        == model.DocumentableKind.INSTANCE_VARIABLE
+    )
+    assert (
+        mod.contents['F'].contents['Q'].kind == model.DocumentableKind.INSTANCE_VARIABLE
+    )
 
 
 @systemcls_param
@@ -2926,7 +3029,9 @@ def test_prepend_package_real_path(systemcls: Type[model.System]) -> None:
     """
     _builderT_init = systemcls.systemBuilder
     try:
-        systemcls.systemBuilder = model.prepend_package(systemcls.systemBuilder, package='lib.pack')
+        systemcls.systemBuilder = model.prepend_package(
+            systemcls.systemBuilder, package='lib.pack'
+        )
 
         system = processPackage('basic', systemcls=systemcls)
 
@@ -2941,11 +3046,16 @@ def test_prepend_package_real_path(systemcls: Type[model.System]) -> None:
 
 def getConstructorsText(cls: model.Documentable) -> str:
     assert isinstance(cls, model.Class)
-    return '\n'.join(epydoc2stan.format_constructor_short_text(c, cls) for c in cls.public_constructors)
+    return '\n'.join(
+        epydoc2stan.format_constructor_short_text(c, cls)
+        for c in cls.public_constructors
+    )
 
 
 @systemcls_param
-def test_crash_type_inference_unhashable_type(systemcls: Type[model.System], capsys: CapSys) -> None:
+def test_crash_type_inference_unhashable_type(
+    systemcls: Type[model.System], capsys: CapSys
+) -> None:
     """
     This test is about not crashing.
 
@@ -2993,7 +3103,10 @@ def test_constructor_signature_init(systemcls: Type[model.System]) -> None:
     assert getConstructorsText(mod.contents['Person']) == "Person(name, age)"
 
     # Like "Available constructor: ``Citizen(nationality, *args, **kwargs)``" that links to Citizen.__init__ documentation.
-    assert getConstructorsText(mod.contents['Citizen']) == "Citizen(nationality, *args, **kwargs)"
+    assert (
+        getConstructorsText(mod.contents['Citizen'])
+        == "Citizen(nationality, *args, **kwargs)"
+    )
 
 
 @systemcls_param
@@ -3091,7 +3204,10 @@ def test_constructor_signature_classmethod(systemcls: Type[model.System]) -> Non
 
     mod = fromText(src, systemcls=systemcls)
 
-    assert getConstructorsText(mod.contents['Options']) == "Options.create(important_arg)\nOptions.create_from_num(num)"
+    assert (
+        getConstructorsText(mod.contents['Options'])
+        == "Options.create(important_arg)\nOptions.create_from_num(num)"
+    )
 
 
 @systemcls_param
@@ -3112,8 +3228,14 @@ def test_constructor_inner_class(systemcls: Type[model.System]) -> None:
                     return c
     '''
     mod = fromText(src, systemcls=systemcls)
-    assert getConstructorsText(mod.contents['Animal'].contents['Bar']) == "Animal.Bar(name)"
-    assert getConstructorsText(mod.contents['Animal'].contents['Bar'].contents['Foo']) == "Animal.Bar.Foo.create(name)"
+    assert (
+        getConstructorsText(mod.contents['Animal'].contents['Bar'])
+        == "Animal.Bar(name)"
+    )
+    assert (
+        getConstructorsText(mod.contents['Animal'].contents['Bar'].contents['Foo'])
+        == "Animal.Bar.Foo.create(name)"
+    )
 
 
 @systemcls_param
@@ -3125,7 +3247,10 @@ def test_constructor_many_parameters(systemcls: Type[model.System]) -> None:
     '''
     mod = fromText(src, systemcls=systemcls)
 
-    assert getConstructorsText(mod.contents['Animal']) == "Animal(name, lastname, age, spec, ...)"
+    assert (
+        getConstructorsText(mod.contents['Animal'])
+        == "Animal(name, lastname, age, spec, ...)"
+    )
 
 
 @systemcls_param
@@ -3137,7 +3262,10 @@ def test_constructor_five_paramters(systemcls: Type[model.System]) -> None:
     '''
     mod = fromText(src, systemcls=systemcls)
 
-    assert getConstructorsText(mod.contents['Animal']) == "Animal(name, lastname, age, spec, extinct)"
+    assert (
+        getConstructorsText(mod.contents['Animal'])
+        == "Animal(name, lastname, age, spec, extinct)"
+    )
 
 
 @systemcls_param
@@ -3249,7 +3377,9 @@ def test_class_var_override_attrs() -> None:
 
 
 @systemcls_param
-def test_explicit_annotation_wins_over_inferred_type(systemcls: Type[model.System]) -> None:
+def test_explicit_annotation_wins_over_inferred_type(
+    systemcls: Type[model.System],
+) -> None:
     """
     Explicit annotations are the preffered way of presenting the type of an attribute.
     """
@@ -3261,7 +3391,9 @@ def test_explicit_annotation_wins_over_inferred_type(systemcls: Type[model.Syste
         '''
     mod = fromText(src, systemcls=systemcls, modname='mod')
     thing = mod.system.allobjects['mod.Stuff.thing']
-    assert flatten_text(epydoc2stan.type2stan(thing)) == "List[Tuple[Thing, ...]]"  # type:ignore
+    assert (
+        flatten_text(epydoc2stan.type2stan(thing)) == "List[Tuple[Thing, ...]]"
+    )  # type:ignore
 
     src = '''\
     class Stuff(object):
@@ -3271,11 +3403,15 @@ def test_explicit_annotation_wins_over_inferred_type(systemcls: Type[model.Syste
         '''
     mod = fromText(src, systemcls=systemcls, modname='mod')
     thing = mod.system.allobjects['mod.Stuff.thing']
-    assert flatten_text(epydoc2stan.type2stan(thing)) == "List[Tuple[Thing, ...]]"  # type:ignore
+    assert (
+        flatten_text(epydoc2stan.type2stan(thing)) == "List[Tuple[Thing, ...]]"
+    )  # type:ignore
 
 
 @systemcls_param
-def test_explicit_inherited_annotation_looses_over_inferred_type(systemcls: Type[model.System]) -> None:
+def test_explicit_inherited_annotation_looses_over_inferred_type(
+    systemcls: Type[model.System],
+) -> None:
     """
     Annotation are of inherited.
     """
@@ -3305,11 +3441,15 @@ def test_inferred_type_override(systemcls: Type[model.System]) -> None:
         '''
     mod = fromText(src, systemcls=systemcls, modname='mod')
     thing = mod.system.allobjects['mod.Stuff.thing']
-    assert flatten_text(epydoc2stan.type2stan(thing)) == "tuple[int, ...]"  # type:ignore
+    assert (
+        flatten_text(epydoc2stan.type2stan(thing)) == "tuple[int, ...]"
+    )  # type:ignore
 
 
 @systemcls_param
-def test_inferred_type_is_not_propagated_to_subclasses(systemcls: Type[model.System]) -> None:
+def test_inferred_type_is_not_propagated_to_subclasses(
+    systemcls: Type[model.System],
+) -> None:
     """
     Inferred type annotation should not be propagated to subclasses.
     """
@@ -3327,7 +3467,9 @@ def test_inferred_type_is_not_propagated_to_subclasses(systemcls: Type[model.Sys
 
 
 @systemcls_param
-def test_inherited_type_is_not_propagated_to_subclasses(systemcls: Type[model.System]) -> None:
+def test_inherited_type_is_not_propagated_to_subclasses(
+    systemcls: Type[model.System],
+) -> None:
     """
     We can't repliably propage the annotations from one class to it's subclass because of
     issue https://github.com/twisted/pydoctor/issues/295.
@@ -3386,7 +3528,9 @@ def test_augmented_assignment_in_class(systemcls: Type[model.System]) -> None:
 
 
 @systemcls_param
-def test_augmented_assignment_conditionnal_else_ignored(systemcls: Type[model.System]) -> None:
+def test_augmented_assignment_conditionnal_else_ignored(
+    systemcls: Type[model.System],
+) -> None:
     """
     The If.body branch is the only one in use.
     """
@@ -3407,7 +3551,9 @@ def test_augmented_assignment_conditionnal_else_ignored(systemcls: Type[model.Sy
 
 
 @systemcls_param
-def test_augmented_assignment_conditionnal_multiple_assignments(systemcls: Type[model.System]) -> None:
+def test_augmented_assignment_conditionnal_multiple_assignments(
+    systemcls: Type[model.System],
+) -> None:
     """
     The If.body branch is the only one in use, but several Ifs which have
     theoritical exclusive conditions might be wrongly interpreted.
@@ -3448,7 +3594,9 @@ def test_augmented_assignment_instance_var(systemcls: Type[model.System]) -> Non
 
 
 @systemcls_param
-def test_augmented_assignment_not_suitable_for_inline_docstring(systemcls: Type[model.System]) -> None:
+def test_augmented_assignment_not_suitable_for_inline_docstring(
+    systemcls: Type[model.System],
+) -> None:
     """
     Augmented assignments cannot have docstring attached.
     """
@@ -3474,7 +3622,9 @@ def test_augmented_assignment_not_suitable_for_inline_docstring(systemcls: Type[
 
 
 @systemcls_param
-def test_augmented_assignment_alone_is_not_documented(systemcls: Type[model.System]) -> None:
+def test_augmented_assignment_alone_is_not_documented(
+    systemcls: Type[model.System],
+) -> None:
     mod = fromText(
         '''
     var += 1
@@ -3511,7 +3661,9 @@ def test_typealias_unstring(systemcls: Type[model.System]) -> None:
 
 
 @systemcls_param
-def test_mutilple_docstrings_warnings(systemcls: Type[model.System], capsys: CapSys) -> None:
+def test_mutilple_docstrings_warnings(
+    systemcls: Type[model.System], capsys: CapSys
+) -> None:
     """
     When pydoctor encounters multiple places where the docstring is defined, it reports a warning.
     """
@@ -3541,7 +3693,9 @@ def test_mutilple_docstrings_warnings(systemcls: Type[model.System], capsys: Cap
 
 
 @systemcls_param
-def test_mutilple_docstring_with_doc_comments_warnings(systemcls: Type[model.System], capsys: CapSys) -> None:
+def test_mutilple_docstring_with_doc_comments_warnings(
+    systemcls: Type[model.System], capsys: CapSys
+) -> None:
     src = '''
     class C:
         a: int;"docs" #: re-docs
@@ -3563,11 +3717,16 @@ def test_mutilple_docstring_with_doc_comments_warnings(systemcls: Type[model.Sys
     '''
     fromText(src, systemcls=systemcls)
     # TODO: handle doc comments.x
-    assert capsys.readouterr().out == '<test>:18: Existing docstring at line 14 is overriden\n'
+    assert (
+        capsys.readouterr().out
+        == '<test>:18: Existing docstring at line 14 is overriden\n'
+    )
 
 
 @systemcls_param
-def test_import_all_inside_else_branch_is_processed(systemcls: Type[model.System], capsys: CapSys) -> None:
+def test_import_all_inside_else_branch_is_processed(
+    systemcls: Type[model.System], capsys: CapSys
+) -> None:
     src1 = '''
     Callable = ...
     '''
@@ -3599,7 +3758,9 @@ def test_import_all_inside_else_branch_is_processed(systemcls: Type[model.System
 
 
 @systemcls_param
-def test_inline_docstring_multiple_assigments(systemcls: Type[model.System], capsys: CapSys) -> None:
+def test_inline_docstring_multiple_assigments(
+    systemcls: Type[model.System], capsys: CapSys
+) -> None:
     # TODO: this currently does not support nested tuple assignments.
     src = '''
     class C:
@@ -3620,7 +3781,9 @@ def test_inline_docstring_multiple_assigments(systemcls: Type[model.System], cap
 
 
 @systemcls_param
-def test_does_not_misinterpret_string_as_documentation(systemcls: Type[model.System], capsys: CapSys) -> None:
+def test_does_not_misinterpret_string_as_documentation(
+    systemcls: Type[model.System], capsys: CapSys
+) -> None:
     # exmaple from numpy/distutils/ccompiler_opt.py
     src = '''
     __docformat__ = 'numpy'
@@ -3646,11 +3809,15 @@ def test_does_not_misinterpret_string_as_documentation(systemcls: Type[model.Sys
     assert mod.contents['C'].contents['cc_noopt'].docstring is None
     # The docstring is None... this is the sad side effect of processing ivar fields :/
 
-    assert to_html(mod.contents['C'].contents['cc_noopt'].parsed_docstring) == 'docs'  # type:ignore
+    assert (
+        to_html(mod.contents['C'].contents['cc_noopt'].parsed_docstring) == 'docs'
+    )  # type:ignore
 
 
 @systemcls_param
-def test_unsupported_usage_of_self(systemcls: Type[model.System], capsys: CapSys) -> None:
+def test_unsupported_usage_of_self(
+    systemcls: Type[model.System], capsys: CapSys
+) -> None:
     src = '''
     class C:
         ...
@@ -3672,7 +3839,9 @@ def test_unsupported_usage_of_self(systemcls: Type[model.System], capsys: CapSys
 
 
 @systemcls_param
-def test_inline_docstring_at_wrong_place(systemcls: Type[model.System], capsys: CapSys) -> None:
+def test_inline_docstring_at_wrong_place(
+    systemcls: Type[model.System], capsys: CapSys
+) -> None:
     src = '''
     a = objetc()
     a.b = True

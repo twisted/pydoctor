@@ -33,7 +33,9 @@ def test_basic_list() -> None:
     PARA = '<para>This is a paragraph.</para>'
     ONELIST = '<ulist><li><para>This is a ' 'list item.</para></li></ulist>'
     TWOLIST = (
-        '<ulist><li><para>This is a ' 'list item.</para></li><li><para>This is a ' 'list item.</para></li></ulist>'
+        '<ulist><li><para>This is a '
+        'list item.</para></li><li><para>This is a '
+        'list item.</para></li></ulist>'
     )
 
     for p in (P1, P2):
@@ -50,7 +52,10 @@ def test_basic_list() -> None:
                 assert parse(f'{p}\n{li1}\n{li2}\n{p}') == PARA + TWOLIST + PARA
 
     LI5 = "  - This is a list item.\n\n    It contains two paragraphs."
-    LI5LIST = '<ulist><li><para>This is a list item.</para>' '<para>It contains two paragraphs.</para></li></ulist>'
+    LI5LIST = (
+        '<ulist><li><para>This is a list item.</para>'
+        '<para>It contains two paragraphs.</para></li></ulist>'
+    )
     assert parse(LI5) == LI5LIST
     assert parse(f'{P1}\n{LI5}') == PARA + LI5LIST
     assert parse(f'{P2}\n{LI5}\n{P1}') == PARA + LI5LIST + PARA
@@ -70,7 +75,9 @@ def test_item_wrap() -> None:
     LI = "- This is a list\n  item."
     ONELIST = '<ulist><li><para>This is a ' 'list item.</para></li></ulist>'
     TWOLIST = (
-        '<ulist><li><para>This is a ' 'list item.</para></li><li><para>This is a ' 'list item.</para></li></ulist>'
+        '<ulist><li><para>This is a '
+        'list item.</para></li><li><para>This is a '
+        'list item.</para></li></ulist>'
     )
     for indent in ('', '  '):
         for nl1 in ('', '\n'):
@@ -85,9 +92,13 @@ def test_literal_braces() -> None:
     """
     assert epytext2html("{1:{2:3}}") == '{1:{2:3}}'
     assert (
-        epytext2html("C{{1:{2:3}}}") == '<tt class="rst-docutils rst-literal"><span class="pre">{1:{2:3}}</span></tt>'
+        epytext2html("C{{1:{2:3}}}")
+        == '<tt class="rst-docutils rst-literal"><span class="pre">{1:{2:3}}</span></tt>'
     )
-    assert epytext2html("{1:C{{2:3}}}") == '{1:<tt class="rst-docutils rst-literal">{2:3}</tt>}'
+    assert (
+        epytext2html("{1:C{{2:3}}}")
+        == '{1:<tt class="rst-docutils rst-literal">{2:3}</tt>}'
+    )
     assert epytext2html("{{{}{}}{}}") == '{{{}{}}{}}'
     assert epytext2html("{{E{lb}E{lb}E{lb}}}") == '{{{{{}}'
 

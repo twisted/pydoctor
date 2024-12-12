@@ -7,7 +7,9 @@ from pydoctor import model
 testpackages = Path(__file__).parent / 'testpackages'
 
 
-def processPackage(packname: str, systemcls: Callable[[], model.System] = model.System) -> model.System:
+def processPackage(
+    packname: str, systemcls: Callable[[], model.System] = model.System
+) -> model.System:
     system = systemcls()
     builder = system.systemBuilder(system)
     builder.addModule(testpackages / packname)
@@ -149,8 +151,14 @@ def test_reparenting_follows_aliases() -> None:
     assert isinstance(mything, model.Module)
     assert isinstance(myotherthing, model.Module)
 
-    assert mything._localNameToFullName('MyClass') == 'reparenting_follows_aliases.main.MyClass'
-    assert myotherthing._localNameToFullName('MyClass') == 'reparenting_follows_aliases._mything.MyClass'
+    assert (
+        mything._localNameToFullName('MyClass')
+        == 'reparenting_follows_aliases.main.MyClass'
+    )
+    assert (
+        myotherthing._localNameToFullName('MyClass')
+        == 'reparenting_follows_aliases._mything.MyClass'
+    )
 
     system.find_object('reparenting_follows_aliases._mything.MyClass') == klass
 
@@ -158,7 +166,10 @@ def test_reparenting_follows_aliases() -> None:
     # See https://github.com/twisted/pydoctor/pull/414 and https://github.com/twisted/pydoctor/issues/430
 
     try:
-        assert system.find_object('reparenting_follows_aliases._myotherthing.MyClass') == klass
+        assert (
+            system.find_object('reparenting_follows_aliases._myotherthing.MyClass')
+            == klass
+        )
         assert myotherthing.resolveName('MyClass') == klass
         assert mything.resolveName('MyClass') == klass
         assert top.resolveName('_myotherthing.MyClass') == klass

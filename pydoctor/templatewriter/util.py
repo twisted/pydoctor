@@ -66,7 +66,9 @@ def css_class(o: model.Documentable) -> str:
     return class_
 
 
-def overriding_subclasses(classobj: model.Class, name: str, firstcall: bool = True) -> Iterator[model.Class]:
+def overriding_subclasses(
+    classobj: model.Class, name: str, firstcall: bool = True
+) -> Iterator[model.Class]:
     """
     Helper function to retreive the subclasses that override the given name from the parent class object.
     """
@@ -100,7 +102,11 @@ def unmasked_attrs(baselist: Sequence[model.Class]) -> Sequence[model.Documentab
     The returned members are inherited from the Class listed first in the chain to the Class listed last: they are not overriden in between.
     """
     maybe_masking = {o.name for b in baselist[1:] for o in b.contents.values()}
-    return [o for o in baselist[0].contents.values() if o.isVisible and o.name not in maybe_masking]
+    return [
+        o
+        for o in baselist[0].contents.values()
+        if o.isVisible and o.name not in maybe_masking
+    ]
 
 
 def alphabetical_order_func(o: model.Documentable) -> Tuple[Any, ...]:
@@ -108,7 +114,11 @@ def alphabetical_order_func(o: model.Documentable) -> Tuple[Any, ...]:
     Sort by privacy, kind and fullname.
     Callable to use as the value of standard library's L{sorted} function C{key} argument.
     """
-    return (-o.privacyClass.value, -_map_kind(o.kind).value if o.kind else 0, o.fullName().lower())
+    return (
+        -o.privacyClass.value,
+        -_map_kind(o.kind).value if o.kind else 0,
+        o.fullName().lower(),
+    )
 
 
 def source_order_func(o: model.Documentable) -> Tuple[Any, ...]:
@@ -118,9 +128,17 @@ def source_order_func(o: model.Documentable) -> Tuple[Any, ...]:
     """
     if isinstance(o, model.Module):
         # Still sort modules by name since they all have the same linenumber.
-        return (-o.privacyClass.value, -_map_kind(o.kind).value if o.kind else 0, o.fullName().lower())
+        return (
+            -o.privacyClass.value,
+            -_map_kind(o.kind).value if o.kind else 0,
+            o.fullName().lower(),
+        )
     else:
-        return (-o.privacyClass.value, -_map_kind(o.kind).value if o.kind else 0, o.linenumber)
+        return (
+            -o.privacyClass.value,
+            -_map_kind(o.kind).value if o.kind else 0,
+            o.linenumber,
+        )
         # last implicit orderring is the order of insertion.
 
 
@@ -131,7 +149,9 @@ def _map_kind(kind: model.DocumentableKind) -> model.DocumentableKind:
     return kind
 
 
-def objects_order(order: 'Literal["alphabetical", "source"]') -> Callable[[model.Documentable], Tuple[Any, ...]]:
+def objects_order(
+    order: 'Literal["alphabetical", "source"]',
+) -> Callable[[model.Documentable], Tuple[Any, ...]]:
     """
     Function to craft a callable to use as the value of standard library's L{sorted} function C{key} argument
     such that the objects are sorted by: Privacy, Kind first, then by Name or Linenumber depending on
@@ -151,7 +171,9 @@ def objects_order(order: 'Literal["alphabetical", "source"]') -> Callable[[model
         assert False
 
 
-def class_members(cls: model.Class) -> List[Tuple[Tuple[model.Class, ...], Sequence[model.Documentable]]]:
+def class_members(
+    cls: model.Class,
+) -> List[Tuple[Tuple[model.Class, ...], Sequence[model.Documentable]]]:
     """
     Returns the members as well as the inherited members of a class.
 
@@ -214,7 +236,9 @@ class CaseInsensitiveDict(MutableMapping[str, _VT], Generic[_VT]):
     """
 
     def __init__(
-        self, data: Optional[Union[Mapping[str, _VT], Iterable[Tuple[str, _VT]]]] = None, **kwargs: Any
+        self,
+        data: Optional[Union[Mapping[str, _VT], Iterable[Tuple[str, _VT]]]] = None,
+        **kwargs: Any,
     ) -> None:
         self._store: Dict[str, Tuple[str, _VT]] = collections.OrderedDict()
         if data is None:

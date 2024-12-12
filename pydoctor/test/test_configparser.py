@@ -2,7 +2,13 @@ from io import StringIO
 from typing import Any, Dict, List
 import requests
 
-from pydoctor._configparser import parse_toml_section_name, is_quoted, unquote_str, IniConfigParser, TomlConfigParser
+from pydoctor._configparser import (
+    parse_toml_section_name,
+    is_quoted,
+    unquote_str,
+    IniConfigParser,
+    TomlConfigParser,
+)
 
 # Test for the unquote_str() function relies on pydoctor's colorizer because it can generate a tripple
 # quoted representation of a string. This has the benefit of testing our colorizer with naughty strings
@@ -35,7 +41,9 @@ def test_unquote_str() -> None:
 
 def test_unquote_naughty_quoted_strings() -> None:
     # See https://github.com/minimaxir/big-list-of-naughty-strings/blob/master/blns.txt
-    res = requests.get('https://raw.githubusercontent.com/minimaxir/big-list-of-naughty-strings/master/blns.txt')
+    res = requests.get(
+        'https://raw.githubusercontent.com/minimaxir/big-list-of-naughty-strings/master/blns.txt'
+    )
     text = res.text
     for i, string in enumerate(text.split('\n')):
         if string.strip().startswith('#'):
@@ -80,7 +88,10 @@ INI_SIMPLE_STRINGS: List[Dict[str, Any]] = [
         'line': 'key = value # not_a_comment # not_a_comment',
         'expected': ('key', 'value # not_a_comment # not_a_comment', None),
     },  # that's normal behaviour for configparser
-    {'line': 'key=value#not_a_comment ', 'expected': ('key', 'value#not_a_comment', None)},
+    {
+        'line': 'key=value#not_a_comment ',
+        'expected': ('key', 'value#not_a_comment', None),
+    },
     {'line': 'key=value', 'expected': ('key', 'value', None)},
     {'line': 'key =value', 'expected': ('key', 'value', None)},
     {'line': 'key= value', 'expected': ('key', 'value', None)},
@@ -219,13 +230,28 @@ INI_KEY_SYNTAX: List[Dict[str, Any]] = [
 INI_LITERAL_LIST: List[Dict[str, Any]] = [
     {'line': 'key = [1,2,3]', 'expected': ('key', ['1', '2', '3'], None)},
     {'line': 'key = []', 'expected': ('key', [], None)},
-    {'line': 'key = ["hello", "world", ]', 'expected': ('key', ["hello", "world"], None)},
-    {'line': 'key = [\'hello\', \'world\', ]', 'expected': ('key', ["hello", "world"], None)},
+    {
+        'line': 'key = ["hello", "world", ]',
+        'expected': ('key', ["hello", "world"], None),
+    },
+    {
+        'line': 'key = [\'hello\', \'world\', ]',
+        'expected': ('key', ["hello", "world"], None),
+    },
     {'line': 'key =    [1,2,3]      ', 'expected': ('key', ['1', '2', '3'], None)},
     {'line': 'key = [\n   ]    \n', 'expected': ('key', [], None)},
-    {'line': 'key = [\n    "hello", "world", ]    \n\n\n\n', 'expected': ('key', ["hello", "world"], None)},
-    {'line': 'key = [\n\n    \'hello\', \n    \'world\', ]', 'expected': ('key', ["hello", "world"], None)},
-    {'line': r'key = "[\"hello\", \"world\", ]"', 'expected': ('key', "[\"hello\", \"world\", ]", None)},
+    {
+        'line': 'key = [\n    "hello", "world", ]    \n\n\n\n',
+        'expected': ('key', ["hello", "world"], None),
+    },
+    {
+        'line': 'key = [\n\n    \'hello\', \n    \'world\', ]',
+        'expected': ('key', ["hello", "world"], None),
+    },
+    {
+        'line': r'key = "[\"hello\", \"world\", ]"',
+        'expected': ('key', "[\"hello\", \"world\", ]", None),
+    },
 ]
 
 INI_TRIPPLE_QUOTED_STRINGS: List[Dict[str, Any]] = [
@@ -262,22 +288,49 @@ INI_TRIPPLE_QUOTED_STRINGS_NOT_COMPATIABLE_WITH_TOML: List[Dict[str, Any]] = [
     # we get the indented string instead, anyway, it's not onus to test TOML.
     {'line': 'key="""\n    value\n    """', 'expected': ('key', '\nvalue\n', None)},
     {'line': 'key  =  """\n    value\n    """', 'expected': ('key', '\nvalue\n', None)},
-    {'line': ' key  =  """\n    value\n    """ ', 'expected': ('key', '\nvalue\n', None)},
+    {
+        'line': ' key  =  """\n    value\n    """ ',
+        'expected': ('key', '\nvalue\n', None),
+    },
     {'line': "key='''\n    value\n    '''", 'expected': ('key', '\nvalue\n', None)},
     {'line': "key  =  '''\n    value\n    '''", 'expected': ('key', '\nvalue\n', None)},
-    {'line': " key  =  '''\n    value\n    ''' ", 'expected': ('key', '\nvalue\n', None)},
+    {
+        'line': " key  =  '''\n    value\n    ''' ",
+        'expected': ('key', '\nvalue\n', None),
+    },
     {'line': 'key= \'\'\'\n    """\n    \'\'\'', 'expected': ('key', '\n"""\n', None)},
-    {'line': 'key  =  \'\'\'\n    """""\n    \'\'\'', 'expected': ('key', '\n"""""\n', None)},
-    {'line': ' key  =  \'\'\'\n    ""\n    \'\'\' ', 'expected': ('key', '\n""\n', None)},
-    {'line': 'key = \'\'\'\n    "value"\n    \'\'\'', 'expected': ('key', '\n"value"\n', None)},
-    {'line': 'key = """\n    \'value\'\n    """', 'expected': ('key', "\n'value'\n", None)},
-    {'line': 'key = """"\n    value\\"\n    """', 'expected': ('key', '"\nvalue"\n', None)},
-    {'line': 'key = """\n    \\"value\\"\n    """', 'expected': ('key', '\n"value"\n', None)},
+    {
+        'line': 'key  =  \'\'\'\n    """""\n    \'\'\'',
+        'expected': ('key', '\n"""""\n', None),
+    },
+    {
+        'line': ' key  =  \'\'\'\n    ""\n    \'\'\' ',
+        'expected': ('key', '\n""\n', None),
+    },
+    {
+        'line': 'key = \'\'\'\n    "value"\n    \'\'\'',
+        'expected': ('key', '\n"value"\n', None),
+    },
+    {
+        'line': 'key = """\n    \'value\'\n    """',
+        'expected': ('key', "\n'value'\n", None),
+    },
+    {
+        'line': 'key = """"\n    value\\"\n    """',
+        'expected': ('key', '"\nvalue"\n', None),
+    },
+    {
+        'line': 'key = """\n    \\"value\\"\n    """',
+        'expected': ('key', '\n"value"\n', None),
+    },
     {
         'line': 'key = """\n    "value"    \n     """',
         'expected': ('key', '\n"value"\n', None),
     },  # trailling white spaces are removed by configparser
-    {'line': 'key = \'\'\'\n    \'value\\\'\n    \'\'\'', 'expected': ('key', "\n'value'\n", None)},
+    {
+        'line': 'key = \'\'\'\n    \'value\\\'\n    \'\'\'',
+        'expected': ('key', "\n'value'\n", None),
+    },
 ]
 
 INI_LOOKS_LIKE_TRIPPLE_QUOTED_STRINGS: List[Dict[str, Any]] = [
@@ -288,7 +341,10 @@ INI_LOOKS_LIKE_TRIPPLE_QUOTED_STRINGS: List[Dict[str, Any]] = [
         'line': 'key = """"value""""',
         'expected': ('key', '""""value""""', None),
     },  # Not a valid python, so we get the original value, which is normal
-    {'line': 'key = \'\'\'\'value\'\'\'\'', 'expected': ('key', "''''value''''", None)},  # Idem
+    {
+        'line': 'key = \'\'\'\'value\'\'\'\'',
+        'expected': ('key', "''''value''''", None),
+    },  # Idem
     {'line': 'key="""value', 'expected': ('key', '"""value', None)},
     {'line': 'key  =  """value', 'expected': ('key', '"""value', None)},
     {'line': ' key  =  """value ', 'expected': ('key', '"""value', None)},
@@ -329,8 +385,14 @@ INI_MULTILINE_STRING_LIST: List[Dict[str, Any]] = [
         'expected': ('key', ["\"hello\"", "'hoho'"], None),
     },  # quotes are kept when converting multine strings to list.
     {'line': 'key : \n hello\n hoho\n', 'expected': ('key', ["hello", "hoho"], None)},
-    {'line': 'key = \n hello\n hoho\n \n\n ', 'expected': ('key', ["hello", "hoho"], None)},
-    {'line': 'key = \n hello\n;comment\n\n hoho\n \n\n ', 'expected': ('key', ["hello", "hoho"], None)},
+    {
+        'line': 'key = \n hello\n hoho\n \n\n ',
+        'expected': ('key', ["hello", "hoho"], None),
+    },
+    {
+        'line': 'key = \n hello\n;comment\n\n hoho\n \n\n ',
+        'expected': ('key', ["hello", "hoho"], None),
+    },
 ]
 
 
@@ -363,7 +425,12 @@ def get_IniConfigParser_multiline_text_to_list_cases() -> List[Dict[str, Any]]:
 
 
 def get_TomlConfigParser_cases() -> List[Dict[str, Any]]:
-    return INI_QUOTED_STRINGS + INI_BLANK_LINES_QUOTED + INI_LITERAL_LIST + INI_TRIPPLE_QUOTED_STRINGS
+    return (
+        INI_QUOTED_STRINGS
+        + INI_BLANK_LINES_QUOTED
+        + INI_LITERAL_LIST
+        + INI_TRIPPLE_QUOTED_STRINGS
+    )
 
 
 def test_IniConfigParser() -> None:

@@ -12,7 +12,11 @@ from twisted.python.failure import Failure
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable
 
-_RE_CONTROL = re.compile(('[' + ''.join(ch for ch in map(chr, range(0, 32)) if ch not in '\r\n\t\f') + ']').encode())
+_RE_CONTROL = re.compile(
+    (
+        '[' + ''.join(ch for ch in map(chr, range(0, 32)) if ch not in '\r\n\t\f') + ']'
+    ).encode()
+)
 
 
 def html2stan(html: Union[bytes, str]) -> Tag:

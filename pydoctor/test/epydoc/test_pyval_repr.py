@@ -13,14 +13,22 @@ from pydoctor.stanutils import flatten, flatten_text, html2stan
 from pydoctor.node2stan import gettext
 
 
-def color(v: Any, linebreakok: bool = True, maxlines: int = 5, linelen: int = 40) -> str:
-    colorizer = PyvalColorizer(linelen=linelen, linebreakok=linebreakok, maxlines=maxlines)
+def color(
+    v: Any, linebreakok: bool = True, maxlines: int = 5, linelen: int = 40
+) -> str:
+    colorizer = PyvalColorizer(
+        linelen=linelen, linebreakok=linebreakok, maxlines=maxlines
+    )
     parsed_doc = colorizer.colorize(v)
     return parsed_doc.to_node().pformat()
 
 
-def colorhtml(v: Any, linebreakok: bool = True, maxlines: int = 5, linelen: int = 40) -> str:
-    colorizer = PyvalColorizer(linelen=linelen, linebreakok=linebreakok, maxlines=maxlines)
+def colorhtml(
+    v: Any, linebreakok: bool = True, maxlines: int = 5, linelen: int = 40
+) -> str:
+    colorizer = PyvalColorizer(
+        linelen=linelen, linebreakok=linebreakok, maxlines=maxlines
+    )
     parsed_doc = colorizer.colorize(v)
     return flatten(parsed_doc.to_stan(NotFoundLinker()))
 
@@ -200,7 +208,9 @@ def test_non_breaking_spaces() -> None:
     But it will always fail for python 3.6 since twisted dropped support for these versions of python.
     """
     with pytest.raises(xml.sax.SAXParseException):
-        colorhtml(ast.parse('"These are non-breaking spaces."').body[0].value) == """"""  # type:ignore
+        colorhtml(
+            ast.parse('"These are non-breaking spaces."').body[0].value
+        ) == """"""  # type:ignore
     with pytest.raises(xml.sax.SAXParseException):
         assert colorhtml("These are non-breaking spaces.") == """"""
 
@@ -2135,9 +2145,14 @@ def test_repr_text() -> None:
 
     assert color2(["hello", 123]) == "['hello', 123]"
 
-    assert color2(A()) == ('<pydoctor.test.epydoc.test_pyval_repr.test_repr_te↵\n' 'xt.<locals>.A object>')
+    assert color2(A()) == (
+        '<pydoctor.test.epydoc.test_pyval_repr.test_repr_te↵\n' 'xt.<locals>.A object>'
+    )
 
-    assert color2([A()]) == ('[<pydoctor.test.epydoc.test_pyval_repr.test_repr_t↵\n' 'ext.<locals>.A object>]')
+    assert color2([A()]) == (
+        '[<pydoctor.test.epydoc.test_pyval_repr.test_repr_t↵\n'
+        'ext.<locals>.A object>]'
+    )
 
     assert color2([A(), 1, 2, 3, 4, 5, 6, 7]) == (
         '[<pydoctor.test.epydoc.test_pyval_repr.test_repr_t↵\n'
@@ -2156,9 +2171,15 @@ def test_summary() -> None:
     def summarize(v: Any) -> str:
         return ''.join(gettext(summarizer.colorize(v).to_node()))
 
-    assert summarize(list(range(100))) == "[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16..."
+    assert (
+        summarize(list(range(100)))
+        == "[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16..."
+    )
     assert summarize('hello\nworld') == r"'hello\nworld'"
-    assert summarize('hello\nworld' * 100) == r"'hello\nworldhello\nworldhello\nworldhello\nworldhello\nw..."
+    assert (
+        summarize('hello\nworld' * 100)
+        == r"'hello\nworldhello\nworldhello\nworldhello\nworldhello\nw..."
+    )
 
 
 def test_refmap_explicit() -> None:
@@ -2168,7 +2189,8 @@ def test_refmap_explicit() -> None:
     """
 
     doc = colorize_inline_pyval(
-        extract_expr(ast.parse('Type[MyInt, str]')), refmap={'Type': 'typing.Type', 'MyInt': '<mymod>.MyInt'}
+        extract_expr(ast.parse('Type[MyInt, str]')),
+        refmap={'Type': 'typing.Type', 'MyInt': '<mymod>.MyInt'},
     )
     tree = doc.to_node()
     dump = tree.pformat()

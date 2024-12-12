@@ -63,7 +63,9 @@ def inv_reader_nolog() -> sphinx.SphinxInventory:
     return sphinx.SphinxInventory(logger=PydoctorNoLogger())
 
 
-def get_inv_writer_with_logger(name: str = 'project_name', version: str = '1.2') -> Tuple[InvWriter, PydoctorLogger]:
+def get_inv_writer_with_logger(
+    name: str = 'project_name', version: str = '1.2'
+) -> Tuple[InvWriter, PydoctorLogger]:
     """
     @return: Tuple of a Sphinx inventory writer connected to the logger.
     """
@@ -190,7 +192,9 @@ def test_generateLine_function(inv_writer_nolog: sphinx.SphinxInventoryWriter) -
 
     parent = model.Module(IGNORE_SYSTEM, 'module1')
 
-    result = inv_writer_nolog._generateLine(model.Function(IGNORE_SYSTEM, 'func1', parent))
+    result = inv_writer_nolog._generateLine(
+        model.Function(IGNORE_SYSTEM, 'func1', parent)
+    )
 
     assert 'module1.func1 py:function -1 module1.html#func1 -\n' == result
 
@@ -204,7 +208,9 @@ def test_generateLine_method(inv_writer_nolog: sphinx.SphinxInventoryWriter) -> 
 
     parent = model.Class(IGNORE_SYSTEM, 'class1')
 
-    result = inv_writer_nolog._generateLine(model.Function(IGNORE_SYSTEM, 'meth1', parent))
+    result = inv_writer_nolog._generateLine(
+        model.Function(IGNORE_SYSTEM, 'meth1', parent)
+    )
 
     assert 'class1.meth1 py:method -1 class1.html#meth1 -\n' == result
 
@@ -216,7 +222,9 @@ def test_generateLine_attribute(inv_writer_nolog: sphinx.SphinxInventoryWriter) 
 
     parent = model.Class(IGNORE_SYSTEM, 'class1')
 
-    result = inv_writer_nolog._generateLine(model.Attribute(IGNORE_SYSTEM, 'attr1', parent))
+    result = inv_writer_nolog._generateLine(
+        model.Attribute(IGNORE_SYSTEM, 'attr1', parent)
+    )
 
     assert 'class1.attr1 py:attribute -1 class1.html#attr1 -\n' == result
 
@@ -238,7 +246,11 @@ def test_generateLine_unknown() -> None:
 
     assert 'unknown1 py:obj -1 unknown1.html -\n' == result
     assert [
-        ('sphinx', "Unknown type <class 'pydoctor.test.test_sphinx.UnknownType'> for unknown1.", -1)
+        (
+            'sphinx',
+            "Unknown type <class 'pydoctor.test.test_sphinx.UnknownType'> for unknown1.",
+            -1,
+        )
     ] == logger.messages
 
 
@@ -347,7 +359,9 @@ def test_getLink_self_anchor(inv_reader_nolog: sphinx.SphinxInventory) -> None:
 
     inv_reader_nolog._links['some.name'] = ('http://base.tld', 'some/url.php#$')
 
-    assert 'http://base.tld/some/url.php#some.name' == inv_reader_nolog.getLink('some.name')
+    assert 'http://base.tld/some/url.php#some.name' == inv_reader_nolog.getLink(
+        'some.name'
+    )
 
 
 def test_update_functional(inv_reader_nolog: sphinx.SphinxInventory) -> None:
@@ -356,7 +370,8 @@ def test_update_functional(inv_reader_nolog: sphinx.SphinxInventory) -> None:
     """
 
     payload = (
-        b'some.module1 py:module -1 module1.html -\n' b'other.module2 py:module 0 module2.html Other description\n'
+        b'some.module1 py:module -1 module1.html -\n'
+        b'other.module2 py:module 0 module2.html Other description\n'
     )
     # Patch URL loader to avoid hitting the system.
     content = b"""# Sphinx inventory version 2
@@ -371,8 +386,12 @@ def test_update_functional(inv_reader_nolog: sphinx.SphinxInventory) -> None:
 
     inv_reader_nolog.update(cast('sphinx.CacheT', {url: content}), url)
 
-    assert 'http://some.url/api/module1.html' == inv_reader_nolog.getLink('some.module1')
-    assert 'http://some.url/api/module2.html' == inv_reader_nolog.getLink('other.module2')
+    assert 'http://some.url/api/module1.html' == inv_reader_nolog.getLink(
+        'some.module1'
+    )
+    assert 'http://some.url/api/module2.html' == inv_reader_nolog.getLink(
+        'other.module2'
+    )
 
 
 def test_update_bad_url(inv_reader: InvReader) -> None:
@@ -420,7 +439,9 @@ def test_parseInventory_single_line(inv_reader_nolog: sphinx.SphinxInventory) ->
     Return a dict with a single member.
     """
 
-    result = inv_reader_nolog._parseInventory('http://base.tld', 'some.attr py:attr -1 some.html De scription')
+    result = inv_reader_nolog._parseInventory(
+        'http://base.tld', 'some.attr py:attr -1 some.html De scription'
+    )
 
     assert {'some.attr': ('http://base.tld', 'some.html')} == result
 
@@ -433,7 +454,9 @@ def test_parseInventory_spaces() -> None:
     """
 
     # Space in first (name) column.
-    assert sphinx._parseInventoryLine('key function std:term -1 glossary.html#term-key-function -') == (
+    assert sphinx._parseInventoryLine(
+        'key function std:term -1 glossary.html#term-key-function -'
+    ) == (
         'key function',
         'std:term',
         -1,
@@ -444,12 +467,24 @@ def test_parseInventory_spaces() -> None:
     # Space in last (display name) column.
     assert sphinx._parseInventoryLine(
         'doctest-execution-context std:label -1 library/doctest.html#$ What’s the Execution Context?'
-    ) == ('doctest-execution-context', 'std:label', -1, 'library/doctest.html#$', 'What’s the Execution Context?')
+    ) == (
+        'doctest-execution-context',
+        'std:label',
+        -1,
+        'library/doctest.html#$',
+        'What’s the Execution Context?',
+    )
 
     # Space in both first and last column.
     assert sphinx._parseInventoryLine(
         'async def std:label -1 reference/compound_stmts.html#async-def Coroutine function definition'
-    ) == ('async def', 'std:label', -1, 'reference/compound_stmts.html#async-def', 'Coroutine function definition')
+    ) == (
+        'async def',
+        'std:label',
+        -1,
+        'reference/compound_stmts.html#async-def',
+        'Coroutine function definition',
+    )
 
 
 def test_parseInventory_invalid_lines(inv_reader: InvReader) -> None:
@@ -535,7 +570,13 @@ class TestParseMaxAge:
             pass
         else:
             td = datetime.timedelta(**parsedMaxAge)
-            converter = {'s': 1, 'm': 60, 'h': 60 * 60, 'd': 24 * 60 * 60, 'w': 7 * 24 * 60 * 60}
+            converter = {
+                's': 1,
+                'm': 60,
+                'h': 60 * 60,
+                'd': 24 * 60 * 60,
+                'w': 7 * 24 * 60 * 60,
+            }
             total_seconds = amount * converter[unit]
             assert pytest.approx(td.total_seconds()) == total_seconds
 
@@ -578,7 +619,9 @@ class TestIntersphinxCache:
     """
 
     @pytest.fixture
-    def send_returns(self, monkeypatch: MonkeyPatch) -> Callable[[HTTPResponse], MonkeyPatch]:
+    def send_returns(
+        self, monkeypatch: MonkeyPatch
+    ) -> Callable[[HTTPResponse], MonkeyPatch]:
         """
         Return a function that patches
         L{requests.adapters.HTTPAdapter.send} so that it returns the
@@ -587,7 +630,10 @@ class TestIntersphinxCache:
 
         def send_returns(urllib3_response: HTTPResponse) -> MonkeyPatch:
             def send(
-                self: requests.adapters.HTTPAdapter, request: requests.PreparedRequest, *args: object, **kwargs: object
+                self: requests.adapters.HTTPAdapter,
+                request: requests.PreparedRequest,
+                *args: object,
+                **kwargs: object,
             ) -> requests.Response:
                 response: requests.Response
                 response = self.build_response(request, urllib3_response)
@@ -603,7 +649,9 @@ class TestIntersphinxCache:
 
         return send_returns
 
-    def test_cache(self, tmp_path: Path, send_returns: Callable[[HTTPResponse], None]) -> None:
+    def test_cache(
+        self, tmp_path: Path, send_returns: Callable[[HTTPResponse], None]
+    ) -> None:
         """
         L{IntersphinxCache.get} caches responses to the file system.
         """
@@ -623,7 +671,9 @@ class TestIntersphinxCache:
         )
 
         loadsCache = sphinx.IntersphinxCache.fromParameters(
-            sessionFactory=requests.Session, cachePath=str(tmp_path), maxAgeDictionary={"weeks": 1}
+            sessionFactory=requests.Session,
+            cachePath=str(tmp_path),
+            maxAgeDictionary={"weeks": 1},
         )
 
         assert loadsCache.get(url) == content
@@ -645,7 +695,9 @@ class TestIntersphinxCache:
         assert loadsCache.get(url) == content
 
         readsCacheFromFileSystem = sphinx.IntersphinxCache.fromParameters(
-            sessionFactory=requests.Session, cachePath=str(tmp_path), maxAgeDictionary={"weeks": 1}
+            sessionFactory=requests.Session,
+            cachePath=str(tmp_path),
+            maxAgeDictionary={"weeks": 1},
         )
 
         assert readsCacheFromFileSystem.get(url) == content

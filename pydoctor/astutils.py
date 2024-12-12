@@ -126,7 +126,10 @@ def node2dottedname(node: Optional[ast.AST]) -> Optional[List[str]]:
 
 
 def node2fullname(
-    expr: Optional[ast.AST], ctx: model.Documentable | None = None, *, expandName: Callable[[str], str] | None = None
+    expr: Optional[ast.AST],
+    ctx: model.Documentable | None = None,
+    *,
+    expandName: Callable[[str], str] | None = None,
 ) -> Optional[str]:
     if expandName is None:
         if ctx is None:
@@ -197,11 +200,17 @@ def is_using_typing_final(expr: Optional[ast.AST], ctx: 'model.Documentable') ->
     return is_using_annotations(expr, ("typing.Final", "typing_extensions.Final"), ctx)
 
 
-def is_using_typing_classvar(expr: Optional[ast.AST], ctx: 'model.Documentable') -> bool:
-    return is_using_annotations(expr, ('typing.ClassVar', "typing_extensions.ClassVar"), ctx)
+def is_using_typing_classvar(
+    expr: Optional[ast.AST], ctx: 'model.Documentable'
+) -> bool:
+    return is_using_annotations(
+        expr, ('typing.ClassVar', "typing_extensions.ClassVar"), ctx
+    )
 
 
-def is_using_annotations(expr: Optional[ast.AST], annotations: Sequence[str], ctx: 'model.Documentable') -> bool:
+def is_using_annotations(
+    expr: Optional[ast.AST], annotations: Sequence[str], ctx: 'model.Documentable'
+) -> bool:
     """
     Detect if this expr is firstly composed by one of the specified annotation(s)' full name.
     """
@@ -255,7 +264,10 @@ def get_assign_docstring_node(assign: ast.Assign | ast.AnnAssign) -> Str | None:
             right_sibling = statements[assign_index + 1]
         except IndexError:
             return None
-        if isinstance(right_sibling, ast.Expr) and get_str_value(right_sibling.value) is not None:
+        if (
+            isinstance(right_sibling, ast.Expr)
+            and get_str_value(right_sibling.value) is not None
+        ):
             return cast(Str, right_sibling.value)
     return None
 
@@ -265,7 +277,9 @@ def is_none_literal(node: ast.expr) -> bool:
     return isinstance(node, ast.Constant) and node.value is None
 
 
-def unstring_annotation(node: ast.expr, ctx: 'model.Documentable', section: str = 'annotation') -> ast.expr:
+def unstring_annotation(
+    node: ast.expr, ctx: 'model.Documentable', section: str = 'annotation'
+) -> ast.expr:
     """Replace all strings in the given expression by parsed versions.
     @return: The unstringed node. If parsing fails, an error is logged
         and the original node is returned.
@@ -275,7 +289,11 @@ def unstring_annotation(node: ast.expr, ctx: 'model.Documentable', section: str 
     except SyntaxError as ex:
         module = ctx.module
         assert module is not None
-        module.report(f'syntax error in {section}: {ex}', lineno_offset=node.lineno, section=section)
+        module.report(
+            f'syntax error in {section}: {ex}',
+            lineno_offset=node.lineno,
+            section=section,
+        )
         return node
     else:
         assert isinstance(expr, ast.expr), expr
@@ -315,7 +333,9 @@ class _AnnotationStringParser(ast.NodeTransformer):
         else:
             # Other subscript; unstring the slice.
             slice = self.visit(node.slice)
-        return ast.copy_location(ast.Subscript(value=value, slice=slice, ctx=node.ctx), node)
+        return ast.copy_location(
+            ast.Subscript(value=value, slice=slice, ctx=node.ctx), node
+        )
 
     def visit_fast(self, node: ast.expr) -> ast.expr:
         return node
@@ -332,7 +352,9 @@ class _AnnotationStringParser(ast.NodeTransformer):
             return const
 
 
-def upgrade_annotation(node: ast.expr, ctx: model.Documentable, section: str = 'annotation') -> ast.expr:
+def upgrade_annotation(
+    node: ast.expr, ctx: model.Documentable, section: str = 'annotation'
+) -> ast.expr:
     """
     Transform the annotation to use python 3.10+ syntax.
     """
@@ -356,14 +378,20 @@ class _UpgradeDeprecatedAnnotations(ast.NodeTransformer):
         if len(others) == 1:
             rnode = ast.BinOp(left=others[0], right=right, op=ast.BitOr())
         else:
-            rnode = ast.BinOp(left=self._union_args_to_bitor(others, ctxnode), right=right, op=ast.BitOr())
+            rnode = ast.BinOp(
+                left=self._union_args_to_bitor(others, ctxnode),
+                right=right,
+                op=ast.BitOr(),
+            )
 
         return ast.fix_missing_locations(ast.copy_location(rnode, ctxnode))
 
     def visit_Name(self, node: ast.Name | ast.Attribute) -> Any:
         fullName = self.node2fullname(node)
         if fullName in DEPRECATED_TYPING_ALIAS_BUILTINS:
-            return ast.Name(id=DEPRECATED_TYPING_ALIAS_BUILTINS[fullName], ctx=ast.Load())
+            return ast.Name(
+                id=DEPRECATED_TYPING_ALIAS_BUILTINS[fullName], ctx=ast.Load()
+            )
         # TODO: Support all deprecated aliases including the ones in the collections.abc module.
         # In order to support that we need to generate the parsed docstring directly and include
         # custom refmap or transform the ast such that missing imports are added.
@@ -387,14 +415,18 @@ class _UpgradeDeprecatedAnnotations(ast.NodeTransformer):
                     return self._union_args_to_bitor(args, node)
                 elif len(args) == 1:
                     return args[0]
-            elif isinstance(slice_, (ast.Attribute, ast.Name, ast.Subscript, ast.BinOp)):
+            elif isinstance(
+                slice_, (ast.Attribute, ast.Name, ast.Subscript, ast.BinOp)
+            ):
                 return slice_
 
         elif fullName == 'typing.Optional':
             # typing.Optional requires a single type, so we don't process when slice is a tuple.
             slice_ = node.slice
             if isinstance(slice_, (ast.Attribute, ast.Name, ast.Subscript, ast.BinOp)):
-                return self._union_args_to_bitor([slice_, ast.Constant(value=None)], node)
+                return self._union_args_to_bitor(
+                    [slice_, ast.Constant(value=None)], node
+                )
 
         return node
 
@@ -517,7 +549,12 @@ def get_docstring_node(node: ast.AST) -> Str | None:
     Return the docstring node for the given class, function or module
     or None if no docstring can be found.
     """
-    if not isinstance(node, (ast.AsyncFunctionDef, ast.FunctionDef, ast.ClassDef, ast.Module)) or not node.body:
+    if (
+        not isinstance(
+            node, (ast.AsyncFunctionDef, ast.FunctionDef, ast.ClassDef, ast.Module)
+        )
+        or not node.body
+    ):
         return None
     node = node.body[0]
     if isinstance(node, ast.Expr):
@@ -614,8 +651,12 @@ def _annotation_for_value(value: object) -> Optional[ast.expr]:
                 ann_elem = ast.Tuple(elts=[ann_elem, ann_value], ctx=ast.Load())
         if ann_elem is not None:
             if name == 'tuple':
-                ann_elem = ast.Tuple(elts=[ann_elem, ast.Constant(value=...)], ctx=ast.Load())
-            return ast.Subscript(value=ast.Name(id=name, ctx=ast.Load()), slice=ann_elem, ctx=ast.Load())
+                ann_elem = ast.Tuple(
+                    elts=[ann_elem, ast.Constant(value=...)], ctx=ast.Load()
+                )
+            return ast.Subscript(
+                value=ast.Name(id=name, ctx=ast.Load()), slice=ann_elem, ctx=ast.Load()
+            )
     return ast.Name(id=name, ctx=ast.Load())
 
 
@@ -750,8 +791,12 @@ for _index in range(1, len(_op_data)):
 _deprecated: Collection[str] = ()
 if sys.version_info >= (3, 12):
     _deprecated = ('Num', 'Str', 'Bytes', 'Ellipsis', 'NameConstant')
-_precedence_data = dict((getattr(ast, x, None), z) for x, y, z in _op_data if x not in _deprecated)  # type:ignore
-_symbol_data = dict((getattr(ast, x, None), y) for x, y, z in _op_data if x not in _deprecated)  # type:ignore
+_precedence_data = dict(
+    (getattr(ast, x, None), z) for x, y, z in _op_data if x not in _deprecated
+)  # type:ignore
+_symbol_data = dict(
+    (getattr(ast, x, None), y) for x, y, z in _op_data if x not in _deprecated
+)  # type:ignore
 
 
 class op_util:

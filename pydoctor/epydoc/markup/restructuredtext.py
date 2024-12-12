@@ -58,7 +58,13 @@ from docutils.utils import Reporter
 from docutils.parsers.rst import Directive, directives
 from docutils.transforms import Transform, frontmatter
 
-from pydoctor.epydoc.markup import Field, ObjClass, ParseError, ParsedDocstring, ParserFunction
+from pydoctor.epydoc.markup import (
+    Field,
+    ObjClass,
+    ParseError,
+    ParsedDocstring,
+    ParserFunction,
+)
 from pydoctor.epydoc.markup.plaintext import ParsedPlaintextDocstring
 from pydoctor.epydoc.docutils import new_document
 
@@ -102,13 +108,19 @@ def parse_docstring(
 
     # Credits: mhils - Maximilian Hils from the pdoc repository https://github.com/mitmproxy/pdoc
     # Strip Sphinx interpreted text roles for code references: :obj:`foo` -> `foo`
-    docstring = re.sub(r"(:py)?:(mod|func|data|const|class|meth|attr|exc|obj):", "", docstring)
+    docstring = re.sub(
+        r"(:py)?:(mod|func|data|const|class|meth|attr|exc|obj):", "", docstring
+    )
 
     publish_string(
         docstring,
         writer=writer,
         reader=reader,
-        settings_overrides={'report_level': 10000, 'halt_level': 10000, 'warning_stream': None},
+        settings_overrides={
+            'report_level': 10000,
+            'halt_level': 10000,
+            'warning_stream': None,
+        },
     )
 
     document = writer.document
@@ -146,13 +158,18 @@ class ParsedRstDocstring(ParsedDocstring):
         self._document = document
         """A ReStructuredText document, encoding the docstring."""
 
-        document.reporter = OptimizedReporter(document.reporter.source, report_level=10000, halt_level=10000, stream='')
+        document.reporter = OptimizedReporter(
+            document.reporter.source, report_level=10000, halt_level=10000, stream=''
+        )
 
         ParsedDocstring.__init__(self, fields)
 
     @property
     def has_body(self) -> bool:
-        return any(isinstance(child, nodes.Text) or child.children for child in self._document.children)
+        return any(
+            isinstance(child, nodes.Text) or child.children
+            for child in self._document.children
+        )
 
     def to_node(self) -> nodes.document:
         return self._document
@@ -174,7 +191,9 @@ class _EpydocReader(StandaloneReader):
     def get_transforms(self) -> List[Transform]:
         # Remove the DocInfo transform, to ensure that :author: fields
         # are correctly handled.
-        return [t for t in StandaloneReader.get_transforms(self) if t != frontmatter.DocInfo]
+        return [
+            t for t in StandaloneReader.get_transforms(self) if t != frontmatter.DocInfo
+        ]
 
     def new_document(self) -> nodes.document:
         document = new_document(self.source.source_path, self.settings)
@@ -273,14 +292,23 @@ class _SplitFieldsTranslator(nodes.NodeVisitor):
                         # Use a @newfield to let it be displayed as-is.
                         if tagname.lower() not in self._newfields:
                             newfield = Field(
-                                'newfield', tagname.lower(), ParsedPlaintextDocstring(tagname), (node.line or 1) - 1
+                                'newfield',
+                                tagname.lower(),
+                                ParsedPlaintextDocstring(tagname),
+                                (node.line or 1) - 1,
                             )
                             self.fields.append(newfield)
                             self._newfields.add(tagname.lower())
 
         self._add_field(tagname, arg, fbody, node.line)
 
-    def _add_field(self, tagname: str, arg: Optional[str], fbody: Iterable[nodes.Node], lineno: int | None) -> None:
+    def _add_field(
+        self,
+        tagname: str,
+        arg: Optional[str],
+        fbody: Iterable[nodes.Node],
+        lineno: int | None,
+    ) -> None:
         field_doc = self.document.copy()
         for child in fbody:
             field_doc.append(child)
@@ -303,14 +331,19 @@ class _SplitFieldsTranslator(nodes.NodeVisitor):
             raise ValueError('does not contain a list.')
         if isinstance(b0, nodes.bullet_list):
             self.handle_consolidated_bullet_list(b0, tagname)
-        elif isinstance(b0, nodes.definition_list) and tagname in CONSOLIDATED_DEFLIST_FIELDS:
+        elif (
+            isinstance(b0, nodes.definition_list)
+            and tagname in CONSOLIDATED_DEFLIST_FIELDS
+        ):
             self.handle_consolidated_definition_list(b0, tagname)
         elif tagname in CONSOLIDATED_DEFLIST_FIELDS:
             raise ValueError('does not contain a bulleted list or ' 'definition list.')
         else:
             raise ValueError('does not contain a bulleted list.')
 
-    def handle_consolidated_bullet_list(self, items: nodes.bullet_list, tagname: str) -> None:
+    def handle_consolidated_bullet_list(
+        self, items: nodes.bullet_list, tagname: str
+    ) -> None:
         # Check the contents of the list.  In particular, each list
         # item should have the form:
         #   - `arg`: description...
@@ -328,7 +361,12 @@ class _SplitFieldsTranslator(nodes.NodeVisitor):
             if not isinstance(i0 := item[0], nodes.paragraph):
                 if isinstance(i0, nodes.definition_list):
                     raise ValueError(
-                        ('list item %d contains a definition ' + 'list (it\'s probably indented ' + 'wrong).') % n
+                        (
+                            'list item %d contains a definition '
+                            + 'list (it\'s probably indented '
+                            + 'wrong).'
+                        )
+                        % n
                     )
                 else:
                     raise ValueError(_BAD_ITEM % n)
@@ -359,7 +397,9 @@ class _SplitFieldsTranslator(nodes.NodeVisitor):
             # Wrap the field body, and add a new field
             self._add_field(tagname, arg, fbody, fbody[0].line)
 
-    def handle_consolidated_definition_list(self, items: nodes.definition_list, tagname: str) -> None:
+    def handle_consolidated_definition_list(
+        self, items: nodes.definition_list, tagname: str
+    ) -> None:
         # Check the list contents.
         n = 0
         _BAD_ITEM = (
@@ -381,7 +421,10 @@ class _SplitFieldsTranslator(nodes.NodeVisitor):
                 raise ValueError(_BAD_ITEM % n)
             if not (
                 (isinstance(i0[0], nodes.title_reference))
-                or (self.ALLOW_UNMARKED_ARG_IN_CONSOLIDATED_FIELD and isinstance(i0[0], nodes.Text))
+                or (
+                    self.ALLOW_UNMARKED_ARG_IN_CONSOLIDATED_FIELD
+                    and isinstance(i0[0], nodes.Text)
+                )
             ):
                 raise ValueError(_BAD_ITEM % n)
             for child in i0[1:]:
@@ -441,7 +484,9 @@ class VersionChange(Directive):
         node['version'] = self.arguments[0]
         text = versionlabels[self.name] % self.arguments[0]
         if len(self.arguments) == 2:
-            inodes, messages = self.state.inline_text(self.arguments[1], self.lineno + 1)
+            inodes, messages = self.state.inline_text(
+                self.arguments[1], self.lineno + 1
+            )
             para = nodes.paragraph(self.arguments[1], '', *inodes)
             node.append(para)
         else:

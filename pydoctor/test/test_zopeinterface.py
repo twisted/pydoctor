@@ -164,7 +164,10 @@ def test_attribute(capsys: CapSys, systemcls: Type[model.System]) -> None:
     assert bad_attr.name == 'bad_attr'
     assert bad_attr.docstring is None
     captured = capsys.readouterr().out
-    assert captured == 'mod:5: definition of attribute "bad_attr" should have docstring as its sole argument\n'
+    assert (
+        captured
+        == 'mod:5: definition of attribute "bad_attr" should have docstring as its sole argument\n'
+    )
 
 
 @zope_interface_systemcls_param
@@ -254,12 +257,17 @@ def test_zopeschema_inheritance(systemcls: Type[model.System]) -> None:
     mod = fromText(src, modname='mod', systemcls=systemcls)
     mytext = mod.contents['IMyInterface'].contents['mytext']
     assert mytext.docstring == 'fun in a bun'
-    assert flatten(cast(ParsedDocstring, mytext.parsed_type).to_stan(NotFoundLinker())) == "<code>MyTextLine</code>"
+    assert (
+        flatten(cast(ParsedDocstring, mytext.parsed_type).to_stan(NotFoundLinker()))
+        == "<code>MyTextLine</code>"
+    )
     assert mytext.kind is model.DocumentableKind.SCHEMA_FIELD
     myothertext = mod.contents['IMyInterface'].contents['myothertext']
     assert myothertext.docstring == 'fun in another bun'
     assert (
-        flatten(cast(ParsedDocstring, myothertext.parsed_type).to_stan(NotFoundLinker()))
+        flatten(
+            cast(ParsedDocstring, myothertext.parsed_type).to_stan(NotFoundLinker())
+        )
         == "<code>MyOtherTextLine</code>"
     )
     assert myothertext.kind is model.DocumentableKind.SCHEMA_FIELD
@@ -370,7 +378,9 @@ def test_interfaceallgames(systemcls: Type[model.System]) -> None:
     mod = system.allobjects['interfaceallgames.interface']
     iface = mod.contents['IAnInterface']
     assert isinstance(iface, ZopeInterfaceClass)
-    assert [o.fullName() for o in iface.implementedby_directly] == ['interfaceallgames.implementation.Implementation']
+    assert [o.fullName() for o in iface.implementedby_directly] == [
+        'interfaceallgames.implementation.Implementation'
+    ]
 
 
 @zope_interface_systemcls_param
@@ -601,7 +611,9 @@ def test_implements_renders_ok(systemcls: Type[model.System]) -> None:
     assert 'zi.IFoo' in foo_html
 
 
-def _get_modules_test_zope_interface_imports_cycle_proof() -> List[Iterable[Dict[str, Any]]]:
+def _get_modules_test_zope_interface_imports_cycle_proof() -> (
+    List[Iterable[Dict[str, Any]]]
+):
     src_inteface = '''\
     from zope.interface import Interface
     from top.impl import Address
@@ -629,9 +641,13 @@ def _get_modules_test_zope_interface_imports_cycle_proof() -> List[Iterable[Dict
     ]
 
 
-@pytest.mark.parametrize('modules', _get_modules_test_zope_interface_imports_cycle_proof())
+@pytest.mark.parametrize(
+    'modules', _get_modules_test_zope_interface_imports_cycle_proof()
+)
 @zope_interface_systemcls_param
-def test_zope_interface_imports_cycle_proof(systemcls: Type[model.System], modules: Iterable[Dict[str, Any]]) -> None:
+def test_zope_interface_imports_cycle_proof(
+    systemcls: Type[model.System], modules: Iterable[Dict[str, Any]]
+) -> None:
     """
     Zope interface informations is collected no matter the cyclics imports and the order of processing of modules.
     This test only check some basic cyclic imports examples.

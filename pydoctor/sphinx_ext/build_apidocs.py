@@ -140,7 +140,9 @@ def _run_pydoctor(name: str, arguments: Sequence[str]) -> None:
             logger.warning(line)
 
 
-def _get_arguments(arguments: Sequence[str], placeholders: Mapping[str, str]) -> Sequence[str]:
+def _get_arguments(
+    arguments: Sequence[str], placeholders: Mapping[str, str]
+) -> Sequence[str]:
     """
     Return the resolved arguments for pydoctor build.
 

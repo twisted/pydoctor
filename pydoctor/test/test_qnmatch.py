@@ -72,9 +72,15 @@ class FnmatchTestCase(unittest.TestCase):
 
     def check_match(self, filename, pattern, should_match=True, fn=qnmatch) -> None:  # type: ignore
         if should_match:
-            self.assertTrue(fn(filename, pattern), "expected %r to match pattern %r" % (filename, pattern))
+            self.assertTrue(
+                fn(filename, pattern),
+                "expected %r to match pattern %r" % (filename, pattern),
+            )
         else:
-            self.assertFalse(fn(filename, pattern), "expected %r not to match pattern %r" % (filename, pattern))
+            self.assertFalse(
+                fn(filename, pattern),
+                "expected %r not to match pattern %r" % (filename, pattern),
+            )
 
     def test_fnmatch(self) -> None:
         check = self.check_match

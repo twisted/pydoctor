@@ -16,7 +16,18 @@ from enum import Enum, auto
 import re
 
 from functools import partial
-from typing import Any, Callable, Deque, Dict, Iterator, List, Literal, Optional, Tuple, Union
+from typing import (
+    Any,
+    Callable,
+    Deque,
+    Dict,
+    Iterator,
+    List,
+    Literal,
+    Optional,
+    Tuple,
+    Union,
+)
 
 import attr
 
@@ -38,7 +49,9 @@ _xref_or_code_regex = re.compile(
 _xref_regex = re.compile(r"(?:(?::(?:[a-zA-Z0-9]+[\-_+:.])*[a-zA-Z0-9]+:)?`.+?`)")
 _bullet_list_regex = re.compile(r"^(\*|\+|\-)(\s+\S|\s*$)")
 _enumerated_list_regex = re.compile(
-    r"^(?P<paren>\()?" r"(\d+|#|[ivxlcdm]+|[IVXLCDM]+|[a-zA-Z])" r"(?(paren)\)|\.)(\s+\S|\s*$)"
+    r"^(?P<paren>\()?"
+    r"(\d+|#|[ivxlcdm]+|[IVXLCDM]+|[a-zA-Z])"
+    r"(?(paren)\)|\.)(\s+\S|\s*$)"
 )
 
 
@@ -102,7 +115,10 @@ def is_type(string: str) -> bool:
 
     :see: `TypeDocstring`
     """
-    return is_obj_identifier(string) or len(TypeDocstring(string, warns_on_unknown_tokens=True).warnings) == 0
+    return (
+        is_obj_identifier(string)
+        or len(TypeDocstring(string, warns_on_unknown_tokens=True).warnings) == 0
+    )
     # The sphinx's implementation allow regular sentences inside type string.
     # But automatically detect that type of construct seems technically hard.
     # Arg warns_on_unknown_tokens allows to narow the checks and match only docstrings
@@ -185,8 +201,12 @@ class TypeDocstring:
 
     """
 
-    _natural_language_delimiters_regex_str = r",\sor\s|\sor\s|\sof\s|:\s|\sto\s|,\sand\s|\sand\s"
-    _natural_language_delimiters_regex = re.compile(f"({_natural_language_delimiters_regex_str})")
+    _natural_language_delimiters_regex_str = (
+        r",\sor\s|\sor\s|\sof\s|:\s|\sto\s|,\sand\s|\sand\s"
+    )
+    _natural_language_delimiters_regex = re.compile(
+        f"({_natural_language_delimiters_regex_str})"
+    )
 
     _ast_like_delimiters_regex_str = r",\s|,|[\[]|[\]]|[\(|\)]"
     _ast_like_delimiters_regex = re.compile(f"({_ast_like_delimiters_regex_str})")
@@ -211,7 +231,9 @@ class TypeDocstring:
 
         self._trigger_warnings()
 
-    def _build_tokens(self, _tokens: List[Union[str, Any]]) -> List[Tuple[str, TokenType]]:
+    def _build_tokens(
+        self, _tokens: List[Union[str, Any]]
+    ) -> List[Tuple[str, TokenType]]:
         _combined_tokens = self._recombine_set_tokens(_tokens)
 
         # Save tokens in the form : [("list", TokenType.OBJ), ("(", TokenType.DELIMITER), ("int", TokenType.OBJ), (")", TokenType.DELIMITER)]
@@ -334,7 +356,12 @@ class TypeDocstring:
             else:
                 return [item]
 
-        tokens = list(item for raw_token in cls._token_regex.split(spec) for item in postprocess(raw_token) if item)
+        tokens = list(
+            item
+            for raw_token in cls._token_regex.split(spec)
+            for item in postprocess(raw_token)
+            if item
+        )
         return tokens
 
     def _token_type(self, token: Union[str, Any]) -> TokenType:
@@ -375,10 +402,14 @@ class TypeDocstring:
             self.warnings.append(f"invalid value set (missing opening brace): {token}")
             type_ = TokenType.LITERAL
         elif token.startswith("'") or token.startswith('"'):
-            self.warnings.append(f"malformed string literal (missing closing quote): {token}")
+            self.warnings.append(
+                f"malformed string literal (missing closing quote): {token}"
+            )
             type_ = TokenType.LITERAL
         elif token.endswith("'") or token.endswith('"'):
-            self.warnings.append(f"malformed string literal (missing opening quote): {token}")
+            self.warnings.append(
+                f"malformed string literal (missing opening quote): {token}"
+            )
             type_ = TokenType.LITERAL
         # keyword supported by the reference implementation (numpydoc)
         elif token in (
@@ -419,7 +450,9 @@ class TypeDocstring:
                 # the last token has reST markup:
                 # we might have to escape
 
-                if not converted_token.startswith(" ") and not converted_token.endswith(" "):
+                if not converted_token.startswith(" ") and not converted_token.endswith(
+                    " "
+                ):
                     if _next_token != iter_types.sentinel:
                         if _next_token[1] in token_type_using_rest_markup:
                             need_escaped_space = True
@@ -432,7 +465,11 @@ class TypeDocstring:
             return converted_token
 
         converters: Dict[
-            TokenType, Callable[[Tuple[str, TokenType], Tuple[str, TokenType], Tuple[str, TokenType]], Union[str, Any]]
+            TokenType,
+            Callable[
+                [Tuple[str, TokenType], Tuple[str, TokenType], Tuple[str, TokenType]],
+                Union[str, Any],
+            ],
         ] = {
             TokenType.LITERAL: lambda _token, _last_token, _next_token: _convert(
                 _token, _last_token, _next_token, "``%s``"
@@ -440,10 +477,18 @@ class TypeDocstring:
             TokenType.CONTROL: lambda _token, _last_token, _next_token: _convert(
                 _token, _last_token, _next_token, "*%s*"
             ),
-            TokenType.DELIMITER: lambda _token, _last_token, _next_token: _convert(_token, _last_token, _next_token),
-            TokenType.REFERENCE: lambda _token, _last_token, _next_token: _convert(_token, _last_token, _next_token),
-            TokenType.UNKNOWN: lambda _token, _last_token, _next_token: _convert(_token, _last_token, _next_token),
-            TokenType.OBJ: lambda _token, _last_token, _next_token: _convert(_token, _last_token, _next_token, "`%s`"),
+            TokenType.DELIMITER: lambda _token, _last_token, _next_token: _convert(
+                _token, _last_token, _next_token
+            ),
+            TokenType.REFERENCE: lambda _token, _last_token, _next_token: _convert(
+                _token, _last_token, _next_token
+            ),
+            TokenType.UNKNOWN: lambda _token, _last_token, _next_token: _convert(
+                _token, _last_token, _next_token
+            ),
+            TokenType.OBJ: lambda _token, _last_token, _next_token: _convert(
+                _token, _last_token, _next_token, "`%s`"
+            ),
             TokenType.ANY: lambda _token, _, __: _token,
         }
 
@@ -515,7 +560,8 @@ class GoogleDocstring:
     """
 
     _name_rgx = re.compile(
-        r"^\s*((?::(?P<role>\S+):)?`(?P<name>~?[a-zA-Z0-9_.-]+)`|" r" (?P<name2>~?[a-zA-Z0-9_.-]+))\s*",
+        r"^\s*((?::(?P<role>\S+):)?`(?P<name>~?[a-zA-Z0-9_.-]+)`|"
+        r" (?P<name2>~?[a-zA-Z0-9_.-]+))\s*",
         re.X,
     )
 
@@ -545,7 +591,9 @@ class GoogleDocstring:
             lines = docstring.splitlines()
         else:
             lines = docstring
-        self._line_iter: modify_iter[str] = modify_iter(lines, modifier=lambda s: s.rstrip())
+        self._line_iter: modify_iter[str] = modify_iter(
+            lines, modifier=lambda s: s.rstrip()
+        )
 
         self._parsed_lines = []  # type: List[str]
         self._is_in_section = False
@@ -626,14 +674,20 @@ class GoogleDocstring:
     def _consume_indented_block(self, indent: int = 1) -> List[str]:
         lines = []
         line = self._line_iter.peek()
-        while not self._is_section_break() and (not line or self._is_indented(line, indent)):
+        while not self._is_section_break() and (
+            not line or self._is_indented(line, indent)
+        ):
             lines.append(next(self._line_iter))
             line = self._line_iter.peek()
         return lines
 
     def _consume_contiguous(self) -> List[str]:
         lines = []
-        while self._line_iter.has_next() and self._line_iter.peek() and not self._is_section_header():
+        while (
+            self._line_iter.has_next()
+            and self._line_iter.peek()
+            and not self._is_section_header()
+        ):
             lines.append(next(self._line_iter))
         return lines
 
@@ -646,7 +700,9 @@ class GoogleDocstring:
         return lines
 
     # overriden: enforce type pre-processing + made more smart to understand multiline types.
-    def _consume_field(self, parse_type: bool = True, prefer_type: bool = False, **kwargs: Any) -> Field:
+    def _consume_field(
+        self, parse_type: bool = True, prefer_type: bool = False, **kwargs: Any
+    ) -> Field:
 
         line = next(self._line_iter)
         indent = self._get_indent(line) + 1
@@ -673,7 +729,9 @@ class GoogleDocstring:
         if prefer_type and not _type:
             _type, _name = _name, _type
 
-        return Field(name=_name, type=_type, content=_descs, lineno=self._line_iter.counter)
+        return Field(
+            name=_name, type=_type, content=_descs, lineno=self._line_iter.counter
+        )
 
     # overriden: Allow any parameters to be passed to _consume_field with **kwargs
     def _consume_fields(
@@ -690,7 +748,12 @@ class GoogleDocstring:
             if multiple and f.name:
                 for name in f.name.split(","):
                     fields.append(
-                        Field(name=name.strip(), type=f.type, content=f.content, lineno=self._line_iter.counter)
+                        Field(
+                            name=name.strip(),
+                            type=f.type,
+                            content=f.content,
+                            lineno=self._line_iter.counter,
+                        )
                     )
             elif f:
                 fields.append(f)
@@ -714,7 +777,9 @@ class GoogleDocstring:
         lines = self._dedent(self._consume_to_next_section())
         if lines:
 
-            before_colon, colon, _descs = self._partition_multiline_field_on_colon(lines, format_validator=is_type)
+            before_colon, colon, _descs = self._partition_multiline_field_on_colon(
+                lines, format_validator=is_type
+            )
 
             _type = ""
             if _descs:
@@ -737,7 +802,14 @@ class GoogleDocstring:
 
             _descs = self.__class__(_descs).lines()
             _name = ""
-            return [Field(name=_name, type=_type, content=_descs, lineno=self._line_iter.counter)]
+            return [
+                Field(
+                    name=_name,
+                    type=_type,
+                    content=_descs,
+                    lineno=self._line_iter.counter,
+                )
+            ]
         else:
             return []
 
@@ -762,7 +834,9 @@ class GoogleDocstring:
         return lines + self._consume_empty()
 
     # new method: handle type pre-processing the same way for google and numpy style.
-    def _convert_type(self, _type: str, is_type_field: bool = True, lineno: int = 0) -> str:
+    def _convert_type(
+        self, _type: str, is_type_field: bool = True, lineno: int = 0
+    ) -> str:
         """
         Tokenize the string type and convert it with additional markup and auto linking,
         with L{TypeDocstring}.
@@ -826,7 +900,9 @@ class GoogleDocstring:
             return [f".. {admonition}::", ""]
 
     # overriden to avoid extra unecessary blank lines
-    def _format_block(self, prefix: str, lines: List[str], padding: str = "") -> List[str]:
+    def _format_block(
+        self, prefix: str, lines: List[str], padding: str = ""
+    ) -> List[str]:
         # remove the last line of the block if it's empty
         if not lines[-1]:
             lines.pop(-1)
@@ -861,7 +937,9 @@ class GoogleDocstring:
                 lines.append(f":{field_role} {field.name}:")
 
             if field.type:
-                lines.append(f":{type_role} {field.name}: {self._convert_type(field.type, lineno=field.lineno)}")
+                lines.append(
+                    f":{type_role} {field.name}: {self._convert_type(field.type, lineno=field.lineno)}"
+                )
         return lines + [""]
 
     # overriden: Use a style closer to pydoctor's, but it's still not perfect.
@@ -870,7 +948,9 @@ class GoogleDocstring:
     # - _parse_returns_section()
     # - _parse_yields_section()
     # - _parse_attribute_docstring()
-    def _format_field(self, _name: str, _type: str, _desc: List[str], lineno: int = 0) -> List[str]:
+    def _format_field(
+        self, _name: str, _type: str, _desc: List[str], lineno: int = 0
+    ) -> List[str]:
         _desc = self._strip_empty(_desc)
         has_desc = any(_desc)
         separator = " - " if has_desc else ""
@@ -975,7 +1055,11 @@ class GoogleDocstring:
         return bool(
             not self._line_iter.has_next()
             or self._is_section_header()
-            or (self._is_in_section and line and not self._is_indented(line, self._section_indent))
+            or (
+                self._is_in_section
+                and line
+                and not self._is_indented(line, self._section_indent)
+            )
         )
 
     # overriden: call _parse_attribute_docstring if the object is an attribute
@@ -1042,7 +1126,9 @@ class GoogleDocstring:
             field = f":{fieldtag} {f.name}: "
             lines.extend(self._format_block(field, f.content))
             if f.type:
-                lines.append(f":type {f.name}: {self._convert_type(f.type, lineno=f.lineno)}")
+                lines.append(
+                    f":type {f.name}: {self._convert_type(f.type, lineno=f.lineno)}"
+                )
 
         lines.append("")
         return lines
@@ -1070,7 +1156,9 @@ class GoogleDocstring:
     # + enforce napoleon_use_keyword = True
     def _parse_keyword_arguments_section(self, section: str) -> List[str]:
         fields = self._consume_fields()
-        return self._format_docutils_params(fields, field_role="keyword", type_role="type")
+        return self._format_docutils_params(
+            fields, field_role="keyword", type_role="type"
+        )
 
     # overriden: ignore noindex options + hack something that renders ok as is
     def _parse_methods_section(self, section: str) -> List[str]:
@@ -1081,7 +1169,9 @@ class GoogleDocstring:
         lines = []  # type: List[str]
         for field in self._consume_fields(parse_type=False):
             _init_methods_section()
-            lines.append(f"   {self._convert_type(field.name, is_type_field=False, lineno=field.lineno)}")
+            lines.append(
+                f"   {self._convert_type(field.name, is_type_field=False, lineno=field.lineno)}"
+            )
             if field.content:
                 lines.extend(self._indent(field.content, 7))
             lines.append("")
@@ -1103,7 +1193,9 @@ class GoogleDocstring:
     # This allows sections to have compatible syntax as raises syntax BUT not mandatory).
     # If prefer_type=False: If something in the type place of the type
     #   but no description, assume type contains the description, and there is not type in the docs.
-    def _parse_raises_section(self, section: str, field_type: str = "raises", prefer_type: bool = True) -> List[str]:
+    def _parse_raises_section(
+        self, section: str, field_type: str = "raises", prefer_type: bool = True
+    ) -> List[str]:
         fields = self._consume_fields(parse_type=False, prefer_type=True)
         lines = []  # type: List[str]
         for field in fields:
@@ -1146,7 +1238,9 @@ class GoogleDocstring:
 
             if multi:
                 if lines:
-                    lines.extend(self._format_block(" " * (len(section) + 2) + " * ", field))
+                    lines.extend(
+                        self._format_block(" " * (len(section) + 2) + " * ", field)
+                    )
                 else:
                     lines.extend(self._format_block(f":{section}: * ", field))
             else:
@@ -1154,7 +1248,12 @@ class GoogleDocstring:
                     # only add :returns: if there's something to say
                     lines.extend(self._format_block(f":{section}: ", field))
                 if f.type and use_rtype:
-                    lines.extend([f":{section.rstrip('s')}type: {self._convert_type(f.type, lineno=f.lineno)}", ""])
+                    lines.extend(
+                        [
+                            f":{section.rstrip('s')}type: {self._convert_type(f.type, lineno=f.lineno)}",
+                            "",
+                        ]
+                    )
         if lines and lines[-1]:
             lines.append("")
         return lines
@@ -1165,7 +1264,9 @@ class GoogleDocstring:
     # overriden: no translation + use compatible syntax with raises, but as well as standard field syntax.
     # This mean the the :warns: field can have an argument like: :warns RessourceWarning:
     def _parse_warns_section(self, section: str) -> List[str]:
-        return self._parse_raises_section(section, field_type="warns", prefer_type=False)
+        return self._parse_raises_section(
+            section, field_type="warns", prefer_type=False
+        )
 
     def _partition_field_on_colon(self, line: str) -> Tuple[str, str, str]:
         before_colon = []
@@ -1218,7 +1319,9 @@ class GoogleDocstring:
             Can contains lines with only white spaces.
         """
 
-        before_colon, colon, after_colon_start = self._partition_field_on_colon(lines[0])
+        before_colon, colon, after_colon_start = self._partition_field_on_colon(
+            lines[0]
+        )
 
         # save before colon string
         before_colon_start = before_colon
@@ -1231,7 +1334,9 @@ class GoogleDocstring:
             # the first line of the field is not complete or malformed.
             if raw_descs:
                 # try to complete type info from next lines.
-                partinioned_lines = [self._partition_field_on_colon(l) for l in raw_descs]
+                partinioned_lines = [
+                    self._partition_field_on_colon(l) for l in raw_descs
+                ]
                 for i, p_line in enumerate(partinioned_lines):
                     multiline = True
                     before, colon, after = p_line
@@ -1399,7 +1504,12 @@ class NumpyDocstring(GoogleDocstring):
                 _desc = self._dedent(self._consume_indented_block(indent))
                 _desc = self.__class__(_desc).lines()
 
-                return Field(name=_name, type=_type, content=_desc, lineno=self._line_iter.counter)
+                return Field(
+                    name=_name,
+                    type=_type,
+                    content=_desc,
+                    lineno=self._line_iter.counter,
+                )
 
         # The field either do not provide description and data contains the name and type informations,
         # or the _name and _type variable contains directly the description. i.e.
@@ -1435,7 +1545,9 @@ class NumpyDocstring(GoogleDocstring):
                 **kwargs,
             )
         except FreeFormException as e:
-            return [Field(name="", type="", content=e.lines, lineno=self._line_iter.counter)]
+            return [
+                Field(name="", type="", content=e.lines, lineno=self._line_iter.counter)
+            ]
 
     # Pass allow_free_form = True
     def _consume_returns_section(self) -> List[Field]:
@@ -1454,7 +1566,11 @@ class NumpyDocstring(GoogleDocstring):
             not self._line_iter.has_next()
             or self._is_section_header()
             or ["", ""] == [line1, line2]
-            or (self._is_in_section and line1 and not self._is_indented(line1, self._section_indent))
+            or (
+                self._is_in_section
+                and line1
+                and not self._is_indented(line1, self._section_indent)
+            )
         )
 
     def _is_section_header(self) -> bool:

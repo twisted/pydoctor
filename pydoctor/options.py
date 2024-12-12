@@ -18,8 +18,18 @@ from pydoctor import __version__
 from pydoctor.themes import get_themes
 from pydoctor.epydoc.markup import get_supported_docformats
 from pydoctor.sphinx import MAX_AGE_HELP, USER_INTERSPHINX_CACHE
-from pydoctor.utils import parse_path, findClassFromDottedName, parse_privacy_tuple, error
-from pydoctor._configparser import CompositeConfigParser, IniConfigParser, TomlConfigParser, ValidatorParser
+from pydoctor.utils import (
+    parse_path,
+    findClassFromDottedName,
+    parse_privacy_tuple,
+    error,
+)
+from pydoctor._configparser import (
+    CompositeConfigParser,
+    IniConfigParser,
+    TomlConfigParser,
+    ValidatorParser,
+)
 
 if TYPE_CHECKING:
     from typing import Literal
@@ -39,7 +49,10 @@ __all__ = ("Options",)
 # CONFIGURATION PARSING
 
 PydoctorConfigParser = CompositeConfigParser(
-    [TomlConfigParser(CONFIG_SECTIONS), IniConfigParser(CONFIG_SECTIONS, split_ml_text_to_list=True)]
+    [
+        TomlConfigParser(CONFIG_SECTIONS),
+        IniConfigParser(CONFIG_SECTIONS, split_ml_text_to_list=True),
+    ]
 )
 
 # ARGUMENTS PARSING
@@ -61,7 +74,10 @@ def get_parser() -> ArgumentParser:
         '-c',
         '--config',
         is_config_file=True,
-        help=("Load config from this file (any command line" "options override settings from the file)."),
+        help=(
+            "Load config from this file (any command line"
+            "options override settings from the file)."
+        ),
         metavar="PATH",
     )
     parser.add_argument(
@@ -75,22 +91,36 @@ def get_parser() -> ArgumentParser:
         dest='projectversion',
         default='',
         metavar='VERSION',
-        help=("The version of the project for which the API docs are generated. " "Defaults to empty string."),
+        help=(
+            "The version of the project for which the API docs are generated. "
+            "Defaults to empty string."
+        ),
     )
     parser.add_argument(
-        '--project-url', dest='projecturl', metavar="URL", help=("The project url, appears in the html if given.")
+        '--project-url',
+        dest='projecturl',
+        metavar="URL",
+        help=("The project url, appears in the html if given."),
     )
     parser.add_argument(
         '--project-base-dir',
         dest='projectbasedirectory',
-        help=("Path to the base directory of the project.  Source links " "will be computed based on this value."),
+        help=(
+            "Path to the base directory of the project.  Source links "
+            "will be computed based on this value."
+        ),
         metavar="PATH",
         default='.',
     )
     parser.add_argument(
-        '--testing', dest='testing', action='store_true', help=("Don't complain if the run doesn't have any effects.")
+        '--testing',
+        dest='testing',
+        action='store_true',
+        help=("Don't complain if the run doesn't have any effects."),
     )
-    parser.add_argument('--pdb', dest='pdb', action='store_true', help=("Like py.test's --pdb."))
+    parser.add_argument(
+        '--pdb', dest='pdb', action='store_true', help=("Like py.test's --pdb.")
+    )
     parser.add_argument(
         '--make-html',
         action='store_true',
@@ -110,13 +140,22 @@ def get_parser() -> ArgumentParser:
     )
     # Used to pass sourcepath from config file
     parser.add_argument(
-        '--add-package', '--add-module', action='append', dest='packages', metavar='MODPATH', default=[], help=SUPPRESS
+        '--add-package',
+        '--add-module',
+        action='append',
+        dest='packages',
+        metavar='MODPATH',
+        default=[],
+        help=SUPPRESS,
     )
     parser.add_argument(
         '--prepend-package',
         action='store',
         dest='prependedpackage',
-        help=("Pretend that all packages are within this one.  " "Can be used to document part of a package."),
+        help=(
+            "Pretend that all packages are within this one.  "
+            "Can be used to document part of a package."
+        ),
         metavar='PACKAGE',
     )
     _docformat_choices = list(get_supported_docformats())
@@ -126,7 +165,10 @@ def get_parser() -> ArgumentParser:
         action='store',
         default='epytext',
         choices=_docformat_choices,
-        help=("Format used for parsing docstrings. " f"Supported values: {', '.join(_docformat_choices)}"),
+        help=(
+            "Format used for parsing docstrings. "
+            f"Supported values: {', '.join(_docformat_choices)}"
+        ),
         metavar='FORMAT',
     )
     parser.add_argument(
@@ -162,7 +204,10 @@ def get_parser() -> ArgumentParser:
         '--html-subject',
         dest='htmlsubjects',
         action='append',
-        help=("The fullName of objects to generate API docs for" " (generates everything by default)."),
+        help=(
+            "The fullName of objects to generate API docs for"
+            " (generates everything by default)."
+        ),
         metavar='PACKAGE/MOD/CLASS',
     )
     parser.add_argument(
@@ -183,14 +228,17 @@ def get_parser() -> ArgumentParser:
         '--html-writer',
         dest='htmlwriter',
         default='pydoctor.templatewriter.TemplateWriter',
-        help=("Dotted name of HTML writer class to use (default 'pydoctor.templatewriter.TemplateWriter')."),
+        help=(
+            "Dotted name of HTML writer class to use (default 'pydoctor.templatewriter.TemplateWriter')."
+        ),
         metavar='CLASS',
     )
     parser.add_argument(
         '--html-viewsource-base',
         dest='htmlsourcebase',
         help=(
-            "This should be the path to the trac browser for the top " "of the svn checkout we are documenting part of."
+            "This should be the path to the trac browser for the top "
+            "of the svn checkout we are documenting part of."
         ),
         metavar='URL',
     )
@@ -220,7 +268,10 @@ def get_parser() -> ArgumentParser:
     parser.add_argument(
         '--buildtime',
         dest='buildtime',
-        help=("Use the specified build time over the current time. " f"Format: {BUILDTIME_FORMAT_HELP}"),
+        help=(
+            "Use the specified build time over the current time. "
+            f"Format: {BUILDTIME_FORMAT_HELP}"
+        ),
         metavar='TIME',
     )
     parser.add_argument(
@@ -246,7 +297,14 @@ def get_parser() -> ArgumentParser:
         default=0,
         help=("Be noisier.  Can be repeated for more noise."),
     )
-    parser.add_argument('--quiet', '-q', action='count', dest='quietness', default=0, help=("Be quieter."))
+    parser.add_argument(
+        '--quiet',
+        '-q',
+        action='count',
+        dest='quietness',
+        default=0,
+        help=("Be quieter."),
+    )
 
     parser.add_argument(
         '--introspect-c-modules',
@@ -261,7 +319,10 @@ def get_parser() -> ArgumentParser:
         dest='intersphinx',
         metavar='URL_TO_OBJECTS.INV',
         default=[],
-        help=("Use Sphinx objects inventory to generate links to external " "documentation. Can be repeated."),
+        help=(
+            "Use Sphinx objects inventory to generate links to external "
+            "documentation. Can be repeated."
+        ),
     )
 
     parser.add_argument(
@@ -332,7 +393,10 @@ def get_parser() -> ArgumentParser:
         type=int,
         default=6,
         dest='sidebartocdepth',
-        help=("How many nested titles should be listed in the docstring TOC " "(default: 6)"),
+        help=(
+            "How many nested titles should be listed in the docstring TOC "
+            "(default: 6)"
+        ),
     )
     parser.add_argument(
         '--no-sidebar',
@@ -373,7 +437,9 @@ def get_parser() -> ArgumentParser:
         ),
     )
 
-    parser.add_argument('-V', '--version', action='version', version=f'%(prog)s {__version__}')
+    parser.add_argument(
+        '-V', '--version', action='version', version=f'%(prog)s {__version__}'
+    )
 
     parser.add_argument(
         'sourcepath',
@@ -402,7 +468,8 @@ def _warn_deprecated_options(options: Namespace) -> None:
     """
     if options.enable_intersphinx_cache_deprecated:
         print(
-            "The --enable-intersphinx-cache option is deprecated; " "the cache is now enabled by default.",
+            "The --enable-intersphinx-cache option is deprecated; "
+            "the cache is now enabled by default.",
             file=sys.stderr,
             flush=True,
         )
@@ -428,14 +495,18 @@ def _convert_projectbasedirectory(s: Optional[str]) -> Optional[Path]:
 
 def _convert_systemclass(s: str) -> Type['model.System']:
     try:
-        return findClassFromDottedName(s, '--system-class', base_class='pydoctor.model.System')
+        return findClassFromDottedName(
+            s, '--system-class', base_class='pydoctor.model.System'
+        )
     except ValueError as e:
         error(str(e))
 
 
 def _convert_htmlwriter(s: str) -> Type['IWriter']:
     try:
-        return findClassFromDottedName(s, '--html-writer', base_class='pydoctor.templatewriter.IWriter')
+        return findClassFromDottedName(
+            s, '--html-writer', base_class='pydoctor.templatewriter.IWriter'
+        )
     except ValueError as e:
         error(str(e))
 
@@ -508,7 +579,9 @@ class Options:
     theme: str = attr.ib()
     processtypes: bool = attr.ib()
     templatedir: List[Path] = attr.ib(converter=_convert_templatedir)
-    privacy: List[Tuple['model.PrivacyClass', str]] = attr.ib(converter=_convert_privacy)
+    privacy: List[Tuple['model.PrivacyClass', str]] = attr.ib(
+        converter=_convert_privacy
+    )
     htmlsubjects: Optional[List[str]] = attr.ib()
     htmlsummarypages: bool = attr.ib()
     htmloutput: str = (
@@ -578,11 +651,18 @@ class Options:
 
         # auto-detect source link template if the default value is used.
         if args.htmlsourcetemplate == cls.HTML_SOURCE_TEMPLATE_DEFAULT:
-            argsdict['htmlsourcetemplate'] = _get_viewsource_template(args.htmlsourcebase)
+            argsdict['htmlsourcetemplate'] = _get_viewsource_template(
+                args.htmlsourcebase
+            )
 
         # handle deprecated arguments
         argsdict['sourcepath'].extend(
-            list(map(functools.partial(parse_path, opt='--add-package'), argsdict.pop('packages')))
+            list(
+                map(
+                    functools.partial(parse_path, opt='--add-package'),
+                    argsdict.pop('packages'),
+                )
+            )
         )
 
         # remove deprecated arguments

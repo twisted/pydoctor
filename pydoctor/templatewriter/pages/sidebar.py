@@ -42,7 +42,10 @@ class SideBar(TemplateElement):
 
         # The object itself
         yield SideBarSection(
-            loader=TagLoader(tag), ob=self.ob, documented_ob=self.ob, template_lookup=self.template_lookup
+            loader=TagLoader(tag),
+            ob=self.ob,
+            documented_ob=self.ob,
+            template_lookup=self.template_lookup,
         )
 
         parent: Optional[Documentable] = None
@@ -57,7 +60,10 @@ class SideBar(TemplateElement):
 
         if parent:
             yield SideBarSection(
-                loader=TagLoader(tag), ob=parent, documented_ob=self.ob, template_lookup=self.template_lookup
+                loader=TagLoader(tag),
+                ob=parent,
+                documented_ob=self.ob,
+                template_lookup=self.template_lookup,
             )
 
 
@@ -70,7 +76,11 @@ class SideBarSection(Element):
     """
 
     def __init__(
-        self, ob: Documentable, documented_ob: Documentable, loader: ITemplateLoader, template_lookup: TemplateLookup
+        self,
+        ob: Documentable,
+        documented_ob: Documentable,
+        loader: ITemplateLoader,
+        template_lookup: TemplateLookup,
     ):
         super().__init__(loader)
         self.ob = ob
@@ -88,7 +98,9 @@ class SideBarSection(Element):
     def name(self, request: IRequest, tag: Tag) -> Tag:
         """Craft a <code><a> block for the title with custom description when hovering."""
         name = self.ob.name
-        link = epydoc2stan.taglink(self.ob, self.ob.page_object.url, epydoc2stan.insert_break_points(name))
+        link = epydoc2stan.taglink(
+            self.ob, self.ob.page_object.url, epydoc2stan.insert_break_points(name)
+        )
         tag = tags.code(link(title=self.description()))
         if self._represents_documented_ob:
             tag(class_='thisobject')
@@ -103,7 +115,8 @@ class SideBarSection(Element):
             if self._represents_documented_ob
             else (
                 f"The parent of this {epydoc2stan.format_kind(self.documented_ob.kind).lower() if self.documented_ob.kind else 'object'}"
-                if self.ob in [self.documented_ob.parent, self.documented_ob.module.parent]
+                if self.ob
+                in [self.documented_ob.parent, self.documented_ob.module.parent]
                 else ""
             )
         )
@@ -164,12 +177,18 @@ class ObjContent(Element):
         if isinstance(self.ob, Class):
             _inherited_children = self._children(inherited=True)
 
-            self.inheritedFunctionList = self._getContentList(_inherited_children, Function)
-            self.inheritedVariableList = self._getContentList(_inherited_children, Attribute)
+            self.inheritedFunctionList = self._getContentList(
+                _inherited_children, Function
+            )
+            self.inheritedVariableList = self._getContentList(
+                _inherited_children, Attribute
+            )
 
     # TODO: ensure not to crash if heterogeneous Documentable types are passed
 
-    def _getContentList(self, children: Sequence[Documentable], type_: Type[Documentable]) -> Optional['ContentList']:
+    def _getContentList(
+        self, children: Sequence[Documentable], type_: Type[Documentable]
+    ) -> Optional['ContentList']:
         # We use the filter and iterators (instead of lists) for performance reasons.
 
         things = peek_iter(
@@ -202,10 +221,17 @@ class ObjContent(Element):
         Compute the children of this object.
         """
         if inherited:
-            assert isinstance(self.ob, Class), "Use inherited=True only with Class instances"
-            return sorted((o for o in util.inherited_members(self.ob) if o.isVisible), key=self._order)
+            assert isinstance(
+                self.ob, Class
+            ), "Use inherited=True only with Class instances"
+            return sorted(
+                (o for o in util.inherited_members(self.ob) if o.isVisible),
+                key=self._order,
+            )
         else:
-            return sorted((o for o in self.ob.contents.values() if o.isVisible), key=self._order)
+            return sorted(
+                (o for o in self.ob.contents.values() if o.isVisible), key=self._order
+            )
 
     def _isExpandable(self, list_type: Type[Documentable]) -> bool:
         """
@@ -243,7 +269,11 @@ class ObjContent(Element):
     @renderer
     def functionsTitle(self, request: IRequest, tag: Tag) -> Union[Tag, str]:
         return (
-            (tag.clear()("Functions") if not isinstance(self.ob, Class) else tag.clear()("Methods"))
+            (
+                tag.clear()("Functions")
+                if not isinstance(self.ob, Class)
+                else tag.clear()("Methods")
+            )
             if self.functionList
             else ""
         )
@@ -263,7 +293,11 @@ class ObjContent(Element):
     @renderer
     def variablesTitle(self, request: IRequest, tag: Tag) -> Union[Tag, str]:
         return (
-            (tag.clear()("Variables") if not isinstance(self.ob, Class) else tag.clear()("Attributes"))
+            (
+                tag.clear()("Variables")
+                if not isinstance(self.ob, Class)
+                else tag.clear()("Attributes")
+            )
             if self.variableList
             else ""
         )
@@ -407,7 +441,9 @@ class ContentItem(Element):
         )
 
     @renderer
-    def expandableItem(self, request: IRequest, tag: Tag) -> Union[str, 'ExpandableItem']:
+    def expandableItem(
+        self, request: IRequest, tag: Tag
+    ) -> Union[str, 'ExpandableItem']:
         if self._expand:
             nested_contents = self._contents()
 
@@ -418,7 +454,8 @@ class ContentItem(Element):
                 self.child,
                 self.documented_ob,
                 nested_contents,
-                do_not_expand=self.child is self.documented_ob or not nested_contents.has_contents,
+                do_not_expand=self.child is self.documented_ob
+                or not nested_contents.has_contents,
             )
         else:
             return ""
@@ -438,7 +475,9 @@ class LinkOnlyItem(Element):
     Used by L{ContentItem.linkOnlyItem}
     """
 
-    def __init__(self, loader: ITemplateLoader, child: Documentable, documented_ob: Documentable):
+    def __init__(
+        self, loader: ITemplateLoader, child: Documentable, documented_ob: Documentable
+    ):
         super().__init__(loader)
         self.child = child
         self.documented_ob = documented_ob
@@ -447,7 +486,9 @@ class LinkOnlyItem(Element):
     def name(self, request: IRequest, tag: Tag) -> Tag:
         return tags.code(
             epydoc2stan.taglink(
-                self.child, self.documented_ob.page_object.url, epydoc2stan.insert_break_points(self.child.name)
+                self.child,
+                self.documented_ob.page_object.url,
+                epydoc2stan.insert_break_points(self.child.name),
             )
         )
 

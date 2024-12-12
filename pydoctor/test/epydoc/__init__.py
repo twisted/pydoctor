@@ -10,7 +10,9 @@ from pydoctor.epydoc.markup import ParseError, ParsedDocstring, get_parser_by_na
 import pydoctor.epydoc.markup
 
 
-def parse_docstring(doc: str, markup: str, processtypes: bool = False) -> ParsedDocstring:
+def parse_docstring(
+    doc: str, markup: str, processtypes: bool = False
+) -> ParsedDocstring:
 
     parse = get_parser_by_name(markup)
     if processtypes:

@@ -17,7 +17,13 @@ from typing import List, Optional
 from docutils import nodes
 from twisted.web.template import Tag, tags
 
-from pydoctor.epydoc.markup import DocstringLinker, ObjClass, ParsedDocstring, ParseError, ParserFunction
+from pydoctor.epydoc.markup import (
+    DocstringLinker,
+    ObjClass,
+    ParsedDocstring,
+    ParseError,
+    ParserFunction,
+)
 from pydoctor.epydoc.docutils import set_node_attributes, new_document
 
 
@@ -72,7 +78,11 @@ class ParsedPlaintextDocstring(ParsedDocstring):
             paragraphs = [
                 set_node_attributes(
                     nodes.paragraph('', ''),
-                    children=[set_node_attributes(nodes.Text(p.strip('\n')), document=_document, lineno=0)],
+                    children=[
+                        set_node_attributes(
+                            nodes.Text(p.strip('\n')), document=_document, lineno=0
+                        )
+                    ],
                     document=_document,
                     lineno=0,
                 )
@@ -80,7 +90,9 @@ class ParsedPlaintextDocstring(ParsedDocstring):
             ]
 
             # assemble document
-            _document = set_node_attributes(_document, children=paragraphs, document=_document, lineno=0)
+            _document = set_node_attributes(
+                _document, children=paragraphs, document=_document, lineno=0
+            )
 
             self._document = _document
             return self._document

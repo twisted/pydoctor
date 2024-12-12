@@ -68,7 +68,12 @@ _BUILTIN_GRP = r'(?<!\.)(?:%s)' % '|'.join(rf'\b{_BI}\b' for _BI in _BUILTINS)
 
 #: A regexp group that matches Python strings.
 _STRING_GRP = '|'.join(
-    [r'("""("""|.*?((?!").)"""))', r'("("|.*?((?!").)"))', r"('''('''|.*?[^\\']'''))", r"('('|.*?[^\\']'))"]
+    [
+        r'("""("""|.*?((?!").)"""))',
+        r'("("|.*?((?!").)"))',
+        r"('''('''|.*?[^\\']'''))",
+        r"('('|.*?[^\\']'))",
+    ]
 )
 
 #: A regexp group that matches Python comments.
@@ -93,7 +98,9 @@ PROMPT_RE = re.compile(f'({_PROMPT1_GRP}|{_PROMPT2_GRP})', re.MULTILINE | re.DOT
 PROMPT2_RE = re.compile(f'({_PROMPT2_GRP})', re.MULTILINE | re.DOTALL)
 
 #: A regexp that matches doctest exception blocks.
-EXCEPT_RE = re.compile(r'^[ \t]*Traceback \(most recent call last\):.*', re.DOTALL | re.MULTILINE)
+EXCEPT_RE = re.compile(
+    r'^[ \t]*Traceback \(most recent call last\):.*', re.DOTALL | re.MULTILINE
+)
 
 #: A regexp that matches doctest directives.
 DOCTEST_DIRECTIVE_RE = re.compile(r'#[ \t]*doctest:.*')

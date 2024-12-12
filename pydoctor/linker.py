@@ -17,7 +17,9 @@ if TYPE_CHECKING:
     from pydoctor import model
 
 
-def taglink(o: 'model.Documentable', page_url: str, label: Optional["Flattenable"] = None) -> Tag:
+def taglink(
+    o: 'model.Documentable', page_url: str, label: Optional["Flattenable"] = None
+) -> Tag:
     """
     Create a link to an object that exists in the system.
 
@@ -115,7 +117,8 @@ class _EpydocLinker(DocstringLinker):
             return potential_targets[0]
         elif len(potential_targets) > 1 and self.reporting_obj:
             self.reporting_obj.report(
-                "ambiguous ref to %s, could be %s" % (name, ', '.join(ob.fullName() for ob in potential_targets)),
+                "ambiguous ref to %s, could be %s"
+                % (name, ', '.join(ob.fullName() for ob in potential_targets)),
                 'resolve_identifier_xref',
                 lineno,
             )
@@ -129,7 +132,9 @@ class _EpydocLinker(DocstringLinker):
         """
         return self.obj.system.intersphinx.getLink(name)
 
-    def link_to(self, identifier: str, label: "Flattenable", *, is_annotation: bool = False) -> Tag:
+    def link_to(
+        self, identifier: str, label: "Flattenable", *, is_annotation: bool = False
+    ) -> Tag:
         if is_annotation:
             fullID = self.obj.expandAnnotationName(identifier)
         else:
@@ -160,7 +165,9 @@ class _EpydocLinker(DocstringLinker):
 
         return tags.code(xref)
 
-    def _resolve_identifier_xref(self, identifier: str, lineno: int) -> Union[str, 'model.Documentable']:
+    def _resolve_identifier_xref(
+        self, identifier: str, lineno: int
+    ) -> Union[str, 'model.Documentable']:
         """
         Resolve a crossreference link to a Python identifier.
         This will resolve the identifier to any reasonable target,
@@ -265,7 +272,8 @@ class _AnnotationLinker(DocstringLinker):
         obj_ann = self._scope.expandName(target)
         if mod_ann != obj_ann and '.' in obj_ann and '.' in mod_ann:
             self.obj.report(
-                f'ambiguous annotation {target!r}, could be interpreted as ' f'{obj_ann!r} instead of {mod_ann!r}',
+                f'ambiguous annotation {target!r}, could be interpreted as '
+                f'{obj_ann!r} instead of {mod_ann!r}',
                 section='annotation',
                 thresh=1,
             )

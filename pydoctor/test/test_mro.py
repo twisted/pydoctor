@@ -7,10 +7,13 @@ from pydoctor.test.test_astbuilder import fromText, systemcls_param
 from pydoctor.test import CapSys
 
 
-def assert_mro_equals(klass: Optional[model.Documentable], expected_mro: List[str]) -> None:
+def assert_mro_equals(
+    klass: Optional[model.Documentable], expected_mro: List[str]
+) -> None:
     assert isinstance(klass, model.Class)
     assert [
-        member.fullName() if isinstance(member, model.Documentable) else member for member in klass.mro(True)
+        member.fullName() if isinstance(member, model.Documentable) else member
+        for member in klass.mro(True)
     ] == expected_mro
 
 
@@ -70,7 +73,13 @@ def test_mro(
 
     assert_mro_equals(
         mod.contents["PedalWheelBoat"],
-        ["mro.PedalWheelBoat", "mro.EngineLess", "mro.DayBoat", "mro.WheelBoat", "mro.Boat"],
+        [
+            "mro.PedalWheelBoat",
+            "mro.EngineLess",
+            "mro.DayBoat",
+            "mro.WheelBoat",
+            "mro.Boat",
+        ],
     )
 
     assert_mro_equals(
@@ -94,10 +103,17 @@ def test_mro(
 
     assert_mro_equals(
         mod.contents["OuterD"].contents["Inner"],
-        ['mro.OuterD.Inner', 'mro.OuterC.Inner', 'mro.OuterB.Inner', 'mro.OuterA.Inner'],
+        [
+            'mro.OuterD.Inner',
+            'mro.OuterC.Inner',
+            'mro.OuterB.Inner',
+            'mro.OuterA.Inner',
+        ],
     )
 
-    assert_mro_equals(mod.contents["Visitor"], ['mro.Visitor', 'mro.MyGeneric', 'typing.Generic'])
+    assert_mro_equals(
+        mod.contents["Visitor"], ['mro.Visitor', 'mro.MyGeneric', 'typing.Generic']
+    )
 
     assert_mro_equals(
         mod.contents["GenericPedalo"],
@@ -157,10 +173,18 @@ def test_inherited_docsources() -> None:
         modname='normal',
     )
 
-    assert [o.fullName() for o in list(simple.contents['A'].contents['a'].docsources())] == ['normal.A.a']
-    assert [o.fullName() for o in list(simple.contents['B'].contents['b'].docsources())] == ['normal.B.b']
-    assert [o.fullName() for o in list(simple.contents['C'].contents['b'].docsources())] == ['normal.C.b', 'normal.B.b']
-    assert [o.fullName() for o in list(simple.contents['C'].contents['a'].docsources())] == ['normal.C.a', 'normal.A.a']
+    assert [
+        o.fullName() for o in list(simple.contents['A'].contents['a'].docsources())
+    ] == ['normal.A.a']
+    assert [
+        o.fullName() for o in list(simple.contents['B'].contents['b'].docsources())
+    ] == ['normal.B.b']
+    assert [
+        o.fullName() for o in list(simple.contents['C'].contents['b'].docsources())
+    ] == ['normal.C.b', 'normal.B.b']
+    assert [
+        o.fullName() for o in list(simple.contents['C'].contents['a'].docsources())
+    ] == ['normal.C.a', 'normal.A.a']
 
     dimond = fromText(
         """\
@@ -179,21 +203,33 @@ def test_inherited_docsources() -> None:
         modname='diamond',
     )
 
-    assert [o.fullName() for o in list(dimond.contents['A'].contents['a'].docsources())] == ['diamond.A.a']
-    assert [o.fullName() for o in list(dimond.contents['A'].contents['z'].docsources())] == [
+    assert [
+        o.fullName() for o in list(dimond.contents['A'].contents['a'].docsources())
+    ] == ['diamond.A.a']
+    assert [
+        o.fullName() for o in list(dimond.contents['A'].contents['z'].docsources())
+    ] == [
         'diamond.A.z',
         'diamond._MyBase.z',
     ]
-    assert [o.fullName() for o in list(dimond.contents['B'].contents['b'].docsources())] == ['diamond.B.b']
-    assert [o.fullName() for o in list(dimond.contents['C'].contents['b'].docsources())] == [
+    assert [
+        o.fullName() for o in list(dimond.contents['B'].contents['b'].docsources())
+    ] == ['diamond.B.b']
+    assert [
+        o.fullName() for o in list(dimond.contents['C'].contents['b'].docsources())
+    ] == [
         'diamond.C.b',
         'diamond.B.b',
     ]
-    assert [o.fullName() for o in list(dimond.contents['C'].contents['a'].docsources())] == [
+    assert [
+        o.fullName() for o in list(dimond.contents['C'].contents['a'].docsources())
+    ] == [
         'diamond.C.a',
         'diamond.A.a',
     ]
-    assert [o.fullName() for o in list(dimond.contents['C'].contents['z'].docsources())] == [
+    assert [
+        o.fullName() for o in list(dimond.contents['C'].contents['z'].docsources())
+    ] == [
         'diamond.C.z',
         'diamond.A.z',
         'diamond._MyBase.z',
@@ -297,7 +333,10 @@ def test_overriden_in() -> None:
     klass = dimond.contents['_MyBase']
     assert isinstance(klass, model.Class)
     assert klass.subclasses == [dimond.contents['A'], dimond.contents['B']]
-    assert list(util.overriding_subclasses(klass, 'z')) == [dimond.contents['A'], dimond.contents['C']]
+    assert list(util.overriding_subclasses(klass, 'z')) == [
+        dimond.contents['A'],
+        dimond.contents['C'],
+    ]
 
 
 def test_inherited_members() -> None:

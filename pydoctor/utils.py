@@ -23,7 +23,9 @@ def error(msg: str, *args: object) -> NoReturn:
     sys.exit(1)
 
 
-def findClassFromDottedName(dottedname: str, optionname: str, base_class: Union[str, Type[T]]) -> Type[T]:
+def findClassFromDottedName(
+    dottedname: str, optionname: str, base_class: Union[str, Type[T]]
+) -> Type[T]:
     """
     Looks up a class by full name.
 
@@ -41,7 +43,9 @@ def findClassFromDottedName(dottedname: str, optionname: str, base_class: Union[
     except AttributeError:
         raise ValueError(f"did not find {parts[1]} in module {parts[0]}")
     if isinstance(base_class, str):
-        base_class = findClassFromDottedName(base_class, optionname, object)  # type:ignore[arg-type]
+        base_class = findClassFromDottedName(
+            base_class, optionname, object
+        )  # type:ignore[arg-type]
     assert isinstance(base_class, type)
     if not issubclass(cls, base_class):
         raise ValueError(f"{cls} is not a subclass of {base_class}")
@@ -86,7 +90,9 @@ def parse_privacy_tuple(value: str, opt: str) -> Tuple['model.PrivacyClass', str
     """
     parts = value.split(':')
     if len(parts) != 2:
-        error(f"{opt}: malformatted value {value!r} should be like '<privacy>:<PATTERN>'.")
+        error(
+            f"{opt}: malformatted value {value!r} should be like '<privacy>:<PATTERN>'."
+        )
     # Late import to avoid cyclic import error
     from pydoctor import model
 

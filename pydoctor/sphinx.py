@@ -9,7 +9,17 @@ import os
 import shutil
 import textwrap
 import zlib
-from typing import TYPE_CHECKING, Callable, ContextManager, Dict, IO, Iterable, Mapping, Optional, Tuple
+from typing import (
+    TYPE_CHECKING,
+    Callable,
+    ContextManager,
+    Dict,
+    IO,
+    Iterable,
+    Mapping,
+    Optional,
+    Tuple,
+)
 
 import platformdirs
 import attr
@@ -94,7 +104,9 @@ class SphinxInventory:
             self.error('sphinx', 'Failed to decode inventory from %s' % (base_url,))
             return ''
 
-    def _parseInventory(self, base_url: str, payload: str) -> Dict[str, Tuple[str, str]]:
+    def _parseInventory(
+        self, base_url: str, payload: str
+    ) -> Dict[str, Tuple[str, str]]:
         """
         Parse clear text payload and return a dict with module to link mapping.
         """
@@ -168,7 +180,9 @@ class SphinxInventoryWriter:
     Sphinx inventory handler.
     """
 
-    def __init__(self, logger: Callable[..., None], project_name: str, project_version: str):
+    def __init__(
+        self, logger: Callable[..., None], project_name: str, project_version: str
+    ):
         self._project_name = project_name
         self._project_version = project_version
         self._logger = logger
@@ -295,7 +309,9 @@ _maxAgeUnits = {
     "d": _Unit("days", minimum=1, maximum=999999999 + 1),
     "w": _Unit("weeks", minimum=1, maximum=(999999999 + 1) // 7),
 }
-_maxAgeUnitNames = ", ".join(f"{indicator} ({unit.name})" for indicator, unit in _maxAgeUnits.items())
+_maxAgeUnitNames = ", ".join(
+    f"{indicator} ({unit.name})" for indicator, unit in _maxAgeUnits.items()
+)
 
 
 MAX_AGE_HELP = textwrap.dedent(
@@ -356,7 +372,10 @@ class IntersphinxCache(CacheT):
 
     @classmethod
     def fromParameters(
-        cls, sessionFactory: Callable[[], requests.Session], cachePath: str, maxAgeDictionary: Mapping[str, int]
+        cls,
+        sessionFactory: Callable[[], requests.Session],
+        cachePath: str,
+        maxAgeDictionary: Mapping[str, int],
     ) -> 'IntersphinxCache':
         """
         Construct an instance with the given parameters.
@@ -368,7 +387,11 @@ class IntersphinxCache(CacheT):
             age of any cache entry.
         @see: L{parseMaxAge}
         """
-        session = CacheControl(sessionFactory(), cache=FileCache(cachePath), heuristic=ExpiresAfter(**maxAgeDictionary))
+        session = CacheControl(
+            sessionFactory(),
+            cache=FileCache(cachePath),
+            heuristic=ExpiresAfter(**maxAgeDictionary),
+        )
         return cls(session)
 
     def get(self, url: str) -> Optional[bytes]:
@@ -381,7 +404,9 @@ class IntersphinxCache(CacheT):
         try:
             return self._session.get(url).content
         except Exception:
-            self._logger.exception("Could not retrieve intersphinx object.inv from %s", url)
+            self._logger.exception(
+                "Could not retrieve intersphinx object.inv from %s", url
+            )
             return None
 
     def close(self) -> None:

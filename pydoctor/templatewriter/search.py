@@ -20,7 +20,9 @@ if TYPE_CHECKING:
     from twisted.web.template import Flattenable
 
 
-def get_all_documents_flattenable(system: model.System) -> Iterator[Dict[str, "Flattenable"]]:
+def get_all_documents_flattenable(
+    system: model.System,
+) -> Iterator[Dict[str, "Flattenable"]]:
     """
     Get a generator for all data to be writen into ``all-documents.html`` file.
     """
@@ -118,7 +120,10 @@ class LunrIndexWriter:
 
     def get_corpus(self) -> List[Tuple[Dict[str, Optional[str]], Dict[str, int]]]:
         return [
-            ({f: self.format(ob, f) for f in self.fields}, {"boost": self.get_ob_boost(ob)})
+            (
+                {f: self.format(ob, f) for f in self.fields},
+                {"boost": self.get_ob_boost(ob)},
+            )
             for ob in (o for o in self.system.allobjects.values() if o.isVisible)
         ]
 
@@ -140,7 +145,10 @@ class LunrIndexWriter:
 
         index = lunr(
             ref='qname',
-            fields=[{'field_name': name, 'boost': self._BOOSTS[name]} for name in self.fields],
+            fields=[
+                {'field_name': name, 'boost': self._BOOSTS[name]}
+                for name in self.fields
+            ],
             documents=self.get_corpus(),
             builder=builder,
         )
@@ -159,10 +167,16 @@ def write_lunr_index(output_dir: Path, system: model.System) -> None:
     @arg output_dir: Output directory.
     @arg system: System.
     """
-    LunrIndexWriter(output_dir / "searchindex.json", system=system, fields=["name", "names", "qname"]).write()
+    LunrIndexWriter(
+        output_dir / "searchindex.json",
+        system=system,
+        fields=["name", "names", "qname"],
+    ).write()
 
     LunrIndexWriter(
-        output_dir / "fullsearchindex.json", system=system, fields=["name", "names", "qname", "docstring", "kind"]
+        output_dir / "fullsearchindex.json",
+        system=system,
+        fields=["name", "names", "qname", "docstring", "kind"],
     ).write()
 
 

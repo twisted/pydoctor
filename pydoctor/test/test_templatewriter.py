@@ -22,7 +22,12 @@ from pydoctor.templatewriter import (
 )
 from pydoctor.templatewriter.pages.table import ChildTable
 from pydoctor.templatewriter.pages.attributechild import AttributeChild
-from pydoctor.templatewriter.summary import isClassNodePrivate, isPrivate, moduleSummary, ClassIndexPage
+from pydoctor.templatewriter.summary import (
+    isClassNodePrivate,
+    isPrivate,
+    moduleSummary,
+    ClassIndexPage,
+)
 from pydoctor.test.test_astbuilder import fromText, systemcls_param
 from pydoctor.test.test_packages import processPackage, testpackages
 from pydoctor.test.test_epydoc2stan import InMemoryInventory
@@ -114,14 +119,24 @@ def test_simple() -> None:
 
 def test_empty_table() -> None:
     mod = fromText('')
-    t = ChildTable(util.DocGetter(), mod, [], ChildTable.lookup_loader(TemplateLookup(template_dir)))
+    t = ChildTable(
+        util.DocGetter(),
+        mod,
+        [],
+        ChildTable.lookup_loader(TemplateLookup(template_dir)),
+    )
     flattened = flatten(t)
     assert 'The renderer named' not in flattened
 
 
 def test_nonempty_table() -> None:
     mod = fromText('def f(): pass')
-    t = ChildTable(util.DocGetter(), mod, mod.contents.values(), ChildTable.lookup_loader(TemplateLookup(template_dir)))
+    t = ChildTable(
+        util.DocGetter(),
+        mod,
+        mod.contents.values(),
+        ChildTable.lookup_loader(TemplateLookup(template_dir)),
+    )
     flattened = flatten(t)
     assert 'The renderer named' not in flattened
 
@@ -208,7 +223,10 @@ def test_multipleInheritanceNewClass(className: str) -> None:
 
     if className == 'Diamond':
         assert util.class_members(cls) == [
-            ((getob('multipleinheritance.mod.Diamond'),), [getob('multipleinheritance.mod.Diamond.newMethod')]),
+            (
+                (getob('multipleinheritance.mod.Diamond'),),
+                [getob('multipleinheritance.mod.Diamond.newMethod')],
+            ),
             (
                 (
                     getob('multipleinheritance.mod.OldClassThatMultiplyInherits'),
@@ -267,12 +285,19 @@ def test_template_lookup_get_template() -> None:
     assert index.text == filetext(template_dir / 'index.html')
 
     lookup.add_template(
-        HtmlTemplate(name='footer.html', text=filetext(here / 'testcustomtemplates' / 'faketemplate' / 'footer.html'))
+        HtmlTemplate(
+            name='footer.html',
+            text=filetext(
+                here / 'testcustomtemplates' / 'faketemplate' / 'footer.html'
+            ),
+        )
     )
 
     footer = lookup.get_template('footer.html')
     assert isinstance(footer, HtmlTemplate)
-    assert footer.text == filetext(here / 'testcustomtemplates' / 'faketemplate' / 'footer.html')
+    assert footer.text == filetext(
+        here / 'testcustomtemplates' / 'faketemplate' / 'footer.html'
+    )
 
     index2 = lookup.get_template('index.html')
     assert isinstance(index2, HtmlTemplate)
@@ -300,22 +325,34 @@ def test_template_lookup_add_template_warns() -> None:
     here = Path(__file__).parent
 
     with pytest.warns(UserWarning) as catch_warnings:
-        with (here / 'testcustomtemplates' / 'faketemplate' / 'nav.html').open('r', encoding='utf-8') as fobj:
+        with (here / 'testcustomtemplates' / 'faketemplate' / 'nav.html').open(
+            'r', encoding='utf-8'
+        ) as fobj:
             lookup.add_template(HtmlTemplate(text=fobj.read(), name='nav.html'))
     assert len(catch_warnings) == 1, [str(w.message) for w in catch_warnings]
-    assert "Your custom template 'nav.html' is out of date" in str(catch_warnings.pop().message)
+    assert "Your custom template 'nav.html' is out of date" in str(
+        catch_warnings.pop().message
+    )
 
     with pytest.warns(UserWarning) as catch_warnings:
-        with (here / 'testcustomtemplates' / 'faketemplate' / 'table.html').open('r', encoding='utf-8') as fobj:
+        with (here / 'testcustomtemplates' / 'faketemplate' / 'table.html').open(
+            'r', encoding='utf-8'
+        ) as fobj:
             lookup.add_template(HtmlTemplate(text=fobj.read(), name='table.html'))
     assert len(catch_warnings) == 1, [str(w.message) for w in catch_warnings]
-    assert "Could not read 'table.html' template version" in str(catch_warnings.pop().message)
+    assert "Could not read 'table.html' template version" in str(
+        catch_warnings.pop().message
+    )
 
     with pytest.warns(UserWarning) as catch_warnings:
-        with (here / 'testcustomtemplates' / 'faketemplate' / 'summary.html').open('r', encoding='utf-8') as fobj:
+        with (here / 'testcustomtemplates' / 'faketemplate' / 'summary.html').open(
+            'r', encoding='utf-8'
+        ) as fobj:
             lookup.add_template(HtmlTemplate(text=fobj.read(), name='summary.html'))
     assert len(catch_warnings) == 1, [str(w.message) for w in catch_warnings]
-    assert "Could not read 'summary.html' template version" in str(catch_warnings.pop().message)
+    assert "Could not read 'summary.html' template version" in str(
+        catch_warnings.pop().message
+    )
 
     with pytest.warns(UserWarning) as catch_warnings:
         lookup.add_templatedir(here / 'testcustomtemplates' / 'faketemplate')
@@ -352,7 +389,9 @@ def test_template_lookup_add_template_raises() -> None:
         )
 
     with pytest.raises(ValueError):
-        lookup.add_template(HtmlTemplate(name="nav.html", text="<nav></nav><span> Words </span>"))
+        lookup.add_template(
+            HtmlTemplate(name="nav.html", text="<nav></nav><span> Words </span>")
+        )
 
     with pytest.raises(OverrideTemplateNotAllowed):
         lookup.add_template(HtmlTemplate(name="apidocs.css", text="<nav></nav>"))
@@ -377,12 +416,21 @@ def test_template_fromdir_fromfile_failure() -> None:
     here = Path(__file__).parent
 
     with pytest.raises(FailedToCreateTemplate):
-        [t for t in Template.fromdir(here / 'testcustomtemplates' / 'thisfolderdonotexist')]
+        [
+            t
+            for t in Template.fromdir(
+                here / 'testcustomtemplates' / 'thisfolderdonotexist'
+            )
+        ]
 
-    template = Template.fromfile(here / 'testcustomtemplates' / 'subfolders', PurePath())
+    template = Template.fromfile(
+        here / 'testcustomtemplates' / 'subfolders', PurePath()
+    )
     assert not template
 
-    template = Template.fromfile(here / 'testcustomtemplates' / 'thisfolderdonotexist', PurePath('whatever'))
+    template = Template.fromfile(
+        here / 'testcustomtemplates' / 'thisfolderdonotexist', PurePath('whatever')
+    )
     assert not template
 
 
@@ -390,8 +438,12 @@ def test_template() -> None:
 
     here = Path(__file__).parent
 
-    js_template = Template.fromfile(here / 'testcustomtemplates' / 'faketemplate', PurePath('pydoctor.js'))
-    html_template = Template.fromfile(here / 'testcustomtemplates' / 'faketemplate', PurePath('nav.html'))
+    js_template = Template.fromfile(
+        here / 'testcustomtemplates' / 'faketemplate', PurePath('pydoctor.js')
+    )
+    html_template = Template.fromfile(
+        here / 'testcustomtemplates' / 'faketemplate', PurePath('nav.html')
+    )
 
     assert isinstance(js_template, StaticTemplate)
     assert isinstance(html_template, HtmlTemplate)
@@ -461,9 +513,15 @@ def test_template_casing() -> None:
 
     here = Path(__file__).parent
 
-    html_template1 = Template.fromfile(here / 'testcustomtemplates' / 'casing', PurePath('test1/nav.HTML'))
-    html_template2 = Template.fromfile(here / 'testcustomtemplates' / 'casing', PurePath('test2/nav.Html'))
-    html_template3 = Template.fromfile(here / 'testcustomtemplates' / 'casing', PurePath('test3/nav.htmL'))
+    html_template1 = Template.fromfile(
+        here / 'testcustomtemplates' / 'casing', PurePath('test1/nav.HTML')
+    )
+    html_template2 = Template.fromfile(
+        here / 'testcustomtemplates' / 'casing', PurePath('test2/nav.Html')
+    )
+    html_template3 = Template.fromfile(
+        here / 'testcustomtemplates' / 'casing', PurePath('test3/nav.htmL')
+    )
 
     assert isinstance(html_template1, HtmlTemplate)
     assert isinstance(html_template2, HtmlTemplate)
@@ -481,8 +539,12 @@ def test_templatelookup_casing() -> None:
 
     lookup = TemplateLookup(here / 'testcustomtemplates' / 'subfolders')
 
-    assert lookup.get_template('atemplate.html') == lookup.get_template('ATemplaTe.HTML')
-    assert lookup.get_template('static/fonts/bar.svg') == lookup.get_template('StAtic/Fonts/BAr.svg')
+    assert lookup.get_template('atemplate.html') == lookup.get_template(
+        'ATemplaTe.HTML'
+    )
+    assert lookup.get_template('static/fonts/bar.svg') == lookup.get_template(
+        'StAtic/Fonts/BAr.svg'
+    )
 
     static_fonts_bar = lookup.get_template('static/fonts/bar.svg')
     assert static_fonts_bar.name == 'static/fonts/bar.svg'
@@ -501,7 +563,10 @@ def is_fs_case_sensitive() -> bool:
         return not os.path.exists(tmp_file.name.lower())
 
 
-@pytest.mark.skipif(not is_fs_case_sensitive(), reason="This test requires a case sensitive file system.")
+@pytest.mark.skipif(
+    not is_fs_case_sensitive(),
+    reason="This test requires a case sensitive file system.",
+)
 def test_template_subfolders_write_casing(tmp_path: Path) -> None:
 
     here = Path(__file__).parent
@@ -533,7 +598,9 @@ def test_themes_template_versions() -> None:
     for theme in get_themes():
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
-            lookup = TemplateLookup(importlib_resources.files('pydoctor.themes') / 'base')
+            lookup = TemplateLookup(
+                importlib_resources.files('pydoctor.themes') / 'base'
+            )
             lookup.add_templatedir(importlib_resources.files('pydoctor.themes') / theme)
             assert len(w) == 0, [str(_w) for _w in w]
 
@@ -601,12 +668,16 @@ def test_format_function_def_overloads(systemcls: Type[model.System]) -> None:
     assert isinstance(func, model.Function)
 
     # We intentionally remove spaces before comparing
-    overloads_html = stanutils.flatten_text(list(pages.format_overloads(func))).replace(' ', '')
+    overloads_html = stanutils.flatten_text(list(pages.format_overloads(func))).replace(
+        ' ', ''
+    )
     assert '''(s:str)->str:''' in overloads_html
     assert '''(s:bytes)->bytes:''' in overloads_html
 
     # Confirm the actual function definition is not rendered
-    function_def_html = stanutils.flatten_text(list(pages.format_function_def(func.name, func.is_async, func)))
+    function_def_html = stanutils.flatten_text(
+        list(pages.format_function_def(func.name, func.is_async, func))
+    )
     assert function_def_html == ''
 
 
@@ -623,7 +694,11 @@ def test_format_signature() -> None:
     )
     assert (
         """(a:Union[bytes,str]=_get_func_default(str),b:Any=re.compile(r'foo|bar'),*args:str,**kwargs:Any)->Iterator[Union[str,bytes]]"""
-    ) in stanutils.flatten_text(pages.format_signature(cast(model.Function, mod.contents['func']))).replace(' ', '')
+    ) in stanutils.flatten_text(
+        pages.format_signature(cast(model.Function, mod.contents['func']))
+    ).replace(
+        ' ', ''
+    )
 
 
 def test_format_decorators() -> None:
@@ -636,7 +711,9 @@ def test_format_decorators() -> None:
         ...
     '''
     )
-    stan = stanutils.flatten(list(pages.format_decorators(cast(model.Function, mod.contents['func']))))
+    stan = stanutils.flatten(
+        list(pages.format_decorators(cast(model.Function, mod.contents['func'])))
+    )
     assert stan == (
         """@string_decorator(<wbr></wbr>set(<wbr></wbr><span class="rst-variable-quote">'</span>"""
         r"""<span class="rst-variable-string">\\/:*?"&lt;&gt;|\f\v\t\r\n</span>"""
@@ -657,7 +734,13 @@ def test_compact_module_summary() -> None:
     assert len(ul.children) == 50  # type: ignore
 
     # the 51th module triggers the compact summary, no matter if it's a package or module
-    fromText('', parent_name='top', modname='_yet_another_sub', system=system, is_package=True)
+    fromText(
+        '',
+        parent_name='top',
+        modname='_yet_another_sub',
+        system=system,
+        is_package=True,
+    )
 
     ul = moduleSummary(top, '').children[-1]
     assert ul.tagName == 'ul'  # type: ignore
@@ -667,7 +750,9 @@ def test_compact_module_summary() -> None:
     assert 'private' in ul.children[0].children[-1].attributes['class']  # type: ignore
 
     # for the compact summary no submodule (packages) may have further submodules
-    fromText('', parent_name='top._yet_another_sub', modname='subsubmodule', system=system)
+    fromText(
+        '', parent_name='top._yet_another_sub', modname='subsubmodule', system=system
+    )
 
     ul = moduleSummary(top, '').children[-1]
     assert ul.tagName == 'ul'  # type: ignore
@@ -722,7 +807,9 @@ def test_objects_order_mixed_modules_and_packages(_order: str) -> None:
     fromText('', parent_name='top', modname='bbb', system=system)
     fromText('', parent_name='top', modname='aba', system=system, is_package=True)
 
-    _sorted = sorted(top.contents.values(), key=util.objects_order(_order))  # type:ignore
+    _sorted = sorted(
+        top.contents.values(), key=util.objects_order(_order)
+    )  # type:ignore
     names = [s.name for s in _sorted]
 
     assert names == ['aaa', 'aba', 'bbb']
@@ -736,7 +823,11 @@ def test_change_member_order() -> None:
     that is to sort class members by source, the rest by name.
     """
     system = model.System()
-    assert system.options.cls_member_order == system.options.mod_member_order == "alphabetical"
+    assert (
+        system.options.cls_member_order
+        == system.options.mod_member_order
+        == "alphabetical"
+    )
 
     mod = fromText(
         '''\
@@ -756,7 +847,12 @@ def test_change_member_order() -> None:
     )
 
     _sorted = sorted(mod.contents.values(), key=system.membersOrder(mod))
-    assert [s.name for s in _sorted] == ['Bar', 'Foo', 'a', 'b']  # default ordering is alphabetical
+    assert [s.name for s in _sorted] == [
+        'Bar',
+        'Foo',
+        'a',
+        'b',
+    ]  # default ordering is alphabetical
 
     system.options.mod_member_order = 'source'
     _sorted = sorted(mod.contents.values(), key=system.membersOrder(mod))
@@ -780,7 +876,14 @@ def test_change_member_order() -> None:
     _sorted = sorted(Foo.contents.values(), key=system.membersOrder(Foo))
     names = [s.name for s in _sorted]
 
-    assert names == ['start', 'process_link', 'process_emphasis', 'process_blockquote', 'process_table', 'end']
+    assert names == [
+        'start',
+        'process_link',
+        'process_emphasis',
+        'process_blockquote',
+        'process_table',
+        'end',
+    ]
 
 
 def test_ivar_field_order_precedence(capsys: CapSys) -> None:
@@ -899,7 +1002,9 @@ test:36: bad rendering of class signature: SAXParseException: <unknown>.+ undefi
     # Some how the type processing get rid of the non breaking spaces, but it's more an implementation
     # detail rather than a fix for the bug.
     if processtypes is True:
-        warnings.remove('test:30: bad docstring: SAXParseException: <unknown>.+ undefined entity')
+        warnings.remove(
+            'test:30: bad docstring: SAXParseException: <unknown>.+ undefined entity'
+        )
 
     assert re.match('\n'.join(warnings), out)
 
@@ -912,7 +1017,9 @@ def test_crash_xmlstring_entities_rst(capsys: CapSys, processtypes: bool) -> Non
     system.options.processtypes = processtypes
     system.options.docformat = 'restructuredtext'
     mod = fromText(
-        src_crash_xml_entities.replace('@type', ':type').replace('@rtype', ':rtype').replace('==', "--"),
+        src_crash_xml_entities.replace('@type', ':type')
+        .replace('@rtype', ':rtype')
+        .replace('==', "--"),
         modname='test',
         system=system,
     )
@@ -935,7 +1042,9 @@ test:36: bad rendering of class signature: SAXParseException: <unknown>.+ undefi
     warnings = warn_str.splitlines()
 
     if processtypes is True:
-        warnings.remove('test:30: bad docstring: SAXParseException: <unknown>.+ undefined entity')
+        warnings.remove(
+            'test:30: bad docstring: SAXParseException: <unknown>.+ undefined entity'
+        )
 
     assert re.match('\n'.join(warnings), out)
 
@@ -1001,7 +1110,11 @@ def test_canonical_links() -> None:
         foo = False
     '''
     mod = fromText(
-        src, modname='t', system=model.System(model.Options.from_args(['--html-base-url=https://example.org/t/docs']))
+        src,
+        modname='t',
+        system=model.System(
+            model.Options.from_args(['--html-base-url=https://example.org/t/docs'])
+        ),
     )
     html1 = getHTMLOf(mod)
     html2 = getHTMLOf(mod.contents['Cls'])
@@ -1017,7 +1130,11 @@ def test_canonical_links_two_root_modules() -> None:
         foo = False
     '''
     mod = fromText(
-        src, modname='t', system=model.System(model.Options.from_args(['--html-base-url=https://example.org/t/docs']))
+        src,
+        modname='t',
+        system=model.System(
+            model.Options.from_args(['--html-base-url=https://example.org/t/docs'])
+        ),
     )
     mod2 = fromText(src, modname='t2', system=mod.system)
     html1 = getHTMLOf(mod)
@@ -1030,4 +1147,6 @@ def test_canonical_links_two_root_modules() -> None:
     html4 = getHTMLOf(mod2.contents['Cls'])
 
     assert '<link rel="canonical" href="https://example.org/t/docs/t2.html"' in html3
-    assert '<link rel="canonical" href="https://example.org/t/docs/t2.Cls.html"' in html4
+    assert (
+        '<link rel="canonical" href="https://example.org/t/docs/t2.Cls.html"' in html4
+    )

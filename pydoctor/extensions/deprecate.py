@@ -91,28 +91,34 @@ def versionToUsefulObject(version: ast.Call) -> 'incremental.Version':
     """
     bound_args = astutils.bind_args(_incremental_Version_signature, version)
     package = astutils.get_str_value(bound_args.arguments['package'])
-    major: Union[int, str, None] = astutils.get_int_value(bound_args.arguments['major']) or astutils.get_str_value(
+    major: Union[int, str, None] = astutils.get_int_value(
         bound_args.arguments['major']
-    )
+    ) or astutils.get_str_value(bound_args.arguments['major'])
     if major is None or (isinstance(major, str) and major != "NEXT"):
-        raise ValueError("Invalid call to incremental.Version(), 'major' should be an int or 'NEXT'.")
+        raise ValueError(
+            "Invalid call to incremental.Version(), 'major' should be an int or 'NEXT'."
+        )
     assert isinstance(major, (int, str))
     minor = astutils.get_int_value(bound_args.arguments['minor'])
     micro = astutils.get_int_value(bound_args.arguments['micro'])
     if minor is None or micro is None:
-        raise ValueError("Invalid call to incremental.Version(), 'minor' and 'micro' should be an ints.")
+        raise ValueError(
+            "Invalid call to incremental.Version(), 'minor' and 'micro' should be an ints."
+        )
     return Version(package, major, minor=minor, micro=micro)  # type:ignore[arg-type]
 
 
-_deprecation_text_with_replacement_template = (
-    "``{name}`` was deprecated in {package} {version}; please use `{replacement}` instead."
+_deprecation_text_with_replacement_template = "``{name}`` was deprecated in {package} {version}; please use `{replacement}` instead."
+_deprecation_text_without_replacement_template = (
+    "``{name}`` was deprecated in {package} {version}."
 )
-_deprecation_text_without_replacement_template = "``{name}`` was deprecated in {package} {version}."
 
 _deprecated_signature = inspect.signature(deprecated)
 
 
-def deprecatedToUsefulText(ctx: model.Documentable, name: str, deprecated: ast.Call) -> Tuple[str, str]:
+def deprecatedToUsefulText(
+    ctx: model.Documentable, name: str, deprecated: ast.Call
+) -> Tuple[str, str]:
     """
     Change a C{@deprecated} to a display string.
 
@@ -127,7 +133,9 @@ def deprecatedToUsefulText(ctx: model.Documentable, name: str, deprecated: ast.C
     _version_call = bound_args.arguments['version']
 
     # Also support using incremental from twisted.python.versions: https://github.com/twisted/twisted/blob/twisted-22.4.0/src/twisted/python/versions.py
-    if not isinstance(_version_call, ast.Call) or astbuilder.node2fullname(_version_call.func, ctx) not in (
+    if not isinstance(_version_call, ast.Call) or astbuilder.node2fullname(
+        _version_call.func, ctx
+    ) not in (
         "incremental.Version",
         "twisted.python.versions.Version",
     ):

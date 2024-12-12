@@ -46,7 +46,9 @@ class peek_iter(Generic[T]):
         Store and increment line number to report correct lines!
     """
 
-    def __init__(self, o: Union[Callable[[], T], Iterable[T]], sentinel: Optional[T] = None) -> None:
+    def __init__(
+        self, o: Union[Callable[[], T], Iterable[T]], sentinel: Optional[T] = None
+    ) -> None:
         """
         Parameters
         ----------
@@ -69,7 +71,9 @@ class peek_iter(Generic[T]):
             self._iterable = iter(o, sentinel)
         else:
             if sentinel:
-                raise TypeError("If sentinel is given, then o must be a callable object.")
+                raise TypeError(
+                    "If sentinel is given, then o must be a callable object."
+                )
             self._iterable = iter(o)
 
         self._cache: Deque[T] = collections.deque()

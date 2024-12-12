@@ -18,7 +18,13 @@ class AttributeChild(TemplateElement):
 
     filename = 'attribute-child.html'
 
-    def __init__(self, docgetter: util.DocGetter, ob: Attribute, extras: List["Flattenable"], loader: ITemplateLoader):
+    def __init__(
+        self,
+        docgetter: util.DocGetter,
+        ob: Attribute,
+        extras: List["Flattenable"],
+        loader: ITemplateLoader,
+    ):
         super().__init__(loader)
         self.docgetter = docgetter
         self.ob = ob

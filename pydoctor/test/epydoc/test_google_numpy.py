@@ -157,9 +157,13 @@ Some more text.
 
         self.assertEqual(len(errors), 3)
 
-        self.assertIn("malformed string literal (missing closing quote)", errors[2].descr())
+        self.assertIn(
+            "malformed string literal (missing closing quote)", errors[2].descr()
+        )
         self.assertIn("invalid value set (missing closing brace)", errors[1].descr())
-        self.assertIn("malformed string literal (missing opening quote)", errors[0].descr())
+        self.assertIn(
+            "malformed string literal (missing opening quote)", errors[0].descr()
+        )
 
         self.assertEqual(errors[2].linenum(), 21)  # #FIXME: It should be 23 actually...
         self.assertEqual(errors[1].linenum(), 18)

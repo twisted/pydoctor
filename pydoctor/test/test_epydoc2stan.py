@@ -60,7 +60,12 @@ def docstring2html(obj: model.Documentable, docformat: Optional[str] = None) -> 
     stan = epydoc2stan.format_docstring(obj)
     assert stan.tagName == 'div', stan
     # We strip off break lines for the sake of simplicity.
-    return flatten(stan).replace('><', '>\n<').replace('<wbr></wbr>', '').replace('<wbr>\n</wbr>', '')
+    return (
+        flatten(stan)
+        .replace('><', '>\n<')
+        .replace('<wbr></wbr>', '')
+        .replace('<wbr>\n</wbr>', '')
+    )
 
 
 def summary2html(obj: model.Documentable) -> str:
@@ -91,7 +96,10 @@ def test_html_empty_module() -> None:
     """
     '''
     )
-    assert docstring2html(mod) == "<div>\n<p>Empty module.</p>\n<p>Another paragraph.</p>\n</div>"
+    assert (
+        docstring2html(mod)
+        == "<div>\n<p>Empty module.</p>\n<p>Another paragraph.</p>\n</div>"
+    )
 
     mod = fromText(
         '''
@@ -99,7 +107,10 @@ def test_html_empty_module() -> None:
     ''',
         modname='module',
     )
-    assert docstring2html(mod) == '<div>\n<p>\n<tt class="rst-docutils rst-literal">thing</tt>\n</p>\n</div>'
+    assert (
+        docstring2html(mod)
+        == '<div>\n<p>\n<tt class="rst-docutils rst-literal">thing</tt>\n</p>\n</div>'
+    )
 
     mod = fromText(
         '''
@@ -107,7 +118,10 @@ def test_html_empty_module() -> None:
     ''',
         modname='module',
     )
-    assert docstring2html(mod) == '<div>\n<p>My <tt class="rst-docutils rst-literal">thing</tt>.</p>\n</div>'
+    assert (
+        docstring2html(mod)
+        == '<div>\n<p>My <tt class="rst-docutils rst-literal">thing</tt>.</p>\n</div>'
+    )
 
     mod = fromText(
         '''
@@ -407,8 +421,12 @@ def _get_test_func_arg_when_doc_missing_docstring_fields_types_cases() -> List[s
     return [case1, case2]
 
 
-@pytest.mark.parametrize('sig', ['(a)', '(a:List[str])', '(a) -> bool', '(a:List[str], b:int) -> bool'])
-@pytest.mark.parametrize('doc', _get_test_func_arg_when_doc_missing_docstring_fields_types_cases())
+@pytest.mark.parametrize(
+    'sig', ['(a)', '(a:List[str])', '(a) -> bool', '(a:List[str], b:int) -> bool']
+)
+@pytest.mark.parametrize(
+    'doc', _get_test_func_arg_when_doc_missing_docstring_fields_types_cases()
+)
 def test_func_arg_when_doc_missing_docstring_fields_types(sig: str, doc: str) -> None:
     """
     When type fields are present (whether they are coming from napoleon extension or epytext), always show the param table.
@@ -482,7 +500,8 @@ def test_func_no_such_arg_warn_once(capsys: CapSys) -> None:
     epydoc2stan.format_docstring(mod.contents['f'])
     captured = capsys.readouterr().out
     assert captured == (
-        '<test>:4: Documented parameter "x" does not exist\n' '<test>:6: Documented parameter "y" does not exist\n'
+        '<test>:4: Documented parameter "x" does not exist\n'
+        '<test>:6: Documented parameter "y" does not exist\n'
     )
 
 
@@ -524,7 +543,9 @@ def test_func_param_as_keyword(capsys: CapSys) -> None:
     '''
     )
     epydoc2stan.format_docstring(mod.contents['f'])
-    assert capsys.readouterr().out == '<test>:7: Parameter "p" is documented as keyword\n'
+    assert (
+        capsys.readouterr().out == '<test>:7: Parameter "p" is documented as keyword\n'
+    )
 
 
 def test_func_missing_param_name(capsys: CapSys) -> None:
@@ -541,7 +562,9 @@ def test_func_missing_param_name(capsys: CapSys) -> None:
     )
     epydoc2stan.format_docstring(mod.contents['f'])
     captured = capsys.readouterr().out
-    assert captured == ('<test>:5: Parameter name missing\n' '<test>:6: Parameter name missing\n')
+    assert captured == (
+        '<test>:5: Parameter name missing\n' '<test>:6: Parameter name missing\n'
+    )
 
 
 def test_missing_param_computed_base(capsys: CapSys) -> None:
@@ -644,7 +667,8 @@ def test_unexpected_field_args(capsys: CapSys) -> None:
     epydoc2stan.format_docstring(mod.contents['get_it'])
     captured = capsys.readouterr().out
     assert (
-        captured == "<test>:4: Unexpected argument in return field\n" "<test>:5: Unexpected argument in rtype field\n"
+        captured == "<test>:4: Unexpected argument in return field\n"
+        "<test>:5: Unexpected argument in rtype field\n"
     )
 
 
@@ -727,7 +751,12 @@ def test_func_starargs(capsys: CapSys) -> None:
     mod_rst_star_fmt = docstring2html(mod_rst_star.contents['f'])
     mod_rst_no_star_fmt = docstring2html(mod_rst_no_star.contents['f'])
 
-    assert mod_rst_star_fmt == mod_rst_no_star_fmt == mod_epy_star_fmt == mod_epy_no_star_fmt
+    assert (
+        mod_rst_star_fmt
+        == mod_rst_no_star_fmt
+        == mod_epy_star_fmt
+        == mod_epy_no_star_fmt
+    )
 
     expected_parts = [
         '<span class="fieldArg">*args</span>',
@@ -807,11 +836,20 @@ def test_func_starargs_more(capsys: CapSys) -> None:
     )
 
     epy_with_asterixes_fmt = docstring2html(mod_epy_with_asterixes.contents['f'])
-    rst_with_asterixes_fmt = docstring2html(mod_rst_with_asterixes.contents['f'], docformat='restructuredtext')
-    rst_without_asterixes_fmt = docstring2html(mod_rst_without_asterixes.contents['f'], docformat='restructuredtext')
+    rst_with_asterixes_fmt = docstring2html(
+        mod_rst_with_asterixes.contents['f'], docformat='restructuredtext'
+    )
+    rst_without_asterixes_fmt = docstring2html(
+        mod_rst_without_asterixes.contents['f'], docformat='restructuredtext'
+    )
     epy_without_asterixes_fmt = docstring2html(mod_epy_without_asterixes.contents['f'])
 
-    assert epy_with_asterixes_fmt == rst_with_asterixes_fmt == rst_without_asterixes_fmt == epy_without_asterixes_fmt
+    assert (
+        epy_with_asterixes_fmt
+        == rst_with_asterixes_fmt
+        == rst_without_asterixes_fmt
+        == epy_without_asterixes_fmt
+    )
 
     expected_parts = [
         '<span class="fieldArg">args</span>',
@@ -1037,7 +1075,9 @@ def test_ivar_overriding_attribute() -> None:
     base_b = base.contents['b']
     assert isinstance(base_b, model.Attribute)
     assert summary2html(base_b) == "not overridden"
-    assert docstring2html(base_b) == "<div>\n<p>not overridden</p>\n<p>details</p>\n</div>"
+    assert (
+        docstring2html(base_b) == "<div>\n<p>not overridden</p>\n<p>details</p>\n</div>"
+    )
 
     sub = mod.contents['Sub']
     sub_a = sub.contents['a']
@@ -1047,7 +1087,9 @@ def test_ivar_overriding_attribute() -> None:
     sub_b = sub.contents['b']
     assert isinstance(sub_b, model.Attribute)
     assert summary2html(sub_b) == 'not overridden'
-    assert docstring2html(sub_b) == "<div>\n<p>not overridden</p>\n<p>details</p>\n</div>"
+    assert (
+        docstring2html(sub_b) == "<div>\n<p>not overridden</p>\n<p>details</p>\n</div>"
+    )
 
 
 def test_missing_field_name(capsys: CapSys) -> None:
@@ -1064,7 +1106,10 @@ def test_missing_field_name(capsys: CapSys) -> None:
     )
     epydoc2stan.format_docstring(mod)
     captured = capsys.readouterr().out
-    assert captured == "test:5: Missing field name in @ivar\n" "test:6: Missing field name in @type\n"
+    assert (
+        captured == "test:5: Missing field name in @ivar\n"
+        "test:6: Missing field name in @type\n"
+    )
 
 
 def test_unknown_field_name(capsys: CapSys) -> None:
@@ -1156,10 +1201,14 @@ def test_EpydocLinker_switch_context(linkercls: Type[linker._EpydocLinker]) -> N
 
     # Evaluating the name of the base classes must be done in the upper scope
     # in order to avoid the following to happen:
-    assert 'href="#Klass"' in flatten(InnerKlass.docstring_linker.link_to('Klass', 'Klass'))
+    assert 'href="#Klass"' in flatten(
+        InnerKlass.docstring_linker.link_to('Klass', 'Klass')
+    )
 
     with Klass.docstring_linker.switch_context(InnerKlass):
-        assert 'href="test.Klass.html"' in flatten(Klass.docstring_linker.link_to('Klass', 'Klass'))
+        assert 'href="test.Klass.html"' in flatten(
+            Klass.docstring_linker.link_to('Klass', 'Klass')
+        )
 
     assert 'href="#v"' in flatten(mod.docstring_linker.link_to('v', 'v'))
 
@@ -1168,7 +1217,9 @@ def test_EpydocLinker_switch_context(linkercls: Type[linker._EpydocLinker]) -> N
 
 
 @pytest.mark.parametrize('linkercls', [linker._EpydocLinker])
-def test_EpydocLinker_switch_context_is_reentrant(linkercls: Type[linker._EpydocLinker], capsys: CapSys) -> None:
+def test_EpydocLinker_switch_context_is_reentrant(
+    linkercls: Type[linker._EpydocLinker], capsys: CapSys
+) -> None:
     """
     We can nest several calls to switch_context(), and links will still be valid and warnings line will be correct.
     """
@@ -1197,7 +1248,9 @@ def test_EpydocLinker_switch_context_is_reentrant(linkercls: Type[linker._Epydoc
     with Klass.docstring_linker.switch_context(mod):
         assert 'href="#v"' in flatten(Klass.docstring_linker.link_to('v', 'v'))
         with Klass.docstring_linker.switch_context(Klass):
-            assert 'href="index.html#v"' in flatten(Klass.docstring_linker.link_to('v', 'v'))
+            assert 'href="index.html#v"' in flatten(
+                Klass.docstring_linker.link_to('v', 'v')
+            )
 
     assert capsys.readouterr().out == ''
 
@@ -1232,7 +1285,9 @@ def test_EpydocLinker_switch_context_is_reentrant(linkercls: Type[linker._Epydoc
     # This is better:
     with mod.docstring_linker.switch_context(Klass):
         Klass.parsed_docstring.to_stan(mod.docstring_linker)  # type:ignore
-        Klass.parsed_docstring.get_summary().to_stan(mod.docstring_linker)  # type:ignore
+        Klass.parsed_docstring.get_summary().to_stan(
+            mod.docstring_linker
+        )  # type:ignore
 
     warnings = [
         'test:5: Cannot find link target for "thing.notfound" (you can link to external docs with --intersphinx)'
@@ -1285,7 +1340,9 @@ def test_EpydocLinker_adds_intersphinx_link_css_class() -> None:
     sut = target.docstring_linker
     assert isinstance(sut, linker._EpydocLinker)
 
-    result1 = sut.link_xref('base.module.other', 'base.module.other', 0).children[0]  # wrapped in a code tag
+    result1 = sut.link_xref('base.module.other', 'base.module.other', 0).children[
+        0
+    ]  # wrapped in a code tag
     result2 = sut.link_to('base.module.other', 'base.module.other')
 
     res = flatten(result2)
@@ -1327,7 +1384,9 @@ def test_EpydocLinker_resolve_identifier_xref_intersphinx_relative_id() -> None:
     # Here we set up the target module as it would have this import.
     # from ext_package import ext_module
     ext_package = model.Module(system, 'ext_package')
-    target.contents['ext_module'] = model.Module(system, 'ext_module', parent=ext_package)
+    target.contents['ext_module'] = model.Module(
+        system, 'ext_module', parent=ext_package
+    )
 
     sut = target.docstring_linker
     assert isinstance(sut, linker._EpydocLinker)
@@ -1340,7 +1399,9 @@ def test_EpydocLinker_resolve_identifier_xref_intersphinx_relative_id() -> None:
     assert "http://tm.tld/some.html" == url_xref
 
 
-def test_EpydocLinker_resolve_identifier_xref_intersphinx_link_not_found(capsys: CapSys) -> None:
+def test_EpydocLinker_resolve_identifier_xref_intersphinx_link_not_found(
+    capsys: CapSys,
+) -> None:
     """
     A message is sent to stdout when no link could be found for the reference,
     while returning the reference name without an A link tag.
@@ -1352,7 +1413,9 @@ def test_EpydocLinker_resolve_identifier_xref_intersphinx_link_not_found(capsys:
     # Here we set up the target module as it would have this import.
     # from ext_package import ext_module
     ext_package = model.Module(system, 'ext_package')
-    target.contents['ext_module'] = model.Module(system, 'ext_module', parent=ext_package)
+    target.contents['ext_module'] = model.Module(
+        system, 'ext_module', parent=ext_package
+    )
     sut = target.docstring_linker
     assert isinstance(sut, linker._EpydocLinker)
 
@@ -1448,19 +1511,31 @@ def test_EpydocLinker_None_context() -> None:
     sut = mod.docstring_linker
     assert isinstance(sut, linker._EpydocLinker)
 
-    assert sut.page_url == mod.url == cast(linker._EpydocLinker, mod.contents['base'].docstring_linker).page_url
+    assert (
+        sut.page_url
+        == mod.url
+        == cast(linker._EpydocLinker, mod.contents['base'].docstring_linker).page_url
+    )
 
     with sut.switch_context(None):
         assert sut.page_url == ''
 
-        assert sut.link_to('base', 'module.base').attributes['href'] == 'index.html#base'
+        assert (
+            sut.link_to('base', 'module.base').attributes['href'] == 'index.html#base'
+        )
         assert sut.link_to('base', 'module.base').children[0] == 'module.base'
 
         assert sut.link_to('base', 'base').attributes['href'] == 'index.html#base'
         assert sut.link_to('base', 'base').children[0] == 'base'
 
-        assert sut.link_to('someclass', 'some random name').attributes['href'] == 'module.someclass.html'
-        assert sut.link_to('someclass', 'some random name').children[0] == 'some random name'
+        assert (
+            sut.link_to('someclass', 'some random name').attributes['href']
+            == 'module.someclass.html'
+        )
+        assert (
+            sut.link_to('someclass', 'some random name').children[0]
+            == 'some random name'
+        )
 
 
 def test_EpydocLinker_warnings(capsys: CapSys) -> None:
@@ -1730,7 +1805,9 @@ def test_module_docformat(capsys: CapSys) -> None:
     assert not captured
 
     assert 'href="https://github.com/twisted/pydoctor"' in flatten(epytext_output)
-    assert 'href="https://github.com/twisted/pydoctor"' in flatten(restructuredtext_output)
+    assert 'href="https://github.com/twisted/pydoctor"' in flatten(
+        restructuredtext_output
+    )
 
 
 def test_module_docformat_inheritence(capsys: CapSys) -> None:
@@ -1819,7 +1896,9 @@ def test_module_docformat_with_docstring_inheritence(capsys: CapSys) -> None:
     assert B_f
     assert A_f
 
-    assert ''.join(docstring2html(B_f).splitlines()) == ''.join(docstring2html(A_f).splitlines())
+    assert ''.join(docstring2html(B_f).splitlines()) == ''.join(
+        docstring2html(A_f).splitlines()
+    )
 
 
 def test_cli_docformat_plaintext_overrides_module_docformat(capsys: CapSys) -> None:
@@ -1891,7 +1970,10 @@ def test_constant_values_rst(capsys: CapSys) -> None:
 
     docstring2html(attr)
 
-    assert ''.join(flatten(epydoc2stan.format_constant_value(attr)).splitlines()) == expected
+    assert (
+        ''.join(flatten(epydoc2stan.format_constant_value(attr)).splitlines())
+        == expected
+    )
 
 
 def test_warns_field(capsys: CapSys) -> None:
@@ -1977,13 +2059,25 @@ def test_insert_break_points_identity() -> None:
 
 
 def test_insert_break_points_snake_case() -> None:
-    assert insert_break_points('__some_very_long_name__') == '__some<wbr></wbr>_very<wbr></wbr>_long<wbr></wbr>_name__'
-    assert insert_break_points('__SOME_VERY_LONG_NAME__') == '__SOME<wbr></wbr>_VERY<wbr></wbr>_LONG<wbr></wbr>_NAME__'
+    assert (
+        insert_break_points('__some_very_long_name__')
+        == '__some<wbr></wbr>_very<wbr></wbr>_long<wbr></wbr>_name__'
+    )
+    assert (
+        insert_break_points('__SOME_VERY_LONG_NAME__')
+        == '__SOME<wbr></wbr>_VERY<wbr></wbr>_LONG<wbr></wbr>_NAME__'
+    )
 
 
 def test_insert_break_points_camel_case() -> None:
-    assert insert_break_points('__someVeryLongName__') == '__some<wbr></wbr>Very<wbr></wbr>Long<wbr></wbr>Name__'
-    assert insert_break_points('__einÜberlangerName__') == '__ein<wbr></wbr>Überlanger<wbr></wbr>Name__'
+    assert (
+        insert_break_points('__someVeryLongName__')
+        == '__some<wbr></wbr>Very<wbr></wbr>Long<wbr></wbr>Name__'
+    )
+    assert (
+        insert_break_points('__einÜberlangerName__')
+        == '__ein<wbr></wbr>Überlanger<wbr></wbr>Name__'
+    )
 
 
 def test_insert_break_points_dotted_name() -> None:
@@ -2171,8 +2265,14 @@ def test_dup_names_resolves_function_signature() -> None:
     assert 'href="#default"' in sig
 
     docstr = docstring2html(def_Attribute)
-    assert '<a href="index.html#dup" class="internal-link" title="model.dup">dup</a>' in docstr
-    assert '<a href="#dup" class="internal-link" title="model.System.dup">the class level one</a>' in docstr
+    assert (
+        '<a href="index.html#dup" class="internal-link" title="model.dup">dup</a>'
+        in docstr
+    )
+    assert (
+        '<a href="#dup" class="internal-link" title="model.System.dup">the class level one</a>'
+        in docstr
+    )
     assert 'href="index.html#Attribute"' in docstr
 
 
@@ -2252,7 +2352,9 @@ def test_dup_names_resolves_base_class() -> None:
     systemClass = custommod.contents['System']
     genericClass = custommod.contents['Generic']
 
-    assert isinstance(systemClass, model.Class) and isinstance(genericClass, model.Class)
+    assert isinstance(systemClass, model.Class) and isinstance(
+        genericClass, model.Class
+    )
 
     assert 'href="model.System.html"' in flatten(format_class_signature(systemClass))
     assert 'href="model.Generic.html"' in flatten(format_class_signature(genericClass))
@@ -2347,7 +2449,12 @@ def test_not_found_annotation_does_not_create_link() -> None:
 
 
 def test_docformat_skip_processtypes() -> None:
-    assert all([d in get_supported_docformats() for d in epydoc2stan._docformat_skip_processtypes])
+    assert all(
+        [
+            d in get_supported_docformats()
+            for d in epydoc2stan._docformat_skip_processtypes
+        ]
+    )
 
 
 def test_returns_undocumented_still_show_up_if_params_documented() -> None:
@@ -2509,5 +2616,6 @@ def test_does_not_loose_type_linenumber(capsys: CapSys) -> None:
     # the link not found warnings.
     getHTMLOf(mod.contents['C'])
     assert capsys.readouterr().out == (
-        '<test>:16: Existing docstring at line 10 is overriden\n' '<test>:10: Cannot find link target for "bool"\n'
+        '<test>:16: Existing docstring at line 10 is overriden\n'
+        '<test>:10: Cannot find link target for "bool"\n'
     )

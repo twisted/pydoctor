@@ -169,7 +169,10 @@ def test_config_parsers(project_conf: str, pydoctor_conf: str, tempDir: Path) ->
     assert options.warnings_as_errors == True
     assert options.privacy == [(model.PrivacyClass.HIDDEN, 'pydoctor.test')]
     assert options.intersphinx[0] == "https://docs.python.org/3/objects.inv"
-    assert options.intersphinx[-1] == "https://tristanlatr.github.io/apidocs/docutils/objects.inv"
+    assert (
+        options.intersphinx[-1]
+        == "https://tristanlatr.github.io/apidocs/docutils/objects.inv"
+    )
 
 
 def test_repeatable_options_multiple_configs_and_args(tempDir: Path) -> None:
@@ -197,7 +200,9 @@ project-name = "Hello World!"
         conf_file2 = tempDir / "pyproject.toml"
         conf_file3 = tempDir / "setup.cfg"
 
-        for cfg, file in zip([config1, config2, config3], [conf_file1, conf_file2, conf_file3]):
+        for cfg, file in zip(
+            [config1, config2, config3], [conf_file1, conf_file2, conf_file3]
+        ):
             with open(file, 'w') as f:
                 f.write(cfg)
 

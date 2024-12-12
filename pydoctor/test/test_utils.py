@@ -15,7 +15,9 @@ class TestCaseInsensitiveDict:
     def test_list(self) -> None:
         assert list(self.case_insensitive_dict) == ['Accept']
 
-    possible_keys = pytest.mark.parametrize('key', ('accept', 'ACCEPT', 'aCcEpT', 'Accept'))
+    possible_keys = pytest.mark.parametrize(
+        'key', ('accept', 'ACCEPT', 'aCcEpT', 'Accept')
+    )
 
     @possible_keys
     def test_getitem(self, key: str) -> None:
@@ -27,7 +29,9 @@ class TestCaseInsensitiveDict:
         assert key not in self.case_insensitive_dict
 
     def test_lower_items(self) -> None:
-        assert list(self.case_insensitive_dict.lower_items()) == [('accept', 'application/json')]
+        assert list(self.case_insensitive_dict.lower_items()) == [
+            ('accept', 'application/json')
+        ]
 
     def test_repr(self) -> None:
         assert repr(self.case_insensitive_dict) == "{'Accept': 'application/json'}"
@@ -37,6 +41,11 @@ class TestCaseInsensitiveDict:
         assert copy is not self.case_insensitive_dict
         assert copy == self.case_insensitive_dict
 
-    @pytest.mark.parametrize('other, result', (({'AccePT': 'application/json'}, True), ({}, False), (None, False)))
-    def test_instance_equality(self, other: Optional[Dict[str, str]], result: bool) -> None:
+    @pytest.mark.parametrize(
+        'other, result',
+        (({'AccePT': 'application/json'}, True), ({}, False), (None, False)),
+    )
+    def test_instance_equality(
+        self, other: Optional[Dict[str, str]], result: bool
+    ) -> None:
         assert (self.case_insensitive_dict == other) is result

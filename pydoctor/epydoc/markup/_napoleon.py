@@ -28,7 +28,9 @@ class NapoelonDocstringParser:
         """
         self.objclass = objclass
 
-    def parse_google_docstring(self, docstring: str, errors: list[ParseError]) -> ParsedDocstring:
+    def parse_google_docstring(
+        self, docstring: str, errors: list[ParseError]
+    ) -> ParsedDocstring:
         """
         Parse the given docstring, which is formatted as Google style docstring.
         Return a L{ParsedDocstring} representation of its contents.
@@ -43,7 +45,9 @@ class NapoelonDocstringParser:
             GoogleDocstring,
         )
 
-    def parse_numpy_docstring(self, docstring: str, errors: list[ParseError]) -> ParsedDocstring:
+    def parse_numpy_docstring(
+        self, docstring: str, errors: list[ParseError]
+    ) -> ParsedDocstring:
         """
         Parse the given docstring, which is formatted as NumPy style docstring.
         Return a L{ParsedDocstring} representation of its contents.
@@ -73,7 +77,9 @@ class NapoelonDocstringParser:
         return self._parse_docstring_obj(docstring_obj, errors)
 
     @staticmethod
-    def _parse_docstring_obj(docstring_obj: GoogleDocstring, errors: list[ParseError]) -> ParsedDocstring:
+    def _parse_docstring_obj(
+        docstring_obj: GoogleDocstring, errors: list[ParseError]
+    ) -> ParsedDocstring:
         """
         Helper method to parse L{GoogleDocstring} or L{NumpyDocstring} objects.
         """
@@ -81,4 +87,6 @@ class NapoelonDocstringParser:
         for warn, lineno in docstring_obj.warnings:
             errors.append(ParseError(warn, lineno, is_fatal=False))
         # Get the converted reST string and parse it with docutils
-        return processtypes(restructuredtext.parse_docstring)(str(docstring_obj), errors)
+        return processtypes(restructuredtext.parse_docstring)(
+            str(docstring_obj), errors
+        )

@@ -16,7 +16,9 @@ __docformat__ = 'epytext en'
 _DEFAULT_DOCUTILS_SETTINGS: Optional[optparse.Values] = None
 
 
-def new_document(source_path: str, settings: Optional[optparse.Values] = None) -> nodes.document:
+def new_document(
+    source_path: str, settings: Optional[optparse.Values] = None
+) -> nodes.document:
     """
     Create a new L{nodes.document} using the provided settings or cached default settings.
 
@@ -34,7 +36,9 @@ def new_document(source_path: str, settings: Optional[optparse.Values] = None) -
     return utils.new_document(source_path, settings)
 
 
-def _set_nodes_parent(nodes: Iterable[nodes.Node], parent: nodes.Element) -> Iterator[nodes.Node]:
+def _set_nodes_parent(
+    nodes: Iterable[nodes.Node], parent: nodes.Element
+) -> Iterator[nodes.Node]:
     """
     Set the L{nodes.Node.parent} attribute of the C{nodes} to the defined C{parent}.
 
@@ -72,14 +76,17 @@ def set_node_attributes(
 
     if children:
         assert isinstance(node, nodes.Element), (
-            f'Cannot set the children on Text node: "{node.astext()}". ' f'Children: {children}'
+            f'Cannot set the children on Text node: "{node.astext()}". '
+            f'Children: {children}'
         )
         node.extend(_set_nodes_parent(children, node))
 
     return node
 
 
-def build_table_of_content(node: nodes.Element, depth: int, level: int = 0) -> nodes.Element | None:
+def build_table_of_content(
+    node: nodes.Element, depth: int, level: int = 0
+) -> nodes.Element | None:
     """
     Simplified from docutils Contents transform.
 
@@ -102,7 +109,9 @@ def build_table_of_content(node: nodes.Element, depth: int, level: int = 0) -> n
         raise AssertionError(f'missing document attribute on {node}')
 
     for section in sections:
-        title = cast(nodes.Element, section[0])  # the first element of a section is the header.
+        title = cast(
+            nodes.Element, section[0]
+        )  # the first element of a section is the header.
         entrytext = _copy_and_filter(title)
         reference = nodes.reference('', '', refid=section['ids'][0], *entrytext)
         ref_id = doc.set_id(reference, suggested_prefix='toc-entry')

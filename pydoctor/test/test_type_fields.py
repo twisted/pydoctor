@@ -16,7 +16,13 @@ from twisted.web.template import Tag
 
 
 def doc2html(doc: str, markup: str, processtypes: bool = False) -> str:
-    return ''.join(prettify(flatten(parse_docstring(doc, markup, processtypes).to_stan(NotFoundLinker()))).splitlines())
+    return ''.join(
+        prettify(
+            flatten(
+                parse_docstring(doc, markup, processtypes).to_stan(NotFoundLinker())
+            )
+        ).splitlines()
+    )
 
 
 def test_types_to_node_no_markup() -> None:
@@ -28,8 +34,12 @@ def test_types_to_node_no_markup() -> None:
     ]
 
     for s in cases:
-        assert doc2html(':' + s, 'restructuredtext', False) == doc2html('@' + s, 'epytext')
-        assert doc2html(':' + s, 'restructuredtext', True) == doc2html('@' + s, 'epytext')
+        assert doc2html(':' + s, 'restructuredtext', False) == doc2html(
+            '@' + s, 'epytext'
+        )
+        assert doc2html(':' + s, 'restructuredtext', True) == doc2html(
+            '@' + s, 'epytext'
+        )
 
 
 def test_to_node_markup() -> None:
@@ -52,7 +62,12 @@ def test_parsed_type_convert_obj_tokens_to_stan() -> None:
 
     convert_obj_tokens_cases = [
         (
-            [("list", TokenType.OBJ), ("(", TokenType.DELIMITER), ("int", TokenType.OBJ), (")", TokenType.DELIMITER)],
+            [
+                ("list", TokenType.OBJ),
+                ("(", TokenType.DELIMITER),
+                ("int", TokenType.OBJ),
+                (")", TokenType.DELIMITER),
+            ],
             [(Tag('code', children=['list', '(', 'int', ')']), TokenType.OBJ)],
         ),
         (
@@ -76,7 +91,9 @@ def test_parsed_type_convert_obj_tokens_to_stan() -> None:
 
     for tokens_types, expected_token_types in convert_obj_tokens_cases:
 
-        assert str(ann._convert_obj_tokens_to_stan(tokens_types, NotFoundLinker())) == str(expected_token_types)
+        assert str(
+            ann._convert_obj_tokens_to_stan(tokens_types, NotFoundLinker())
+        ) == str(expected_token_types)
 
 
 def typespec2htmlvianode(s: str, markup: str) -> str:
@@ -108,7 +125,10 @@ def test_parsed_type() -> None:
             """<span class="literal">{'F', 'C', 'N'}</span>, <em>default</em> <span class="literal">'N'</span>""",
         ),
         ("DataFrame, optional", "<code>DataFrame</code>, <em>optional</em>"),
-        ("List[str] or list(bytes), optional", "<code>List[str]</code> or <code>list(bytes)</code>, <em>optional</em>"),
+        (
+            "List[str] or list(bytes), optional",
+            "<code>List[str]</code> or <code>list(bytes)</code>, <em>optional</em>",
+        ),
         (
             (
                 '`complicated string` or `strIO <twisted.python.compat.NativeStringIO>`',
@@ -199,26 +219,49 @@ def test_processtypes(capsys: CapSys) -> None:
         excepted_html_no_process_types, excepted_html_type_processed = excepted_html
 
         assert (
-            flatten(parse_docstring(epy_string, 'epytext').fields[-1].body().to_stan(NotFoundLinker()))
+            flatten(
+                parse_docstring(epy_string, 'epytext')
+                .fields[-1]
+                .body()
+                .to_stan(NotFoundLinker())
+            )
             == excepted_html_no_process_types
         )
         assert (
-            flatten(parse_docstring(rst_string, 'restructuredtext').fields[-1].body().to_stan(NotFoundLinker()))
+            flatten(
+                parse_docstring(rst_string, 'restructuredtext')
+                .fields[-1]
+                .body()
+                .to_stan(NotFoundLinker())
+            )
             == excepted_html_no_process_types
         )
 
         assert (
-            flatten(parse_docstring(dedent(goo_string), 'google').fields[-1].body().to_stan(NotFoundLinker()))
+            flatten(
+                parse_docstring(dedent(goo_string), 'google')
+                .fields[-1]
+                .body()
+                .to_stan(NotFoundLinker())
+            )
             == excepted_html_type_processed
         )
         assert (
-            flatten(parse_docstring(dedent(numpy_string), 'numpy').fields[-1].body().to_stan(NotFoundLinker()))
+            flatten(
+                parse_docstring(dedent(numpy_string), 'numpy')
+                .fields[-1]
+                .body()
+                .to_stan(NotFoundLinker())
+            )
             == excepted_html_type_processed
         )
 
         assert (
             flatten(
-                parse_docstring(epy_string, 'epytext', processtypes=True).fields[-1].body().to_stan(NotFoundLinker())
+                parse_docstring(epy_string, 'epytext', processtypes=True)
+                .fields[-1]
+                .body()
+                .to_stan(NotFoundLinker())
             )
             == excepted_html_type_processed
         )
@@ -268,7 +311,12 @@ def test_processtypes_more() -> None:
 
     for string, excepted_html in cases:
         assert (
-            flatten(parse_docstring(dedent(string), 'numpy').fields[-1].body().to_stan(NotFoundLinker())).strip()
+            flatten(
+                parse_docstring(dedent(string), 'numpy')
+                .fields[-1]
+                .body()
+                .to_stan(NotFoundLinker())
+            ).strip()
             == excepted_html
         )
 
@@ -297,7 +345,10 @@ def test_processtypes_with_system(capsys: CapSys) -> None:
     captured = capsys.readouterr().out
     assert not captured
 
-    assert "<code>list</code> of <code>int</code> or <code>float</code> or <code>None</code>" == fmt
+    assert (
+        "<code>list</code> of <code>int</code> or <code>float</code> or <code>None</code>"
+        == fmt
+    )
 
 
 def test_processtypes_corner_cases(capsys: CapSys) -> None:
@@ -341,8 +392,14 @@ def test_processtypes_corner_cases(capsys: CapSys) -> None:
     assert process(' of [str]') == "of[<code>str]</code>"
     assert process(' or [str]') == "or[<code>str]</code>"
     assert process(': [str]') == ": [<code>str]</code>"
-    assert process("'hello'[str]") == "<span class=\"literal\">'hello'</span>[<code>str]</code>"
-    assert process('"hello"[str]') == "<span class=\"literal\">\"hello\"</span>[<code>str]</code>"
+    assert (
+        process("'hello'[str]")
+        == "<span class=\"literal\">'hello'</span>[<code>str]</code>"
+    )
+    assert (
+        process('"hello"[str]')
+        == "<span class=\"literal\">\"hello\"</span>[<code>str]</code>"
+    )
     assert process('`hello`[str]') == "<code>hello</code>[<code>str]</code>"
     assert (
         process('`hello <https://github.com>`_[str]')
@@ -379,25 +436,47 @@ def test_processtypes_warning_unexpected_element(capsys: CapSys) -> None:
         >>> print('example')
     """
 
-    expected = """<code>complicated string</code> or <code>strIO</code>, <em>optional</em>"""
+    expected = (
+        """<code>complicated string</code> or <code>strIO</code>, <em>optional</em>"""
+    )
 
     # Test epytext
     epy_errors: List[ParseError] = []
-    epy_parsed = pydoctor.epydoc.markup.processtypes(get_parser_by_name('epytext'))(epy_string, epy_errors)
+    epy_parsed = pydoctor.epydoc.markup.processtypes(get_parser_by_name('epytext'))(
+        epy_string, epy_errors
+    )
 
     assert len(epy_errors) == 1
-    assert "Unexpected element in type specification field: element 'doctest_block'" in epy_errors.pop().descr()
+    assert (
+        "Unexpected element in type specification field: element 'doctest_block'"
+        in epy_errors.pop().descr()
+    )
 
-    assert flatten(epy_parsed.fields[-1].body().to_stan(NotFoundLinker())).replace('\n', '') == expected
+    assert (
+        flatten(epy_parsed.fields[-1].body().to_stan(NotFoundLinker())).replace(
+            '\n', ''
+        )
+        == expected
+    )
 
     # Test restructuredtext
     rst_errors: List[ParseError] = []
-    rst_parsed = pydoctor.epydoc.markup.processtypes(get_parser_by_name('restructuredtext'))(rst_string, rst_errors)
+    rst_parsed = pydoctor.epydoc.markup.processtypes(
+        get_parser_by_name('restructuredtext')
+    )(rst_string, rst_errors)
 
     assert len(rst_errors) == 1
-    assert "Unexpected element in type specification field: element 'doctest_block'" in rst_errors.pop().descr()
+    assert (
+        "Unexpected element in type specification field: element 'doctest_block'"
+        in rst_errors.pop().descr()
+    )
 
-    assert flatten(rst_parsed.fields[-1].body().to_stan(NotFoundLinker())).replace('\n', ' ') == expected
+    assert (
+        flatten(rst_parsed.fields[-1].body().to_stan(NotFoundLinker())).replace(
+            '\n', ' '
+        )
+        == expected
+    )
 
 
 def test_napoleon_types_warnings(capsys: CapSys) -> None:
@@ -450,7 +529,11 @@ def test_napoleon_types_warnings(capsys: CapSys) -> None:
     docstring2html(mod.contents['foo'])
 
     # Filter docstring linker warnings
-    lines = [line for line in capsys.readouterr().out.splitlines() if 'Cannot find link target' not in line]
+    lines = [
+        line
+        for line in capsys.readouterr().out.splitlines()
+        if 'Cannot find link target' not in line
+    ]
 
     # Line numbers are off because they are based on the reStructuredText version of the docstring
     # which includes much more lines because of the :type arg: fields.
@@ -493,6 +576,10 @@ def test_process_types_with_consolidated_fields(capsys: CapSys) -> None:
     assert isinstance(attr, model.Attribute)
     html = getHTMLOfAttribute(attr)
     # Filter docstring linker warnings
-    lines = [line for line in capsys.readouterr().out.splitlines() if 'Cannot find link target' not in line]
+    lines = [
+        line
+        for line in capsys.readouterr().out.splitlines()
+        if 'Cannot find link target' not in line
+    ]
     assert not lines
     assert '<code>int</code>' in html

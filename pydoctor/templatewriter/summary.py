@@ -32,7 +32,9 @@ if TYPE_CHECKING:
 
 def moduleSummary(module: model.Module, page_url: str) -> Tag:
     r: Tag = tags.li(
-        tags.code(linker.taglink(module, page_url, label=module.name)), ' - ', epydoc2stan.format_summary(module)
+        tags.code(linker.taglink(module, page_url, label=module.name)),
+        ' - ',
+        epydoc2stan.format_summary(module),
     )
     if module.isPrivate:
         r(class_='private')
@@ -78,7 +80,9 @@ class ModuleIndexPage(Page):
         # Override L{Page.loader} because here the page L{filename}
         # does not equal the template filename.
         super().__init__(
-            system=system, template_lookup=template_lookup, loader=template_lookup.get_loader('summary.html')
+            system=system,
+            template_lookup=template_lookup,
+            loader=template_lookup.get_loader('summary.html'),
         )
 
     def title(self) -> str:
@@ -97,7 +101,9 @@ class ModuleIndexPage(Page):
         return tag
 
 
-def findRootClasses(system: model.System) -> Sequence[Tuple[str, Union[model.Class, Sequence[model.Class]]]]:
+def findRootClasses(
+    system: model.System,
+) -> Sequence[Tuple[str, Union[model.Class, Sequence[model.Class]]]]:
     roots: Dict[str, Union[model.Class, List[model.Class]]] = {}
     for cls in system.objectsOfType(model.Class):
         if ' ' in cls.name or not cls.isVisible:
@@ -144,7 +150,9 @@ def isClassNodePrivate(cls: model.Class) -> bool:
     return True
 
 
-def subclassesFrom(hostsystem: model.System, cls: model.Class, anchors: MutableSet[str], page_url: str) -> Tag:
+def subclassesFrom(
+    hostsystem: model.System, cls: model.Class, anchors: MutableSet[str], page_url: str
+) -> Tag:
     r: Tag = tags.li()
     if isClassNodePrivate(cls):
         r(class_='private')
@@ -152,8 +160,18 @@ def subclassesFrom(hostsystem: model.System, cls: model.Class, anchors: MutableS
     if name not in anchors:
         r(tags.a(name=name))
         anchors.add(name)
-    r(tags.div(tags.code(linker.taglink(cls, page_url)), ' - ', epydoc2stan.format_summary(cls)))
-    scs = [sc for sc in cls.subclasses if sc.system is hostsystem and ' ' not in sc.fullName() and sc.isVisible]
+    r(
+        tags.div(
+            tags.code(linker.taglink(cls, page_url)),
+            ' - ',
+            epydoc2stan.format_summary(cls),
+        )
+    )
+    scs = [
+        sc
+        for sc in cls.subclasses
+        if sc.system is hostsystem and ' ' not in sc.fullName() and sc.isVisible
+    ]
     if len(scs) > 0:
         ul = tags.ul()
         for sc in sorted(scs, key=_lckey):
@@ -171,7 +189,9 @@ class ClassIndexPage(Page):
         # Override L{Page.loader} because here the page L{filename}
         # does not equal the template filename.
         super().__init__(
-            system=system, template_lookup=template_lookup, loader=template_lookup.get_loader('summary.html')
+            system=system,
+            template_lookup=template_lookup,
+            loader=template_lookup.get_loader('summary.html'),
         )
 
     def title(self) -> str:
@@ -220,7 +240,12 @@ class ClassIndexPage(Page):
 
 class LetterElement(Element):
 
-    def __init__(self, loader: TagLoader, initials: Mapping[str, Sequence[model.Documentable]], letter: str):
+    def __init__(
+        self,
+        loader: TagLoader,
+        initials: Mapping[str, Sequence[model.Documentable]],
+        letter: str,
+    ):
         super().__init__(loader=loader)
         self.initials = initials
         self.my_letter = letter
@@ -314,13 +339,19 @@ class IndexPage(Page):
     def roots(self, request: object, tag: Tag) -> "Flattenable":
         r = []
         for o in self.system.rootobjects:
-            r.append(tag.clone().fillSlots(root=tags.code(linker.taglink(o, self.filename))))
+            r.append(
+                tag.clone().fillSlots(root=tags.code(linker.taglink(o, self.filename)))
+            )
         return r
 
     @renderer
     def rootkind(self, request: object, tag: Tag) -> Tag:
-        rootkinds = sorted(set([o.kind for o in self.system.rootobjects]), key=lambda k: k.name)
-        return tag.clear()('/'.join(epydoc2stan.format_kind(o, plural=True).lower() for o in rootkinds))
+        rootkinds = sorted(
+            set([o.kind for o in self.system.rootobjects]), key=lambda k: k.name
+        )
+        return tag.clear()(
+            '/'.join(epydoc2stan.format_kind(o, plural=True).lower() for o in rootkinds)
+        )
 
 
 def hasdocstring(ob: model.Documentable) -> bool:
@@ -338,7 +369,9 @@ class UndocumentedSummaryPage(Page):
         # Override L{Page.loader} because here the page L{filename}
         # does not equal the template filename.
         super().__init__(
-            system=system, template_lookup=template_lookup, loader=template_lookup.get_loader('summary.html')
+            system=system,
+            template_lookup=template_lookup,
+            loader=template_lookup.get_loader('summary.html'),
         )
 
     def title(self) -> str:
@@ -350,12 +383,22 @@ class UndocumentedSummaryPage(Page):
 
     @renderer
     def stuff(self, request: object, tag: Tag) -> Tag:
-        undoccedpublic = [o for o in self.system.allobjects.values() if o.isVisible and not hasdocstring(o)]
+        undoccedpublic = [
+            o
+            for o in self.system.allobjects.values()
+            if o.isVisible and not hasdocstring(o)
+        ]
         undoccedpublic.sort(key=lambda o: o.fullName())
         for o in undoccedpublic:
             kind = o.kind
             assert kind is not None  # 'kind is None' makes the object invisible
-            tag(tags.li(epydoc2stan.format_kind(kind), " - ", tags.code(linker.taglink(o, self.filename))))
+            tag(
+                tags.li(
+                    epydoc2stan.format_kind(kind),
+                    " - ",
+                    tags.code(linker.taglink(o, self.filename)),
+                )
+            )
         return tag
 
 
@@ -486,7 +529,9 @@ class HelpPage(Page):
         errs: list[ParseError] = []
         parsed = restructuredtext.parse_docstring(
             dedent(
-                self.RST_SOURCE_TEMPLATE.substitute(kind_names=', '.join(f'"{k.name}"' for k in model.DocumentableKind))
+                self.RST_SOURCE_TEMPLATE.substitute(
+                    kind_names=', '.join(f'"{k.name}"' for k in model.DocumentableKind)
+                )
             ),
             errs,
         )

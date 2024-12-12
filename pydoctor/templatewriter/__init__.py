@@ -69,7 +69,9 @@ class IWriter(Protocol):
     Interface class for pydoctor output writer.
     """
 
-    def __init__(self, build_directory: Path, template_lookup: 'TemplateLookup') -> None: ...
+    def __init__(
+        self, build_directory: Path, template_lookup: 'TemplateLookup'
+    ) -> None: ...
 
     def prepOutputDirectory(self) -> None:
         """
@@ -116,7 +118,9 @@ class Template(abc.ABC):
         """Template filename, may include subdirectories."""
 
     @classmethod
-    def fromdir(cls, basedir: Union[Traversable, Path], subdir: Optional[PurePath] = None) -> Iterator['Template']:
+    def fromdir(
+        cls, basedir: Union[Traversable, Path], subdir: Optional[PurePath] = None
+    ) -> Iterator['Template']:
         """
         Scan a directory for templates.
 
@@ -128,7 +132,9 @@ class Template(abc.ABC):
         path = basedir.joinpath(subdir.as_posix()) if subdir else basedir
         subdir = subdir or PurePath()
         if not path.is_dir():
-            raise FailedToCreateTemplate(f"Template folder do not exist or is not a directory: {path}")
+            raise FailedToCreateTemplate(
+                f"Template folder do not exist or is not a directory: {path}"
+            )
 
         for entry in path.iterdir():
             entry_path = subdir.joinpath(entry.name)
@@ -140,7 +146,9 @@ class Template(abc.ABC):
                     yield template
 
     @classmethod
-    def fromfile(cls, basedir: Union[Traversable, Path], templatepath: PurePath) -> Optional['Template']:
+    def fromfile(
+        cls, basedir: Union[Traversable, Path], templatepath: PurePath
+    ) -> Optional['Template']:
         """
         Create a concrete template object.
         Type depends on the file extension.
@@ -163,7 +171,9 @@ class Template(abc.ABC):
                 try:
                     text = path.read_text(encoding='utf-8')
                 except UnicodeDecodeError as e:
-                    raise FailedToCreateTemplate("Cannot decode HTML Template" f" as UTF-8: '{path}'. {e}") from e
+                    raise FailedToCreateTemplate(
+                        "Cannot decode HTML Template" f" as UTF-8: '{path}'. {e}"
+                    ) from e
                 else:
                     # The template name is the relative path to the template.
                     # Template files in subdirectories will have a name like: 'static/bar.svg'.
@@ -177,7 +187,9 @@ class Template(abc.ABC):
         # Catch io errors only once for the whole block, it's ok to do that since
         # we're reading only one file per call to fromfile()
         except IOError as e:
-            raise FailedToCreateTemplate(f"Cannot read Template: '{path}'." " I/O error: {e}") from e
+            raise FailedToCreateTemplate(
+                f"Cannot read Template: '{path}'." " I/O error: {e}"
+            ) from e
 
         return template
 
@@ -254,7 +266,8 @@ class HtmlTemplate(Template):
 
             if not meta.hasAttribute("content"):
                 warnings.warn(
-                    f"Could not read '{template_name}' template version: " f"the 'content' attribute is missing"
+                    f"Could not read '{template_name}' template version: "
+                    f"the 'content' attribute is missing"
                 )
                 continue
 
@@ -264,7 +277,8 @@ class HtmlTemplate(Template):
                 version = int(version_str)
             except ValueError:
                 warnings.warn(
-                    f"Could not read '{template_name}' template version: " "the 'content' attribute must be an integer"
+                    f"Could not read '{template_name}' template version: "
+                    "the 'content' attribute must be an integer"
                 )
             else:
                 break
@@ -305,7 +319,9 @@ class TemplateLookup:
 
         self.add_templatedir(path)
 
-    def _add_overriding_html_template(self, template: HtmlTemplate, current_template: HtmlTemplate) -> None:
+    def _add_overriding_html_template(
+        self, template: HtmlTemplate, current_template: HtmlTemplate
+    ) -> None:
         default_version = current_template.version
         template_version = template.version
         if default_version != -1 and template_version != -1:
@@ -332,7 +348,8 @@ class TemplateLookup:
             current_lowername = t.name.lower()
             if current_lowername.startswith(f"{template_lowername}/"):
                 raise OverrideTemplateNotAllowed(
-                    f"Cannot override a directory with " f"a template. Rename '{template_name}' to something else."
+                    f"Cannot override a directory with "
+                    f"a template. Rename '{template_name}' to something else."
                 )
 
     def add_template(self, template: Template) -> None:
@@ -423,7 +440,9 @@ class TemplateLookup:
         """
         template = self.get_template(filename)
         if not isinstance(template, HtmlTemplate):
-            raise ValueError(f"Failed to get loader of template '{filename}': Not an HTML file.")
+            raise ValueError(
+                f"Failed to get loader of template '{filename}': Not an HTML file."
+            )
         return template.loader
 
     @property

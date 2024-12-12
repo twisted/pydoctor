@@ -20,13 +20,17 @@ class _BaseVisitor(Generic[T]):
     def visit(self, ob: T) -> None:
         """Visit an object."""
         method = 'visit_' + ob.__class__.__name__
-        visitor = getattr(self, method, getattr(self, method.lower(), self.unknown_visit))
+        visitor = getattr(
+            self, method, getattr(self, method.lower(), self.unknown_visit)
+        )
         visitor(ob)
 
     def depart(self, ob: T) -> None:
         """Depart an object."""
         method = 'depart_' + ob.__class__.__name__
-        visitor = getattr(self, method, getattr(self, method.lower(), self.unknown_departure))
+        visitor = getattr(
+            self, method, getattr(self, method.lower(), self.unknown_departure)
+        )
         visitor(ob)
 
     def unknown_visit(self, ob: T) -> None:
@@ -35,7 +39,10 @@ class _BaseVisitor(Generic[T]):
 
         Raise an exception unless overridden.
         """
-        raise NotImplementedError('%s visiting unknown object type: %s' % (self.__class__, ob.__class__.__name__))
+        raise NotImplementedError(
+            '%s visiting unknown object type: %s'
+            % (self.__class__, ob.__class__.__name__)
+        )
 
     def unknown_departure(self, ob: T) -> None:
         """
@@ -43,7 +50,10 @@ class _BaseVisitor(Generic[T]):
 
         Raise exception unless overridden.
         """
-        raise NotImplementedError('%s departing unknown object type: %s' % (self.__class__, ob.__class__.__name__))
+        raise NotImplementedError(
+            '%s departing unknown object type: %s'
+            % (self.__class__, ob.__class__.__name__)
+        )
 
 
 class Visitor(_BaseVisitor[T], abc.ABC):
@@ -72,7 +82,9 @@ class Visitor(_BaseVisitor[T], abc.ABC):
 
     @classmethod
     def get_children(cls, ob: T) -> Iterable[T]:
-        raise NotImplementedError(f"Method '{cls.__name__}.get_children(ob:T) -> Iterable[T]' must be implemented.")
+        raise NotImplementedError(
+            f"Method '{cls.__name__}.get_children(ob:T) -> Iterable[T]' must be implemented."
+        )
 
     class _TreePruningException(Exception):
         """

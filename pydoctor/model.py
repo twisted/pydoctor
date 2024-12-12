@@ -156,7 +156,11 @@ class Documentable:
     """Page location where we are documented."""
 
     def __init__(
-        self, system: 'System', name: str, parent: Optional['Documentable'] = None, source_path: Optional[Path] = None
+        self,
+        system: 'System',
+        name: str,
+        parent: Optional['Documentable'] = None,
+        source_path: Optional[Path] = None,
     ):
         if source_path is None and parent is not None:
             source_path = parent.source_path
@@ -213,7 +217,8 @@ class Documentable:
             and it will be converted to an L{LineFromAst} instance.
         """
         if not self.linenumber or (
-            isinstance(self.linenumber, LineFromDocstringField) and not isinstance(lineno, LineFromDocstringField)
+            isinstance(self.linenumber, LineFromDocstringField)
+            and not isinstance(lineno, LineFromDocstringField)
         ):
             if not isinstance(lineno, (LineFromAst, LineFromDocstringField)):
                 lineno = LineFromAst(lineno)
@@ -426,7 +431,13 @@ class Documentable:
         assert parentMod is not None
         return parentMod
 
-    def report(self, descr: str, section: str = 'parsing', lineno_offset: int = 0, thresh: int = -1) -> None:
+    def report(
+        self,
+        descr: str,
+        section: str = 'parsing',
+        lineno_offset: int = 0,
+        thresh: int = -1,
+    ) -> None:
         """
         Log an error or warning about this documentable object.
 
@@ -450,7 +461,9 @@ class Documentable:
         else:
             linenumber = '???'
 
-        self.system.msg(section, f'{self.description}:{linenumber}: {descr}', thresh=thresh)
+        self.system.msg(
+            section, f'{self.description}:{linenumber}: {descr}', thresh=thresh
+        )
 
     @property
     def docstring_linker(self) -> 'linker.DocstringLinker':
@@ -553,7 +566,9 @@ class Module(CanContainImportsDocumentable):
 
     def submodules(self) -> Iterator['Module']:
         """Returns an iterator over the visible submodules."""
-        return (m for m in self.contents.values() if isinstance(m, Module) and m.isVisible)
+        return (
+            m for m in self.contents.values() if isinstance(m, Module) and m.isVisible
+        )
 
 
 class Package(Module):
@@ -655,15 +670,21 @@ def compute_mro(cls: 'Class') -> Sequence[Union['Class', str]]:
         if not path:
             path = []
         if o in path:
-            cycle_str = " -> ".join([o.fullName() for o in path[path.index(cls) :] + [cls]])
-            raise ValueError(f"Cycle found while computing inheritance hierarchy: {cycle_str}")
+            cycle_str = " -> ".join(
+                [o.fullName() for o in path[path.index(cls) :] + [cls]]
+            )
+            raise ValueError(
+                f"Cycle found while computing inheritance hierarchy: {cycle_str}"
+            )
         path.append(o)
         if o._finalbaseobjects is not None:
             return
         if o.rawbases:
             finalbaseobjects: List[Optional[Class]] = []
             finalbases: List[str] = []
-            for i, ((str_base, _), base) in enumerate(zip(o.rawbases, o._initialbaseobjects)):
+            for i, ((str_base, _), base) in enumerate(
+                zip(o.rawbases, o._initialbaseobjects)
+            ):
                 if base:
                     finalbaseobjects.append(base)
                     finalbases.append(base.fullName())
@@ -739,7 +760,10 @@ def get_constructors(cls: Class) -> Iterator[Function]:
         if not isinstance(fun, Function):
             continue
         # Only static methods and class methods can be recognized as constructors
-        if not fun.kind in (DocumentableKind.STATIC_METHOD, DocumentableKind.CLASS_METHOD):
+        if not fun.kind in (
+            DocumentableKind.STATIC_METHOD,
+            DocumentableKind.CLASS_METHOD,
+        ):
             continue
         # get return annotation, if it returns the same type as self, it's a constructor method.
         if not 'return' in fun.annotations:
@@ -750,7 +774,10 @@ def get_constructors(cls: Class) -> Iterator[Function]:
         return_ann = astutils.node2fullname(fun.annotations['return'], cls.module)
 
         # pydoctor understand explicit annotation as well as the Self-Type.
-        if return_ann == cls.fullName() or return_ann in ('typing.Self', 'typing_extensions.Self'):
+        if return_ann == cls.fullName() or return_ann in (
+            'typing.Self',
+            'typing_extensions.Self',
+        ):
             yield fun
 
 
@@ -783,10 +810,16 @@ class Class(CanContainImportsDocumentable):
             self._mro = list(self.allbases(True))
 
     @overload
-    def mro(self, include_external: 'Literal[True]', include_self: bool = True) -> Sequence[Union['Class', str]]: ...
+    def mro(
+        self, include_external: 'Literal[True]', include_self: bool = True
+    ) -> Sequence[Union['Class', str]]: ...
     @overload
-    def mro(self, include_external: 'Literal[False]' = False, include_self: bool = True) -> Sequence['Class']: ...
-    def mro(self, include_external: bool = False, include_self: bool = True) -> Sequence[Union['Class', str]]:
+    def mro(
+        self, include_external: 'Literal[False]' = False, include_self: bool = True
+    ) -> Sequence['Class']: ...
+    def mro(
+        self, include_external: bool = False, include_self: bool = True
+    ) -> Sequence[Union['Class', str]]:
         """
         Get the method resution order of this class.
 
@@ -821,7 +854,11 @@ class Class(CanContainImportsDocumentable):
 
             Meaning depending on the state of the system, this property can return either the initial objects or the final objects
         """
-        return self._finalbaseobjects if self._finalbaseobjects is not None else self._initialbaseobjects
+        return (
+            self._finalbaseobjects
+            if self._finalbaseobjects is not None
+            else self._initialbaseobjects
+        )
 
     @property
     def public_constructors(self) -> Sequence['Function']:
@@ -844,7 +881,11 @@ class Class(CanContainImportsDocumentable):
                     args.pop(0)
                 except IndexError:
                     pass
-            if len(args) == 0 and get_docstring(c)[0] is None and c.name in ('__init__', '__new__'):
+            if (
+                len(args) == 0
+                and get_docstring(c)[0] is None
+                and c.name in ('__init__', '__new__')
+            ):
                 continue
             r.append(c)
         return r
@@ -962,7 +1003,9 @@ _PackageT = Package
 T = TypeVar('T')
 
 
-def import_mod_from_file_location(module_full_name: str, path: Path) -> types.ModuleType:
+def import_mod_from_file_location(
+    module_full_name: str, path: Path
+) -> types.ModuleType:
     spec = importlib.util.spec_from_file_location(module_full_name, path)
     if spec is None:
         raise RuntimeError(f"Cannot find spec for module {module_full_name} at {path}")
@@ -1015,7 +1058,11 @@ class System:
     Additional list of extensions to load alongside default extensions.
     """
 
-    show_attr_value = (DocumentableKind.CONSTANT, DocumentableKind.TYPE_VARIABLE, DocumentableKind.TYPE_ALIAS)
+    show_attr_value = (
+        DocumentableKind.CONSTANT,
+        DocumentableKind.TYPE_VARIABLE,
+        DocumentableKind.TYPE_ALIAS,
+    )
     """
     What kind of attributes we should display the value for?
     """
@@ -1200,11 +1247,15 @@ class System:
 
         return None
 
-    def objectsOfType(self, cls: Union[Type['DocumentableT'], str]) -> Iterator['DocumentableT']:
+    def objectsOfType(
+        self, cls: Union[Type['DocumentableT'], str]
+    ) -> Iterator['DocumentableT']:
         """Iterate over all instances of C{cls} present in the system."""
         if isinstance(cls, str):
             cls = utils.findClassFromDottedName(
-                cls, 'objectsOfType', base_class=cast(Type['DocumentableT'], Documentable)
+                cls,
+                'objectsOfType',
+                base_class=cast(Type['DocumentableT'], Documentable),
             )
         assert isinstance(cls, type)
         for o in self.allobjects.values():
@@ -1223,7 +1274,9 @@ class System:
             return PrivacyClass.HIDDEN
 
         privacy = PrivacyClass.PUBLIC
-        if ob.name.startswith('_') and not (ob.name.startswith('__') and ob.name.endswith('__')):
+        if ob.name.startswith('_') and not (
+            ob.name.startswith('__') and ob.name.endswith('__')
+        ):
             privacy = PrivacyClass.PRIVATE
 
         # Precedence order: CLI arguments order
@@ -1244,7 +1297,9 @@ class System:
         self._privacyClassCache[ob_fullName] = privacy
         return privacy
 
-    def membersOrder(self, ob: Documentable) -> Callable[[Documentable], Tuple[Any, ...]]:
+    def membersOrder(
+        self, ob: Documentable
+    ) -> Callable[[Documentable], Tuple[Any, ...]]:
         """
         Returns a callable suitable to be used with L{sorted} function.
         Used to sort the given object's members for presentation.
@@ -1311,16 +1366,28 @@ class System:
 
     @overload
     def analyzeModule(
-        self, modpath: Path, modname: str, parentPackage: Optional[_PackageT], is_package: Literal[False] = False
+        self,
+        modpath: Path,
+        modname: str,
+        parentPackage: Optional[_PackageT],
+        is_package: Literal[False] = False,
     ) -> _ModuleT: ...
 
     @overload
     def analyzeModule(
-        self, modpath: Path, modname: str, parentPackage: Optional[_PackageT], is_package: Literal[True]
+        self,
+        modpath: Path,
+        modname: str,
+        parentPackage: Optional[_PackageT],
+        is_package: Literal[True],
     ) -> _PackageT: ...
 
     def analyzeModule(
-        self, modpath: Path, modname: str, parentPackage: Optional[_PackageT] = None, is_package: bool = False
+        self,
+        modpath: Path,
+        modname: str,
+        parentPackage: Optional[_PackageT] = None,
+        is_package: bool = False,
     ) -> _ModuleT:
         factory = self.Package if is_package else self.Module
         mod = factory(self, modname, parentPackage, modpath)
@@ -1343,7 +1410,12 @@ class System:
         else:
             self.unprocessed_modules.append(mod)
             self.addObject(mod)
-            self.progress("analyzeModule", len(self.allobjects), None, "modules and packages discovered")
+            self.progress(
+                "analyzeModule",
+                len(self.allobjects),
+                None,
+                "modules and packages discovered",
+            )
             self.module_count += 1
 
     def _handleDuplicateModule(self, first: _ModuleT, dup: _ModuleT) -> None:
@@ -1369,7 +1441,9 @@ class System:
             self.unprocessed_modules.remove(first)
             self._addUnprocessedModule(dup)
 
-    def _introspectThing(self, thing: object, parent: CanContainImportsDocumentable, parentMod: _ModuleT) -> None:
+    def _introspectThing(
+        self, thing: object, parent: CanContainImportsDocumentable, parentMod: _ModuleT
+    ) -> None:
         for k, v in thing.__dict__.items():
             if (
                 isinstance(v, func_types)
@@ -1377,7 +1451,10 @@ class System:
                 # instances of the abstract types in func_types, it will have the type 'builtin_function_or_method'.
                 # Additionnaly cython3 produces function of type 'cython_function_or_method',
                 # so se use a heuristic on the class name as a fall back detection.
-                or (hasattr(v, "__class__") and v.__class__.__name__.endswith('function_or_method'))
+                or (
+                    hasattr(v, "__class__")
+                    and v.__class__.__name__.endswith('function_or_method')
+                )
             ):
                 f = self.Function(self, k, parent)
                 f.parentMod = parentMod
@@ -1395,7 +1472,11 @@ class System:
                     f.signature = None
 
                 f.is_async = False
-                f.annotations = {name: None for name in f.signature.parameters} if f.signature else {}
+                f.annotations = (
+                    {name: None for name in f.signature.parameters}
+                    if f.signature
+                    else {}
+                )
                 self.addObject(f)
             elif isinstance(v, type):
                 c = self.Class(self, k, parent)
@@ -1405,7 +1486,9 @@ class System:
                 self.addObject(c)
                 self._introspectThing(v, c, parentMod)
 
-    def introspectModule(self, path: Path, module_name: str, package: Optional[_PackageT]) -> _ModuleT:
+    def introspectModule(
+        self, path: Path, module_name: str, package: Optional[_PackageT]
+    ) -> _ModuleT:
 
         if package is None:
             module_full_name = module_name
@@ -1425,8 +1508,15 @@ class System:
         self._addUnprocessedModule(module)
         return module
 
-    def addPackage(self, package_path: Path, parentPackage: Optional[_PackageT] = None) -> None:
-        package = self.analyzeModule(package_path / '__init__.py', package_path.name, parentPackage, is_package=True)
+    def addPackage(
+        self, package_path: Path, parentPackage: Optional[_PackageT] = None
+    ) -> None:
+        package = self.analyzeModule(
+            package_path / '__init__.py',
+            package_path.name,
+            parentPackage,
+            is_package=True,
+        )
 
         for path in sorted(package_path.iterdir()):
             if path.is_dir():
@@ -1496,7 +1586,10 @@ class System:
         if mod.state is ProcessingState.UNPROCESSED:
             self.processModule(mod)
 
-        assert mod.state in (ProcessingState.PROCESSING, ProcessingState.PROCESSED), mod.state
+        assert mod.state in (
+            ProcessingState.PROCESSING,
+            ProcessingState.PROCESSED,
+        ), mod.state
         return mod
 
     def processModule(self, mod: _ModuleT) -> None:
@@ -1523,7 +1616,9 @@ class System:
             if ast:
                 self.processing_modules.append(mod.fullName())
                 if mod._py_string is None:
-                    self.msg("processModule", "processing %s" % (self.processing_modules), 1)
+                    self.msg(
+                        "processModule", "processing %s" % (self.processing_modules), 1
+                    )
                 builder.processModuleAST(ast, mod)
                 mod.state = ProcessingState.PROCESSED
                 head = self.processing_modules.pop()
@@ -1706,7 +1801,9 @@ class SystemBuilder(ISystemBuilder):
             self.system.msg('addModuleFromPath', f"adding module {path}")
             self.system.addModuleFromPath(path, parent)
         elif path.exists():
-            raise SystemBuildingError(f"Source path is neither file nor directory: {path}")
+            raise SystemBuildingError(
+                f"Source path is neither file nor directory: {path}"
+            )
         else:
             raise SystemBuildingError(f"Source path does not exist: {path}")
         self._added.add(path)
@@ -1723,7 +1820,9 @@ class SystemBuilder(ISystemBuilder):
         else:
             # Set containing package as parent.
             parent = self.system.allobjects[parent_name]
-            assert isinstance(parent, Package), f"{parent.fullName()} is not a Package, it's a {parent.kind}"
+            assert isinstance(
+                parent, Package
+            ), f"{parent.fullName()} is not a Package, it's a {parent.kind}"
 
         factory = self.system.Package if is_package else self.system.Module
         mod = factory(self.system, name=modname, parent=parent, source_path=None)
@@ -1737,7 +1836,9 @@ class SystemBuilder(ISystemBuilder):
 System.systemBuilder = SystemBuilder
 
 
-def prepend_package(builderT: Type[ISystemBuilder], package: str) -> Type[ISystemBuilder]:
+def prepend_package(
+    builderT: Type[ISystemBuilder], package: str
+) -> Type[ISystemBuilder]:
     """
     Get a new system builder class, that extends the original C{builder} such that it will always use a "fake"
     C{package} to be the only root object of the system and add new modules under it.

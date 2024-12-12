@@ -139,7 +139,13 @@ import unicodedata
 from docutils import nodes
 from twisted.web.template import Tag
 
-from pydoctor.epydoc.markup import Field, ObjClass, ParseError, ParsedDocstring, ParserFunction
+from pydoctor.epydoc.markup import (
+    Field,
+    ObjClass,
+    ParseError,
+    ParsedDocstring,
+    ParserFunction,
+)
 from pydoctor.epydoc.docutils import set_node_attributes, new_document
 
 ##################################################
@@ -171,7 +177,11 @@ def slugify(string: str) -> str:
     return re.sub(
         r'[-\s]+',
         '-',
-        re.sub(rb'[^\w\s-]', b'', unicodedata.normalize('NFKD', string).encode('ascii', 'ignore'))
+        re.sub(
+            rb'[^\w\s-]',
+            b'',
+            unicodedata.normalize('NFKD', string).encode('ascii', 'ignore'),
+        )
         .strip()
         .lower()
         .decode(),
@@ -345,7 +355,9 @@ _SYMBOLS = set(SYMBOLS)
 
 # Add symbols to the docstring.
 symblist = '      '
-symblist += ';\n      '.join(' - C{E{S}{%s}}=S{%s}' % (symbol, symbol) for symbol in SYMBOLS)
+symblist += ';\n      '.join(
+    ' - C{E{S}{%s}}=S{%s}' % (symbol, symbol) for symbol in SYMBOLS
+)
 __doc__ = __doc__.replace('<<<SYMBOLS>>>', symblist)
 del symblist
 
@@ -461,7 +473,9 @@ def parse(text: str, errors: List[ParseError]) -> Optional[Element]:
     return doc
 
 
-def _pop_completed_blocks(token: 'Token', stack: List[Element], indent_stack: List[Optional[int]]) -> None:
+def _pop_completed_blocks(
+    token: 'Token', stack: List[Element], indent_stack: List[Optional[int]]
+) -> None:
     """
     Pop any completed blocks off the stack.  This includes any
     blocks that we have dedented past, as well as any list item
@@ -482,11 +496,17 @@ def _pop_completed_blocks(token: 'Token', stack: List[Element], indent_stack: Li
 
             # Dedent to a list item, if it is follwed by another list
             # item with the same indentation.
-            elif token.tag == 'bullet' and indent == indent_stack[-2] and stack[-1].tag in ('li', 'field'):
+            elif (
+                token.tag == 'bullet'
+                and indent == indent_stack[-2]
+                and stack[-1].tag in ('li', 'field')
+            ):
                 pop = True
 
             # End of a list (no more list items available)
-            elif stack[-1].tag in ('ulist', 'olist') and (token.tag != 'bullet' or token.contents[-1] == ':'):
+            elif stack[-1].tag in ('ulist', 'olist') and (
+                token.tag != 'bullet' or token.contents[-1] == ':'
+            ):
                 pop = True
 
             # Pop the block, if it's complete.  Otherwise, we're done.
@@ -497,7 +517,10 @@ def _pop_completed_blocks(token: 'Token', stack: List[Element], indent_stack: Li
 
 
 def _add_para(
-    para_token: 'Token', stack: List[Element], indent_stack: List[Optional[int]], errors: List[ParseError]
+    para_token: 'Token',
+    stack: List[Element],
+    indent_stack: List[Optional[int]],
+    errors: List[ParseError],
 ) -> None:
     """Colorize the given paragraph, and add it to the DOM tree."""
     # Check indentation, and update the parent's indentation
@@ -514,7 +537,10 @@ def _add_para(
 
 
 def _add_section(
-    heading_token: 'Token', stack: List[Element], indent_stack: List[Optional[int]], errors: List[ParseError]
+    heading_token: 'Token',
+    stack: List[Element],
+    indent_stack: List[Optional[int]],
+    errors: List[ParseError],
 ) -> None:
     """Add a new section to the DOM tree, with the given heading."""
     if indent_stack[-1] is None:
@@ -551,7 +577,10 @@ def _add_section(
 
 
 def _add_list(
-    bullet_token: 'Token', stack: List[Element], indent_stack: List[Optional[int]], errors: List[ParseError]
+    bullet_token: 'Token',
+    stack: List[Element],
+    indent_stack: List[Optional[int]],
+    errors: List[ParseError],
 ) -> None:
     """
     Add a new list item or field to the DOM tree, with the given
@@ -576,7 +605,10 @@ def _add_list(
         old_listitem = cast(Element, stack[-1].children[-1])
         old_bullet = old_listitem.attribs['bullet'].split('.')[:-1]
         new_bullet = bullet_token.contents.split('.')[:-1]
-        if new_bullet[:-1] != old_bullet[:-1] or int(new_bullet[-1]) != int(old_bullet[-1]) + 1:
+        if (
+            new_bullet[:-1] != old_bullet[:-1]
+            or int(new_bullet[-1]) != int(old_bullet[-1]) + 1
+        ):
             newlist = True
 
     # Create the new list.
@@ -594,7 +626,11 @@ def _add_list(
             stack.pop()
             indent_stack.pop()
 
-        if list_type != 'fieldlist' and indent_stack[-1] is not None and bullet_token.indent == indent_stack[-1]:
+        if (
+            list_type != 'fieldlist'
+            and indent_stack[-1] is not None
+            and bullet_token.indent == indent_stack[-1]
+        ):
             # Ignore this error if there's text on the same line as
             # the comment-opening quote -- epydoc can't reliably
             # determine the indentation for that line.
@@ -721,7 +757,14 @@ class Token:
     HEADING = 'heading'
     BULLET = 'bullet'
 
-    def __init__(self, tag: str, startline: int, contents: str, indent: Optional[int], level: Optional[int] = None):
+    def __init__(
+        self,
+        tag: str,
+        startline: int,
+        contents: str,
+        indent: Optional[int],
+        level: Optional[int] = None,
+    ):
         """
         Create a new C{Token}.
 
@@ -771,7 +814,11 @@ del _ULIST_BULLET, _OLIST_BULLET, _FIELD_BULLET
 
 
 def _tokenize_doctest(
-    lines: List[str], start: int, block_indent: int, tokens: List[Token], errors: List[ParseError]
+    lines: List[str],
+    start: int,
+    block_indent: int,
+    tokens: List[Token],
+    errors: List[ParseError],
 ) -> int:
     """
     Construct a L{Token} containing the doctest block starting at
@@ -822,7 +869,11 @@ def _tokenize_doctest(
 
 
 def _tokenize_literal(
-    lines: List[str], start: int, block_indent: int, tokens: List[Token], errors: List[ParseError]
+    lines: List[str],
+    start: int,
+    block_indent: int,
+    tokens: List[Token],
+    errors: List[ParseError],
 ) -> int:
     """
     Construct a L{Token} containing the literal block starting at
@@ -864,7 +915,11 @@ def _tokenize_literal(
 
 
 def _tokenize_listart(
-    lines: List[str], start: int, bullet_indent: int, tokens: List[Token], errors: List[ParseError]
+    lines: List[str],
+    start: int,
+    bullet_indent: int,
+    tokens: List[Token],
+    errors: List[ParseError],
 ) -> int:
     """
     Construct L{Token}s for the bullet and the first paragraph of the
@@ -934,7 +989,8 @@ def _tokenize_listart(
 
     # Add the paragraph token.
     pcontents = ' '.join(
-        [lines[start][para_start:].strip()] + [ln.strip() for ln in lines[start + 1 : linenum]]
+        [lines[start][para_start:].strip()]
+        + [ln.strip() for ln in lines[start + 1 : linenum]]
     ).strip()
     if pcontents:
         tokens.append(Token(Token.PARA, start, pcontents, para_indent))
@@ -944,7 +1000,11 @@ def _tokenize_listart(
 
 
 def _tokenize_para(
-    lines: List[str], start: int, para_indent: int, tokens: List[Token], errors: List[ParseError]
+    lines: List[str],
+    start: int,
+    para_indent: int,
+    tokens: List[Token],
+    errors: List[ParseError],
 ) -> int:
     """
     Construct a L{Token} containing the paragraph starting at
@@ -1000,7 +1060,11 @@ def _tokenize_para(
     contents = [ln.strip() for ln in lines[start:linenum]]
 
     # Does this token look like a heading?
-    if (len(contents) < 2) or (contents[1][0] not in _HEADING_CHARS) or (abs(len(contents[0]) - len(contents[1])) > 5):
+    if (
+        (len(contents) < 2)
+        or (contents[1][0] not in _HEADING_CHARS)
+        or (abs(len(contents[0]) - len(contents[1])) > 5)
+    ):
         looks_like_heading = False
     else:
         looks_like_heading = True
@@ -1168,7 +1232,9 @@ def _colorize(token: Token, errors: List[ParseError], tagName: str = 'para') -> 
 
             # Special handling for symbols:
             if stack[-1].tag == 'symbol':
-                if len(stack[-1].children) != 1 or not isinstance(stack[-1].children[0], str):
+                if len(stack[-1].children) != 1 or not isinstance(
+                    stack[-1].children[0], str
+                ):
                     estr = "Invalid symbol code."
                     errors.append(ColorizingError(estr, token, end))
                 else:
@@ -1182,7 +1248,9 @@ def _colorize(token: Token, errors: List[ParseError], tagName: str = 'para') -> 
 
             # Special handling for escape elements:
             if stack[-1].tag == 'escape':
-                if len(stack[-1].children) != 1 or not isinstance(stack[-1].children[0], str):
+                if len(stack[-1].children) != 1 or not isinstance(
+                    stack[-1].children[0], str
+                ):
                     estr = "Invalid escape code."
                     errors.append(ColorizingError(estr, token, end))
                 else:
@@ -1199,7 +1267,9 @@ def _colorize(token: Token, errors: List[ParseError], tagName: str = 'para') -> 
 
             # Special handling for literal braces elements:
             if stack[-1].tag == 'litbrace':
-                stack[-2].children[-1:] = ['{'] + cast(List[str], stack[-1].children) + ['}']
+                stack[-2].children[-1:] = (
+                    ['{'] + cast(List[str], stack[-1].children) + ['}']
+                )
 
             # Special handling for link-type elements:
             if stack[-1].tag in _LINK_COLORIZING_TAGS:
@@ -1222,7 +1292,9 @@ def _colorize(token: Token, errors: List[ParseError], tagName: str = 'para') -> 
     return stack[0]
 
 
-def _colorize_link(link: Element, token: Token, end: int, errors: List[ParseError]) -> None:
+def _colorize_link(
+    link: Element, token: Token, end: int, errors: List[ParseError]
+) -> None:
     variables = link.children[:]
 
     # If the last child isn't text, we know it's bad.
@@ -1355,7 +1427,9 @@ def parse_docstring(docstring: str, errors: List[ParseError]) -> ParsedDocstring
 
             # Get the argument.
             if field.children and cast(Element, field.children[0]).tag == 'arg':
-                arg: Optional[str] = cast(str, cast(Element, field.children.pop(0)).children[0])
+                arg: Optional[str] = cast(
+                    str, cast(Element, field.children.pop(0)).children[0]
+                )
             else:
                 arg = None
 
@@ -1537,7 +1611,9 @@ class ParsedEpytextDocstring(ParsedDocstring):
         variables: List[nodes.Node] = []
         for child in tree.children:
             if isinstance(child, str):
-                variables.append(set_node_attributes(nodes.Text(child), document=self._document))
+                variables.append(
+                    set_node_attributes(nodes.Text(child), document=self._document)
+                )
             else:
                 variables.extend(self._to_node(child))
 
@@ -1545,13 +1621,19 @@ class ParsedEpytextDocstring(ParsedDocstring):
         if tree.tag == 'para':
             # tree.attribs.get('inline') does not exist anymore.
             # the choice to render the <p> tags is handled in HTMLTranslator.should_be_compact_paragraph(), not here anymore
-            yield set_node_attributes(nodes.paragraph('', ''), document=self._document, children=variables)
+            yield set_node_attributes(
+                nodes.paragraph('', ''), document=self._document, children=variables
+            )
         elif tree.tag == 'code':
-            yield set_node_attributes(nodes.literal('', ''), document=self._document, children=variables)
+            yield set_node_attributes(
+                nodes.literal('', ''), document=self._document, children=variables
+            )
         elif tree.tag == 'uri':
             label, target = variables
             yield set_node_attributes(
-                nodes.reference('', internal=False, refuri=target), document=self._document, children=label.children
+                nodes.reference('', internal=False, refuri=target),
+                document=self._document,
+                children=label.children,
             )
         elif tree.tag == 'link':
             label, target = variables
@@ -1568,48 +1650,74 @@ class ParsedEpytextDocstring(ParsedDocstring):
             )
         elif tree.tag == 'name':
             # name can contain nested inline markup, so we use nodes.inline instead of nodes.Text
-            yield set_node_attributes(nodes.inline('', ''), document=self._document, children=variables)
+            yield set_node_attributes(
+                nodes.inline('', ''), document=self._document, children=variables
+            )
         elif tree.tag == 'target':
             (value,) = variables
             if not isinstance(value, nodes.Text):
                 raise AssertionError("target contents must be a simple text.")
             yield set_node_attributes(value, document=self._document)
         elif tree.tag == 'italic':
-            yield set_node_attributes(nodes.emphasis('', ''), document=self._document, children=variables)
+            yield set_node_attributes(
+                nodes.emphasis('', ''), document=self._document, children=variables
+            )
         elif tree.tag == 'math':
-            node = set_node_attributes(nodes.math('', ''), document=self._document, children=variables)
+            node = set_node_attributes(
+                nodes.math('', ''), document=self._document, children=variables
+            )
             node['classes'].append('math')
             yield node
         elif tree.tag == 'bold':
-            yield set_node_attributes(nodes.strong('', ''), document=self._document, children=variables)
+            yield set_node_attributes(
+                nodes.strong('', ''), document=self._document, children=variables
+            )
         elif tree.tag == 'ulist':
-            yield set_node_attributes(nodes.bullet_list(''), document=self._document, children=variables)
+            yield set_node_attributes(
+                nodes.bullet_list(''), document=self._document, children=variables
+            )
         elif tree.tag == 'olist':
-            yield set_node_attributes(nodes.enumerated_list(''), document=self._document, children=variables)
+            yield set_node_attributes(
+                nodes.enumerated_list(''), document=self._document, children=variables
+            )
         elif tree.tag == 'li':
-            yield set_node_attributes(nodes.list_item(''), document=self._document, children=variables)
+            yield set_node_attributes(
+                nodes.list_item(''), document=self._document, children=variables
+            )
         elif tree.tag == 'heading':
-            yield set_node_attributes(nodes.title('', ''), document=self._document, children=variables)
+            yield set_node_attributes(
+                nodes.title('', ''), document=self._document, children=variables
+            )
         elif tree.tag == 'literalblock':
-            yield set_node_attributes(nodes.literal_block('', ''), document=self._document, children=variables)
+            yield set_node_attributes(
+                nodes.literal_block('', ''), document=self._document, children=variables
+            )
         elif tree.tag == 'doctestblock':
             if not isinstance(contents := tree.children[0], str):
                 raise AssertionError("doctest block contents is not a string")
-            yield set_node_attributes(nodes.doctest_block(contents, contents), document=self._document)
+            yield set_node_attributes(
+                nodes.doctest_block(contents, contents), document=self._document
+            )
         elif tree.tag in ('fieldlist', 'tag', 'arg'):
             raise AssertionError("There should not be any field lists left")
         elif tree.tag == 'section':
             assert len(tree.children) > 0, f"empty section {tree}"
             yield set_node_attributes(
-                nodes.section('', ids=[self._slugify(' '.join(gettext(tree.children[0])))]),
+                nodes.section(
+                    '', ids=[self._slugify(' '.join(gettext(tree.children[0])))]
+                ),
                 document=self._document,
                 children=variables,
             )
         elif tree.tag == 'epytext':
-            yield set_node_attributes(nodes.section(''), document=self._document, children=variables)
+            yield set_node_attributes(
+                nodes.section(''), document=self._document, children=variables
+            )
         elif tree.tag == 'symbol':
             symbol = cast(str, tree.children[0])
             char = chr(self.SYMBOL_TO_CODEPOINT[symbol])
-            yield set_node_attributes(nodes.inline(symbol, char), document=self._document)
+            yield set_node_attributes(
+                nodes.inline(symbol, char), document=self._document
+            )
         else:
             raise AssertionError(f"Unknown epytext DOM element {tree.tag!r}")

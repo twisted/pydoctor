@@ -72,7 +72,9 @@ def is_quoted(text: str, triple: bool = True) -> bool:
 
     @param triple: Also match tripple quoted strings.
     """
-    return bool(_QUOTED_STR_REGEX.match(text)) or (triple and bool(_TRIPLE_QUOTED_STR_REGEX.match(text)))
+    return bool(_QUOTED_STR_REGEX.match(text)) or (
+        triple and bool(_TRIPLE_QUOTED_STR_REGEX.match(text))
+    )
 
 
 def unquote_str(text: str, triple: bool = True) -> str:
@@ -90,7 +92,9 @@ def unquote_str(text: str, triple: bool = True) -> str:
             s = literal_eval(text)
             assert isinstance(s, str)
         except Exception as e:
-            raise ValueError(f"Error trying to unquote the quoted string: {text}: {e}") from e
+            raise ValueError(
+                f"Error trying to unquote the quoted string: {text}: {e}"
+            ) from e
         return s
     return text
 
@@ -113,7 +117,9 @@ def parse_toml_section_name(section_name: str) -> Tuple[str, ...]:
     return tuple(section)
 
 
-def get_toml_section(data: Dict[str, Any], section: Union[Tuple[str, ...], str]) -> Optional[Dict[str, Any]]:
+def get_toml_section(
+    data: Dict[str, Any], section: Union[Tuple[str, ...], str]
+) -> Optional[Dict[str, Any]]:
     """
     Given some TOML data (as loaded with C{toml.load()}), returns the requested section of the data.
     Returns C{None} if the section is not found.
@@ -389,7 +395,9 @@ class CompositeConfigParser(ConfigFileParser):
 
     """
 
-    def __init__(self, config_parser_types: List[Callable[[], ConfigFileParser]]) -> None:
+    def __init__(
+        self, config_parser_types: List[Callable[[], ConfigFileParser]]
+    ) -> None:
         super().__init__()
         self.parsers = [p() for p in config_parser_types]
 
@@ -404,7 +412,9 @@ class CompositeConfigParser(ConfigFileParser):
             except Exception as e:
                 stream.seek(0)
                 errors.append(e)
-        raise ConfigFileParserException(f"Error parsing config: {', '.join(repr(str(e)) for e in errors)}")
+        raise ConfigFileParserException(
+            f"Error parsing config: {', '.join(repr(str(e)) for e in errors)}"
+        )
 
     def get_syntax_description(self) -> str:
         msg = "Uses multiple config parser settings (in order): \n"
@@ -430,7 +440,9 @@ class ValidatorParser(ConfigFileParser):
         So no need to explicitely mention it.
     """
 
-    def __init__(self, config_parser: ConfigFileParser, argument_parser: ArgumentParser) -> None:
+    def __init__(
+        self, config_parser: ConfigFileParser, argument_parser: ArgumentParser
+    ) -> None:
         super().__init__()
         self.config_parser = config_parser
         self.argument_parser = argument_parser

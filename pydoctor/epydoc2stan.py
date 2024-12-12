@@ -31,7 +31,12 @@ from docutils import nodes
 from pydoctor import model, linker, node2stan
 from pydoctor.astutils import is_none_literal
 from pydoctor.epydoc.docutils import new_document, set_node_attributes
-from pydoctor.epydoc.markup import Field as EpydocField, ParseError, get_parser_by_name, processtypes
+from pydoctor.epydoc.markup import (
+    Field as EpydocField,
+    ParseError,
+    get_parser_by_name,
+    processtypes,
+)
 from twisted.web.template import Tag, tags
 from pydoctor.epydoc.markup import ParsedDocstring, DocstringLinker, ObjClass
 import pydoctor.epydoc.markup.plaintext
@@ -209,7 +214,13 @@ class Field:
 
     @classmethod
     def from_epydoc(cls, field: EpydocField, source: model.Documentable) -> 'Field':
-        return cls(tag=field.tag(), arg=field.arg(), source=source, lineno=field.lineno, body=field.body())
+        return cls(
+            tag=field.tag(),
+            arg=field.arg(),
+            source=source,
+            lineno=field.lineno,
+            body=field.body(),
+        )
 
     def format(self) -> Tag:
         """Present this field's body as HTML."""
@@ -226,7 +237,9 @@ class Field:
         self.source.report(message, lineno_offset=self.lineno, section='docstring')
 
 
-def format_field_list(singular: str, plural: str, fields: Sequence[Field]) -> Iterator[Tag]:
+def format_field_list(
+    singular: str, plural: str, fields: Sequence[Field]
+) -> Iterator[Tag]:
     """
     Format list of L{Field} object. Used for notes, see also, authors, etc.
 
@@ -295,7 +308,9 @@ class FieldHandler:
         self.sinces: List[Field] = []
         self.unknowns: DefaultDict[str, List[FieldDesc]] = defaultdict(list)
 
-    def set_param_types_from_annotations(self, annotations: Mapping[str, Optional[ast.expr]]) -> None:
+    def set_param_types_from_annotations(
+        self, annotations: Mapping[str, Optional[ast.expr]]
+    ) -> None:
         _linker = linker._AnnotationLinker(self.obj)
         formatted_annotations = {
             name: (
@@ -326,7 +341,9 @@ class FieldHandler:
             ann_ret = annotations['return']
             assert ann_ret is not None  # ret_type would be None otherwise
             if not is_none_literal(ann_ret):
-                self.return_desc = ReturnDesc(type=ret_type.stan, type_origin=ret_type.origin)
+                self.return_desc = ReturnDesc(
+                    type=ret_type.stan, type_origin=ret_type.origin
+                )
 
     @staticmethod
     def _report_unexpected_argument(field: Field) -> None:
@@ -445,7 +462,9 @@ class FieldHandler:
             #       inconsistencies.
             name = field.arg
         if name is not None:
-            self.types[name] = ParamType(field.format(), origin=FieldOrigin.FROM_DOCSTRING)
+            self.types[name] = ParamType(
+                field.format(), origin=FieldOrigin.FROM_DOCSTRING
+            )
 
     def handle_param(self, field: Field) -> None:
         name = self._handle_param_name(field)
@@ -536,9 +555,15 @@ class FieldHandler:
 
                 if index == 0:
                     # Strip 'self' or 'cls' from parameter table when it semantically makes sens.
-                    if name == 'self' and self.obj.kind is model.DocumentableKind.METHOD:
+                    if (
+                        name == 'self'
+                        and self.obj.kind is model.DocumentableKind.METHOD
+                    ):
                         continue
-                    if name == 'cls' and self.obj.kind is model.DocumentableKind.CLASS_METHOD:
+                    if (
+                        name == 'cls'
+                        and self.obj.kind is model.DocumentableKind.CLASS_METHOD
+                    ):
                         continue
 
                 param = ParamDesc(
@@ -612,12 +637,16 @@ class FieldHandler:
             return tags.transparent
 
 
-def reportWarnings(obj: model.Documentable, warns: Sequence[str], **kwargs: Any) -> None:
+def reportWarnings(
+    obj: model.Documentable, warns: Sequence[str], **kwargs: Any
+) -> None:
     for message in warns:
         obj.report(message, **kwargs)
 
 
-def reportErrors(obj: model.Documentable, errs: Sequence[ParseError], section: str = 'docstring') -> None:
+def reportErrors(
+    obj: model.Documentable, errs: Sequence[ParseError], section: str = 'docstring'
+) -> None:
     if not errs:
         return
 
@@ -627,7 +656,11 @@ def reportErrors(obj: model.Documentable, errs: Sequence[ParseError], section: s
         errors.add(obj.fullName())
 
         for err in errs:
-            obj.report(f'bad {section}: ' + err.descr(), lineno_offset=(err.linenum() or 1) - 1, section=section)
+            obj.report(
+                f'bad {section}: ' + err.descr(),
+                lineno_offset=(err.linenum() or 1) - 1,
+                section=section,
+            )
 
 
 def _objclass(obj: model.Documentable) -> ObjClass | None:
@@ -669,17 +702,23 @@ def parse_docstring(
     try:
         parser = get_parser_by_name(docformat, _objclass(obj))
     except (ImportError, AttributeError) as e:
-        _err = 'Error trying to fetch %r parser:\n\n    %s: %s\n\nUsing plain text formatting only.' % (
-            docformat,
-            e.__class__.__name__,
-            e,
+        _err = (
+            'Error trying to fetch %r parser:\n\n    %s: %s\n\nUsing plain text formatting only.'
+            % (
+                docformat,
+                e.__class__.__name__,
+                e,
+            )
         )
         obj.system.msg('epydoc2stan', _err, thresh=-1, once=True)
         parser = pydoctor.epydoc.markup.plaintext.parse_docstring
 
     # type processing is always enabled for google and numpy docformat,
     # it's already part of the specification, doing it now would process types twice.
-    if obj.system.options.processtypes and docformat not in _docformat_skip_processtypes:
+    if (
+        obj.system.options.processtypes
+        and docformat not in _docformat_skip_processtypes
+    ):
         # This allows epytext and restructuredtext markup to use TypeDocstring as well with a CLI option: --process-types.
         # It's still technically part of the parsing process, so we use a wrapper function.
         parser = processtypes(parser)
@@ -758,7 +797,9 @@ class ParsedStanOnly(ParsedDocstring):
         raise NotImplementedError()
 
 
-def _get_parsed_summary(obj: model.Documentable) -> Tuple[Optional[model.Documentable], ParsedDocstring]:
+def _get_parsed_summary(
+    obj: model.Documentable,
+) -> Tuple[Optional[model.Documentable], ParsedDocstring]:
     """
     Ensures that the L{model.Documentable.parsed_summary} attribute of a documentable is set to it's final value.
     Do not generate summary twice.
@@ -818,11 +859,15 @@ def safe_to_stan(
     return stan
 
 
-def format_docstring_fallback(errs: List[ParseError], parsed_doc: ParsedDocstring, ctx: model.Documentable) -> Tag:
+def format_docstring_fallback(
+    errs: List[ParseError], parsed_doc: ParsedDocstring, ctx: model.Documentable
+) -> Tag:
     if ctx.docstring is None:
         stan = BROKEN
     else:
-        parsed_doc_plain = pydoctor.epydoc.markup.plaintext.parse_docstring(ctx.docstring, errs)
+        parsed_doc_plain = pydoctor.epydoc.markup.plaintext.parse_docstring(
+            ctx.docstring, errs
+        )
         stan = parsed_doc_plain.to_stan(ctx.docstring_linker)
     return stan
 
@@ -868,15 +913,24 @@ def format_docstring(obj: model.Documentable) -> Tag:
     if source is None:
         ret(tags.p(class_='undocumented')("Undocumented"))
     else:
-        assert obj.parsed_docstring is not None, "ensure_parsed_docstring() did not do it's job"
-        stan = safe_to_stan(obj.parsed_docstring, source.docstring_linker, source, fallback=format_docstring_fallback)
+        assert (
+            obj.parsed_docstring is not None
+        ), "ensure_parsed_docstring() did not do it's job"
+        stan = safe_to_stan(
+            obj.parsed_docstring,
+            source.docstring_linker,
+            source,
+            fallback=format_docstring_fallback,
+        )
         ret(unwrap_docstring_stan(stan))
 
     fh = FieldHandler(obj)
     if isinstance(obj, model.Function):
         fh.set_param_types_from_annotations(obj.annotations)
     if source is not None:
-        assert obj.parsed_docstring is not None, "ensure_parsed_docstring() did not do it's job"
+        assert (
+            obj.parsed_docstring is not None
+        ), "ensure_parsed_docstring() did not do it's job"
         for field in obj.parsed_docstring.fields:
             fh.handle(Field.from_epydoc(field, source))
     if isinstance(obj, model.Function):
@@ -885,7 +939,9 @@ def format_docstring(obj: model.Documentable) -> Tag:
     return ret
 
 
-def format_summary_fallback(errs: List[ParseError], parsed_doc: ParsedDocstring, ctx: model.Documentable) -> Tag:
+def format_summary_fallback(
+    errs: List[ParseError], parsed_doc: ParsedDocstring, ctx: model.Documentable
+) -> Tag:
     stan = BROKEN
     # override parsed_summary instance variable to remeber this one is broken.
     ctx.parsed_summary = ParsedStanOnly(stan)
@@ -904,7 +960,13 @@ def format_summary(obj: model.Documentable) -> Tag:
     with source.docstring_linker.switch_context(None):
         # ParserErrors will likely be reported by the full docstring as well,
         # so don't spam the log, pass report=False.
-        stan = safe_to_stan(parsed_doc, source.docstring_linker, source, report=False, fallback=format_summary_fallback)
+        stan = safe_to_stan(
+            parsed_doc,
+            source.docstring_linker,
+            source,
+            report=False,
+            fallback=format_summary_fallback,
+        )
 
     return stan
 
@@ -912,7 +974,9 @@ def format_summary(obj: model.Documentable) -> Tag:
 def format_undocumented(obj: model.Documentable) -> Tag:
     """Generate an HTML representation for an object lacking a docstring."""
 
-    sub_objects_with_docstring_count: DefaultDict[model.DocumentableKind, int] = defaultdict(int)
+    sub_objects_with_docstring_count: DefaultDict[model.DocumentableKind, int] = (
+        defaultdict(int)
+    )
     sub_objects_total_count: DefaultDict[model.DocumentableKind, int] = defaultdict(int)
     for sub_ob in obj.contents.values():
         kind = sub_ob.kind
@@ -952,7 +1016,13 @@ def type2stan(obj: model.Documentable) -> Optional[Tag]:
         return None
     else:
         _linker = linker._AnnotationLinker(obj)
-        return safe_to_stan(parsed_type, _linker, obj, fallback=colorized_pyval_fallback, section='annotation')
+        return safe_to_stan(
+            parsed_type,
+            _linker,
+            obj,
+            fallback=colorized_pyval_fallback,
+            section='annotation',
+        )
 
 
 def get_parsed_type(obj: model.Documentable) -> Optional[ParsedDocstring]:
@@ -979,7 +1049,13 @@ def format_toc(obj: model.Documentable) -> Optional[Tag]:
         if obj.system.options.sidebartocdepth > 0:
             toc = obj.parsed_docstring.get_toc(depth=obj.system.options.sidebartocdepth)
             if toc:
-                return safe_to_stan(toc, obj.docstring_linker, obj, report=False, fallback=lambda _, __, ___: BROKEN)
+                return safe_to_stan(
+                    toc,
+                    obj.docstring_linker,
+                    obj,
+                    report=False,
+                    fallback=lambda _, __, ___: BROKEN,
+                )
     return None
 
 
@@ -1006,7 +1082,9 @@ def extract_fields(obj: model.CanContainImportsDocumentable) -> None:
         if tag in ['ivar', 'cvar', 'var', 'type']:
             arg = field.arg()
             if arg is None:
-                obj.report("Missing field name in @%s" % (tag,), 'docstring', field.lineno)
+                obj.report(
+                    "Missing field name in @%s" % (tag,), 'docstring', field.lineno
+                )
                 continue
             attrobj: Optional[model.Documentable] = obj.contents.get(arg)
             if attrobj is None:
@@ -1060,7 +1138,9 @@ def format_kind(kind: model.DocumentableKind, plural: bool = False) -> str:
         return names[kind]
 
 
-def colorized_pyval_fallback(_: List[ParseError], doc: ParsedDocstring, __: model.Documentable) -> Tag:
+def colorized_pyval_fallback(
+    _: List[ParseError], doc: ParsedDocstring, __: model.Documentable
+) -> Tag:
     """
     This fallback function uses L{ParsedDocstring.to_node()}, so it must be used only with L{ParsedDocstring} subclasses that implements C{to_node()}.
     """
@@ -1076,11 +1156,17 @@ def _format_constant_value(obj: model.Attribute) -> Iterator["Flattenable"]:
     yield row
 
     doc = colorize_pyval(
-        obj.value, linelen=obj.system.options.pyvalreprlinelen, maxlines=obj.system.options.pyvalreprmaxlines
+        obj.value,
+        linelen=obj.system.options.pyvalreprlinelen,
+        maxlines=obj.system.options.pyvalreprmaxlines,
     )
 
     value_repr = safe_to_stan(
-        doc, obj.docstring_linker, obj, fallback=colorized_pyval_fallback, section='rendering of constant'
+        doc,
+        obj.docstring_linker,
+        obj,
+        fallback=colorized_pyval_fallback,
+        section='rendering of constant',
     )
 
     # Report eventual warnings. It warns when a regex failed to parse.
@@ -1168,7 +1254,9 @@ def insert_break_points(text: str) -> 'Flattenable':
     return tags.transparent(*r)
 
 
-def format_constructor_short_text(constructor: model.Function, forclass: model.Class) -> str:
+def format_constructor_short_text(
+    constructor: model.Function, forclass: model.Class
+) -> str:
     """
     Returns a simplified signature of the constructor.
     C{forclass} is not always the function's parent, it can be a subclass.
@@ -1189,7 +1277,8 @@ def format_constructor_short_text(constructor: model.Function, forclass: model.C
 
         # Special casing __new__ because it's actually a static method
         if index == 0 and (
-            constructor.name in ('__new__', '__init__') or constructor.kind is model.DocumentableKind.CLASS_METHOD
+            constructor.name in ('__new__', '__init__')
+            or constructor.kind is model.DocumentableKind.CLASS_METHOD
         ):
             # Omit first argument (self/cls) from simplified signature.
             continue
@@ -1235,17 +1324,27 @@ def get_constructors_extra(cls: model.Class) -> ParsedDocstring | None:
 
     elements: list[nodes.Node] = []
     plural = 's' if len(constructors) > 1 else ''
-    elements.append(set_node_attributes(nodes.Text(f'Constructor{plural}: '), document=document, lineno=1))
+    elements.append(
+        set_node_attributes(
+            nodes.Text(f'Constructor{plural}: '), document=document, lineno=1
+        )
+    )
 
     for i, c in enumerate(sorted(constructors, key=util.alphabetical_order_func)):
         if i != 0:
-            elements.append(set_node_attributes(nodes.Text(', '), document=document, lineno=1))
+            elements.append(
+                set_node_attributes(nodes.Text(', '), document=document, lineno=1)
+            )
         short_text = format_constructor_short_text(c, cls)
         elements.append(
             set_node_attributes(
                 nodes.title_reference('', '', refuri=c.fullName()),
                 document=document,
-                children=[set_node_attributes(nodes.Text(short_text), document=document, lineno=1)],
+                children=[
+                    set_node_attributes(
+                        nodes.Text(short_text), document=document, lineno=1
+                    )
+                ],
                 lineno=1,
             )
         )

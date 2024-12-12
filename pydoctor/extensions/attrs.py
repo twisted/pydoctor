@@ -32,13 +32,19 @@ def uses_auto_attribs(call: ast.AST, module: model.Module) -> bool:
     """
     if not isinstance(call, ast.Call):
         return False
-    if not astutils.node2fullname(call.func, module) in ('attr.s', 'attr.attrs', 'attr.attributes'):
+    if not astutils.node2fullname(call.func, module) in (
+        'attr.s',
+        'attr.attrs',
+        'attr.attributes',
+    ):
         return False
     try:
         args = astutils.bind_args(attrs_decorator_signature, call)
     except TypeError as ex:
         message = str(ex).replace("'", '"')
-        module.report(f"Invalid arguments for attr.s(): {message}", lineno_offset=call.lineno)
+        module.report(
+            f"Invalid arguments for attr.s(): {message}", lineno_offset=call.lineno
+        )
         return False
 
     auto_attribs_expr = args.arguments.get('auto_attribs')
@@ -49,14 +55,16 @@ def uses_auto_attribs(call: ast.AST, module: model.Module) -> bool:
         value = ast.literal_eval(auto_attribs_expr)
     except ValueError:
         module.report(
-            'Unable to figure out value for "auto_attribs" argument ' 'to attr.s(), maybe too complex',
+            'Unable to figure out value for "auto_attribs" argument '
+            'to attr.s(), maybe too complex',
             lineno_offset=call.lineno,
         )
         return False
 
     if not isinstance(value, bool):
         module.report(
-            f'Value for "auto_attribs" argument to attr.s() ' f'has type "{type(value).__name__}", expected "bool"',
+            f'Value for "auto_attribs" argument to attr.s() '
+            f'has type "{type(value).__name__}", expected "bool"',
             lineno_offset=call.lineno,
         )
         return False
@@ -73,17 +81,25 @@ def is_attrib(expr: Optional[ast.expr], ctx: model.Documentable) -> bool:
     )
 
 
-def attrib_args(expr: ast.expr, ctx: model.Documentable) -> Optional[inspect.BoundArguments]:
+def attrib_args(
+    expr: ast.expr, ctx: model.Documentable
+) -> Optional[inspect.BoundArguments]:
     """Get the arguments passed to an C{attr.ib} definition.
     @return: The arguments, or L{None} if C{expr} does not look like
         an C{attr.ib} definition or the arguments passed to it are invalid.
     """
-    if isinstance(expr, ast.Call) and astutils.node2fullname(expr.func, ctx) in ('attr.ib', 'attr.attrib', 'attr.attr'):
+    if isinstance(expr, ast.Call) and astutils.node2fullname(expr.func, ctx) in (
+        'attr.ib',
+        'attr.attrib',
+        'attr.attr',
+    ):
         try:
             return astutils.bind_args(attrib_signature, expr)
         except TypeError as ex:
             message = str(ex).replace("'", '"')
-            ctx.module.report(f"Invalid arguments for attr.ib(): {message}", lineno_offset=expr.lineno)
+            ctx.module.report(
+                f"Invalid arguments for attr.ib(): {message}", lineno_offset=expr.lineno
+            )
     return None
 
 
@@ -118,9 +134,13 @@ class ModuleVisitor(extensions.ModuleVisitorExt):
             return
 
         assert isinstance(cls, AttrsClass)
-        cls.auto_attribs = any(uses_auto_attribs(decnode, cls.module) for decnode in node.decorator_list)
+        cls.auto_attribs = any(
+            uses_auto_attribs(decnode, cls.module) for decnode in node.decorator_list
+        )
 
-    def _handleAttrsAssignmentInClass(self, target: str, node: Union[ast.Assign, ast.AnnAssign]) -> None:
+    def _handleAttrsAssignmentInClass(
+        self, target: str, node: Union[ast.Assign, ast.AnnAssign]
+    ) -> None:
         cls = self.visitor.builder.current
         assert isinstance(cls, AttrsClass)
 
@@ -133,7 +153,9 @@ class ModuleVisitor(extensions.ModuleVisitorExt):
         annotation = node.annotation if isinstance(node, ast.AnnAssign) else None
 
         if is_attrib(node.value, cls) or (
-            cls.auto_attribs and annotation is not None and not astutils.is_using_typing_classvar(annotation, cls)
+            cls.auto_attribs
+            and annotation is not None
+            and not astutils.is_using_typing_classvar(annotation, cls)
         ):
 
             attr.kind = model.DocumentableKind.INSTANCE_VARIABLE

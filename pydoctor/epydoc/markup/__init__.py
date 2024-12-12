@@ -34,7 +34,15 @@ from __future__ import annotations
 
 __docformat__ = 'epytext en'
 
-from typing import Callable, ContextManager, List, Optional, Sequence, Iterator, TYPE_CHECKING
+from typing import (
+    Callable,
+    ContextManager,
+    List,
+    Optional,
+    Sequence,
+    Iterator,
+    TYPE_CHECKING,
+)
 import abc
 import re
 from importlib import import_module
@@ -44,7 +52,11 @@ from docutils import nodes
 from twisted.web.template import Tag, tags
 
 from pydoctor import node2stan
-from pydoctor.epydoc.docutils import set_node_attributes, build_table_of_content, new_document
+from pydoctor.epydoc.docutils import (
+    set_node_attributes,
+    build_table_of_content,
+    new_document,
+)
 
 
 # In newer Python versions, use importlib.resources from the standard library.
@@ -80,7 +92,10 @@ def get_supported_docformats() -> Iterator[str]:
     """
     Get the list of currently supported docformat.
     """
-    for fileName in (path.name for path in importlib_resources.files('pydoctor.epydoc.markup').iterdir()):
+    for fileName in (
+        path.name
+        for path in importlib_resources.files('pydoctor.epydoc.markup').iterdir()
+    ):
         moduleName = getmodulename(fileName)
         if moduleName is None or moduleName.startswith("_"):
             continue
@@ -88,7 +103,9 @@ def get_supported_docformats() -> Iterator[str]:
             yield moduleName
 
 
-def get_parser_by_name(docformat: str, objclass: ObjClass | None = None) -> ParserFunction:
+def get_parser_by_name(
+    docformat: str, objclass: ObjClass | None = None
+) -> ParserFunction:
     """
     Get the C{parse_docstring(str, List[ParseError], bool) -> ParsedDocstring} function based on a parser name.
 
@@ -198,7 +215,9 @@ class ParsedDocstring(abc.ABC):
         """
         if self._stan is not None:
             return self._stan
-        self._stan = Tag('', children=node2stan.node2stan(self.to_node(), docstring_linker).children)
+        self._stan = Tag(
+            '', children=node2stan.node2stan(self.to_node(), docstring_linker).children
+        )
         return self._stan
 
     @abc.abstractmethod
@@ -229,7 +248,9 @@ class ParsedDocstring(abc.ABC):
             visitor = SummaryExtractor(_document)
             _document.walk(visitor)
         except Exception:
-            self._summary = epydoc2stan.ParsedStanOnly(tags.span(class_='undocumented')("Broken summary"))
+            self._summary = epydoc2stan.ParsedStanOnly(
+                tags.span(class_='undocumented')("Broken summary")
+            )
         else:
             self._summary = visitor.summary or epydoc2stan.ParsedStanOnly(
                 tags.span(class_='undocumented')("No summary")
@@ -256,7 +277,9 @@ class Field:
     automatically stripped.
     """
 
-    def __init__(self, tag: str, arg: Optional[str], body: ParsedDocstring, lineno: int):
+    def __init__(
+        self, tag: str, arg: Optional[str], body: ParsedDocstring, lineno: int
+    ):
         self._tag = tag.lower().strip()
         self._arg = None if arg is None else arg.strip()
         self._body = body
@@ -361,7 +384,9 @@ class ParseError(Exception):
     The base class for errors generated while parsing docstrings.
     """
 
-    def __init__(self, descr: str, linenum: Optional[int] = None, is_fatal: bool = True):
+    def __init__(
+        self, descr: str, linenum: Optional[int] = None, is_fatal: bool = True
+    ):
         """
         @param descr: A description of the error.
         @param linenum: The line on which the error occured within
@@ -467,7 +492,9 @@ class SummaryExtractor(nodes.NodeVisitor):
 
             if isinstance(child, nodes.Text):
                 text = child.astext().replace('\n', ' ')
-                sentences = [item for item in self._SENTENCE_RE_SPLIT.split(text) if item]  # Not empty values only
+                sentences = [
+                    item for item in self._SENTENCE_RE_SPLIT.split(text) if item
+                ]  # Not empty values only
 
                 for i, s in enumerate(sentences):
 
@@ -476,22 +503,33 @@ class SummaryExtractor(nodes.NodeVisitor):
                         if not (i == len(sentences) - 1 and len(s) == 1):
                             break
 
-                    summary_pieces.append(set_node_attributes(nodes.Text(s), document=summary_doc))
+                    summary_pieces.append(
+                        set_node_attributes(nodes.Text(s), document=summary_doc)
+                    )
                     char_count += len(s)
 
             else:
-                summary_pieces.append(set_node_attributes(child.deepcopy(), document=summary_doc))
+                summary_pieces.append(
+                    set_node_attributes(child.deepcopy(), document=summary_doc)
+                )
                 char_count += len(''.join(node2stan.gettext(child)))
 
         if char_count > self.maxchars:
             if not summary_pieces[-1].astext().endswith('.'):
-                summary_pieces.append(set_node_attributes(nodes.Text('...'), document=summary_doc))
+                summary_pieces.append(
+                    set_node_attributes(nodes.Text('...'), document=summary_doc)
+                )
             self.other_docs = True
 
         set_node_attributes(
             summary_doc,
             children=[
-                set_node_attributes(nodes.paragraph('', ''), document=summary_doc, lineno=1, children=summary_pieces)
+                set_node_attributes(
+                    nodes.paragraph('', ''),
+                    document=summary_doc,
+                    lineno=1,
+                    children=summary_pieces,
+                )
             ],
         )
 

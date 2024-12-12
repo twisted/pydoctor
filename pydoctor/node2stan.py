@@ -7,7 +7,16 @@ from __future__ import annotations
 from itertools import chain
 import re
 import optparse
-from typing import Any, Callable, ClassVar, Iterable, List, Optional, Union, TYPE_CHECKING
+from typing import (
+    Any,
+    Callable,
+    ClassVar,
+    Iterable,
+    List,
+    Optional,
+    Union,
+    TYPE_CHECKING,
+)
 from docutils.writers import html4css1
 from docutils import nodes, frontend, __version_info__ as docutils_version_info
 
@@ -34,7 +43,9 @@ def node2html(node: nodes.Node, docstring_linker: 'DocstringLinker') -> List[str
     return visitor.body
 
 
-def node2stan(node: Union[nodes.Node, Iterable[nodes.Node]], docstring_linker: 'DocstringLinker') -> Tag:
+def node2stan(
+    node: Union[nodes.Node, Iterable[nodes.Node]], docstring_linker: 'DocstringLinker'
+) -> Tag:
     """
     Convert L{docutils.nodes.Node} objects to a Stan tree.
 
@@ -108,19 +119,29 @@ class HTMLTranslator(html4css1.HTMLTranslator):
     # Handle interpreted text (crossreferences)
     def visit_title_reference(self, node: nodes.title_reference) -> None:
         lineno = get_lineno(node)
-        self._handle_reference(node, link_func=lambda target, label: self._linker.link_xref(target, label, lineno))
+        self._handle_reference(
+            node,
+            link_func=lambda target, label: self._linker.link_xref(
+                target, label, lineno
+            ),
+        )
 
     # Handle internal references
     def visit_obj_reference(self, node: obj_reference) -> None:
         self._handle_reference(node, link_func=self._linker.link_to)
 
     def _handle_reference(
-        self, node: nodes.title_reference, link_func: Callable[[str, "Flattenable"], "Flattenable"]
+        self,
+        node: nodes.title_reference,
+        link_func: Callable[[str, "Flattenable"], "Flattenable"],
     ) -> None:
         label: "Flattenable"
         if 'refuri' in node.attributes:
             # Epytext parsed or manually constructed nodes.
-            label, target = node2stan(node.children, self._linker), node.attributes['refuri']
+            label, target = (
+                node2stan(node.children, self._linker),
+                node.attributes['refuri'],
+            )
         else:
             # RST parsed.
             m = _TARGET_RE.match(node.astext())
@@ -148,7 +169,9 @@ class HTMLTranslator(html4css1.HTMLTranslator):
     def depart_document(self, node: nodes.document) -> None:
         pass
 
-    def starttag(self, node: nodes.Node, tagname: str, suffix: str = '\n', **attributes: Any) -> str:
+    def starttag(
+        self, node: nodes.Node, tagname: str, suffix: str = '\n', **attributes: Any
+    ) -> str:
         """
         This modified version of starttag makes a few changes to HTML
         tags, to prevent them from conflicting with epydoc.  In particular:
@@ -179,13 +202,21 @@ class HTMLTranslator(html4css1.HTMLTranslator):
                     list_key = to_list_names[key.lower()]
                     attr_dict[list_key] = [
                         f'rst-{cls}' if not cls.startswith('rst-') else cls
-                        for cls in sorted(chain(val.split(), attr_dict.get(list_key, ())))
+                        for cls in sorted(
+                            chain(val.split(), attr_dict.get(list_key, ()))
+                        )
                     ]
                     del attr_dict[key]
                     done.add(list_key)
             for key, val in tuple(attr_dict.items()):
-                if key.lower() in ('classes', 'ids', 'names') and key.lower() not in done:
-                    attr_dict[key] = [f'rst-{cls}' if not cls.startswith('rst-') else cls for cls in sorted(val)]
+                if (
+                    key.lower() in ('classes', 'ids', 'names')
+                    and key.lower() not in done
+                ):
+                    attr_dict[key] = [
+                        f'rst-{cls}' if not cls.startswith('rst-') else cls
+                        for cls in sorted(val)
+                    ]
                 elif key.lower() == 'href':
                     if attr_dict[key][:1] == '#':
                         href = attr_dict[key][1:]
@@ -199,7 +230,9 @@ class HTMLTranslator(html4css1.HTMLTranslator):
 
         # For headings, use class="heading"
         if re.match(r'^h\d+$', tagname):
-            attributes['class'] = ' '.join([attributes.get('class', ''), 'heading']).strip()
+            attributes['class'] = ' '.join(
+                [attributes.get('class', ''), 'heading']
+            ).strip()
 
         return super().starttag(node, tagname, suffix, **attributes)  # type: ignore[no-any-return]
 
@@ -221,7 +254,9 @@ class HTMLTranslator(html4css1.HTMLTranslator):
     # this part of the HTMLTranslator is based on sphinx's HTMLTranslator:
     # https://github.com/sphinx-doc/sphinx/blob/3.x/sphinx/writers/html.py#L271
     def _visit_admonition(self, node: nodes.Element, name: str) -> None:
-        self.body.append(self.starttag(node, 'div', CLASS=('admonition ' + _valid_identifier(name))))
+        self.body.append(
+            self.starttag(node, 'div', CLASS=('admonition ' + _valid_identifier(name)))
+        )
         node.insert(0, nodes.title(name, name.title()))
         self.set_first_last(node)
 

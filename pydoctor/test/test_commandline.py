@@ -73,7 +73,9 @@ def test_projectbasedir_absolute(tmp_path: Path) -> None:
     assert options.projectbasedirectory.is_absolute()
 
 
-@pytest.mark.skipif("platform.python_implementation() == 'PyPy' and platform.system() == 'Windows'")
+@pytest.mark.skipif(
+    "platform.python_implementation() == 'PyPy' and platform.system() == 'Windows'"
+)
 def test_projectbasedir_symlink(tmp_path: Path) -> None:
     """
     The --project-base-dir option, when given a path containing a symbolic link,
@@ -158,7 +160,9 @@ def test_main_project_name_guess(capsys: CapSys) -> None:
     When no project name is provided in the CLI arguments, a default name
     is used and logged.
     """
-    exit_code = driver.main(args=['-v', '--testing', 'pydoctor/test/testpackages/basic/'])
+    exit_code = driver.main(
+        args=['-v', '--testing', 'pydoctor/test/testpackages/basic/']
+    )
 
     assert exit_code == 0
     assert "Guessing 'basic' for project name." in capsys.readouterr().out
@@ -168,7 +172,14 @@ def test_main_project_name_option(capsys: CapSys) -> None:
     """
     When a project name is provided in the CLI arguments nothing is logged.
     """
-    exit_code = driver.main(args=['-v', '--testing', '--project-name=some-name', 'pydoctor/test/testpackages/basic/'])
+    exit_code = driver.main(
+        args=[
+            '-v',
+            '--testing',
+            '--project-name=some-name',
+            'pydoctor/test/testpackages/basic/',
+        ]
+    )
 
     assert exit_code == 0
     assert 'Guessing ' not in capsys.readouterr().out
@@ -181,12 +192,17 @@ def test_main_return_zero_on_warnings() -> None:
     stream = StringIO()
     with redirect_stdout(stream):
         exit_code = driver.main(
-            args=['--html-writer=pydoctor.test.InMemoryWriter', 'pydoctor/test/testpackages/report_trigger/']
+            args=[
+                '--html-writer=pydoctor.test.InMemoryWriter',
+                'pydoctor/test/testpackages/report_trigger/',
+            ]
         )
 
     assert exit_code == 0
     assert "__init__.py:8: Unknown field 'bad_field'" in stream.getvalue()
-    assert 'report_module.py:9: Cannot find link target for "BadLink"' in stream.getvalue()
+    assert (
+        'report_module.py:9: Cannot find link target for "BadLink"' in stream.getvalue()
+    )
 
 
 def test_main_return_non_zero_on_warnings() -> None:
@@ -196,15 +212,23 @@ def test_main_return_non_zero_on_warnings() -> None:
     stream = StringIO()
     with redirect_stdout(stream):
         exit_code = driver.main(
-            args=['-W', '--html-writer=pydoctor.test.InMemoryWriter', 'pydoctor/test/testpackages/report_trigger/']
+            args=[
+                '-W',
+                '--html-writer=pydoctor.test.InMemoryWriter',
+                'pydoctor/test/testpackages/report_trigger/',
+            ]
         )
 
     assert exit_code == 3
     assert "__init__.py:8: Unknown field 'bad_field'" in stream.getvalue()
-    assert 'report_module.py:9: Cannot find link target for "BadLink"' in stream.getvalue()
+    assert (
+        'report_module.py:9: Cannot find link target for "BadLink"' in stream.getvalue()
+    )
 
 
-@pytest.mark.skipif("platform.python_implementation() == 'PyPy' and platform.system() == 'Windows'")
+@pytest.mark.skipif(
+    "platform.python_implementation() == 'PyPy' and platform.system() == 'Windows'"
+)
 def test_main_symlinked_paths(tmp_path: Path) -> None:
     """
     The project base directory and package/module directories are normalized
@@ -232,7 +256,11 @@ def test_main_source_outside_basedir(capsys: CapSys) -> None:
     """
     assert (
         driver.main(
-            args=['--html-viewsource-base=notnone', '--project-base-dir=docs', 'pydoctor/test/testpackages/basic/']
+            args=[
+                '--html-viewsource-base=notnone',
+                '--project-base-dir=docs',
+                'pydoctor/test/testpackages/basic/',
+            ]
         )
         == 0
     )
@@ -241,7 +269,12 @@ def test_main_source_outside_basedir(capsys: CapSys) -> None:
         capsys.readouterr().out,
     )
 
-    assert driver.main(args=['--project-base-dir=docs', 'pydoctor/test/testpackages/basic/']) == 0
+    assert (
+        driver.main(
+            args=['--project-base-dir=docs', 'pydoctor/test/testpackages/basic/']
+        )
+        == 0
+    )
     assert "No source links can be generated" not in capsys.readouterr().out
 
     assert (
@@ -292,7 +325,9 @@ def test_index_symlink(tmp_path: Path) -> None:
     """
     import platform
 
-    exit_code = driver.main(args=['--html-output', str(tmp_path), 'pydoctor/test/testpackages/basic/'])
+    exit_code = driver.main(
+        args=['--html-output', str(tmp_path), 'pydoctor/test/testpackages/basic/']
+    )
     assert exit_code == 0
     link = tmp_path / 'basic.html'
     assert link.exists()
@@ -307,7 +342,12 @@ def test_index_hardlink(tmp_path: Path) -> None:
     Test for option --use-hardlink wich enforce the usage of harlinks.
     """
     exit_code = driver.main(
-        args=['--use-hardlink', '--html-output', str(tmp_path), 'pydoctor/test/testpackages/basic/']
+        args=[
+            '--use-hardlink',
+            '--html-output',
+            str(tmp_path),
+            'pydoctor/test/testpackages/basic/',
+        ]
     )
     assert exit_code == 0
     assert (tmp_path / 'basic.html').exists()
@@ -319,7 +359,9 @@ def test_apidocs_help(tmp_path: Path) -> None:
     """
     Checks that the help page is well generated.
     """
-    exit_code = driver.main(args=['--html-output', str(tmp_path), 'pydoctor/test/testpackages/basic/'])
+    exit_code = driver.main(
+        args=['--html-output', str(tmp_path), 'pydoctor/test/testpackages/basic/']
+    )
     assert exit_code == 0
     help_page = (tmp_path / 'apidocs-help.html').read_text()
     assert '>Search</h2>' in help_page
@@ -343,5 +385,10 @@ def test_htmlbaseurl_option_all_pages(tmp_path: Path) -> None:
             continue
         filename = t.name
         if t.stem == 'basic':
-            filename = 'index.html'  # since we have only one module it's linked as index.html
-        assert f'<link rel="canonical" href="https://example.com.abcde/{filename}"' in t.read_text(encoding='utf-8')
+            filename = (
+                'index.html'  # since we have only one module it's linked as index.html
+            )
+        assert (
+            f'<link rel="canonical" href="https://example.com.abcde/{filename}"'
+            in t.read_text(encoding='utf-8')
+        )

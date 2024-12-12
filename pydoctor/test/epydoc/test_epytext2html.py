@@ -300,7 +300,10 @@ def test_nested_markup() -> None:
 
 
 # From docutils 0.18 the toc entries uses different ids.
-@pytest.mark.skipif(docutils_version_info < (0, 18), reason="HTML ids in toc tree changed in docutils 0.18.0.")
+@pytest.mark.skipif(
+    docutils_version_info < (0, 18),
+    reason="HTML ids in toc tree changed in docutils 0.18.0.",
+)
 def test_get_toc() -> None:
 
     docstring = """

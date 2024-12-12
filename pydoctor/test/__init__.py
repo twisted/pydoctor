@@ -40,7 +40,9 @@ class InMemoryWriter(IWriter):
     trigger the rendering of epydoc for the targeted code.
     """
 
-    def __init__(self, build_directory: Path, template_lookup: 'TemplateLookup') -> None:
+    def __init__(
+        self, build_directory: Path, template_lookup: 'TemplateLookup'
+    ) -> None:
         pass
 
     def prepOutputDirectory(self) -> None:

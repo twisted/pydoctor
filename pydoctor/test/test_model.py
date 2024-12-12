@@ -45,7 +45,11 @@ class FakeDocumentable:
 
 
 @pytest.mark.parametrize(
-    'projectBaseDir', [PurePosixPath("/foo/bar/ProjectName"), PureWindowsPath("C:\\foo\\bar\\ProjectName")]
+    'projectBaseDir',
+    [
+        PurePosixPath("/foo/bar/ProjectName"),
+        PureWindowsPath("C:\\foo\\bar\\ProjectName"),
+    ],
 )
 def test_setSourceHrefOption(projectBaseDir: Path) -> None:
     """
@@ -91,7 +95,9 @@ def test_htmlsourcetemplate_auto_detect() -> None:
         ),
     ]
     for base, var_href in cases:
-        options = model.Options.from_args([f'--html-viewsource-base={base}', '--project-base-dir=.'])
+        options = model.Options.from_args(
+            [f'--html-viewsource-base={base}', '--project-base-dir=.']
+        )
         system = model.System(options)
 
         processPackage('basic', systemcls=lambda: system)
@@ -166,8 +172,12 @@ def test_fetchIntersphinxInventories_content() -> None:
         'file:///twisted/index.inv',
     ]
     url_content = {
-        'http://sphinx/objects.inv': zlib.compress(b'sphinx.module py:module -1 sp.html -'),
-        'file:///twisted/index.inv': zlib.compress(b'twisted.package py:module -1 tm.html -'),
+        'http://sphinx/objects.inv': zlib.compress(
+            b'sphinx.module py:module -1 sp.html -'
+        ),
+        'file:///twisted/index.inv': zlib.compress(
+            b'twisted.package py:module -1 tm.html -'
+        ),
     }
     sut = model.System(options=options)
     log = []
@@ -301,7 +311,10 @@ def test_introspection_python() -> None:
 
     func = module.contents['test_introspection_python']
     assert isinstance(func, model.Function)
-    assert func.docstring == "Find docstrings from this test using introspection on pure Python."
+    assert (
+        func.docstring
+        == "Find docstrings from this test using introspection on pure Python."
+    )
     assert func.signature == signature(test_introspection_python)
 
     method = system.objForFullName(__name__ + '.Dummy.crash')
@@ -322,9 +335,15 @@ def test_introspection_extension() -> None:
         pytest.skip("cython_test_exception_raiser not installed")
 
     system = model.System()
-    package = system.introspectModule(Path(cython_test_exception_raiser.__file__), 'cython_test_exception_raiser', None)
+    package = system.introspectModule(
+        Path(cython_test_exception_raiser.__file__),
+        'cython_test_exception_raiser',
+        None,
+    )
     assert isinstance(package, model.Package)
-    module = system.introspectModule(Path(cython_test_exception_raiser.raiser.__file__), 'raiser', package)
+    module = system.introspectModule(
+        Path(cython_test_exception_raiser.raiser.__file__), 'raiser', package
+    )
     system.process()
 
     assert not isinstance(module, model.Package)
@@ -333,11 +352,17 @@ def test_introspection_extension() -> None:
     assert system.objForFullName('cython_test_exception_raiser.raiser') is module
 
     assert module.docstring is not None
-    assert module.docstring.strip().split('\n')[0] == "A trivial extension that just raises an exception."
+    assert (
+        module.docstring.strip().split('\n')[0]
+        == "A trivial extension that just raises an exception."
+    )
 
     cls = module.contents['RaiserException']
     assert cls.docstring is not None
-    assert cls.docstring.strip() == "A speficic exception only used to be identified in tests."
+    assert (
+        cls.docstring.strip()
+        == "A speficic exception only used to be identified in tests."
+    )
 
     func = module.contents['raiseException']
     assert func.docstring is not None
@@ -347,7 +372,9 @@ def test_introspection_extension() -> None:
 testpackages = Path(__file__).parent / 'testpackages'
 
 
-@pytest.mark.skipif("platform.python_implementation() == 'PyPy' or platform.system() == 'Windows'")
+@pytest.mark.skipif(
+    "platform.python_implementation() == 'PyPy' or platform.system() == 'Windows'"
+)
 def test_c_module_text_signature(capsys: CapSys) -> None:
 
     c_module_invalid_text_signature = testpackages / 'c_module_invalid_text_signature'
@@ -370,7 +397,10 @@ def test_c_module_text_signature(capsys: CapSys) -> None:
         builder.addModule(package_path)
         builder.buildModules()
 
-        assert "Cannot parse signature of mymod.base.invalid_text_signature" in capsys.readouterr().out
+        assert (
+            "Cannot parse signature of mymod.base.invalid_text_signature"
+            in capsys.readouterr().out
+        )
 
         mymod_base = system.allobjects['mymod.base']
         assert isinstance(mymod_base, model.Module)
@@ -381,16 +411,22 @@ def test_c_module_text_signature(capsys: CapSys) -> None:
         assert isinstance(valid_func, model.Function)
 
         assert "(...)" == pages.format_signature(func)
-        assert "(a='r', b=-3.14)" == stanutils.flatten_text(cast(Tag, pages.format_signature(valid_func)))
+        assert "(a='r', b=-3.14)" == stanutils.flatten_text(
+            cast(Tag, pages.format_signature(valid_func))
+        )
 
     finally:
         # cleanup
         subprocess.getoutput(f'rm -f {package_path}/*.so')
 
 
-@pytest.mark.skipif("platform.python_implementation() == 'PyPy' or platform.system() == 'Windows'")
+@pytest.mark.skipif(
+    "platform.python_implementation() == 'PyPy' or platform.system() == 'Windows'"
+)
 def test_c_module_python_module_name_clash(capsys: CapSys) -> None:
-    c_module_python_module_name_clash = testpackages / 'c_module_python_module_name_clash'
+    c_module_python_module_name_clash = (
+        testpackages / 'c_module_python_module_name_clash'
+    )
     package_path = c_module_python_module_name_clash / 'mymod'
 
     # build extension
@@ -461,7 +497,9 @@ def test_resolve_name_subclass(capsys: CapSys) -> None:
 )
 def test_privacy_switch(privacy: object) -> None:
     s = model.System()
-    s.options.privacy = [parse_privacy_tuple(p, '--privacy') for p in privacy]  # type:ignore
+    s.options.privacy = [
+        parse_privacy_tuple(p, '--privacy') for p in privacy
+    ]  # type:ignore
 
     fromText(
         """
@@ -518,7 +556,9 @@ def test_privacy_reparented() -> None:
     )
 
     mod_export = fromText(
-        'from private import _MyClass # not needed for the test to pass', modname='public', system=system
+        'from private import _MyClass # not needed for the test to pass',
+        modname='public',
+        system=system,
     )
 
     base = mod_private.contents['_MyClass']

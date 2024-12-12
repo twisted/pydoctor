@@ -8,7 +8,12 @@ from __future__ import annotations
 
 from typing import Any, Callable, Dict, List, Tuple, Union, cast
 
-from pydoctor.epydoc.markup import DocstringLinker, ParseError, ParsedDocstring, get_parser_by_name
+from pydoctor.epydoc.markup import (
+    DocstringLinker,
+    ParseError,
+    ParsedDocstring,
+    get_parser_by_name,
+)
 from pydoctor.node2stan import node2stan
 from pydoctor.napoleon.docstring import TokenType, TypeDocstring
 
@@ -28,14 +33,19 @@ class ParsedTypeDocstring(TypeDocstring, ParsedDocstring):
     _tokens: list[tuple[str | nodes.Node, TokenType]]  # type: ignore
 
     def __init__(
-        self, annotation: Union[nodes.document, str], warns_on_unknown_tokens: bool = False, lineno: int = 0
+        self,
+        annotation: Union[nodes.document, str],
+        warns_on_unknown_tokens: bool = False,
+        lineno: int = 0,
     ) -> None:
         ParsedDocstring.__init__(self, ())
         if isinstance(annotation, nodes.document):
             TypeDocstring.__init__(self, '', warns_on_unknown_tokens)
 
             _tokens = self._tokenize_node_type_spec(annotation)
-            self._tokens = cast('list[tuple[str | nodes.Node, TokenType]]', self._build_tokens(_tokens))
+            self._tokens = cast(
+                'list[tuple[str | nodes.Node, TokenType]]', self._build_tokens(_tokens)
+            )
             self._trigger_warnings()
         else:
             TypeDocstring.__init__(self, annotation, warns_on_unknown_tokens)
@@ -59,7 +69,9 @@ class ParsedTypeDocstring(TypeDocstring, ParsedDocstring):
         """
         return self._convert_type_spec_to_stan(docstring_linker)
 
-    def _tokenize_node_type_spec(self, spec: nodes.document) -> List[Union[str, nodes.Node]]:
+    def _tokenize_node_type_spec(
+        self, spec: nodes.document
+    ) -> List[Union[str, nodes.Node]]:
         def _warn_not_supported(n: nodes.Node) -> None:
             self.warnings.append(
                 f"Unexpected element in type specification field: element '{n.__class__.__name__}'. "
@@ -110,7 +122,9 @@ class ParsedTypeDocstring(TypeDocstring, ParsedDocstring):
         for _token, _type in tokens:
             # The actual type of_token is str | Tag | Node.
 
-            if (_type is TokenType.DELIMITER and _token in ('[', '(', ')', ']')) or _type is TokenType.OBJ:
+            if (
+                _type is TokenType.DELIMITER and _token in ('[', '(', ')', ']')
+            ) or _type is TokenType.OBJ:
                 if _token == "[":
                     open_square_braces += 1
                 elif _token == "(":
@@ -125,7 +139,9 @@ class ParsedTypeDocstring(TypeDocstring, ParsedDocstring):
                     except IndexError:
                         combined_tokens.append((_token, _type))
                     else:
-                        if last_processed_token[1] is TokenType.OBJ and isinstance(last_processed_token[0], Tag):
+                        if last_processed_token[1] is TokenType.OBJ and isinstance(
+                            last_processed_token[0], Tag
+                        ):
                             # Merge with last Tag
                             if _type is TokenType.OBJ:
                                 assert isinstance(_token, Tag)
@@ -164,12 +180,16 @@ class ParsedTypeDocstring(TypeDocstring, ParsedDocstring):
             # the whole type docstring will be rendered as plaintext.
             # it does not crash on invalid xml entities
             TokenType.REFERENCE: lambda _token: (
-                get_parser_by_name('restructuredtext')(_token, warnings).to_stan(docstring_linker)
+                get_parser_by_name('restructuredtext')(_token, warnings).to_stan(
+                    docstring_linker
+                )
                 if isinstance(_token, str)
                 else _token
             ),
             TokenType.UNKNOWN: lambda _token: (
-                get_parser_by_name('restructuredtext')(_token, warnings).to_stan(docstring_linker)
+                get_parser_by_name('restructuredtext')(_token, warnings).to_stan(
+                    docstring_linker
+                )
                 if isinstance(_token, str)
                 else _token
             ),

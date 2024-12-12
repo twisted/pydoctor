@@ -8,7 +8,10 @@ from docutils import nodes
 def dump(node: nodes.Node, text: str = '') -> None:
     print(
         '{}{:<15} line: {}, rawsource: {}'.format(
-            text, type(node).__name__, node.line, getattr(node, 'rawsource', node.astext()).replace('\n', '\\n')
+            text,
+            type(node).__name__,
+            node.line,
+            getattr(node, 'rawsource', node.astext()).replace('\n', '\\n'),
         )
     )
 

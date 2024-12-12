@@ -1,7 +1,12 @@
 from typing import List
 from textwrap import dedent
 
-from pydoctor.epydoc.markup import DocstringLinker, ParseError, ParsedDocstring, get_parser_by_name
+from pydoctor.epydoc.markup import (
+    DocstringLinker,
+    ParseError,
+    ParsedDocstring,
+    get_parser_by_name,
+)
 from pydoctor.epydoc.markup.restructuredtext import parse_docstring
 from pydoctor.test import NotFoundLinker
 from pydoctor.node2stan import node2stan
@@ -32,7 +37,9 @@ def rst2html(docstring: str, linker: DocstringLinker = NotFoundLinker()) -> str:
 
 def node2html(node: nodes.Node, oneline: bool = True) -> str:
     if oneline:
-        return ''.join(prettify(flatten(node2stan(node, NotFoundLinker()))).splitlines())
+        return ''.join(
+            prettify(flatten(node2stan(node, NotFoundLinker()))).splitlines()
+        )
     else:
         return flatten(node2stan(node, NotFoundLinker()))
 
@@ -159,9 +166,13 @@ def test_rst_directive_adnomitions() -> None:
 
     for title, admonition_name in admonition_map.items():
         # Multiline
-        docstring = (".. {}::\n" "\n" "   this is the first line\n" "   \n" "   and this is the second line\n").format(
-            admonition_name
-        )
+        docstring = (
+            ".. {}::\n"
+            "\n"
+            "   this is the first line\n"
+            "   \n"
+            "   and this is the second line\n"
+        ).format(admonition_name)
 
         expect = expected_html_multiline.format(admonition_name, title)
 
@@ -232,7 +243,9 @@ def test_rst_directive_seealso() -> None:
     assert prettify(html).strip() == prettify(expected_html).strip(), html
 
 
-@pytest.mark.parametrize('markup', ('epytext', 'plaintext', 'restructuredtext', 'numpy', 'google'))
+@pytest.mark.parametrize(
+    'markup', ('epytext', 'plaintext', 'restructuredtext', 'numpy', 'google')
+)
 def test_summary(markup: str) -> None:
     """
     Summaries are generated from the inline text inside the first paragraph.
@@ -250,7 +263,10 @@ def test_summary(markup: str) -> None:
         """,
             "Single line with period.",
         ),
-        ("Other lines with period.\nThis is attached", "Other lines with period. This is attached"),
+        (
+            "Other lines with period.\nThis is attached",
+            "Other lines with period. This is attached",
+        ),
         (
             "Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. ",
             "Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line...",
@@ -275,12 +291,19 @@ def test_summary(markup: str) -> None:
         errors: List[ParseError] = []
         pdoc = get_parser_by_name(markup)(dedent(src), errors)
         assert not errors
-        assert pdoc.get_summary() == pdoc.get_summary()  # summary is cached inside ParsedDocstring as well.
-        assert flatten_text(pdoc.get_summary().to_stan(NotFoundLinker())) == summary_text
+        assert (
+            pdoc.get_summary() == pdoc.get_summary()
+        )  # summary is cached inside ParsedDocstring as well.
+        assert (
+            flatten_text(pdoc.get_summary().to_stan(NotFoundLinker())) == summary_text
+        )
 
 
 # From docutils 0.18 the toc entries uses different ids.
-@pytest.mark.skipif(docutils_version_info < (0, 18), reason="HTML ids in toc tree changed in docutils 0.18.0.")
+@pytest.mark.skipif(
+    docutils_version_info < (0, 18),
+    reason="HTML ids in toc tree changed in docutils 0.18.0.",
+)
 def test_get_toc() -> None:
 
     docstring = """

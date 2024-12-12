@@ -7,7 +7,20 @@ An extension can be composed by mixin classes, AST builder visitor extensions an
 from __future__ import annotations
 
 import importlib
-from typing import Any, Callable, Dict, Iterable, Iterator, List, Optional, Tuple, Type, Union, TYPE_CHECKING, cast
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Iterable,
+    Iterator,
+    List,
+    Optional,
+    Tuple,
+    Type,
+    Union,
+    TYPE_CHECKING,
+    cast,
+)
 
 # In newer Python versions, use importlib.resources from the standard library.
 # On older versions, a compatibility package must be installed from PyPI.
@@ -78,12 +91,16 @@ def _importlib_resources_is_resource(package: str, name: str) -> bool:
 
 def _get_submodules(pkg: str) -> Iterator[str]:
     for name in _importlib_resources_contents(pkg):
-        if (not name.startswith('_') and _importlib_resources_is_resource(pkg, name)) and name.endswith('.py'):
+        if (
+            not name.startswith('_') and _importlib_resources_is_resource(pkg, name)
+        ) and name.endswith('.py'):
             name = name[: -len('.py')]
             yield f"{pkg}.{name}"
 
 
-def _get_setup_extension_func_from_module(module: str) -> Callable[['ExtRegistrar'], None]:
+def _get_setup_extension_func_from_module(
+    module: str,
+) -> Callable[['ExtRegistrar'], None]:
     """
     Will look for the special function C{setup_pydoctor_extension} in the provided module.
 
@@ -93,8 +110,12 @@ def _get_setup_extension_func_from_module(module: str) -> Callable[['ExtRegistra
     """
     mod = importlib.import_module(module)
 
-    assert hasattr(mod, 'setup_pydoctor_extension'), f"{mod}.setup_pydoctor_extension() function not found."
-    assert callable(mod.setup_pydoctor_extension), f"{mod}.setup_pydoctor_extension should be a callable."
+    assert hasattr(
+        mod, 'setup_pydoctor_extension'
+    ), f"{mod}.setup_pydoctor_extension() function not found."
+    assert callable(
+        mod.setup_pydoctor_extension
+    ), f"{mod}.setup_pydoctor_extension should be a callable."
     return cast('Callable[[ExtRegistrar], None]', mod.setup_pydoctor_extension)
 
 
@@ -128,7 +149,9 @@ def _get_mixins(*mixins: Type[MixinT]) -> Dict[str, List[Type[MixinT]]]:
                 # do not break, such that one class can be added to several class
                 # bases if it extends the right types.
         if not added:
-            assert False, f"Invalid mixin {mixin.__name__!r}. Mixins must subclass one of the base class."
+            assert (
+                False
+            ), f"Invalid mixin {mixin.__name__!r}. Mixins must subclass one of the base class."
     return mixins_by_name
 
 
@@ -150,11 +173,15 @@ class PriorityProcessor:
     def __init__(self, system: 'model.System'):
         self.system = system
         self.applied: List[Callable[['model.System'], None]] = []
-        self._post_processors: List[Tuple[object, Callable[['model.System'], None]]] = []
+        self._post_processors: List[Tuple[object, Callable[['model.System'], None]]] = (
+            []
+        )
         self._counter = 256
         """Internal counter to keep track of the add order of callables."""
 
-    def add_post_processor(self, post_processor: Callable[['model.System'], None], priority: Optional[int]) -> None:
+    def add_post_processor(
+        self, post_processor: Callable[['model.System'], None], priority: Optional[int]
+    ) -> None:
         if priority is None:
             priority = DEFAULT_PRIORITY
         priority_key = self._get_priority_key(priority)
@@ -175,7 +202,11 @@ class PriorityProcessor:
             # this is typically only reached in tests, when we
             # call fromText() several times with the same
             # system or when we manually call System.postProcess()
-            self.system.msg('post processing', 'warning: multiple post-processing pass detected', thresh=-1)
+            self.system.msg(
+                'post processing',
+                'warning: multiple post-processing pass detected',
+                thresh=-1,
+            )
             self.applied.clear()
 
         self._post_processors.sort()
@@ -200,14 +231,18 @@ class ExtRegistrar:
         """
         self.system._factory.add_mixins(**_get_mixins(*mixin))
 
-    def register_astbuilder_visitor(self, *visitor: Type[astutils.NodeVisitorExt]) -> None:
+    def register_astbuilder_visitor(
+        self, *visitor: Type[astutils.NodeVisitorExt]
+    ) -> None:
         """
         Register AST visitor(s). Typically visitor extensions inherits from L{ModuleVisitorExt}.
         """
         self.system._astbuilder_visitors.extend(visitor)
 
     def register_post_processor(
-        self, *post_processor: Callable[['model.System'], None], priority: Optional[int] = None
+        self,
+        *post_processor: Callable[['model.System'], None],
+        priority: Optional[int] = None,
     ) -> None:
         """
         Register post processor(s).
