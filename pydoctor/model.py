@@ -5,6 +5,7 @@ The two core objects are L{Documentable} and L{System}.  Instances of
 system being documented.  An instance of L{System} represents the whole system
 being documented -- a System is a bad of Documentables, in some sense.
 """
+
 from __future__ import annotations
 
 import abc
@@ -20,8 +21,23 @@ from enum import Enum
 from inspect import signature, Signature
 from pathlib import Path
 from typing import (
-    TYPE_CHECKING, Any, Collection, Dict, Iterator, List, Mapping, Callable, 
-    Optional, Sequence, Set, Tuple, Type, TypeVar, Union, cast, overload
+    TYPE_CHECKING,
+    Any,
+    Collection,
+    Dict,
+    Iterator,
+    List,
+    Mapping,
+    Callable,
+    Optional,
+    Sequence,
+    Set,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+    cast,
+    overload,
 )
 from urllib.parse import quote
 
@@ -57,14 +73,16 @@ else:
 class LineFromAst(int):
     "Simple L{int} wrapper for linenumbers coming from ast analysis."
 
+
 class LineFromDocstringField(int):
     "Simple L{int} wrapper for linenumbers coming from docstrings."
+
 
 class DocLocation(Enum):
     OWN_PAGE = 1
     PARENT_PAGE = 2
     # Nothing uses this yet.  Parameters will one day.
-    #UNDER_PARENT_DOCSTRING = 3
+    # UNDER_PARENT_DOCSTRING = 3
 
 
 class ProcessingState(Enum):
@@ -87,30 +105,33 @@ class PrivacyClass(Enum):
     # For compatibility
     VISIBLE = PUBLIC
 
+
 class DocumentableKind(Enum):
     """
     L{Enum} containing values indicating the possible object types.
 
     @note: Presentation order is derived from the enum values
     """
-    PACKAGE             = 1000
-    MODULE              = 900
-    CLASS               = 800
-    INTERFACE           = 850
-    EXCEPTION           = 750
-    CLASS_METHOD        = 700
-    STATIC_METHOD       = 600
-    METHOD              = 500
-    FUNCTION            = 400
-    CONSTANT            = 310
-    TYPE_VARIABLE       = 306
-    TYPE_ALIAS          = 305
-    CLASS_VARIABLE      = 300
-    SCHEMA_FIELD        = 220
-    ATTRIBUTE           = 210
-    INSTANCE_VARIABLE   = 200
-    PROPERTY            = 150
-    VARIABLE            = 100
+
+    PACKAGE = 1000
+    MODULE = 900
+    CLASS = 800
+    INTERFACE = 850
+    EXCEPTION = 750
+    CLASS_METHOD = 700
+    STATIC_METHOD = 600
+    METHOD = 500
+    FUNCTION = 400
+    CONSTANT = 310
+    TYPE_VARIABLE = 306
+    TYPE_ALIAS = 305
+    CLASS_VARIABLE = 300
+    SCHEMA_FIELD = 220
+    ATTRIBUTE = 210
+    INSTANCE_VARIABLE = 200
+    PROPERTY = 150
+    VARIABLE = 100
+
 
 class Documentable:
     """An object that can be documented.
@@ -121,6 +142,7 @@ class Documentable:
     @ivar system: The system the object is part of.
 
     """
+
     docstring: Optional[str] = None
     parsed_docstring: Optional[ParsedDocstring] = None
     parsed_summary: Optional[ParsedDocstring] = None
@@ -134,10 +156,8 @@ class Documentable:
     """Page location where we are documented."""
 
     def __init__(
-            self, system: 'System', name: str,
-            parent: Optional['Documentable'] = None,
-            source_path: Optional[Path] = None
-            ):
+        self, system: 'System', name: str, parent: Optional['Documentable'] = None, source_path: Optional[Path] = None
+    ):
         if source_path is None and parent is not None:
             source_path = parent.source_path
         self.system = system
@@ -163,16 +183,18 @@ class Documentable:
         lineno, doc = astutils.extract_docstring(node)
         self._setDocstringValue(doc, lineno)
 
-    def _setDocstringValue(self, doc:str, lineno:int) -> None:
-        if self.docstring or self.parsed_docstring: # some object have a parsed docstring only like the ones coming from ivar fields
+    def _setDocstringValue(self, doc: str, lineno: int) -> None:
+        if (
+            self.docstring or self.parsed_docstring
+        ):  # some object have a parsed docstring only like the ones coming from ivar fields
             msg = 'Existing docstring'
             if self.docstring_lineno:
                 msg += f' at line {self.docstring_lineno}'
             msg += ' is overriden'
-            self.report(msg, 'docstring', lineno_offset=lineno-self.docstring_lineno)
+            self.report(msg, 'docstring', lineno_offset=lineno - self.docstring_lineno)
         self.docstring = doc
         self.docstring_lineno = lineno
-        # Due to the current process for parsing doc strings, some objects might already have a parsed_docstring populated at this moment. 
+        # Due to the current process for parsing doc strings, some objects might already have a parsed_docstring populated at this moment.
         # This is an unfortunate behaviour but it’s too big of a refactor for now (see https://github.com/twisted/pydoctor/issues/798).
         if self.parsed_docstring:
             self.parsed_docstring = None
@@ -186,13 +208,13 @@ class Documentable:
         if not from docstring fields as well, the old docstring based linumber will be replaced
         with the one from ast analysis since this takes precedence.
 
-        @param lineno: The linenumber. 
-            If the given linenumber is simply an L{int} we'll assume it's coming from the ast builder 
+        @param lineno: The linenumber.
+            If the given linenumber is simply an L{int} we'll assume it's coming from the ast builder
             and it will be converted to an L{LineFromAst} instance.
         """
         if not self.linenumber or (
-            isinstance(self.linenumber, LineFromDocstringField) 
-                and not isinstance(lineno, LineFromDocstringField)):
+            isinstance(self.linenumber, LineFromDocstringField) and not isinstance(lineno, LineFromDocstringField)
+        ):
             if not isinstance(lineno, (LineFromAst, LineFromDocstringField)):
                 lineno = LineFromAst(lineno)
             self.linenumber = lineno
@@ -201,8 +223,7 @@ class Documentable:
                 parentSourceHref = parentMod.sourceHref
                 if parentSourceHref:
                     self.sourceHref = self.system.options.htmlsourcetemplate.format(
-                        mod_source_href=parentSourceHref,
-                        lineno=str(lineno)
+                        mod_source_href=parentSourceHref, lineno=str(lineno)
                     )
 
     @property
@@ -270,7 +291,6 @@ class Documentable:
         """
         yield self
 
-
     def reparent(self, new_parent: 'Module', new_name: str) -> None:
         # this code attempts to preserve "rather a lot" of
         # invariants assumed by various bits of pydoctor
@@ -297,11 +317,11 @@ class Documentable:
         self.system.allobjects[self.fullName()] = self
         for o in self.contents.values():
             o._handle_reparenting_post()
-    
+
     def _localNameToFullName(self, name: str) -> str:
         raise NotImplementedError(self._localNameToFullName)
-    
-    def isNameDefined(self, name:str) -> bool:
+
+    def isNameDefined(self, name: str) -> bool:
         """
         Is the given name defined in the globals/locals of self-context?
         Only the first name of a dotted name is checked.
@@ -330,7 +350,7 @@ class Documentable:
 
         In the context of mod2.E, expandName("RenamedExternal") should be
         "external_location.External" and expandName("renamed_mod.Local")
-        should be "mod1.Local". """
+        should be "mod1.Local"."""
         parts = name.split('.')
         obj: Documentable = self
         for i, p in enumerate(parts):
@@ -340,7 +360,7 @@ class Documentable:
                 # If we're looking at a class, we try our luck with the inherited members
                 if isinstance(obj, Class):
                     inherited = obj.find(p)
-                    if inherited: 
+                    if inherited:
                         full_name = inherited.fullName()
                 if full_name == p:
                     # We don't have a full name
@@ -352,11 +372,11 @@ class Documentable:
             if nxt is None:
                 break
             obj = nxt
-        return '.'.join([full_name] + parts[i + 1:])
+        return '.'.join([full_name] + parts[i + 1 :])
 
     def expandAnnotationName(self, name: str) -> str:
         """
-        Like L{expandName} but gives precedence to the module scope when a 
+        Like L{expandName} but gives precedence to the module scope when a
         name is defined both in the current scope and the module scope.
         """
         if self.module.isNameDefined(name):
@@ -406,14 +426,14 @@ class Documentable:
         assert parentMod is not None
         return parentMod
 
-    def report(self, descr: str, section: str = 'parsing', lineno_offset: int = 0, thresh:int=-1) -> None:
+    def report(self, descr: str, section: str = 'parsing', lineno_offset: int = 0, thresh: int = -1) -> None:
         """
         Log an error or warning about this documentable object.
 
         @param descr: The error/warning string
         @param section: What the warning is about.
         @param lineno_offset: Offset
-        @param thresh: Thresh to pass to L{System.msg}, it will use C{-1} by default, 
+        @param thresh: Thresh to pass to L{System.msg}, it will use C{-1} by default,
           meaning it will count as a violation and will fail the build if option C{-W} is passed.
           But this behaviour is not applicable if C{thresh} is greater or equal to zero.
         """
@@ -430,16 +450,13 @@ class Documentable:
         else:
             linenumber = '???'
 
-        self.system.msg(
-            section,
-            f'{self.description}:{linenumber}: {descr}',
-            thresh=thresh)
+        self.system.msg(section, f'{self.description}:{linenumber}: {descr}', thresh=thresh)
 
     @property
     def docstring_linker(self) -> 'linker.DocstringLinker':
         """
         Returns an instance of L{DocstringLinker} suitable for resolving names
-        in the context of the object. 
+        in the context of the object.
         """
         if self._linker is not None:
             return self._linker
@@ -451,7 +468,7 @@ class CanContainImportsDocumentable(Documentable):
     def setup(self) -> None:
         super().setup()
         self._localNameToFullName_map: Dict[str, str] = {}
-    
+
     def isNameDefined(self, name: str) -> bool:
         name = name.split('.')[0]
         if name in self.contents:
@@ -462,10 +479,10 @@ class CanContainImportsDocumentable(Documentable):
             return self.module.isNameDefined(name)
         else:
             return False
-    
+
     def localNames(self) -> Iterator[str]:
-        return chain(self.contents.keys(),
-                     self._localNameToFullName_map.keys())
+        return chain(self.contents.keys(), self._localNameToFullName_map.keys())
+
 
 class Module(CanContainImportsDocumentable):
     kind = DocumentableKind.MODULE
@@ -517,8 +534,8 @@ class Module(CanContainImportsDocumentable):
     @property
     def docformat(self) -> Optional[str]:
         """The name of the format to be used for parsing docstrings in this module.
-        
-        The docformat value are inherited from packages if a C{__docformat__} variable 
+
+        The docformat value are inherited from packages if a C{__docformat__} variable
         is defined in the C{__init__.py} file.
 
         If no C{__docformat__} variable was found or its
@@ -529,45 +546,95 @@ class Module(CanContainImportsDocumentable):
         elif isinstance(self.parent, Package):
             return self.parent.docformat
         return None
-    
+
     @docformat.setter
     def docformat(self, value: str) -> None:
         self._docformat = value
 
     def submodules(self) -> Iterator['Module']:
         """Returns an iterator over the visible submodules."""
-        return (m for m in self.contents.values()
-                if isinstance(m, Module) and m.isVisible)
+        return (m for m in self.contents.values() if isinstance(m, Module) and m.isVisible)
+
 
 class Package(Module):
     kind = DocumentableKind.PACKAGE
 
+
 # List of exceptions class names in the standard library, Python 3.8.10
-_STD_LIB_EXCEPTIONS = ('ArithmeticError', 'AssertionError', 'AttributeError', 
-    'BaseException', 'BlockingIOError', 'BrokenPipeError', 
-    'BufferError', 'BytesWarning', 'ChildProcessError', 
-    'ConnectionAbortedError', 'ConnectionError', 
-    'ConnectionRefusedError', 'ConnectionResetError', 
-    'DeprecationWarning', 'EOFError', 
-    'EnvironmentError', 'Exception', 'FileExistsError', 
-    'FileNotFoundError', 'FloatingPointError', 'FutureWarning', 
-    'GeneratorExit', 'IOError', 'ImportError', 'ImportWarning', 
-    'IndentationError', 'IndexError', 'InterruptedError', 
-    'IsADirectoryError', 'KeyError', 'KeyboardInterrupt', 'LookupError', 
-    'MemoryError', 'ModuleNotFoundError', 'NameError', 
-    'NotADirectoryError', 'NotImplementedError', 
-    'OSError', 'OverflowError', 'PendingDeprecationWarning', 'PermissionError', 
-    'ProcessLookupError', 'RecursionError', 'ReferenceError', 
-    'ResourceWarning', 'RuntimeError', 'RuntimeWarning', 'StopAsyncIteration', 
-    'StopIteration', 'SyntaxError', 'SyntaxWarning', 'SystemError', 
-    'SystemExit', 'TabError', 'TimeoutError', 'TypeError', 
-    'UnboundLocalError', 'UnicodeDecodeError', 'UnicodeEncodeError', 
-    'UnicodeError', 'UnicodeTranslateError', 'UnicodeWarning', 'UserWarning', 
-    'ValueError', 'Warning', 'ZeroDivisionError')
+_STD_LIB_EXCEPTIONS = (
+    'ArithmeticError',
+    'AssertionError',
+    'AttributeError',
+    'BaseException',
+    'BlockingIOError',
+    'BrokenPipeError',
+    'BufferError',
+    'BytesWarning',
+    'ChildProcessError',
+    'ConnectionAbortedError',
+    'ConnectionError',
+    'ConnectionRefusedError',
+    'ConnectionResetError',
+    'DeprecationWarning',
+    'EOFError',
+    'EnvironmentError',
+    'Exception',
+    'FileExistsError',
+    'FileNotFoundError',
+    'FloatingPointError',
+    'FutureWarning',
+    'GeneratorExit',
+    'IOError',
+    'ImportError',
+    'ImportWarning',
+    'IndentationError',
+    'IndexError',
+    'InterruptedError',
+    'IsADirectoryError',
+    'KeyError',
+    'KeyboardInterrupt',
+    'LookupError',
+    'MemoryError',
+    'ModuleNotFoundError',
+    'NameError',
+    'NotADirectoryError',
+    'NotImplementedError',
+    'OSError',
+    'OverflowError',
+    'PendingDeprecationWarning',
+    'PermissionError',
+    'ProcessLookupError',
+    'RecursionError',
+    'ReferenceError',
+    'ResourceWarning',
+    'RuntimeError',
+    'RuntimeWarning',
+    'StopAsyncIteration',
+    'StopIteration',
+    'SyntaxError',
+    'SyntaxWarning',
+    'SystemError',
+    'SystemExit',
+    'TabError',
+    'TimeoutError',
+    'TypeError',
+    'UnboundLocalError',
+    'UnicodeDecodeError',
+    'UnicodeEncodeError',
+    'UnicodeError',
+    'UnicodeTranslateError',
+    'UnicodeWarning',
+    'UserWarning',
+    'ValueError',
+    'Warning',
+    'ZeroDivisionError',
+)
+
+
 def is_exception(cls: 'Class') -> bool:
     """
-    Whether is class should be considered as 
-    an exception and be marked with the special 
+    Whether is class should be considered as
+    an exception and be marked with the special
     kind L{DocumentableKind.EXCEPTION}.
     """
     for base in cls.mro(True, False):
@@ -575,18 +642,20 @@ def is_exception(cls: 'Class') -> bool:
             return True
     return False
 
-def compute_mro(cls:'Class') -> Sequence[Union['Class', str]]:
+
+def compute_mro(cls: 'Class') -> Sequence[Union['Class', str]]:
     """
     Compute the method resolution order for this class.
-    This function will also set the 
-    C{_finalbaseobjects} and C{_finalbases} attributes on 
+    This function will also set the
+    C{_finalbaseobjects} and C{_finalbases} attributes on
     this class and all it's superclasses.
     """
-    def init_finalbaseobjects(o: 'Class', path:Optional[List['Class']]=None) -> None:
+
+    def init_finalbaseobjects(o: 'Class', path: Optional[List['Class']] = None) -> None:
         if not path:
             path = []
         if o in path:
-            cycle_str = " -> ".join([o.fullName() for o in path[path.index(cls):] + [cls]])
+            cycle_str = " -> ".join([o.fullName() for o in path[path.index(cls) :] + [cls]])
             raise ValueError(f"Cycle found while computing inheritance hierarchy: {cycle_str}")
         path.append(o)
         if o._finalbaseobjects is not None:
@@ -594,7 +663,7 @@ def compute_mro(cls:'Class') -> Sequence[Union['Class', str]]:
         if o.rawbases:
             finalbaseobjects: List[Optional[Class]] = []
             finalbases: List[str] = []
-            for i,((str_base, _), base) in enumerate(zip(o.rawbases, o._initialbaseobjects)):
+            for i, ((str_base, _), base) in enumerate(zip(o.rawbases, o._initialbaseobjects)):
                 if base:
                     finalbaseobjects.append(base)
                     finalbases.append(base.fullName())
@@ -614,18 +683,18 @@ def compute_mro(cls:'Class') -> Sequence[Union['Class', str]]:
                     init_finalbaseobjects(base, path.copy())
             o._finalbaseobjects = finalbaseobjects
             o._finalbases = finalbases
-    
-    def localbases(o:'Class') -> Iterator[Union['Class', str]]:
+
+    def localbases(o: 'Class') -> Iterator[Union['Class', str]]:
         """
         Like L{Class.baseobjects} but fallback to the expanded name if the base is not resolved to a L{Class} object.
         """
-        for s,b in zip(o.bases, o.baseobjects):
+        for s, b in zip(o.bases, o.baseobjects):
             if isinstance(b, Class):
                 yield b
             else:
                 yield s
 
-    def getbases(o:Union['Class', str]) -> List[Union['Class', str]]:
+    def getbases(o: Union['Class', str]) -> List[Union['Class', str]]:
         if isinstance(o, str):
             return []
         return list(localbases(o))
@@ -633,12 +702,13 @@ def compute_mro(cls:'Class') -> Sequence[Union['Class', str]]:
     init_finalbaseobjects(cls)
     return mro.mro(cls, getbases)
 
-def _find_dunder_constructor(cls:'Class') -> Optional['Function']:
+
+def _find_dunder_constructor(cls: 'Class') -> Optional['Function']:
     """
     Find the a non-default python-powered dunder constructor.
     Returns C{None} if neither C{__new__} or C{__init__} are defined.
 
-    @note: C{__new__} takes precedence orver C{__init__}. 
+    @note: C{__new__} takes precedence orver C{__init__}.
         More infos: U{https://docs.python.org/3/reference/datamodel.html#object.__new__}
     """
     _new = cls.find('__new__')
@@ -650,7 +720,8 @@ def _find_dunder_constructor(cls:'Class') -> Optional['Function']:
             return _init
     return None
 
-def get_constructors(cls:Class) -> Iterator[Function]:
+
+def get_constructors(cls: Class) -> Iterator[Function]:
     """
     Look for python language powered constructors or classmethod constructors.
     A constructor MUST be a method accessible in the locals of the class.
@@ -673,15 +744,15 @@ def get_constructors(cls:Class) -> Iterator[Function]:
         # get return annotation, if it returns the same type as self, it's a constructor method.
         if not 'return' in fun.annotations:
             # we currently only support constructor detection trought explicit annotations.
-            continue 
+            continue
 
         # annotation should be resolved at the module scope
         return_ann = astutils.node2fullname(fun.annotations['return'], cls.module)
 
         # pydoctor understand explicit annotation as well as the Self-Type.
-        if return_ann == cls.fullName() or \
-            return_ann in ('typing.Self', 'typing_extensions.Self'):
+        if return_ann == cls.fullName() or return_ann in ('typing.Self', 'typing_extensions.Self'):
             yield fun
+
 
 class Class(CanContainImportsDocumentable):
     kind = DocumentableKind.CLASS
@@ -689,7 +760,7 @@ class Class(CanContainImportsDocumentable):
     decorators: Sequence[Tuple[str, Optional[Sequence[ast.expr]]]]
 
     # set in post-processing:
-    _finalbaseobjects: Optional[List[Optional['Class']]] = None 
+    _finalbaseobjects: Optional[List[Optional['Class']]] = None
     _finalbases: Optional[List[str]] = None
     _mro: Optional[Sequence[Union['Class', str]]] = None
 
@@ -700,7 +771,7 @@ class Class(CanContainImportsDocumentable):
         self.subclasses: List[Class] = []
         self._initialbases: List[str] = []
         self._initialbaseobjects: List[Optional['Class']] = []
-    
+
     def _init_mro(self) -> None:
         """
         Compute the correct value of the method resolution order returned by L{mro()}.
@@ -710,14 +781,14 @@ class Class(CanContainImportsDocumentable):
         except ValueError as e:
             self.report(str(e), 'mro')
             self._mro = list(self.allbases(True))
-    
+
     @overload
-    def mro(self, include_external:'Literal[True]', include_self:bool=True) -> Sequence[Union['Class', str]]:...
+    def mro(self, include_external: 'Literal[True]', include_self: bool = True) -> Sequence[Union['Class', str]]: ...
     @overload
-    def mro(self, include_external:'Literal[False]'=False, include_self:bool=True) -> Sequence['Class']:...
-    def mro(self, include_external:bool=False, include_self:bool=True) -> Sequence[Union['Class', str]]:
+    def mro(self, include_external: 'Literal[False]' = False, include_self: bool = True) -> Sequence['Class']: ...
+    def mro(self, include_external: bool = False, include_self: bool = True) -> Sequence[Union['Class', str]]:
         """
-        Get the method resution order of this class. 
+        Get the method resution order of this class.
 
         @note: The actual correct value is only set in post-processing, if L{mro()} is called
             in the AST visitors, it will return the same as C{list(self.allbases(include_self))}.
@@ -738,23 +809,20 @@ class Class(CanContainImportsDocumentable):
         """
         Fully qualified names of the bases of this class.
         """
-        return self._finalbases if \
-            self._finalbases is not None else self._initialbases
+        return self._finalbases if self._finalbases is not None else self._initialbases
 
-    
     @property
     def baseobjects(self) -> List[Optional['Class']]:
         """
         Base objects, L{None} value is inserted when the base class could not be found in the system.
-        
-        @note: This property is currently computed two times, a first time when we're visiting the ClassDef and initially creating the object. 
-            It's computed another time in post-processing to try to resolve the names that could not be resolved the first time. This is needed when there are import cycles. 
-            
+
+        @note: This property is currently computed two times, a first time when we're visiting the ClassDef and initially creating the object.
+            It's computed another time in post-processing to try to resolve the names that could not be resolved the first time. This is needed when there are import cycles.
+
             Meaning depending on the state of the system, this property can return either the initial objects or the final objects
         """
-        return self._finalbaseobjects if \
-            self._finalbaseobjects is not None else self._initialbaseobjects
-    
+        return self._finalbaseobjects if self._finalbaseobjects is not None else self._initialbaseobjects
+
     @property
     def public_constructors(self) -> Sequence['Function']:
         """
@@ -767,16 +835,16 @@ class Class(CanContainImportsDocumentable):
             if not c.isVisible:
                 continue
             args = list(c.annotations)
-            try: args.remove('return')
-            except ValueError: pass
-            if c.kind in (DocumentableKind.CLASS_METHOD, 
-                          DocumentableKind.METHOD):
+            try:
+                args.remove('return')
+            except ValueError:
+                pass
+            if c.kind in (DocumentableKind.CLASS_METHOD, DocumentableKind.METHOD):
                 try:
                     args.pop(0)
                 except IndexError:
                     pass
-            if (len(args)==0 and get_docstring(c)[0] is None and 
-                c.name in ('__init__', '__new__')):
+            if len(args) == 0 and get_docstring(c)[0] is None and c.name in ('__init__', '__new__'):
                 continue
             r.append(c)
         return r
@@ -843,9 +911,10 @@ class Inheritable(Documentable):
 
     def _localNameToFullName(self, name: str) -> str:
         return self.parent._localNameToFullName(name)
-    
+
     def isNameDefined(self, name: str) -> bool:
         return self.parent.isNameDefined(name)
+
 
 class Function(Inheritable):
     kind = DocumentableKind.FUNCTION
@@ -862,14 +931,17 @@ class Function(Inheritable):
         self.signature = None
         self.overloads = []
 
+
 @attr.s(auto_attribs=True)
 class FunctionOverload:
     """
-    @note: This is not an actual documentable type. 
+    @note: This is not an actual documentable type.
     """
+
     primary: Function
     signature: Signature
     decorators: Sequence[ast.expr]
+
 
 class Attribute(Inheritable):
     kind: Optional[DocumentableKind] = DocumentableKind.ATTRIBUTE
@@ -882,15 +954,17 @@ class Attribute(Inheritable):
     None value means the value is not initialized at the current point of the the process. 
     """
 
+
 # Work around the attributes of the same name within the System class.
 _ModuleT = Module
 _PackageT = Package
 
 T = TypeVar('T')
 
-def import_mod_from_file_location(module_full_name:str, path: Path) -> types.ModuleType:
+
+def import_mod_from_file_location(module_full_name: str, path: Path) -> types.ModuleType:
     spec = importlib.util.spec_from_file_location(module_full_name, path)
-    if spec is None: 
+    if spec is None:
         raise RuntimeError(f"Cannot find spec for module {module_full_name} at {path}")
     py_mod = importlib.util.module_from_spec(spec)
     loader = spec.loader
@@ -904,16 +978,18 @@ def import_mod_from_file_location(module_full_name:str, path: Path) -> types.Mod
 func_types: Tuple[Type[Any], ...] = (types.BuiltinFunctionType, types.FunctionType)
 if hasattr(types, "MethodDescriptorType"):
     # This is Python >= 3.7 only
-    func_types += (types.MethodDescriptorType, )
+    func_types += (types.MethodDescriptorType,)
 else:
-    func_types += (type(str.join), )
+    func_types += (type(str.join),)
 if hasattr(types, "ClassMethodDescriptorType"):
     # This is Python >= 3.7 only
-    func_types += (types.ClassMethodDescriptorType, )
+    func_types += (types.ClassMethodDescriptorType,)
 else:
-    func_types += (type(dict.__dict__["fromkeys"]), )
+    func_types += (type(dict.__dict__["fromkeys"]),)
 
 _default_extensions = object()
+
+
 class System:
     """A collection of related documentable objects.
 
@@ -922,7 +998,7 @@ class System:
     """
 
     # Not assigned here for circularity reasons:
-    #defaultBuilder = astbuilder.ASTBuilder
+    # defaultBuilder = astbuilder.ASTBuilder
     defaultBuilder: Type[ASTBuilder]
     systemBuilder: Type['ISystemBuilder']
     options: 'Options'
@@ -939,9 +1015,7 @@ class System:
     Additional list of extensions to load alongside default extensions.
     """
 
-    show_attr_value = (DocumentableKind.CONSTANT, 
-                       DocumentableKind.TYPE_VARIABLE, 
-                       DocumentableKind.TYPE_ALIAS)
+    show_attr_value = (DocumentableKind.CONSTANT, DocumentableKind.TYPE_VARIABLE, DocumentableKind.TYPE_ALIAS)
     """
     What kind of attributes we should display the value for?
     """
@@ -988,7 +1062,7 @@ class System:
         # We use the fullName of the objets as the dict key in order to bind a full name to a privacy, not an object to a privacy.
         # this way, we are sure the objects' privacy stay true even if we reparent them manually.
         self._privacyClassCache: Dict[str, PrivacyClass] = {}
-        
+
         # workaround cyclic import issue
         from pydoctor import extensions
 
@@ -996,7 +1070,7 @@ class System:
         self._factory = factory.Factory()
         self._astbuilder_visitors: List[Type['astutils.NodeVisitorExt']] = []
         self._post_processor = extensions.PriorityProcessor(self)
-        
+
         if self.extensions == _default_extensions:
             self.extensions = list(extensions.get_extensions())
         assert isinstance(self.extensions, list)
@@ -1010,15 +1084,19 @@ class System:
     @property
     def Class(self) -> Type['Class']:
         return self._factory.Class
+
     @property
     def Function(self) -> Type['Function']:
         return self._factory.Function
+
     @property
     def Module(self) -> Type['Module']:
         return self._factory.Module
+
     @property
     def Package(self) -> Type['Package']:
         return self._factory.Package
+
     @property
     def Attribute(self) -> Type['Attribute']:
         return self._factory.Attribute
@@ -1038,7 +1116,7 @@ class System:
         else:
             d = f'{i}/{n}'
         if self.options.verbosity == 0 and sys.stdout.isatty():
-            print('\r'+d, msg, end='')
+            print('\r' + d, msg, end='')
             sys.stdout.flush()
             if d == n:
                 self.needsnl = False
@@ -1046,22 +1124,23 @@ class System:
             else:
                 self.needsnl = True
 
-    def msg(self,
-            section: str,
-            msg: str,
-            thresh: int = 0,
-            topthresh: int = 100,
-            nonl: bool = False,
-            wantsnl: bool = True,
-            once: bool = False
-            ) -> None:
+    def msg(
+        self,
+        section: str,
+        msg: str,
+        thresh: int = 0,
+        topthresh: int = 100,
+        nonl: bool = False,
+        wantsnl: bool = True,
+        once: bool = False,
+    ) -> None:
         """
         Log a message. pydoctor's logging system is bit messy.
-        
+
         @param section: API doc generation step this message belongs to.
         @param msg: The message.
         @param thresh: The minimum verbosity level of the system for this message to actually be printed.
-            Meaning passing thresh=-1 will make message still display if C{-q} is passed but not if C{-qq}. 
+            Meaning passing thresh=-1 will make message still display if C{-q} is passed but not if C{-qq}.
             Similarly, passing thresh=1 will make the message only apprear if the verbosity level is at least increased once with C{-v}.
             Using negative thresh will count this message as a violation and will fail the build if option C{-W} is passed.
         @param topthresh: The maximum verbosity level of the system for this message to actually be printed.
@@ -1122,10 +1201,11 @@ class System:
         return None
 
     def objectsOfType(self, cls: Union[Type['DocumentableT'], str]) -> Iterator['DocumentableT']:
-        """Iterate over all instances of C{cls} present in the system. """
+        """Iterate over all instances of C{cls} present in the system."""
         if isinstance(cls, str):
-            cls = utils.findClassFromDottedName(cls, 'objectsOfType', 
-                base_class=cast(Type['DocumentableT'], Documentable))
+            cls = utils.findClassFromDottedName(
+                cls, 'objectsOfType', base_class=cast(Type['DocumentableT'], Documentable)
+            )
         assert isinstance(cls, type)
         for o in self.allobjects.values():
             if isinstance(o, cls):
@@ -1136,17 +1216,16 @@ class System:
         cached_privacy = self._privacyClassCache.get(ob_fullName)
         if cached_privacy is not None:
             return cached_privacy
-        
+
         # kind should not be None, this is probably a relica of a past age of pydoctor.
         # but keep it just in case.
         if ob.kind is None:
             return PrivacyClass.HIDDEN
-        
+
         privacy = PrivacyClass.PUBLIC
-        if ob.name.startswith('_') and \
-               not (ob.name.startswith('__') and ob.name.endswith('__')):
+        if ob.name.startswith('_') and not (ob.name.startswith('__') and ob.name.endswith('__')):
             privacy = PrivacyClass.PRIVATE
-        
+
         # Precedence order: CLI arguments order
         # Check exact matches first, then qnmatch
         _found_exact_match = False
@@ -1167,18 +1246,19 @@ class System:
 
     def membersOrder(self, ob: Documentable) -> Callable[[Documentable], Tuple[Any, ...]]:
         """
-        Returns a callable suitable to be used with L{sorted} function. 
+        Returns a callable suitable to be used with L{sorted} function.
         Used to sort the given object's members for presentation.
 
         Users can customize class and module members order independently, or can override this method
         with a custom system class for further tweaks.
         """
         from pydoctor.templatewriter.util import objects_order
+
         if isinstance(ob, Class):
             return objects_order(self.options.cls_member_order)
         else:
             return objects_order(self.options.mod_member_order)
-           
+
     def addObject(self, obj: Documentable) -> None:
         """Add C{object} to the system."""
 
@@ -1216,7 +1296,7 @@ class System:
         if self.sourcebase is None:
             mod.sourceHref = None
         else:
-            # pydoctor supports generating documentation covering more than one package, 
+            # pydoctor supports generating documentation covering more than one package,
             # in which case it is not certain that all of the source is even viewable below a single URL.
             # We ignore this limitation by not assigning sourceHref for now, but it would be good to add support for it.
             projBaseDir = mod.system.options.projectbasedirectory
@@ -1230,27 +1310,18 @@ class System:
                 mod.sourceHref = f'{self.sourcebase}/{relative}'
 
     @overload
-    def analyzeModule(self,
-            modpath: Path,
-            modname: str,
-            parentPackage: Optional[_PackageT],
-            is_package: Literal[False] = False
-            ) -> _ModuleT: ...
+    def analyzeModule(
+        self, modpath: Path, modname: str, parentPackage: Optional[_PackageT], is_package: Literal[False] = False
+    ) -> _ModuleT: ...
 
     @overload
-    def analyzeModule(self,
-            modpath: Path,
-            modname: str,
-            parentPackage: Optional[_PackageT],
-            is_package: Literal[True]
-            ) -> _PackageT: ...
+    def analyzeModule(
+        self, modpath: Path, modname: str, parentPackage: Optional[_PackageT], is_package: Literal[True]
+    ) -> _PackageT: ...
 
-    def analyzeModule(self,
-            modpath: Path,
-            modname: str,
-            parentPackage: Optional[_PackageT] = None,
-            is_package: bool = False
-            ) -> _ModuleT:
+    def analyzeModule(
+        self, modpath: Path, modname: str, parentPackage: Optional[_PackageT] = None, is_package: bool = False
+    ) -> _ModuleT:
         factory = self.Package if is_package else self.Module
         mod = factory(self, modname, parentPackage, modpath)
         self._addUnprocessedModule(mod)
@@ -1259,8 +1330,8 @@ class System:
 
     def _addUnprocessedModule(self, mod: _ModuleT) -> None:
         """
-        First add the new module into the unprocessed_modules list. 
-        Handle eventual duplication of module names, and finally add the 
+        First add the new module into the unprocessed_modules list.
+        Handle eventual duplication of module names, and finally add the
         module to the system.
         """
         assert mod.state is ProcessingState.UNPROCESSED
@@ -1272,16 +1343,14 @@ class System:
         else:
             self.unprocessed_modules.append(mod)
             self.addObject(mod)
-            self.progress(
-                "analyzeModule", len(self.allobjects),
-                None, "modules and packages discovered")        
+            self.progress("analyzeModule", len(self.allobjects), None, "modules and packages discovered")
             self.module_count += 1
 
     def _handleDuplicateModule(self, first: _ModuleT, dup: _ModuleT) -> None:
         """
-        This is called when two modules have the same name. 
+        This is called when two modules have the same name.
 
-        Current rules are the following: 
+        Current rules are the following:
             - C-modules wins over regular python modules
             - Packages wins over modules
             - Else, the last added module wins
@@ -1302,13 +1371,14 @@ class System:
 
     def _introspectThing(self, thing: object, parent: CanContainImportsDocumentable, parentMod: _ModuleT) -> None:
         for k, v in thing.__dict__.items():
-            if (isinstance(v, func_types)
-                    # In PyPy 7.3.1, functions from extensions are not
-                    # instances of the abstract types in func_types, it will have the type 'builtin_function_or_method'.
-                    # Additionnaly cython3 produces function of type 'cython_function_or_method', 
-                    # so se use a heuristic on the class name as a fall back detection.
-                    or (hasattr(v, "__class__") and 
-                        v.__class__.__name__.endswith('function_or_method'))):
+            if (
+                isinstance(v, func_types)
+                # In PyPy 7.3.1, functions from extensions are not
+                # instances of the abstract types in func_types, it will have the type 'builtin_function_or_method'.
+                # Additionnaly cython3 produces function of type 'cython_function_or_method',
+                # so se use a heuristic on the class name as a fall back detection.
+                or (hasattr(v, "__class__") and v.__class__.__name__.endswith('function_or_method'))
+            ):
                 f = self.Function(self, k, parent)
                 f.parentMod = parentMod
                 f.docstring = v.__doc__
@@ -1320,10 +1390,10 @@ class System:
                     parent.report(f"Cannot parse signature of {parent.fullName()}.{k}")
                     f.signature = None
                 except TypeError:
-                    # in pypy we get a TypeError calling signature() on classmethods, 
+                    # in pypy we get a TypeError calling signature() on classmethods,
                     # because apparently, they are not callable :/
                     f.signature = None
-                        
+
                 f.is_async = False
                 f.annotations = {name: None for name in f.signature.parameters} if f.signature else {}
                 self.addObject(f)
@@ -1335,11 +1405,7 @@ class System:
                 self.addObject(c)
                 self._introspectThing(v, c, parentMod)
 
-    def introspectModule(self,
-            path: Path,
-            module_name: str,
-            package: Optional[_PackageT]
-            ) -> _ModuleT:
+    def introspectModule(self, path: Path, module_name: str, package: Optional[_PackageT]) -> _ModuleT:
 
         if package is None:
             module_full_name = module_name
@@ -1351,17 +1417,16 @@ class System:
 
         factory = self.Package if is_package else self.Module
         module = factory(self, module_name, package, path)
-        
+
         module.docstring = py_mod.__doc__
         module._is_c_module = True
         module._py_mod = py_mod
-        
+
         self._addUnprocessedModule(module)
         return module
 
     def addPackage(self, package_path: Path, parentPackage: Optional[_PackageT] = None) -> None:
-        package = self.analyzeModule(
-            package_path / '__init__.py', package_path.name, parentPackage, is_package=True)
+        package = self.analyzeModule(package_path / '__init__.py', package_path.name, parentPackage, is_package=True)
 
         for path in sorted(package_path.iterdir()):
             if path.is_dir():
@@ -1375,14 +1440,14 @@ class System:
         for suffix in importlib.machinery.all_suffixes():
             if not name.endswith(suffix):
                 continue
-            module_name = name[:-len(suffix)]
+            module_name = name[: -len(suffix)]
             if suffix in importlib.machinery.EXTENSION_SUFFIXES:
                 if self.options.introspect_c_modules:
                     self.introspectModule(path, module_name, package)
             elif suffix in importlib.machinery.SOURCE_SUFFIXES:
                 self.analyzeModule(path, module_name, package)
             break
-    
+
     def _remove(self, o: Documentable) -> None:
         del self.allobjects[o.fullName()]
         oc = list(o.contents.values())
@@ -1412,13 +1477,14 @@ class System:
         obj.report(f"duplicate {str(prev)}", thresh=1)
         self._remove(prev)
         prev.name = obj.name + ' ' + str(i)
+
         def readd(o: Documentable) -> None:
             self.allobjects[o.fullName()] = o
             for c in o.contents.values():
                 readd(c)
+
         readd(prev)
         self.allobjects[fullName] = obj
-
 
     def getProcessedModule(self, modname: str) -> Optional[_ModuleT]:
         mod = self.allobjects.get(modname)
@@ -1442,7 +1508,7 @@ class System:
             assert mod._py_string is not None
         if mod._is_c_module:
             self.processing_modules.append(mod.fullName())
-            self.msg("processModule", "processing %s"%(self.processing_modules), 1)
+            self.msg("processModule", "processing %s" % (self.processing_modules), 1)
             self._introspectThing(mod._py_mod, mod, mod)
             mod.state = ProcessingState.PROCESSED
             head = self.processing_modules.pop()
@@ -1457,7 +1523,7 @@ class System:
             if ast:
                 self.processing_modules.append(mod.fullName())
                 if mod._py_string is None:
-                    self.msg("processModule", "processing %s"%(self.processing_modules), 1)
+                    self.msg("processModule", "processing %s" % (self.processing_modules), 1)
                 builder.processModuleAST(ast, mod)
                 mod.state = ProcessingState.PROCESSED
                 head = self.processing_modules.pop()
@@ -1466,15 +1532,14 @@ class System:
             'process',
             self.module_count - len(self.unprocessed_modules),
             self.module_count,
-            f"modules processed, {self.violations} warnings")
-
+            f"modules processed, {self.violations} warnings",
+        )
 
     def process(self) -> None:
         while self.unprocessed_modules:
             mod = next(iter(self.unprocessed_modules))
             self.processModule(mod)
         self.postProcess()
-
 
     def postProcess(self) -> None:
         """Called when there are no more unprocessed modules.
@@ -1494,7 +1559,8 @@ class System:
         for url in self.options.intersphinx:
             self.intersphinx.update(cache, url)
 
-def defaultPostProcess(system:'System') -> None:
+
+def defaultPostProcess(system: 'System') -> None:
     for cls in system.objectsOfType(Class):
         # Initiate the MROs
         cls._init_mro()
@@ -1507,9 +1573,10 @@ def defaultPostProcess(system:'System') -> None:
         # Checking whether the class is an exception
         if is_exception(cls):
             cls.kind = DocumentableKind.EXCEPTION
-            
+
     for attrib in system.objectsOfType(Attribute):
-       _inherits_instance_variable_kind(attrib)
+        _inherits_instance_variable_kind(attrib)
+
 
 def _inherits_instance_variable_kind(attr: Attribute) -> None:
     """
@@ -1525,9 +1592,8 @@ def _inherits_instance_variable_kind(attr: Attribute) -> None:
             attr.kind = DocumentableKind.INSTANCE_VARIABLE
             break
 
-def get_docstring(
-        obj: Documentable
-        ) -> Tuple[Optional[str], Optional[Documentable]]:
+
+def get_docstring(obj: Documentable) -> Tuple[Optional[str], Optional[Documentable]]:
     """
     Fetch the docstring for a documentable.
     Treat empty docstring as undocumented.
@@ -1546,50 +1612,70 @@ def get_docstring(
             return None, source
     return None, None
 
+
 class SystemBuildingError(Exception):
     """
     Raised when there is a (handled) fatal error while adding modules to the builder.
     """
 
+
 class ISystemBuilder(abc.ABC):
     """
     Interface class for building a system.
     """
+
     @abc.abstractmethod
     def __init__(self, system: 'System') -> None:
         """
         Create the builder.
         """
+
     @abc.abstractmethod
-    def addModule(self, path: Path, parent_name: Optional[str] = None, ) -> None:
+    def addModule(
+        self,
+        path: Path,
+        parent_name: Optional[str] = None,
+    ) -> None:
         """
-        Add a module or package from file system path to the pydoctor system. 
+        Add a module or package from file system path to the pydoctor system.
         If the path points to a directory, adds all submodules recursively.
 
         @raises SystemBuildingError: If there is an error while adding the module/package.
         """
+
     @abc.abstractmethod
-    def addModuleString(self, text: str, modname: str,
-                        parent_name: Optional[str] = None,
-                        is_package: bool = False, ) -> None:
+    def addModuleString(
+        self,
+        text: str,
+        modname: str,
+        parent_name: Optional[str] = None,
+        is_package: bool = False,
+    ) -> None:
         """
         Add a module from text to the system.
         """
+
     @abc.abstractmethod
     def buildModules(self) -> None:
         """
         Build the modules.
         """
 
+
 class SystemBuilder(ISystemBuilder):
     """
-    This class is only an adapter for some System methods related to module building. 
+    This class is only an adapter for some System methods related to module building.
     """
+
     def __init__(self, system: 'System') -> None:
         self.system = system
         self._added: Set[Path] = set()
 
-    def addModule(self, path: Path, parent_name: Optional[str] = None, ) -> None:
+    def addModule(
+        self,
+        path: Path,
+        parent_name: Optional[str] = None,
+    ) -> None:
         if path in self._added:
             return
         # Path validity check
@@ -1600,7 +1686,7 @@ class SystemBuilder(ISystemBuilder):
             try:
                 path.relative_to(projBaseDir)
             except ValueError:
-                if self.system.options.htmlsourcebase:  
+                if self.system.options.htmlsourcebase:
                     # We now support building documentation when the source path is outside of the build directory.
                     # We simply leave a warning and skip the sourceHref attribute.
                     # https://github.com/twisted/pydoctor/issues/658
@@ -1625,16 +1711,20 @@ class SystemBuilder(ISystemBuilder):
             raise SystemBuildingError(f"Source path does not exist: {path}")
         self._added.add(path)
 
-    def addModuleString(self, text: str, modname: str,
-                        parent_name: Optional[str] = None,
-                        is_package: bool = False, ) -> None:
+    def addModuleString(
+        self,
+        text: str,
+        modname: str,
+        parent_name: Optional[str] = None,
+        is_package: bool = False,
+    ) -> None:
         if parent_name is None:
             parent = None
         else:
             # Set containing package as parent.
             parent = self.system.allobjects[parent_name]
             assert isinstance(parent, Package), f"{parent.fullName()} is not a Package, it's a {parent.kind}"
-        
+
         factory = self.system.Package if is_package else self.system.Module
         mod = factory(self.system, name=modname, parent=parent, source_path=None)
         mod._py_string = textwrap.dedent(text)
@@ -1643,40 +1733,49 @@ class SystemBuilder(ISystemBuilder):
     def buildModules(self) -> None:
         self.system.process()
 
+
 System.systemBuilder = SystemBuilder
 
-def prepend_package(builderT:Type[ISystemBuilder], package:str) -> Type[ISystemBuilder]:
+
+def prepend_package(builderT: Type[ISystemBuilder], package: str) -> Type[ISystemBuilder]:
     """
-    Get a new system builder class, that extends the original C{builder} such that it will always use a "fake" 
+    Get a new system builder class, that extends the original C{builder} such that it will always use a "fake"
     C{package} to be the only root object of the system and add new modules under it.
     """
-    
-    class PrependPackageBuidler(builderT): # type:ignore
+
+    class PrependPackageBuidler(builderT):  # type:ignore
         """
         Support for option C{--prepend-package}.
         """
 
-        def __init__(self, system: 'System', *, package:str) -> None:
+        def __init__(self, system: 'System', *, package: str) -> None:
             super().__init__(system)
-            
+
             self.package = package
-            
+
             prependedpackage = None
             for m in package.split('.'):
-                prependedpackage = system.Package(
-                    system, m, prependedpackage)
+                prependedpackage = system.Package(system, m, prependedpackage)
                 system.addObject(prependedpackage)
-        
-        def addModule(self, path: Path, parent_name: Optional[str] = None, ) -> None:
+
+        def addModule(
+            self,
+            path: Path,
+            parent_name: Optional[str] = None,
+        ) -> None:
             if parent_name is None:
                 parent_name = self.package
             super().addModule(path, parent_name)
-        
-        def addModuleString(self, text: str, modname: str,
-                            parent_name: Optional[str] = None,
-                            is_package: bool = False, ) -> None:
+
+        def addModuleString(
+            self,
+            text: str,
+            modname: str,
+            parent_name: Optional[str] = None,
+            is_package: bool = False,
+        ) -> None:
             if parent_name is None:
                 parent_name = self.package
             super().addModuleString(text, modname, parent_name, is_package=is_package)
-    
+
     return utils.partialclass(PrependPackageBuidler, package=package)

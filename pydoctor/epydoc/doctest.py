@@ -21,11 +21,39 @@ __all__ = ['colorize_codeblock', 'colorize_doctest']
 
 #: A list of the names of all Python keywords.
 _KEYWORDS = [
-    'and', 'as', 'assert', 'async', 'await', 'break', 'class', 'continue',
-    'def', 'del', 'elif', 'else', 'except', 'finally', 'for', 'from', 'global',
-    'if', 'import', 'in', 'is', 'lambda', 'nonlocal', 'not', 'or', 'pass',
-    'raise', 'return', 'try', 'while', 'with', 'yield'
-    ]
+    'and',
+    'as',
+    'assert',
+    'async',
+    'await',
+    'break',
+    'class',
+    'continue',
+    'def',
+    'del',
+    'elif',
+    'else',
+    'except',
+    'finally',
+    'for',
+    'from',
+    'global',
+    'if',
+    'import',
+    'in',
+    'is',
+    'lambda',
+    'nonlocal',
+    'not',
+    'or',
+    'pass',
+    'raise',
+    'return',
+    'try',
+    'while',
+    'with',
+    'yield',
+]
 # The following are technically keywords since Python 3,
 # but we don't want to colorize them as such: 'None', 'True', 'False'.
 
@@ -40,8 +68,8 @@ _BUILTIN_GRP = r'(?<!\.)(?:%s)' % '|'.join(rf'\b{_BI}\b' for _BI in _BUILTINS)
 
 #: A regexp group that matches Python strings.
 _STRING_GRP = '|'.join(
-    [r'("""("""|.*?((?!").)"""))', r'("("|.*?((?!").)"))',
-     r"('''('''|.*?[^\\']'''))", r"('('|.*?[^\\']'))"])
+    [r'("""("""|.*?((?!").)"""))', r'("("|.*?((?!").)"))', r"('''('''|.*?[^\\']'''))", r"('('|.*?[^\\']'))"]
+)
 
 #: A regexp group that matches Python comments.
 _COMMENT_GRP = '(#.*?$)'
@@ -59,16 +87,13 @@ _DEFINE_GRP = r'\b(?:def|class)[ \t]+\w+'
 DEFINE_FUNC_RE = re.compile(r'(?P<def>\w+)(?P<space>\s+)(?P<name>\w+)')
 
 #: A regexp that matches Python prompts
-PROMPT_RE = re.compile(f'({_PROMPT1_GRP}|{_PROMPT2_GRP})',
-                       re.MULTILINE | re.DOTALL)
+PROMPT_RE = re.compile(f'({_PROMPT1_GRP}|{_PROMPT2_GRP})', re.MULTILINE | re.DOTALL)
 
 #: A regexp that matches Python "..." prompts.
-PROMPT2_RE = re.compile(f'({_PROMPT2_GRP})',
-                        re.MULTILINE | re.DOTALL)
+PROMPT2_RE = re.compile(f'({_PROMPT2_GRP})', re.MULTILINE | re.DOTALL)
 
 #: A regexp that matches doctest exception blocks.
-EXCEPT_RE = re.compile(r'^[ \t]*Traceback \(most recent call last\):.*',
-                       re.DOTALL | re.MULTILINE)
+EXCEPT_RE = re.compile(r'^[ \t]*Traceback \(most recent call last\):.*', re.DOTALL | re.MULTILINE)
 
 #: A regexp that matches doctest directives.
 DOCTEST_DIRECTIVE_RE = re.compile(r'#[ \t]*doctest:.*')
@@ -77,17 +102,19 @@ DOCTEST_DIRECTIVE_RE = re.compile(r'#[ \t]*doctest:.*')
 #: that should be colored.
 DOCTEST_RE = re.compile(
     '('
-        rf'(?P<STRING>{_STRING_GRP})|(?P<COMMENT>{_COMMENT_GRP})|'
-        rf'(?P<DEFINE>{_DEFINE_GRP})|'
-        rf'(?P<KEYWORD>{_KEYWORD_GRP})|(?P<BUILTIN>{_BUILTIN_GRP})|'
-        rf'(?P<PROMPT1>{_PROMPT1_GRP})|(?P<PROMPT2>{_PROMPT2_GRP})|(?P<EOS>\Z)'
+    rf'(?P<STRING>{_STRING_GRP})|(?P<COMMENT>{_COMMENT_GRP})|'
+    rf'(?P<DEFINE>{_DEFINE_GRP})|'
+    rf'(?P<KEYWORD>{_KEYWORD_GRP})|(?P<BUILTIN>{_BUILTIN_GRP})|'
+    rf'(?P<PROMPT1>{_PROMPT1_GRP})|(?P<PROMPT2>{_PROMPT2_GRP})|(?P<EOS>\Z)'
     ')',
-    re.MULTILINE | re.DOTALL)
+    re.MULTILINE | re.DOTALL,
+)
 
 #: This regular expression is used to find doctest examples in a
 #: string.  This is copied from the standard Python doctest.py
 #: module (after the refactoring in Python 2.4+).
-DOCTEST_EXAMPLE_RE = re.compile(r'''
+DOCTEST_EXAMPLE_RE = re.compile(
+    r'''
     # Source consists of a PS1 line followed by zero or more PS2 lines.
     (?P<source>
         (?:^(?P<indent> [ ]*) >>>    .*)    # PS1 line
@@ -98,7 +125,10 @@ DOCTEST_EXAMPLE_RE = re.compile(r'''
                  (?![ ]*>>>)  # Not a line starting with PS1
                  .*$\n?       # But any other line
               )*)
-    ''', re.MULTILINE | re.VERBOSE)
+    ''',
+    re.MULTILINE | re.VERBOSE,
+)
+
 
 def colorize_codeblock(s: str) -> Tag:
     """
@@ -121,6 +151,7 @@ def colorize_codeblock(s: str) -> Tag:
 
     return tags.pre('\n', *colorize_codeblock_body(s), class_='py-doctest')
 
+
 def colorize_doctest(s: str) -> Tag:
     """
     Perform syntax highlighting on the given doctest string, and
@@ -136,13 +167,14 @@ def colorize_doctest(s: str) -> Tag:
 
     return tags.pre('\n', *colorize_doctest_body(s), class_='py-doctest')
 
+
 def colorize_doctest_body(s: str) -> Iterator[Union[str, Tag]]:
     idx = 0
     for match in DOCTEST_EXAMPLE_RE.finditer(s):
         # Parse the doctest example:
         pysrc, want = match.group('source', 'want')
         # Pre-example text:
-        yield s[idx:match.start()]
+        yield s[idx : match.start()]
         # Example source code:
         yield from colorize_codeblock_body(pysrc)
         # Example output:
@@ -155,6 +187,7 @@ def colorize_doctest_body(s: str) -> Iterator[Union[str, Tag]]:
     # Add any remaining post-example text.
     yield s[idx:]
 
+
 def colorize_codeblock_body(s: str) -> Iterator[Union[Tag, str]]:
     idx = 0
     for match in DOCTEST_RE.finditer(s):
@@ -165,6 +198,7 @@ def colorize_codeblock_body(s: str) -> Iterator[Union[Tag, str]]:
         idx = match.end()
     # DOCTEST_RE matches end-of-string.
     assert idx == len(s)
+
 
 def subfunc(match: Match[str]) -> Iterator[Union[Tag, str]]:
     text = match.group(1)

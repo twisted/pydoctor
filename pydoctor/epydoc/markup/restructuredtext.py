@@ -39,12 +39,14 @@ names of the field tags that should be used for individual entries in
 the list.
 """
 from __future__ import annotations
+
 __docformat__ = 'epytext en'
 
 from typing import TYPE_CHECKING, Any, Iterable, List, Optional, Sequence, Set, cast
+
 if TYPE_CHECKING:
     from typing import TypeAlias
-    
+
 import re
 from docutils import nodes
 
@@ -73,7 +75,7 @@ CONSOLIDATED_FIELDS = {
     'groups': 'group',
     'types': 'type',
     'keywords': 'keyword',
-    }
+}
 
 #: A list of consolidated fields whose bodies may be specified using a
 #: definition list, rather than a bulleted list.  For these fields, the
@@ -81,9 +83,11 @@ CONSOLIDATED_FIELDS = {
 #: a @type field.
 CONSOLIDATED_DEFLIST_FIELDS = ['param', 'arg', 'var', 'ivar', 'cvar', 'keyword']
 
-def parse_docstring(docstring: str, 
-                    errors: List[ParseError], 
-                    ) -> ParsedDocstring:
+
+def parse_docstring(
+    docstring: str,
+    errors: List[ParseError],
+) -> ParsedDocstring:
     """
     Parse the given docstring, which is formatted using
     ReStructuredText; and return a L{ParsedDocstring} representation
@@ -94,18 +98,18 @@ def parse_docstring(docstring: str,
         will be stored.
     """
     writer = _DocumentPseudoWriter()
-    reader = _EpydocReader(errors) # Outputs errors to the list.
+    reader = _EpydocReader(errors)  # Outputs errors to the list.
 
     # Credits: mhils - Maximilian Hils from the pdoc repository https://github.com/mitmproxy/pdoc
     # Strip Sphinx interpreted text roles for code references: :obj:`foo` -> `foo`
-    docstring = re.sub(
-        r"(:py)?:(mod|func|data|const|class|meth|attr|exc|obj):", "", docstring
-    )
+    docstring = re.sub(r"(:py)?:(mod|func|data|const|class|meth|attr|exc|obj):", "", docstring)
 
-    publish_string(docstring, writer=writer, reader=reader,
-                   settings_overrides={'report_level':10000,
-                                       'halt_level':10000,
-                                       'warning_stream':None})
+    publish_string(
+        docstring,
+        writer=writer,
+        reader=reader,
+        settings_overrides={'report_level': 10000, 'halt_level': 10000, 'warning_stream': None},
+    )
 
     document = writer.document
     visitor = _SplitFieldsTranslator(document, errors)
@@ -113,11 +117,13 @@ def parse_docstring(docstring: str,
 
     return ParsedRstDocstring(document, visitor.fields)
 
+
 def get_parser(_: ObjClass | None) -> ParserFunction:
     """
-    Get the L{parse_docstring} function. 
+    Get the L{parse_docstring} function.
     """
     return parse_docstring
+
 
 class OptimizedReporter(Reporter):
     """A reporter that ignores all debug messages.  This is used to
@@ -125,8 +131,9 @@ class OptimizedReporter(Reporter):
     isn't very fast about processing its own debug messages.
     """
 
-    def debug(self, *args: Any, **kwargs: Any) -> None: # type:ignore[override]
+    def debug(self, *args: Any, **kwargs: Any) -> None:  # type:ignore[override]
         pass
+
 
 class ParsedRstDocstring(ParsedDocstring):
     """
@@ -139,25 +146,20 @@ class ParsedRstDocstring(ParsedDocstring):
         self._document = document
         """A ReStructuredText document, encoding the docstring."""
 
-        document.reporter = OptimizedReporter(
-            document.reporter.source, 
-            report_level=10000, halt_level=10000, 
-            stream='')
+        document.reporter = OptimizedReporter(document.reporter.source, report_level=10000, halt_level=10000, stream='')
 
         ParsedDocstring.__init__(self, fields)
 
     @property
     def has_body(self) -> bool:
-        return any(
-            isinstance(child, nodes.Text) or child.children
-            for child in self._document.children
-            )
+        return any(isinstance(child, nodes.Text) or child.children for child in self._document.children)
 
     def to_node(self) -> nodes.document:
         return self._document
 
     def __repr__(self) -> str:
         return '<ParsedRstDocstring: ...>'
+
 
 class _EpydocReader(StandaloneReader):
     """
@@ -172,8 +174,7 @@ class _EpydocReader(StandaloneReader):
     def get_transforms(self) -> List[Transform]:
         # Remove the DocInfo transform, to ensure that :author: fields
         # are correctly handled.
-        return [t for t in StandaloneReader.get_transforms(self)
-                if t != frontmatter.DocInfo]
+        return [t for t in StandaloneReader.get_transforms(self) if t != frontmatter.DocInfo]
 
     def new_document(self) -> nodes.document:
         document = new_document(self.source.source_path, self.settings)
@@ -192,10 +193,12 @@ class _EpydocReader(StandaloneReader):
 
         self._errors.append(ParseError(msg, linenum, is_fatal))
 
+
 if TYPE_CHECKING:
     _StrWriter: TypeAlias = Writer[str]
 else:
     _StrWriter = Writer
+
 
 class _DocumentPseudoWriter(_StrWriter):
     """
@@ -211,6 +214,7 @@ class _DocumentPseudoWriter(_StrWriter):
 
     def translate(self) -> None:
         self.output = ''
+
 
 class _SplitFieldsTranslator(nodes.NodeVisitor):
     """
@@ -247,16 +251,16 @@ class _SplitFieldsTranslator(nodes.NodeVisitor):
         #       :param str user_agent: user agent
         tag = node[0].astext().split(None, 1)
         tagname = tag[0]
-        if len(tag)>1: 
+        if len(tag) > 1:
             arg = tag[1]
-        else: 
+        else:
             arg = None
 
         # Handle special fields:
         fbody = node[1]
         assert isinstance(fbody, nodes.Element)
         if arg is None:
-            for (list_tag, entry_tag) in CONSOLIDATED_FIELDS.items():
+            for list_tag, entry_tag in CONSOLIDATED_FIELDS.items():
                 if tagname.lower() == list_tag:
                     try:
                         self.handle_consolidated_field(fbody, entry_tag)
@@ -264,27 +268,21 @@ class _SplitFieldsTranslator(nodes.NodeVisitor):
                     except ValueError as e:
                         estr = 'Unable to split consolidated field '
                         estr += f'"{tagname}" - {e}'
-                        self._errors.append(ParseError(estr, node.line,
-                                                       is_fatal=False))
+                        self._errors.append(ParseError(estr, node.line, is_fatal=False))
 
                         # Use a @newfield to let it be displayed as-is.
                         if tagname.lower() not in self._newfields:
-                            newfield = Field('newfield', tagname.lower(),
-                                             ParsedPlaintextDocstring(tagname),
-                                             (node.line or 1) - 1)
+                            newfield = Field(
+                                'newfield', tagname.lower(), ParsedPlaintextDocstring(tagname), (node.line or 1) - 1
+                            )
                             self.fields.append(newfield)
                             self._newfields.add(tagname.lower())
 
         self._add_field(tagname, arg, fbody, node.line)
 
-    def _add_field(self,
-            tagname: str,
-            arg: Optional[str],
-            fbody: Iterable[nodes.Node],
-            lineno: int | None
-            ) -> None:
+    def _add_field(self, tagname: str, arg: Optional[str], fbody: Iterable[nodes.Node], lineno: int | None) -> None:
         field_doc = self.document.copy()
-        for child in fbody: 
+        for child in fbody:
             field_doc.append(child)
         field_parsed_doc = ParsedRstDocstring(field_doc, ())
         self.fields.append(Field(tagname, arg, field_parsed_doc, (lineno or 1) - 1))
@@ -300,17 +298,15 @@ class _SplitFieldsTranslator(nodes.NodeVisitor):
         """
         if len(body) != 1:
             raise ValueError('does not contain a single list.')
-        if not isinstance(b0:=body[0], nodes.Element):
+        if not isinstance(b0 := body[0], nodes.Element):
             # unfornutate assertion required for typing purposes
             raise ValueError('does not contain a list.')
         if isinstance(b0, nodes.bullet_list):
             self.handle_consolidated_bullet_list(b0, tagname)
-        elif (isinstance(b0, nodes.definition_list) and
-              tagname in CONSOLIDATED_DEFLIST_FIELDS):
+        elif isinstance(b0, nodes.definition_list) and tagname in CONSOLIDATED_DEFLIST_FIELDS:
             self.handle_consolidated_definition_list(b0, tagname)
         elif tagname in CONSOLIDATED_DEFLIST_FIELDS:
-            raise ValueError('does not contain a bulleted list or '
-                             'definition list.')
+            raise ValueError('does not contain a bulleted list or ' 'definition list.')
         else:
             raise ValueError('does not contain a bulleted list.')
 
@@ -319,19 +315,21 @@ class _SplitFieldsTranslator(nodes.NodeVisitor):
         # item should have the form:
         #   - `arg`: description...
         n = 0
-        _BAD_ITEM = ("list item %d is not well formed.  Each item must "
-                     "consist of a single marked identifier (e.g., `x`), "
-                     "optionally followed by a colon or dash and a "
-                     "description.")
+        _BAD_ITEM = (
+            "list item %d is not well formed.  Each item must "
+            "consist of a single marked identifier (e.g., `x`), "
+            "optionally followed by a colon or dash and a "
+            "description."
+        )
         for item in items:
             n += 1
             if not isinstance(item, nodes.list_item) or len(item) == 0:
                 raise ValueError('bad bulleted list (bad child %d).' % n)
-            if not isinstance(i0:=item[0], nodes.paragraph):
+            if not isinstance(i0 := item[0], nodes.paragraph):
                 if isinstance(i0, nodes.definition_list):
-                    raise ValueError(('list item %d contains a definition '+
-                                      'list (it\'s probably indented '+
-                                      'wrong).') % n)
+                    raise ValueError(
+                        ('list item %d contains a definition ' + 'list (it\'s probably indented ' + 'wrong).') % n
+                    )
                 else:
                     raise ValueError(_BAD_ITEM % n)
             if len(i0) == 0:
@@ -341,9 +339,9 @@ class _SplitFieldsTranslator(nodes.NodeVisitor):
 
         # Everything looks good; convert to multiple fields.
         for item in items:
-            assert isinstance(item, nodes.list_item) # for typing
+            assert isinstance(item, nodes.list_item)  # for typing
             # Extract the arg, item[0][0] is safe since we checked eariler for malformated list.
-            arg = item[0][0].astext() # type: ignore
+            arg = item[0][0].astext()  # type: ignore
 
             # Extract the field body, and remove the arg
             fbody = cast('list[nodes.Element]', item[:])
@@ -351,8 +349,7 @@ class _SplitFieldsTranslator(nodes.NodeVisitor):
             fbody[0][:] = cast(nodes.paragraph, item[0])[1:]
 
             # Remove the separating ":", if present
-            if (len(fbody[0]) > 0 and
-                isinstance(fbody[0][0], nodes.Text)):
+            if len(fbody[0]) > 0 and isinstance(fbody[0][0], nodes.Text):
                 text = fbody[0][0].astext()
                 if text[:1] in ':-':
                     fbody[0][0] = nodes.Text(text[1:].lstrip())
@@ -365,21 +362,27 @@ class _SplitFieldsTranslator(nodes.NodeVisitor):
     def handle_consolidated_definition_list(self, items: nodes.definition_list, tagname: str) -> None:
         # Check the list contents.
         n = 0
-        _BAD_ITEM = ("item %d is not well formed.  Each item's term must "
-                     "consist of a single marked identifier (e.g., `x`), "
-                     "optionally followed by a space, colon, space, and "
-                     "a type description.")
+        _BAD_ITEM = (
+            "item %d is not well formed.  Each item's term must "
+            "consist of a single marked identifier (e.g., `x`), "
+            "optionally followed by a space, colon, space, and "
+            "a type description."
+        )
         for item in items:
             n += 1
-            if (not isinstance(item, nodes.definition_list_item) or len(item) < 2 or
-                not isinstance(item[-1], nodes.definition) or 
-                not isinstance(i0:=item[0], nodes.Element)):
+            if (
+                not isinstance(item, nodes.definition_list_item)
+                or len(item) < 2
+                or not isinstance(item[-1], nodes.definition)
+                or not isinstance(i0 := item[0], nodes.Element)
+            ):
                 raise ValueError('bad definition list (bad child %d).' % n)
             if len(item) > 3:
                 raise ValueError(_BAD_ITEM % n)
-            if not ((isinstance(i0[0], nodes.title_reference)) or
-                    (self.ALLOW_UNMARKED_ARG_IN_CONSOLIDATED_FIELD and
-                     isinstance(i0[0], nodes.Text))):
+            if not (
+                (isinstance(i0[0], nodes.title_reference))
+                or (self.ALLOW_UNMARKED_ARG_IN_CONSOLIDATED_FIELD and isinstance(i0[0], nodes.Text))
+            ):
                 raise ValueError(_BAD_ITEM % n)
             for child in i0[1:]:
                 if child.astext() != '':
@@ -387,7 +390,7 @@ class _SplitFieldsTranslator(nodes.NodeVisitor):
 
         # Extract it.
         for item in items:
-            assert isinstance(item, nodes.definition_list_item) # for typing
+            assert isinstance(item, nodes.definition_list_item)  # for typing
             # The basic field.
             arg = cast(nodes.Element, item[0])[0].astext()
             lineno = item[0].line
@@ -401,28 +404,31 @@ class _SplitFieldsTranslator(nodes.NodeVisitor):
     def unknown_visit(self, node: nodes.Node) -> None:
         'Ignore all unknown nodes'
 
+
 versionlabels = {
-    'versionadded':   'New in version %s',
+    'versionadded': 'New in version %s',
     'versionchanged': 'Changed in version %s',
-    'deprecated':     'Deprecated since version %s',
+    'deprecated': 'Deprecated since version %s',
 }
 
 versionlabel_classes = {
-    'versionadded':     'added',
-    'versionchanged':   'changed',
-    'deprecated':       'deprecated',
+    'versionadded': 'added',
+    'versionchanged': 'changed',
+    'deprecated': 'deprecated',
 }
+
 
 class VersionChange(Directive):
     """
     Directive to describe a change/addition/deprecation in a specific version.
     """
+
     class versionmodified(nodes.Admonition, nodes.TextElement):
         """Node for version change entries.
         Currently used for "versionadded", "versionchanged" and "deprecated"
         directives.
         """
-    
+
     has_content = True
     required_arguments = 1
     optional_arguments = 1
@@ -435,8 +441,7 @@ class VersionChange(Directive):
         node['version'] = self.arguments[0]
         text = versionlabels[self.name] % self.arguments[0]
         if len(self.arguments) == 2:
-            inodes, messages = self.state.inline_text(self.arguments[1],
-                                                      self.lineno + 1)
+            inodes, messages = self.state.inline_text(self.arguments[1], self.lineno + 1)
             para = nodes.paragraph(self.arguments[1], '', *inodes)
             node.append(para)
         else:
@@ -455,24 +460,29 @@ class VersionChange(Directive):
             para = cast(nodes.paragraph, node[0])
             para.insert(0, nodes.inline('', '%s: ' % text, classes=classes))
         else:
-            para = nodes.paragraph('', '',
-                                   nodes.inline('', '%s.' % text,
-                                                classes=classes), )
+            para = nodes.paragraph(
+                '',
+                '',
+                nodes.inline('', '%s.' % text, classes=classes),
+            )
             node.append(para)
 
         ret = [node]  # type: List[nodes.Node]
         ret += messages
         return ret
 
-# Do like Sphinx does for the seealso directive. 
+
+# Do like Sphinx does for the seealso directive.
 class SeeAlso(BaseAdmonition):
     """
     An admonition mentioning things to look at as reference.
     """
+
     class seealso(nodes.Admonition, nodes.Element):
         """Custom "see also" admonition node."""
 
     node_class = seealso
+
 
 class PythonCodeDirective(Directive):
     """
@@ -486,31 +496,34 @@ class PythonCodeDirective(Directive):
     """
 
     has_content = True
-    
+
     def run(self) -> List[nodes.Node]:
         text = '\n'.join(self.content)
         node = nodes.doctest_block(text, text, codeblock=True)
-        return [ node ]
+        return [node]
+
 
 class DocutilsAndSphinxCodeBlockAdapter(PythonCodeDirective):
-    # Docutils and Sphinx code blocks have both one optional argument, 
+    # Docutils and Sphinx code blocks have both one optional argument,
     # so we accept it here as well but do nothing with it.
     required_arguments = 0
     optional_arguments = 1
 
     # Listing all options that docutils.parsers.rst.directives.body.CodeBlock provides
-    # And also sphinx.directives.code.CodeBlock. We don't care about their values, 
+    # And also sphinx.directives.code.CodeBlock. We don't care about their values,
     # we just don't want to see them in self.content.
-    option_spec = {'class': directives.class_option,
-                'name': directives.unchanged,
-                'number-lines': directives.unchanged, # integer or None
-                'force': directives.flag,
-                'linenos': directives.flag,
-                'dedent': directives.unchanged, # integer or None
-                'lineno-start': int,
-                'emphasize-lines': directives.unchanged_required,
-                'caption': directives.unchanged_required,
+    option_spec = {
+        'class': directives.class_option,
+        'name': directives.unchanged,
+        'number-lines': directives.unchanged,  # integer or None
+        'force': directives.flag,
+        'linenos': directives.flag,
+        'dedent': directives.unchanged,  # integer or None
+        'lineno-start': int,
+        'emphasize-lines': directives.unchanged_required,
+        'caption': directives.unchanged_required,
     }
+
 
 directives.register_directive('python', PythonCodeDirective)
 directives.register_directive('code', DocutilsAndSphinxCodeBlockAdapter)

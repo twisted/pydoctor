@@ -6,6 +6,7 @@ from pydoctor import model
 
 testpackages = Path(__file__).parent / 'testpackages'
 
+
 def processPackage(packname: str, systemcls: Callable[[], model.System] = model.System) -> model.System:
     system = systemcls()
     builder = system.systemBuilder(system)
@@ -13,15 +14,18 @@ def processPackage(packname: str, systemcls: Callable[[], model.System] = model.
     builder.buildModules()
     return system
 
+
 def test_relative_import() -> None:
     system = processPackage("relativeimporttest")
     cls = system.allobjects['relativeimporttest.mod1.C']
     assert isinstance(cls, model.Class)
     assert cls.bases == ['relativeimporttest.mod2.B']
 
+
 def test_package_docstring() -> None:
     system = processPackage("relativeimporttest")
     assert system.allobjects['relativeimporttest'].docstring == "DOCSTRING"
+
 
 def test_modnamedafterbuiltin() -> None:
     # well, basically the test is that this doesn't explode:
@@ -31,6 +35,7 @@ def test_modnamedafterbuiltin() -> None:
     assert isinstance(dict_class, model.Class)
     assert dict_class.baseobjects == [None]
 
+
 def test_nestedconfusion() -> None:
     system = processPackage("nestedconfusion")
     A = system.allobjects['nestedconfusion.mod.nestedconfusion.A']
@@ -38,12 +43,14 @@ def test_nestedconfusion() -> None:
     C = system.allobjects['nestedconfusion.mod.C']
     assert A.baseobjects[0] is C
 
+
 def test_importingfrompackage() -> None:
     system = processPackage("importingfrompackage")
     system.getProcessedModule('importingfrompackage.mod')
     submod = system.allobjects['importingfrompackage.subpack.submod']
     assert isinstance(submod, model.Module)
     assert submod.state is model.ProcessingState.PROCESSED
+
 
 def test_allgames() -> None:
     """
@@ -70,6 +77,7 @@ def test_allgames() -> None:
     assert moved.parentMod.source_path is not None
     assert moved.parentMod.source_path.parts[-2:] == ('allgames', 'mod2.py')
 
+
 def test_cyclic_imports() -> None:
     """
     Test whether names are resolved correctly when we have import cycles.
@@ -85,6 +93,7 @@ def test_cyclic_imports() -> None:
     mod_b = system.allobjects['cyclic_imports.b']
     assert mod_b.expandName('A') == 'cyclic_imports.a.A'
 
+
 def test_package_module_name_clash() -> None:
     """
     When a module and a package have the same full name, the package wins.
@@ -92,6 +101,7 @@ def test_package_module_name_clash() -> None:
     system = processPackage('package_module_name_clash')
     pack = system.allobjects['package_module_name_clash.pack']
     assert 'package' == pack.contents.popitem()[0]
+
 
 def test_reparented_module() -> None:
     """
@@ -113,6 +123,7 @@ def test_reparented_module() -> None:
     # But can still be resolved with it's old name
     assert top.resolveName('mod') is top.contents['module']
 
+
 def test_reparenting_follows_aliases() -> None:
     """
     Test for https://github.com/twisted/pydoctor/issues/505
@@ -128,7 +139,7 @@ def test_reparenting_follows_aliases() -> None:
 
     # Test that we do not get KeyError
     klass = system.allobjects['reparenting_follows_aliases.main.MyClass']
-    
+
     # Test older names still resolves to reparented object
     top = system.allobjects['reparenting_follows_aliases']
 
@@ -157,7 +168,8 @@ def test_reparenting_follows_aliases() -> None:
     else:
         raise AssertionError("Congratulation!")
 
-@pytest.mark.parametrize('modname', ['reparenting_crash','reparenting_crash_alt'])
+
+@pytest.mark.parametrize('modname', ['reparenting_crash', 'reparenting_crash_alt'])
 def test_reparenting_crash(modname: str) -> None:
     """
     Test for https://github.com/twisted/pydoctor/issues/513

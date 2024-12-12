@@ -1,7 +1,8 @@
 """The entry point."""
+
 from __future__ import annotations
 
-from typing import  Sequence
+from typing import Sequence
 import datetime
 import os
 import sys
@@ -17,26 +18,28 @@ from pydoctor.sphinx import SphinxInventoryWriter, prepareCache
 # On older versions, a compatibility package must be installed from PyPI.
 import importlib.resources as importlib_resources
 
+
 def get_system(options: model.Options) -> model.System:
     """
     Get a system with the defined options. Load packages and modules.
     """
-    cache = prepareCache(clearCache=options.clear_intersphinx_cache,
-                         enableCache=options.enable_intersphinx_cache,
-                         cachePath=options.intersphinx_cache_path,
-                         maxAge=options.intersphinx_cache_max_age)
+    cache = prepareCache(
+        clearCache=options.clear_intersphinx_cache,
+        enableCache=options.enable_intersphinx_cache,
+        cachePath=options.intersphinx_cache_path,
+        maxAge=options.intersphinx_cache_max_age,
+    )
 
     # step 1: make/find the system
     system = options.systemclass(options)
     system.fetchIntersphinxInventories(cache)
-    cache.close() # Fixes ResourceWarning: unclosed <ssl.SSLSocket>
+    cache.close()  # Fixes ResourceWarning: unclosed <ssl.SSLSocket>
 
     # TODO: load buildtime with default factory and converter in model.Options
     # Support source date epoch:
     # https://reproducible-builds.org/specs/source-date-epoch/
     try:
-        system.buildtime = datetime.datetime.utcfromtimestamp(
-            int(os.environ['SOURCE_DATE_EPOCH']))
+        system.buildtime = datetime.datetime.utcfromtimestamp(int(os.environ['SOURCE_DATE_EPOCH']))
     except ValueError as e:
         error(str(e))
     except KeyError:
@@ -44,11 +47,10 @@ def get_system(options: model.Options) -> model.System:
     # Load custom buildtime
     if options.buildtime:
         try:
-            system.buildtime = datetime.datetime.strptime(
-                options.buildtime, BUILDTIME_FORMAT)
+            system.buildtime = datetime.datetime.strptime(options.buildtime, BUILDTIME_FORMAT)
         except ValueError as e:
             error(str(e))
-    
+
     # step 1.5: create the builder
 
     builderT = system.systemBuilder
@@ -79,37 +81,38 @@ def get_system(options: model.Options) -> model.System:
 
     return system
 
+
 def make(system: model.System) -> None:
     """
-    Produce the html/intersphinx output, as configured in the system's options. 
+    Produce the html/intersphinx output, as configured in the system's options.
     """
     options = system.options
     # step 4: make html, if desired
 
     if options.makehtml:
         options.makeintersphinx = True
-        
-        system.msg('html', 'writing html to %s using %s.%s'%(
-            options.htmloutput, options.htmlwriter.__module__,
-            options.htmlwriter.__name__))
+
+        system.msg(
+            'html',
+            'writing html to %s using %s.%s'
+            % (options.htmloutput, options.htmlwriter.__module__, options.htmlwriter.__name__),
+        )
 
         writer: IWriter
-        
+
         # Always init the writer with the 'base' set of templates at least.
-        template_lookup = TemplateLookup(
-                            importlib_resources.files('pydoctor.themes') / 'base')
-        
+        template_lookup = TemplateLookup(importlib_resources.files('pydoctor.themes') / 'base')
+
         # Handle theme selection, 'classic' by default.
         if system.options.theme != 'base':
-            template_lookup.add_templatedir(
-                importlib_resources.files('pydoctor.themes') / system.options.theme)
+            template_lookup.add_templatedir(importlib_resources.files('pydoctor.themes') / system.options.theme)
 
         # Handle custom HTML templates
         if system.options.templatedir:
             try:
                 for t in system.options.templatedir:
                     template_lookup.add_templatedir(Path(t))
-            except TemplateError  as e:
+            except TemplateError as e:
                 error(str(e))
 
         build_directory = Path(options.htmloutput)
@@ -128,7 +131,7 @@ def make(system: model.System) -> None:
         writer.writeIndividualFiles(subjects)
         if not options.htmlsubjects:
             writer.writeLinks(system)
-        
+
     if options.makeintersphinx:
         if not options.makehtml:
             subjects = system.rootobjects
@@ -137,13 +140,14 @@ def make(system: model.System) -> None:
             logger=system.msg,
             project_name=system.projectname,
             project_version=system.options.projectversion,
-            )
+        )
         if not os.path.exists(options.htmloutput):
             os.makedirs(options.htmloutput)
         sphinx_inventory.generate(
             subjects=subjects,
             basepath=options.htmloutput,
-            )
+        )
+
 
 def main(args: Sequence[str] = sys.argv[1:]) -> int:
     """
@@ -163,7 +167,7 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
 
         # Build model
         system = get_system(options)
-        
+
         # Produce output (HMTL, json, ect)
         make(system)
 
@@ -174,10 +178,10 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
 
             def p(msg: str) -> None:
                 system.msg('docstring-summary', msg, thresh=-1, topthresh=1)
-            p("these %s objects' docstrings contain syntax errors:"
-                %(len(docstring_syntax_errors),))
+
+            p("these %s objects' docstrings contain syntax errors:" % (len(docstring_syntax_errors),))
             for fn in sorted(docstring_syntax_errors):
-                p('    '+fn)
+                p('    ' + fn)
 
         # If there is any other kind of parse errors, exit with code 2 as well.
         # This applies to errors generated from colorizing AST.
@@ -187,11 +191,12 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
         if system.violations and options.warnings_as_errors:
             # Update exit code if the run has produced warnings.
             exitcode = 3
-        
+
     except:
         if options.pdb:
             import pdb
+
             pdb.post_mortem(sys.exc_info()[2])
         raise
-    
+
     return exitcode

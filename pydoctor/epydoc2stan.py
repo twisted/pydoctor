@@ -1,13 +1,26 @@
 """
 Convert L{pydoctor.epydoc} parsed markup into renderable content.
 """
+
 from __future__ import annotations
 
 from collections import defaultdict
 import enum
 from typing import (
-    TYPE_CHECKING, Any, Callable, ClassVar, DefaultDict, Dict, Generator,
-    Iterator, List, Mapping, Optional, Sequence, Tuple, Union,
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    ClassVar,
+    DefaultDict,
+    Dict,
+    Generator,
+    Iterator,
+    List,
+    Mapping,
+    Optional,
+    Sequence,
+    Tuple,
+    Union,
 )
 import ast
 import re
@@ -35,6 +48,7 @@ Alias to L{pydoctor.linker.taglink()}.
 
 BROKEN = tags.p(class_="undocumented")('Broken description')
 
+
 def _get_docformat(obj: model.Documentable) -> str:
     """
     Returns the docformat to use to parse the docstring of this object.
@@ -49,6 +63,7 @@ def _get_docformat(obj: model.Documentable) -> str:
     docformat = obj.module.docformat or obj.system.options.docformat
     return docformat
 
+
 @attr.s(auto_attribs=True)
 class FieldDesc:
     """
@@ -60,6 +75,7 @@ class FieldDesc:
        :type foo:  SomeClass
 
     """
+
     _UNDOCUMENTED: ClassVar[Tag] = tags.span(class_='undocumented')("Undocumented")
 
     name: Optional[str] = None
@@ -102,6 +118,7 @@ class FieldDesc:
             #  <desc>
             yield tags.td(formatted, colspan="2")
 
+
 @attr.s(auto_attribs=True)
 class _SignatureDesc(FieldDesc):
     type_origin: Optional['FieldOrigin'] = None
@@ -109,14 +126,18 @@ class _SignatureDesc(FieldDesc):
     def is_documented(self) -> bool:
         return bool(self.body or self.type_origin is FieldOrigin.FROM_DOCSTRING)
 
-@attr.s(auto_attribs=True)
-class ReturnDesc(_SignatureDesc):...
 
 @attr.s(auto_attribs=True)
-class ParamDesc(_SignatureDesc):...
+class ReturnDesc(_SignatureDesc): ...
+
 
 @attr.s(auto_attribs=True)
-class KeywordDesc(_SignatureDesc):...
+class ParamDesc(_SignatureDesc): ...
+
+
+@attr.s(auto_attribs=True)
+class KeywordDesc(_SignatureDesc): ...
+
 
 class RaisesDesc(FieldDesc):
     """Description of an exception that can be raised by function/method."""
@@ -125,6 +146,7 @@ class RaisesDesc(FieldDesc):
         assert self.type is not None  # TODO: Why can't it be None?
         yield tags.td(tags.code(self.type), class_="fieldArgContainer")
         yield tags.td(self.body or self._UNDOCUMENTED)
+
 
 def format_desc_list(label: str, descs: Sequence[FieldDesc]) -> Iterator[Tag]:
     """
@@ -166,6 +188,7 @@ def format_desc_list(label: str, descs: Sequence[FieldDesc]) -> Iterator[Tag]:
         row(d.format())
         yield row
 
+
 @attr.s(auto_attribs=True)
 class Field:
     """Like L{pydoctor.epydoc.markup.Field}, but without the gross accessor
@@ -186,20 +209,18 @@ class Field:
 
     @classmethod
     def from_epydoc(cls, field: EpydocField, source: model.Documentable) -> 'Field':
-        return cls(
-            tag=field.tag(),
-            arg=field.arg(),
-            source=source,
-            lineno=field.lineno,
-            body=field.body()
-            )
+        return cls(tag=field.tag(), arg=field.arg(), source=source, lineno=field.lineno, body=field.body())
 
     def format(self) -> Tag:
         """Present this field's body as HTML."""
-        return safe_to_stan(self.body, self.source.docstring_linker, self.source,
-                    # the parsed docstring maybe doesn't support to_node(), i.e. ParsedTypeDocstring,
-                    # so we can only show the broken text.
-                    fallback=lambda _, __, ___:BROKEN)
+        return safe_to_stan(
+            self.body,
+            self.source.docstring_linker,
+            self.source,
+            # the parsed docstring maybe doesn't support to_node(), i.e. ParsedTypeDocstring,
+            # so we can only show the broken text.
+            fallback=lambda _, __, ___: BROKEN,
+        )
 
     def report(self, message: str) -> None:
         self.source.report(message, lineno_offset=self.lineno, section='docstring')
@@ -231,24 +252,29 @@ def format_field_list(singular: str, plural: str, fields: Sequence[Field]) -> It
         row(tags.td(colspan="2")(field.format()))
         yield row
 
+
 class VariableArgument(str):
     """
     Encapsulate the name of C{vararg} parameters in L{Function.annotations} mapping keys.
     """
+
 
 class KeywordArgument(str):
     """
     Encapsulate the name of C{kwarg} parameters in L{Function.annotations} mapping keys.
     """
 
+
 class FieldOrigin(enum.Enum):
     FROM_AST = 0
     FROM_DOCSTRING = 1
+
 
 @attr.s(auto_attribs=True)
 class ParamType:
     stan: Tag
     origin: FieldOrigin
+
 
 class FieldHandler:
 
@@ -269,19 +295,27 @@ class FieldHandler:
         self.sinces: List[Field] = []
         self.unknowns: DefaultDict[str, List[FieldDesc]] = defaultdict(list)
 
-    def set_param_types_from_annotations(
-            self, annotations: Mapping[str, Optional[ast.expr]]
-            ) -> None:
+    def set_param_types_from_annotations(self, annotations: Mapping[str, Optional[ast.expr]]) -> None:
         _linker = linker._AnnotationLinker(self.obj)
         formatted_annotations = {
-            name: None if value is None
-                       else ParamType(safe_to_stan(colorize_inline_pyval(value), _linker,
-                                self.obj, fallback=colorized_pyval_fallback, section='annotation', report=False),
-                                # don't spam the log, invalid annotation are going to be reported when the signature gets colorized
-                                origin=FieldOrigin.FROM_AST)
-
+            name: (
+                None
+                if value is None
+                else ParamType(
+                    safe_to_stan(
+                        colorize_inline_pyval(value),
+                        _linker,
+                        self.obj,
+                        fallback=colorized_pyval_fallback,
+                        section='annotation',
+                        report=False,
+                    ),
+                    # don't spam the log, invalid annotation are going to be reported when the signature gets colorized
+                    origin=FieldOrigin.FROM_AST,
+                )
+            )
             for name, value in annotations.items()
-            }
+        }
 
         ret_type = formatted_annotations.pop('return', None)
         self.types.update(formatted_annotations)
@@ -295,7 +329,7 @@ class FieldHandler:
                 self.return_desc = ReturnDesc(type=ret_type.stan, type_origin=ret_type.origin)
 
     @staticmethod
-    def _report_unexpected_argument(field:Field) -> None:
+    def _report_unexpected_argument(field: Field) -> None:
         if field.arg is not None:
             field.report('Unexpected argument in %s field' % (field.tag,))
 
@@ -304,6 +338,7 @@ class FieldHandler:
         if not self.return_desc:
             self.return_desc = ReturnDesc()
         self.return_desc.body = field.format()
+
     handle_returns = handle_return
 
     def handle_yield(self, field: Field) -> None:
@@ -311,6 +346,7 @@ class FieldHandler:
         if not self.yields_desc:
             self.yields_desc = FieldDesc()
         self.yields_desc.body = field.format()
+
     handle_yields = handle_yield
 
     def handle_returntype(self, field: Field) -> None:
@@ -319,6 +355,7 @@ class FieldHandler:
             self.return_desc = ReturnDesc()
         self.return_desc.type = field.format()
         self.return_desc.type_origin = FieldOrigin.FROM_DOCSTRING
+
     handle_rtype = handle_returntype
 
     def handle_yieldtype(self, field: Field) -> None:
@@ -326,6 +363,7 @@ class FieldHandler:
         if not self.yields_desc:
             self.yields_desc = FieldDesc()
         self.yields_desc.type = field.format()
+
     handle_ytype = handle_yieldtype
 
     def _handle_param_name(self, field: Field) -> Optional[str]:
@@ -388,11 +426,16 @@ class FieldHandler:
             return
         elif isinstance(self.obj, model.Function):
             name = self._handle_param_name(field)
-            if name is not None and name not in self.types and not any(
+            if (
+                name is not None
+                and name not in self.types
+                and not any(
                     # Don't warn about keywords or about parameters we already
                     # reported a warning for.
-                    desc.name == name for desc in self.parameter_descs
-                    ):
+                    desc.name == name
+                    for desc in self.parameter_descs
+                )
+            ):
                 self._handle_param_not_found(name, field)
         else:
             # Note: extract_fields() will issue warnings about missing field
@@ -423,7 +466,6 @@ class FieldHandler:
             if name in self.types:
                 field.report('Parameter "%s" is documented as keyword' % (name,))
 
-
     def handled_elsewhere(self, field: Field) -> None:
         # Some fields are handled by extract_fields below.
         pass
@@ -440,6 +482,7 @@ class FieldHandler:
         else:
             typ_fmt = self._linker.link_to(name, name)
         self.raise_descs.append(RaisesDesc(type=typ_fmt, body=field.format()))
+
     handle_raise = handle_raises
     handle_except = handle_raises
 
@@ -455,6 +498,7 @@ class FieldHandler:
 
     def handle_seealso(self, field: Field) -> None:
         self.seealsos.append(field)
+
     handle_see = handle_seealso
 
     def handle_note(self, field: Field) -> None:
@@ -468,7 +512,7 @@ class FieldHandler:
 
     def handleUnknownField(self, field: Field) -> None:
         name = field.tag
-        field.report(f"Unknown field '{name}'" )
+        field.report(f"Unknown field '{name}'")
         self.unknowns[name].append(FieldDesc(name=field.arg, body=field.format()))
 
     def handle(self, field: Field) -> None:
@@ -492,14 +536,16 @@ class FieldHandler:
 
                 if index == 0:
                     # Strip 'self' or 'cls' from parameter table when it semantically makes sens.
-                    if name=='self' and self.obj.kind is model.DocumentableKind.METHOD:
+                    if name == 'self' and self.obj.kind is model.DocumentableKind.METHOD:
                         continue
-                    if name=='cls' and self.obj.kind is model.DocumentableKind.CLASS_METHOD:
+                    if name == 'cls' and self.obj.kind is model.DocumentableKind.CLASS_METHOD:
                         continue
 
-                param = ParamDesc(name=name,
+                param = ParamDesc(
+                    name=name,
                     type=param_type.stan if param_type else None,
-                    type_origin=param_type.origin if param_type else None,)
+                    type_origin=param_type.origin if param_type else None,
+                )
 
                 any_info |= param_type is not None
             else:
@@ -517,7 +563,7 @@ class FieldHandler:
         if any_info:
             self.parameter_descs = new_parameter_descs
 
-        # loops thought the parameters and remove eventual **kwargs 
+        # loops thought the parameters and remove eventual **kwargs
         # entry if keywords are specifically documented.
         kwargs = None
         has_keywords = False
@@ -550,10 +596,12 @@ class FieldHandler:
 
         r += format_desc_list("Raises", self.raise_descs)
         r += format_desc_list("Warns", self.warns_desc)
-        for s_p_l in (('Author', 'Authors', self.authors),
-                      ('See Also', 'See Also', self.seealsos),
-                      ('Present Since', 'Present Since', self.sinces),
-                      ('Note', 'Notes', self.notes)):
+        for s_p_l in (
+            ('Author', 'Authors', self.authors),
+            ('See Also', 'See Also', self.seealsos),
+            ('Present Since', 'Present Since', self.sinces),
+            ('Note', 'Notes', self.notes),
+        ):
             r += format_field_list(*s_p_l)
         for kind, fieldlist in self.unknowns.items():
             r += format_desc_list(f"Unknown Field: {kind}", fieldlist)
@@ -563,11 +611,13 @@ class FieldHandler:
         else:
             return tags.transparent
 
-def reportWarnings(obj: model.Documentable, warns: Sequence[str], **kwargs:Any) -> None:
+
+def reportWarnings(obj: model.Documentable, warns: Sequence[str], **kwargs: Any) -> None:
     for message in warns:
         obj.report(message, **kwargs)
 
-def reportErrors(obj: model.Documentable, errs: Sequence[ParseError], section:str='docstring') -> None:
+
+def reportErrors(obj: model.Documentable, errs: Sequence[ParseError], section: str = 'docstring') -> None:
     if not errs:
         return
 
@@ -577,11 +627,8 @@ def reportErrors(obj: model.Documentable, errs: Sequence[ParseError], section:st
         errors.add(obj.fullName())
 
         for err in errs:
-            obj.report(
-                f'bad {section}: ' + err.descr(),
-                lineno_offset=(err.linenum() or 1) - 1,
-                section=section
-                )
+            obj.report(f'bad {section}: ' + err.descr(), lineno_offset=(err.linenum() or 1) - 1, section=section)
+
 
 def _objclass(obj: model.Documentable) -> ObjClass | None:
     # There is only 4 main kinds of objects
@@ -595,14 +642,17 @@ def _objclass(obj: model.Documentable) -> ObjClass | None:
         return 'function'
     return None
 
+
 _docformat_skip_processtypes = ('google', 'numpy', 'plaintext')
+
+
 def parse_docstring(
-        obj: model.Documentable,
-        doc: str,
-        source: model.Documentable,
-        markup: Optional[str]=None,
-        section: str='docstring',
-        ) -> ParsedDocstring:
+    obj: model.Documentable,
+    doc: str,
+    source: model.Documentable,
+    markup: Optional[str] = None,
+    section: str = 'docstring',
+) -> ParsedDocstring:
     """Parse a docstring.
     @param obj: The object we're parsing the documentation for.
     @param doc: The docstring.
@@ -619,8 +669,11 @@ def parse_docstring(
     try:
         parser = get_parser_by_name(docformat, _objclass(obj))
     except (ImportError, AttributeError) as e:
-        _err = 'Error trying to fetch %r parser:\n\n    %s: %s\n\nUsing plain text formatting only.'%(
-            docformat, e.__class__.__name__, e)
+        _err = 'Error trying to fetch %r parser:\n\n    %s: %s\n\nUsing plain text formatting only.' % (
+            docformat,
+            e.__class__.__name__,
+            e,
+        )
         obj.system.msg('epydoc2stan', _err, thresh=-1, once=True)
         parser = pydoctor.epydoc.markup.plaintext.parse_docstring
 
@@ -644,6 +697,7 @@ def parse_docstring(
     if errs:
         reportErrors(source, errs, section=section)
     return parsed_doc
+
 
 def ensure_parsed_docstring(obj: model.Documentable) -> Optional[model.Documentable]:
     """
@@ -688,6 +742,7 @@ class ParsedStanOnly(ParsedDocstring):
 
     L{to_stan} method simply returns back what's given to L{ParsedStanOnly.__init__}.
     """
+
     def __init__(self, stan: Tag):
         super().__init__(fields=[])
         self._fromstan = stan
@@ -701,6 +756,7 @@ class ParsedStanOnly(ParsedDocstring):
 
     def to_node(self) -> Any:
         raise NotImplementedError()
+
 
 def _get_parsed_summary(obj: model.Documentable) -> Tuple[Optional[model.Documentable], ParsedDocstring]:
     """
@@ -725,15 +781,19 @@ def _get_parsed_summary(obj: model.Documentable) -> Tuple[Optional[model.Documen
 
     return (source, summary_parsed_doc)
 
+
 def get_to_stan_error(e: Exception) -> ParseError:
     return ParseError(f"{e.__class__.__name__}: {e}", 0)
 
-def safe_to_stan(parsed_doc: ParsedDocstring,
-                 linker: 'DocstringLinker',
-                 ctx: model.Documentable,
-                 fallback: Callable[[List[ParseError], ParsedDocstring, model.Documentable], Tag],
-                 report: bool = True,
-                 section:str='docstring') -> Tag:
+
+def safe_to_stan(
+    parsed_doc: ParsedDocstring,
+    linker: 'DocstringLinker',
+    ctx: model.Documentable,
+    fallback: Callable[[List[ParseError], ParsedDocstring, model.Documentable], Tag],
+    report: bool = True,
+    section: str = 'docstring',
+) -> Tag:
     """
     Wraps L{ParsedDocstring.to_stan()} to catch exception and handle them in C{fallback}.
     This is used to convert docstrings as well as other colorized AST values to stan.
@@ -757,7 +817,8 @@ def safe_to_stan(parsed_doc: ParsedDocstring,
             reportErrors(ctx, errs, section=section)
     return stan
 
-def format_docstring_fallback(errs: List[ParseError], parsed_doc:ParsedDocstring, ctx:model.Documentable) -> Tag:
+
+def format_docstring_fallback(errs: List[ParseError], parsed_doc: ParsedDocstring, ctx: model.Documentable) -> Tag:
     if ctx.docstring is None:
         stan = BROKEN
     else:
@@ -765,9 +826,10 @@ def format_docstring_fallback(errs: List[ParseError], parsed_doc:ParsedDocstring
         stan = parsed_doc_plain.to_stan(ctx.docstring_linker)
     return stan
 
-def _wrap_in_paragraph(body:Sequence["Flattenable"]) -> bool:
+
+def _wrap_in_paragraph(body: Sequence["Flattenable"]) -> bool:
     """
-    Whether to wrap the given docstring stan body inside a paragraph. 
+    Whether to wrap the given docstring stan body inside a paragraph.
     """
     has_paragraph = False
     for e in body:
@@ -775,12 +837,13 @@ def _wrap_in_paragraph(body:Sequence["Flattenable"]) -> bool:
             has_paragraph = True
         # only check the first element of the body
         break
-    return bool(len(body)>0 and not has_paragraph)
+    return bool(len(body) > 0 and not has_paragraph)
 
-def unwrap_docstring_stan(stan:Tag) -> "Flattenable":
+
+def unwrap_docstring_stan(stan: Tag) -> "Flattenable":
     """
-    Unwrap the body of the given C{Tag} instance if it has a non-empty tag name and 
-    ensure there is at least one paragraph. 
+    Unwrap the body of the given C{Tag} instance if it has a non-empty tag name and
+    ensure there is at least one paragraph.
 
     @note: This is the counterpart of what we're doing in L{HTMLTranslator.should_be_compact_paragraph()}.
         Since the L{HTMLTranslator} is generic for all parsed docstrings types, it always generates compact paragraphs.
@@ -794,6 +857,7 @@ def unwrap_docstring_stan(stan:Tag) -> "Flattenable":
         return tags.p(*body)
     else:
         return body
+
 
 def format_docstring(obj: model.Documentable) -> Tag:
     """Generate an HTML representation of a docstring"""
@@ -820,11 +884,13 @@ def format_docstring(obj: model.Documentable) -> Tag:
     ret(fh.format())
     return ret
 
-def format_summary_fallback(errs: List[ParseError], parsed_doc:ParsedDocstring, ctx:model.Documentable) -> Tag:
+
+def format_summary_fallback(errs: List[ParseError], parsed_doc: ParsedDocstring, ctx: model.Documentable) -> Tag:
     stan = BROKEN
     # override parsed_summary instance variable to remeber this one is broken.
     ctx.parsed_summary = ParsedStanOnly(stan)
     return stan
+
 
 def format_summary(obj: model.Documentable) -> Tag:
     """Generate an shortened HTML representation of a docstring."""
@@ -832,14 +898,13 @@ def format_summary(obj: model.Documentable) -> Tag:
     source, parsed_doc = _get_parsed_summary(obj)
     if not source:
         source = obj
-    
+
     # do not optimize url in order to make sure we're always generating full urls.
     # avoids breaking links when including the summaries on other pages.
     with source.docstring_linker.switch_context(None):
         # ParserErrors will likely be reported by the full docstring as well,
         # so don't spam the log, pass report=False.
-        stan = safe_to_stan(parsed_doc, source.docstring_linker, source, report=False,
-                fallback=format_summary_fallback)
+        stan = safe_to_stan(parsed_doc, source.docstring_linker, source, report=False, fallback=format_summary_fallback)
 
     return stan
 
@@ -848,7 +913,7 @@ def format_undocumented(obj: model.Documentable) -> Tag:
     """Generate an HTML representation for an object lacking a docstring."""
 
     sub_objects_with_docstring_count: DefaultDict[model.DocumentableKind, int] = defaultdict(int)
-    sub_objects_total_count: DefaultDict[model.DocumentableKind, int]  = defaultdict(int)
+    sub_objects_total_count: DefaultDict[model.DocumentableKind, int] = defaultdict(int)
     for sub_ob in obj.contents.values():
         kind = sub_ob.kind
         if kind is not None:
@@ -860,17 +925,18 @@ def format_undocumented(obj: model.Documentable) -> Tag:
     if sub_objects_with_docstring_count:
 
         kind = obj.kind
-        assert kind is not None # if kind is None, object is invisible
+        assert kind is not None  # if kind is None, object is invisible
         tag(
-            "No ", format_kind(kind).lower(), " docstring; ",
+            "No ",
+            format_kind(kind).lower(),
+            " docstring; ",
             ', '.join(
                 f"{sub_objects_with_docstring_count[kind]}/{sub_objects_total_count[kind]} "
                 f"{format_kind(kind, plural=sub_objects_with_docstring_count[kind]>=2).lower()}"
-
-                for kind in sorted(sub_objects_total_count, key=(lambda x:x.value))
-                ),
-            " documented"
-            )
+                for kind in sorted(sub_objects_total_count, key=(lambda x: x.value))
+            ),
+            " documented",
+        )
     else:
         tag("Undocumented")
     return tag
@@ -886,8 +952,8 @@ def type2stan(obj: model.Documentable) -> Optional[Tag]:
         return None
     else:
         _linker = linker._AnnotationLinker(obj)
-        return safe_to_stan(parsed_type, _linker, obj,
-            fallback=colorized_pyval_fallback, section='annotation')
+        return safe_to_stan(parsed_type, _linker, obj, fallback=colorized_pyval_fallback, section='annotation')
+
 
 def get_parsed_type(obj: model.Documentable) -> Optional[ParsedDocstring]:
     """
@@ -904,6 +970,7 @@ def get_parsed_type(obj: model.Documentable) -> Optional[ParsedDocstring]:
 
     return None
 
+
 def format_toc(obj: model.Documentable) -> Optional[Tag]:
     # Load the parsed_docstring if it's not already done.
     ensure_parsed_docstring(obj)
@@ -912,8 +979,7 @@ def format_toc(obj: model.Documentable) -> Optional[Tag]:
         if obj.system.options.sidebartocdepth > 0:
             toc = obj.parsed_docstring.get_toc(depth=obj.system.options.sidebartocdepth)
             if toc:
-                return safe_to_stan(toc, obj.docstring_linker, obj, report=False,
-                    fallback=lambda _,__,___:BROKEN)
+                return safe_to_stan(toc, obj.docstring_linker, obj, report=False, fallback=lambda _, __, ___: BROKEN)
     return None
 
 
@@ -921,7 +987,7 @@ field_name_to_kind = {
     'ivar': model.DocumentableKind.INSTANCE_VARIABLE,
     'cvar': model.DocumentableKind.CLASS_VARIABLE,
     'var': model.DocumentableKind.VARIABLE,
-    }
+}
 
 
 def extract_fields(obj: model.CanContainImportsDocumentable) -> None:
@@ -940,8 +1006,7 @@ def extract_fields(obj: model.CanContainImportsDocumentable) -> None:
         if tag in ['ivar', 'cvar', 'var', 'type']:
             arg = field.arg()
             if arg is None:
-                obj.report("Missing field name in @%s" % (tag,),
-                           'docstring', field.lineno)
+                obj.report("Missing field name in @%s" % (tag,), 'docstring', field.lineno)
                 continue
             attrobj: Optional[model.Documentable] = obj.contents.get(arg)
             if attrobj is None:
@@ -959,45 +1024,48 @@ def extract_fields(obj: model.CanContainImportsDocumentable) -> None:
                 attrobj.parsed_docstring = field.body()
                 attrobj.kind = field_name_to_kind[tag]
 
+
 def format_kind(kind: model.DocumentableKind, plural: bool = False) -> str:
     """
     Transform a `model.DocumentableKind` Enum value to string.
     """
     names = {
-        model.DocumentableKind.PACKAGE         : 'Package',
-        model.DocumentableKind.MODULE          : 'Module',
-        model.DocumentableKind.INTERFACE       : 'Interface',
-        model.DocumentableKind.CLASS           : 'Class',
-        model.DocumentableKind.CLASS_METHOD    : 'Class Method',
-        model.DocumentableKind.STATIC_METHOD   : 'Static Method',
-        model.DocumentableKind.METHOD          : 'Method',
-        model.DocumentableKind.FUNCTION        : 'Function',
-        model.DocumentableKind.CLASS_VARIABLE  : 'Class Variable',
-        model.DocumentableKind.ATTRIBUTE       : 'Attribute',
-        model.DocumentableKind.INSTANCE_VARIABLE : 'Instance Variable',
-        model.DocumentableKind.PROPERTY        : 'Property',
-        model.DocumentableKind.VARIABLE        : 'Variable',
-        model.DocumentableKind.SCHEMA_FIELD    : 'Attribute',
-        model.DocumentableKind.CONSTANT        : 'Constant',
-        model.DocumentableKind.EXCEPTION       : 'Exception',
-        model.DocumentableKind.TYPE_ALIAS      : 'Type Alias',
-        model.DocumentableKind.TYPE_VARIABLE   : 'Type Variable',
+        model.DocumentableKind.PACKAGE: 'Package',
+        model.DocumentableKind.MODULE: 'Module',
+        model.DocumentableKind.INTERFACE: 'Interface',
+        model.DocumentableKind.CLASS: 'Class',
+        model.DocumentableKind.CLASS_METHOD: 'Class Method',
+        model.DocumentableKind.STATIC_METHOD: 'Static Method',
+        model.DocumentableKind.METHOD: 'Method',
+        model.DocumentableKind.FUNCTION: 'Function',
+        model.DocumentableKind.CLASS_VARIABLE: 'Class Variable',
+        model.DocumentableKind.ATTRIBUTE: 'Attribute',
+        model.DocumentableKind.INSTANCE_VARIABLE: 'Instance Variable',
+        model.DocumentableKind.PROPERTY: 'Property',
+        model.DocumentableKind.VARIABLE: 'Variable',
+        model.DocumentableKind.SCHEMA_FIELD: 'Attribute',
+        model.DocumentableKind.CONSTANT: 'Constant',
+        model.DocumentableKind.EXCEPTION: 'Exception',
+        model.DocumentableKind.TYPE_ALIAS: 'Type Alias',
+        model.DocumentableKind.TYPE_VARIABLE: 'Type Variable',
     }
     plurals = {
-        model.DocumentableKind.CLASS           : 'Classes',
-        model.DocumentableKind.PROPERTY        : 'Properties',
-        model.DocumentableKind.TYPE_ALIAS      : 'Type Aliases',
+        model.DocumentableKind.CLASS: 'Classes',
+        model.DocumentableKind.PROPERTY: 'Properties',
+        model.DocumentableKind.TYPE_ALIAS: 'Type Aliases',
     }
     if plural:
         return plurals.get(kind, names[kind] + 's')
     else:
         return names[kind]
 
-def colorized_pyval_fallback(_: List[ParseError], doc:ParsedDocstring, __:model.Documentable) -> Tag:
+
+def colorized_pyval_fallback(_: List[ParseError], doc: ParsedDocstring, __: model.Documentable) -> Tag:
     """
     This fallback function uses L{ParsedDocstring.to_node()}, so it must be used only with L{ParsedDocstring} subclasses that implements C{to_node()}.
     """
     return Tag('code')(node2stan.gettext(doc.to_node()))
+
 
 def _format_constant_value(obj: model.Attribute) -> Iterator["Flattenable"]:
 
@@ -1007,12 +1075,13 @@ def _format_constant_value(obj: model.Attribute) -> Iterator["Flattenable"]:
     # yield the first row.
     yield row
 
-    doc = colorize_pyval(obj.value,
-        linelen=obj.system.options.pyvalreprlinelen,
-        maxlines=obj.system.options.pyvalreprmaxlines)
+    doc = colorize_pyval(
+        obj.value, linelen=obj.system.options.pyvalreprlinelen, maxlines=obj.system.options.pyvalreprmaxlines
+    )
 
-    value_repr = safe_to_stan(doc, obj.docstring_linker, obj,
-        fallback=colorized_pyval_fallback, section='rendering of constant')
+    value_repr = safe_to_stan(
+        doc, obj.docstring_linker, obj, fallback=colorized_pyval_fallback, section='rendering of constant'
+    )
 
     # Report eventual warnings. It warns when a regex failed to parse.
     reportWarnings(obj, doc.warnings, section='colorize constant')
@@ -1022,6 +1091,7 @@ def _format_constant_value(obj: model.Attribute) -> Iterator["Flattenable"]:
     row(tags.td(tags.pre(class_='constant-value')(value_repr)))
     yield row
 
+
 def format_constant_value(obj: model.Attribute) -> "Flattenable":
     """
     Should be only called for L{Attribute} objects that have the L{Attribute.value} property set.
@@ -1029,14 +1099,15 @@ def format_constant_value(obj: model.Attribute) -> "Flattenable":
     rows = list(_format_constant_value(obj))
     return tags.table(class_='valueTable')(*rows)
 
-def _split_indentifier_parts_on_case(indentifier:str) -> List[str]:
 
-    def split(text:str, sep:str) -> List[str]:
+def _split_indentifier_parts_on_case(indentifier: str) -> List[str]:
+
+    def split(text: str, sep: str) -> List[str]:
         # We use \u200b as temp token to hack a split that passes the tests.
-        return text.replace(sep, '\u200b'+sep).split('\u200b')
+        return text.replace(sep, '\u200b' + sep).split('\u200b')
 
     match = re.match('(_{1,2})?(.*?)(_{1,2})?$', indentifier)
-    assert match is not None # the regex always matches
+    assert match is not None  # the regex always matches
     prefix, text, suffix = match.groups(default='')
     text_parts = []
 
@@ -1061,7 +1132,7 @@ def _split_indentifier_parts_on_case(indentifier:str) -> List[str]:
         if current_part:
             text_parts.append(current_part)
 
-    if not text_parts: # the name is composed only by underscores
+    if not text_parts:  # the name is composed only by underscores
         text_parts = ['']
 
     if prefix:
@@ -1070,6 +1141,7 @@ def _split_indentifier_parts_on_case(indentifier:str) -> List[str]:
         text_parts[-1] = text_parts[-1] + suffix
 
     return text_parts
+
 
 def insert_break_points(text: str) -> 'Flattenable':
     """
@@ -1085,15 +1157,16 @@ def insert_break_points(text: str) -> 'Flattenable':
 
     r: List['Flattenable'] = []
     parts = text.split('.')
-    for i,t in enumerate(parts):
+    for i, t in enumerate(parts):
         _parts = _split_indentifier_parts_on_case(t)
-        for i_,p in enumerate(_parts):
+        for i_, p in enumerate(_parts):
             r += [p]
-            if i_ != len(_parts)-1:
+            if i_ != len(_parts) - 1:
                 r += [tags.wbr()]
-        if i != len(parts)-1:
+        if i != len(parts) - 1:
             r += [tags.wbr(), '.']
     return tags.transparent(*r)
+
 
 def format_constructor_short_text(constructor: model.Function, forclass: model.Class) -> str:
     """
@@ -1101,42 +1174,43 @@ def format_constructor_short_text(constructor: model.Function, forclass: model.C
     C{forclass} is not always the function's parent, it can be a subclass.
     """
     args = ''
-    # for signature with more than 5 parameters, 
+    # for signature with more than 5 parameters,
     # we just show the elipsis after the fourth parameter
     annotations = constructor.annotations.items()
     many_param = len(annotations) > 6
-    
+
     for index, (name, ann) in enumerate(annotations):
-        if name=='return':
+        if name == 'return':
             continue
 
         if many_param and index > 4:
             args += ', ...'
             break
-        
+
         # Special casing __new__ because it's actually a static method
-        if index==0 and (constructor.name in ('__new__', '__init__') or 
-                         constructor.kind is model.DocumentableKind.CLASS_METHOD):
+        if index == 0 and (
+            constructor.name in ('__new__', '__init__') or constructor.kind is model.DocumentableKind.CLASS_METHOD
+        ):
             # Omit first argument (self/cls) from simplified signature.
             continue
         star = ''
         if isinstance(name, VariableArgument):
-            star='*'
+            star = '*'
         elif isinstance(name, KeywordArgument):
-            star='**'
-        
+            star = '**'
+
         if args:
             args += ', '
-        
+
         args += f"{star}{name}"
-    
+
     # display innner classes with their name starting at the top level class.
-    _current:model.CanContainImportsDocumentable = forclass
-    class_name = [] 
+    _current: model.CanContainImportsDocumentable = forclass
+    class_name = []
     while isinstance(_current, model.Class):
         class_name.append(_current.name)
         _current = _current.parent
-    
+
     callable_name = '.'.join(reversed(class_name))
 
     if constructor.name not in ('__new__', '__init__'):
@@ -1146,41 +1220,35 @@ def format_constructor_short_text(constructor: model.Function, forclass: model.C
 
     return f"{callable_name}({args})"
 
-def get_constructors_extra(cls:model.Class) -> ParsedDocstring | None:
+
+def get_constructors_extra(cls: model.Class) -> ParsedDocstring | None:
     """
     Get an extra docstring to represent Class constructors.
     """
     from pydoctor.templatewriter import util
+
     constructors = cls.public_constructors
     if not constructors:
         return None
-    
+
     document = new_document('constructors')
 
     elements: list[nodes.Node] = []
-    plural = 's' if len(constructors)>1 else ''
-    elements.append(set_node_attributes(
-        nodes.Text(f'Constructor{plural}: '), 
-        document=document, 
-        lineno=1))
+    plural = 's' if len(constructors) > 1 else ''
+    elements.append(set_node_attributes(nodes.Text(f'Constructor{plural}: '), document=document, lineno=1))
 
-    for i, c in enumerate(sorted(constructors, 
-                    key=util.alphabetical_order_func)):
+    for i, c in enumerate(sorted(constructors, key=util.alphabetical_order_func)):
         if i != 0:
-            elements.append(set_node_attributes(
-                nodes.Text(', '), 
-                document=document, 
-                lineno=1))
+            elements.append(set_node_attributes(nodes.Text(', '), document=document, lineno=1))
         short_text = format_constructor_short_text(c, cls)
-        elements.append(set_node_attributes(
-            nodes.title_reference('', '', refuri=c.fullName()), 
-            document=document, 
-            children=[set_node_attributes(
-                nodes.Text(short_text), 
-                document=document, 
-                lineno=1
-                )], 
-                lineno=1))
-    
+        elements.append(
+            set_node_attributes(
+                nodes.title_reference('', '', refuri=c.fullName()),
+                document=document,
+                children=[set_node_attributes(nodes.Text(short_text), document=document, lineno=1)],
+                lineno=1,
+            )
+        )
+
     set_node_attributes(document, children=elements)
     return ParsedRstDocstring(document, ())

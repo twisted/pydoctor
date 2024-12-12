@@ -9,6 +9,7 @@ Parser for plaintext docstrings.  Plaintext docstrings are rendered as
 verbatim output, preserving all whitespace.
 """
 from __future__ import annotations
+
 __docformat__ = 'epytext en'
 
 from typing import List, Optional
@@ -18,6 +19,7 @@ from twisted.web.template import Tag, tags
 
 from pydoctor.epydoc.markup import DocstringLinker, ObjClass, ParsedDocstring, ParseError, ParserFunction
 from pydoctor.epydoc.docutils import set_node_attributes, new_document
+
 
 def parse_docstring(docstring: str, errors: List[ParseError]) -> ParsedDocstring:
     """
@@ -30,11 +32,13 @@ def parse_docstring(docstring: str, errors: List[ParseError]) -> ParsedDocstring
     """
     return ParsedPlaintextDocstring(docstring)
 
+
 def get_parser(_: ObjClass | None) -> ParserFunction:
     """
-    Just return the L{parse_docstring} function. 
+    Just return the L{parse_docstring} function.
     """
     return parse_docstring
+
 
 class ParsedPlaintextDocstring(ParsedDocstring):
 
@@ -47,14 +51,14 @@ class ParsedPlaintextDocstring(ParsedDocstring):
     @property
     def has_body(self) -> bool:
         return bool(self._text)
-    
-    # plaintext parser overrides the default to_stan() method for performance and design reasons. 
-    # We don't want to use docutils to process the plaintext format because we won't 
-    # actually use the document tree ,it does not contains any additionnalt information compared to the raw docstring. 
+
+    # plaintext parser overrides the default to_stan() method for performance and design reasons.
+    # We don't want to use docutils to process the plaintext format because we won't
+    # actually use the document tree ,it does not contains any additionnalt information compared to the raw docstring.
     # Also, the consolidated fields handling in restructuredtext.py relies on this "pre" class.
     def to_stan(self, docstring_linker: DocstringLinker) -> Tag:
         return tags.p(self._text, class_='pre')
-    
+
     def to_node(self) -> nodes.document:
         # This code is mainly used to generate summary of plaintext docstrings.
 
@@ -65,15 +69,18 @@ class ParsedPlaintextDocstring(ParsedDocstring):
             _document = new_document('plaintext')
 
             # split text into paragraphs
-            paragraphs = [set_node_attributes(nodes.paragraph('',''), children=[
-                            set_node_attributes(nodes.Text(p.strip('\n')), document=_document, lineno=0)], 
-                            document=_document, lineno=0)
-                                for p in self._text.split('\n\n')] 
-            
+            paragraphs = [
+                set_node_attributes(
+                    nodes.paragraph('', ''),
+                    children=[set_node_attributes(nodes.Text(p.strip('\n')), document=_document, lineno=0)],
+                    document=_document,
+                    lineno=0,
+                )
+                for p in self._text.split('\n\n')
+            ]
+
             # assemble document
-            _document = set_node_attributes(_document, 
-                                            children=paragraphs,
-                                            document=_document, lineno=0)
+            _document = set_node_attributes(_document, children=paragraphs, document=_document, lineno=0)
 
             self._document = _document
             return self._document

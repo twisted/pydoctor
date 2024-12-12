@@ -20,6 +20,7 @@ L{CompositeConfigParser} usage:
 >>> parser = ArgumentParser(..., default_config_files=['./pyproject.toml', 'setup.cfg', 'my_super_tool.ini'], config_file_parser_class=MixedParser)
 
 """
+
 from __future__ import annotations
 
 import argparse
@@ -38,11 +39,13 @@ from configargparse import ConfigFileParserException, ConfigFileParser, Argument
 if sys.version_info >= (3, 11):
     from tomllib import load as _toml_load
     import io
-    # The tomllib module from the standard library 
-    # expect a binary IO and will fail if receives otherwise. 
+
+    # The tomllib module from the standard library
+    # expect a binary IO and will fail if receives otherwise.
     # So we hack a compat function that will work with TextIO and assume the utf-8 encoding.
     def toml_load(stream: TextIO) -> Any:
         return _toml_load(io.BytesIO(stream.read().encode()))
+
 else:
     from toml import load as toml_load
 
@@ -50,34 +53,37 @@ else:
 # - https://stackoverflow.com/questions/11859442/how-to-match-string-in-quotes-using-regex
 # - and https://stackoverflow.com/a/41005190
 
-_QUOTED_STR_REGEX = re.compile(r'(^\"(?:\\.|[^\"\\])*\"$)|'
-                               r'(^\'(?:\\.|[^\'\\])*\'$)')
+_QUOTED_STR_REGEX = re.compile(r'(^\"(?:\\.|[^\"\\])*\"$)|' r'(^\'(?:\\.|[^\'\\])*\'$)')
 
-_TRIPLE_QUOTED_STR_REGEX = re.compile(r'(^\"\"\"(\s+)?(([^\"]|\"([^\"]|\"[^\"]))*(\"\"?)?)?(\s+)?(?:\\.|[^\"\\])\"\"\"$)|'
-                                                                                                 # Unescaped quotes at the end of a string generates 
-                                                                                                 # "SyntaxError: EOL while scanning string literal", 
-                                                                                                 # so we don't account for those kind of strings as quoted.
-                                      r'(^\'\'\'(\s+)?(([^\']|\'([^\']|\'[^\']))*(\'\'?)?)?(\s+)?(?:\\.|[^\'\\])\'\'\'$)', flags=re.DOTALL)
+_TRIPLE_QUOTED_STR_REGEX = re.compile(
+    r'(^\"\"\"(\s+)?(([^\"]|\"([^\"]|\"[^\"]))*(\"\"?)?)?(\s+)?(?:\\.|[^\"\\])\"\"\"$)|'
+    # Unescaped quotes at the end of a string generates
+    # "SyntaxError: EOL while scanning string literal",
+    # so we don't account for those kind of strings as quoted.
+    r'(^\'\'\'(\s+)?(([^\']|\'([^\']|\'[^\']))*(\'\'?)?)?(\s+)?(?:\\.|[^\'\\])\'\'\'$)',
+    flags=re.DOTALL,
+)
+
 
 @functools.lru_cache(maxsize=256, typed=True)
-def is_quoted(text:str, triple:bool=True) -> bool:
+def is_quoted(text: str, triple: bool = True) -> bool:
     """
-    Detect whether a string is a quoted representation. 
+    Detect whether a string is a quoted representation.
 
     @param triple: Also match tripple quoted strings.
     """
-    return bool(_QUOTED_STR_REGEX.match(text)) or \
-        (triple and bool(_TRIPLE_QUOTED_STR_REGEX.match(text)))
+    return bool(_QUOTED_STR_REGEX.match(text)) or (triple and bool(_TRIPLE_QUOTED_STR_REGEX.match(text)))
 
-def unquote_str(text:str, triple:bool=True) -> str:
+
+def unquote_str(text: str, triple: bool = True) -> str:
     """
-    Unquote a maybe quoted string representation. 
+    Unquote a maybe quoted string representation.
     If the string is not detected as being a quoted representation, it returns the same string as passed.
     It supports all kinds of python quotes: C{\"\"\"}, C{'''}, C{"} and C{'}.
 
     @param triple: Also unquote tripple quoted strings.
     @raises ValueError: If the string is detected as beeing quoted but literal_eval() fails to evaluate it as string.
-        This would be a bug in the regex. 
+        This would be a bug in the regex.
     """
     if is_quoted(text, triple=triple):
         try:
@@ -88,7 +94,8 @@ def unquote_str(text:str, triple:bool=True) -> str:
         return s
     return text
 
-def parse_toml_section_name(section_name:str) -> Tuple[str, ...]:
+
+def parse_toml_section_name(section_name: str) -> Tuple[str, ...]:
     """
     Parse a TOML section name to a sequence of strings.
 
@@ -105,7 +112,8 @@ def parse_toml_section_name(section_name:str) -> Tuple[str, ...]:
             section.append(unquote_str(a.strip(), triple=False))
     return tuple(section)
 
-def get_toml_section(data:Dict[str, Any], section:Union[Tuple[str, ...], str]) -> Optional[Dict[str, Any]]:
+
+def get_toml_section(data: Dict[str, Any], section: Union[Tuple[str, ...], str]) -> Optional[Dict[str, Any]]:
     """
     Given some TOML data (as loaded with C{toml.load()}), returns the requested section of the data.
     Returns C{None} if the section is not found.
@@ -122,6 +130,7 @@ def get_toml_section(data:Dict[str, Any], section:Union[Tuple[str, ...], str]) -
             return None
         return itemdata
 
+
 class TomlConfigParser(ConfigFileParser):
     """
     U{TOML <https://github.com/toml-lang/toml/blob/main/toml.md>} parser with support for sections.
@@ -132,7 +141,7 @@ class TomlConfigParser(ConfigFileParser):
 
         # this is a comment
         # this is TOML section table:
-        [tool.my-software] 
+        [tool.my-software]
         # how to specify a key-value pair (strings must be quoted):
         format-string = "restructuredtext"
         # how to set an arg which has action="store_true":
@@ -144,9 +153,9 @@ class TomlConfigParser(ConfigFileParser):
                         "https://twistedmatrix.com/documents/current/api/objects.inv"]
         # how to specify a multiline text:
         multi-line-text = '''
-            Lorem ipsum dolor sit amet, consectetur adipiscing elit. 
-            Vivamus tortor odio, dignissim non ornare non, laoreet quis nunc. 
-            Maecenas quis dapibus leo, a pellentesque leo. 
+            Lorem ipsum dolor sit amet, consectetur adipiscing elit.
+            Vivamus tortor odio, dignissim non ornare non, laoreet quis nunc.
+            Maecenas quis dapibus leo, a pellentesque leo.
             '''
         # how to specify a empty text:
         empty-text = ''
@@ -166,11 +175,11 @@ class TomlConfigParser(ConfigFileParser):
     def __init__(self, sections: List[str]) -> None:
         super().__init__()
         self.sections = sections
-    
+
     def __call__(self) -> ConfigFileParser:
         return self
 
-    def parse(self, stream:TextIO) -> Dict[str, Any]:
+    def parse(self, stream: TextIO) -> Dict[str, Any]:
         """Parses the keys and values from a TOML config file."""
         # parse with configparser to allow multi-line values
         try:
@@ -184,7 +193,7 @@ class TomlConfigParser(ConfigFileParser):
         for section in self.sections:
             data = get_toml_section(config, section)
             if data:
-                # Seems a little weird, but anything that is not a list is converted to string, 
+                # Seems a little weird, but anything that is not a list is converted to string,
                 # It will be converted back to boolean, int or whatever after.
                 # Because config values are still passed to argparser for computation.
                 for key, value in data.items():
@@ -195,26 +204,29 @@ class TomlConfigParser(ConfigFileParser):
                     else:
                         result[key] = str(value)
                 break
-        
+
         return result
 
     def get_syntax_description(self) -> str:
-        return ("Config file syntax is Tom's Obvious, Minimal Language. "
-                "See https://github.com/toml-lang/toml/blob/v0.5.0/README.md for details.")
+        return (
+            "Config file syntax is Tom's Obvious, Minimal Language. "
+            "See https://github.com/toml-lang/toml/blob/v0.5.0/README.md for details."
+        )
+
 
 class IniConfigParser(ConfigFileParser):
     """
     INI parser with support for sections.
-    
-    This parser somewhat ressembles L{configargparse.ConfigparserConfigFileParser}. 
-    It uses L{configparser} and evaluate values written with python list syntax. 
 
-    With the following changes: 
+    This parser somewhat ressembles L{configargparse.ConfigparserConfigFileParser}.
+    It uses L{configparser} and evaluate values written with python list syntax.
+
+    With the following changes:
         - Must be created with argument to bind the parser to a list of sections.
         - Does not convert multiline strings to single line.
-        - Optional support for converting multiline strings to list (if ``split_ml_text_to_list=True``). 
-        - Optional support for quoting strings in config file 
-            (useful when text must not be converted to list or when text 
+        - Optional support for converting multiline strings to list (if ``split_ml_text_to_list=True``).
+        - Optional support for quoting strings in config file
+            (useful when text must not be converted to list or when text
             should contain trailing whitespaces).
         - Comments may only appear on their own in an otherwise empty line (like in configparser).
 
@@ -226,7 +238,7 @@ class IniConfigParser(ConfigFileParser):
         ; also a comment
         [my_super_tool]
         # how to specify a key-value pair:
-        format-string: restructuredtext 
+        format-string: restructuredtext
         # white space are ignored, so name = value same as name=value
         # this is why you can quote strings (double quotes works just as well)
         quoted-string = '\thello\tmom...  '
@@ -238,39 +250,39 @@ class IniConfigParser(ConfigFileParser):
         repeatable-option = ["https://docs.python.org/3/objects.inv",
                         "https://twistedmatrix.com/documents/current/api/objects.inv"]
         # how to specify a multiline text:
-        multi-line-text = 
-            Lorem ipsum dolor sit amet, consectetur adipiscing elit. 
-            Vivamus tortor odio, dignissim non ornare non, laoreet quis nunc. 
-            Maecenas quis dapibus leo, a pellentesque leo. 
+        multi-line-text =
+            Lorem ipsum dolor sit amet, consectetur adipiscing elit.
+            Vivamus tortor odio, dignissim non ornare non, laoreet quis nunc.
+            Maecenas quis dapibus leo, a pellentesque leo.
         # how to specify a empty text:
-        empty-text = 
+        empty-text =
         # this also works:
         empty-text = ''
         # how to specify a empty list:
         empty-list = []
 
-    If you use L{IniConfigParser(sections, split_ml_text_to_list=True)}, 
+    If you use L{IniConfigParser(sections, split_ml_text_to_list=True)},
     the same rules are applicable with the following changes::
 
         [my-software]
-        # to specify a list arg (eg. arg which has action="append"), 
+        # to specify a list arg (eg. arg which has action="append"),
         # just enter one value per line (the list literal format can still be used):
         repeatable-option =
             https://docs.python.org/3/objects.inv
             https://twistedmatrix.com/documents/current/api/objects.inv
         # to specify a multiline text, you have to quote it:
         multi-line-text = '''
-            Lorem ipsum dolor sit amet, consectetur adipiscing elit. 
-            Vivamus tortor odio, dignissim non ornare non, laoreet quis nunc. 
-            Maecenas quis dapibus leo, a pellentesque leo. 
+            Lorem ipsum dolor sit amet, consectetur adipiscing elit.
+            Vivamus tortor odio, dignissim non ornare non, laoreet quis nunc.
+            Maecenas quis dapibus leo, a pellentesque leo.
             '''
         # how to specify a empty text:
         empty-text = ''
         # how to specify a empty list:
         empty-list = []
-        # the following empty value would be simply ignored because we can't 
+        # the following empty value would be simply ignored because we can't
         # differenciate between simple value and list value without any data:
-        totally-ignored-field = 
+        totally-ignored-field =
 
     Usage:
 
@@ -282,7 +294,7 @@ class IniConfigParser(ConfigFileParser):
 
     """
 
-    def __init__(self, sections:List[str], split_ml_text_to_list:bool) -> None:
+    def __init__(self, sections: List[str], split_ml_text_to_list: bool) -> None:
         super().__init__()
         self.sections = sections
         self.split_ml_text_to_list = split_ml_text_to_list
@@ -290,7 +302,7 @@ class IniConfigParser(ConfigFileParser):
     def __call__(self) -> ConfigFileParser:
         return self
 
-    def parse(self, stream:TextIO) -> Dict[str, Any]:
+    def parse(self, stream: TextIO) -> Dict[str, Any]:
         """Parses the keys and values from an INI config file."""
         # parse with configparser to allow multi-line values
         config = configparser.ConfigParser()
@@ -304,7 +316,7 @@ class IniConfigParser(ConfigFileParser):
         for section in config.sections() + [configparser.DEFAULTSECT]:
             if section not in self.sections:
                 continue
-            for k,value in config[section].items():
+            for k, value in config[section].items():
                 # value is already strip by configparser
                 if not value and self.split_ml_text_to_list:
                     # ignores empty values when split_ml_text_to_list is True
@@ -320,7 +332,11 @@ class IniConfigParser(ConfigFileParser):
                     except Exception as e:
                         # error evaluating object
                         _tripple = 'tripple ' if '\n' in value else ''
-                        raise ConfigFileParserException("Error evaluating list: " + str(e) + f". Put {_tripple}quotes around your text if it's meant to be a string.") from e
+                        raise ConfigFileParserException(
+                            "Error evaluating list: "
+                            + str(e)
+                            + f". Put {_tripple}quotes around your text if it's meant to be a string."
+                        ) from e
                 else:
                     if is_quoted(value):
                         # evaluate quoted string
@@ -337,22 +353,27 @@ class IniConfigParser(ConfigFileParser):
         return result
 
     def get_syntax_description(self) -> str:
-        msg = ("Uses configparser module to parse an INI file which allows multi-line values. "
-                "See https://docs.python.org/3/library/configparser.html for details. "
-                "This parser includes support for quoting strings literal as well as python list syntax evaluation. ")
+        msg = (
+            "Uses configparser module to parse an INI file which allows multi-line values. "
+            "See https://docs.python.org/3/library/configparser.html for details. "
+            "This parser includes support for quoting strings literal as well as python list syntax evaluation. "
+        )
         if self.split_ml_text_to_list:
-            msg += ("Alternatively lists can be constructed with a plain multiline string, "
-                "each non-empty line will be converted to a list item.")
+            msg += (
+                "Alternatively lists can be constructed with a plain multiline string, "
+                "each non-empty line will be converted to a list item."
+            )
         return msg
+
 
 class CompositeConfigParser(ConfigFileParser):
     """
     A config parser that understands multiple formats.
 
-    This parser will successively try to parse the file with each compisite parser, until it succeeds, 
+    This parser will successively try to parse the file with each compisite parser, until it succeeds,
     else it fails showing all encountered error messages.
 
-    The following code will make configargparse understand both TOML and INI formats. 
+    The following code will make configargparse understand both TOML and INI formats.
     Making it easy to integrate in both C{pyproject.toml} and C{setup.cfg}.
 
     >>> import configargparse
@@ -361,7 +382,7 @@ class CompositeConfigParser(ConfigFileParser):
     >>> parser = configargparse.ArgParser(
     ...             default_config_files=['setup.cfg', 'my_super_tool.ini'],
     ...             config_file_parser_class=configargparse.CompositeConfigParser(
-    ...             [configargparse.TomlConfigParser(my_tool_sections), 
+    ...             [configargparse.TomlConfigParser(my_tool_sections),
     ...                 configargparse.IniConfigParser(my_tool_sections, split_ml_text_to_list=True)]
     ...             ),
     ...          )
@@ -375,36 +396,36 @@ class CompositeConfigParser(ConfigFileParser):
     def __call__(self) -> ConfigFileParser:
         return self
 
-    def parse(self, stream:TextIO) -> Dict[str, Any]:
+    def parse(self, stream: TextIO) -> Dict[str, Any]:
         errors = []
         for p in self.parsers:
             try:
-                return p.parse(stream) # type: ignore[no-any-return]
+                return p.parse(stream)  # type: ignore[no-any-return]
             except Exception as e:
                 stream.seek(0)
                 errors.append(e)
-        raise ConfigFileParserException(
-                f"Error parsing config: {', '.join(repr(str(e)) for e in errors)}")
-    
+        raise ConfigFileParserException(f"Error parsing config: {', '.join(repr(str(e)) for e in errors)}")
+
     def get_syntax_description(self) -> str:
         msg = "Uses multiple config parser settings (in order): \n"
-        for i, parser in enumerate(self.parsers): 
+        for i, parser in enumerate(self.parsers):
             msg += f"[{i+1}] {parser.__class__.__name__}: {parser.get_syntax_description()} \n"
         return msg
 
+
 class ValidatorParser(ConfigFileParser):
     """
-    A parser that warns when unknown options are used. 
+    A parser that warns when unknown options are used.
     It must be created with a reference to the ArgumentParser object, so like::
 
         parser = ArgumentParser(
             prog='mysoft',
             config_file_parser_class=ConfigParser,)
-    
+
         # Add the validator to the config file parser, this is arguably a hack.
         parser._config_file_parser = ValidatorParser(parser._config_file_parser, parser)
-    
-    @note: Using this parser implies acting 
+
+    @note: Using this parser implies acting
         like L{ArgumentParser}'s option C{ignore_unknown_config_file_keys=True}.
         So no need to explicitely mention it.
     """
@@ -413,18 +434,21 @@ class ValidatorParser(ConfigFileParser):
         super().__init__()
         self.config_parser = config_parser
         self.argument_parser = argument_parser
-    
-    def get_syntax_description(self) -> str:
-        return self.config_parser.get_syntax_description() #type:ignore[no-any-return]
 
-    def parse(self, stream:TextIO) -> Dict[str, Any]:
+    def get_syntax_description(self) -> str:
+        return self.config_parser.get_syntax_description()  # type:ignore[no-any-return]
+
+    def parse(self, stream: TextIO) -> Dict[str, Any]:
         data: Dict[str, Any] = self.config_parser.parse(stream)
 
         # Prepare for checking config file.
-        # This code maps all supported config keys to their 
+        # This code maps all supported config keys to their
         # argparse action counterpart, it will allow more checks to be done down the road.
-        known_config_keys: Dict[str, argparse.Action] = {config_key: action for action in self.argument_parser._actions
-            for config_key in self.argument_parser.get_possible_config_keys(action)}
+        known_config_keys: Dict[str, argparse.Action] = {
+            config_key: action
+            for action in self.argument_parser._actions
+            for config_key in self.argument_parser.get_possible_config_keys(action)
+        }
 
         # Trigger warning
         new_data = {}
@@ -436,5 +460,5 @@ class ValidatorParser(ConfigFileParser):
                 # Remove option
             else:
                 new_data[key] = value
-        
+
         return new_data

@@ -53,6 +53,7 @@ class PeekIterTest(BaseIteratorsTest):
 
         def get_next():
             return next(a)
+
         it = peek_iter(get_next, sentinel)
         self.assertEqual(it.sentinel, sentinel)
         self.assertNext(it, '1', is_last=False)
@@ -316,6 +317,7 @@ class PeekIterTest(BaseIteratorsTest):
         self.assertEqual(it.counter, 4)
         self.assertFalseTwice(it.has_next)
 
+
 class ModifyIterTest(BaseIteratorsTest):
     def test_init_with_sentinel_args(self):
         a = iter(['1', '2', '3', 'DONE'])
@@ -323,6 +325,7 @@ class ModifyIterTest(BaseIteratorsTest):
 
         def get_next():
             return next(a)
+
         it = modify_iter(get_next, sentinel, int)
         expected = [1, 2, 3]
         self.assertEqual(expected, [i for i in it])
@@ -333,6 +336,7 @@ class ModifyIterTest(BaseIteratorsTest):
 
         def get_next():
             return next(a)
+
         it = modify_iter(get_next, sentinel, modifier=str)
         expected = ['1', '2', '3']
         self.assertEqual(expected, [i for i in it])

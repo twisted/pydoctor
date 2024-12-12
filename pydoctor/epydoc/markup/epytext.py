@@ -146,6 +146,7 @@ from pydoctor.epydoc.docutils import set_node_attributes, new_document
 ## Helper functions
 ##################################################
 
+
 def gettext(node: Union[str, 'Element', List[Union[str, 'Element']]]) -> List[str]:
     """Return the text inside the epytext element(s)."""
     filtered: List[str] = []
@@ -158,7 +159,8 @@ def gettext(node: Union[str, 'Element', List[Union[str, 'Element']]]) -> List[st
         filtered.extend(gettext(node.children))
     return filtered
 
-def slugify(string:str) -> str:
+
+def slugify(string: str) -> str:
     # zacharyvoase/slugify is licensed under the The Unlicense
     """
     A generic slugifier utility (currently only for Latin-based scripts).
@@ -166,17 +168,20 @@ def slugify(string:str) -> str:
         >>> slugify("Héllo Wörld")
         "hello-world"
     """
-    return re.sub(r'[-\s]+', '-', 
-                re.sub(rb'[^\w\s-]', b'',
-                    unicodedata.normalize('NFKD', string)
-                    .encode('ascii', 'ignore'))
-                .strip()
-                .lower()
-                .decode())
+    return re.sub(
+        r'[-\s]+',
+        '-',
+        re.sub(rb'[^\w\s-]', b'', unicodedata.normalize('NFKD', string).encode('ascii', 'ignore'))
+        .strip()
+        .lower()
+        .decode(),
+    )
+
 
 ##################################################
 ## DOM-Like Encoding
 ##################################################
+
 
 class Element:
     """
@@ -186,6 +191,7 @@ class Element:
     node is marked by a L{tag} and zero or more attributes, L{attribs}.  Each
     attribute is a mapping from a string key to a string value.
     """
+
     def __init__(self, tag: str, *children: Union[str, 'Element'], **attribs: Any):
         self.tag = tag
         """A string tag indicating the type of this element."""
@@ -212,6 +218,7 @@ class Element:
         args = ''.join(f', {c!r}' for c in self.children)
         return f'Element({self.tag}{args}{attribs})'
 
+
 ##################################################
 ## Constants
 ##################################################
@@ -221,44 +228,124 @@ class Element:
 _HEADING_CHARS = '=-~'
 
 # Escape codes.  These should be needed very rarely.
-_ESCAPES = {'lb':'{', 'rb': '}'}
+_ESCAPES = {'lb': '{', 'rb': '}'}
 
 # Symbols.  These can be generated via S{...} escapes.
 SYMBOLS = [
     # Arrows
-    '<-', '->', '^', 'v',
-
+    '<-',
+    '->',
+    '^',
+    'v',
     # Greek letters
-    'alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta',
-    'eta', 'theta', 'iota', 'kappa', 'lambda', 'mu',
-    'nu', 'xi', 'omicron', 'pi', 'rho', 'sigma',
-    'tau', 'upsilon', 'phi', 'chi', 'psi', 'omega',
-    'Alpha', 'Beta', 'Gamma', 'Delta', 'Epsilon', 'Zeta',
-    'Eta', 'Theta', 'Iota', 'Kappa', 'Lambda', 'Mu',
-    'Nu', 'Xi', 'Omicron', 'Pi', 'Rho', 'Sigma',
-    'Tau', 'Upsilon', 'Phi', 'Chi', 'Psi', 'Omega',
-
+    'alpha',
+    'beta',
+    'gamma',
+    'delta',
+    'epsilon',
+    'zeta',
+    'eta',
+    'theta',
+    'iota',
+    'kappa',
+    'lambda',
+    'mu',
+    'nu',
+    'xi',
+    'omicron',
+    'pi',
+    'rho',
+    'sigma',
+    'tau',
+    'upsilon',
+    'phi',
+    'chi',
+    'psi',
+    'omega',
+    'Alpha',
+    'Beta',
+    'Gamma',
+    'Delta',
+    'Epsilon',
+    'Zeta',
+    'Eta',
+    'Theta',
+    'Iota',
+    'Kappa',
+    'Lambda',
+    'Mu',
+    'Nu',
+    'Xi',
+    'Omicron',
+    'Pi',
+    'Rho',
+    'Sigma',
+    'Tau',
+    'Upsilon',
+    'Phi',
+    'Chi',
+    'Psi',
+    'Omega',
     # HTML character entities
-    'larr', 'rarr', 'uarr', 'darr', 'harr', 'crarr',
-    'lArr', 'rArr', 'uArr', 'dArr', 'hArr',
-    'copy', 'times', 'forall', 'exist', 'part',
-    'empty', 'isin', 'notin', 'ni', 'prod', 'sum',
-    'prop', 'infin', 'ang', 'and', 'or', 'cap', 'cup',
-    'int', 'there4', 'sim', 'cong', 'asymp', 'ne',
-    'equiv', 'le', 'ge', 'sub', 'sup', 'nsub',
-    'sube', 'supe', 'oplus', 'otimes', 'perp',
-
+    'larr',
+    'rarr',
+    'uarr',
+    'darr',
+    'harr',
+    'crarr',
+    'lArr',
+    'rArr',
+    'uArr',
+    'dArr',
+    'hArr',
+    'copy',
+    'times',
+    'forall',
+    'exist',
+    'part',
+    'empty',
+    'isin',
+    'notin',
+    'ni',
+    'prod',
+    'sum',
+    'prop',
+    'infin',
+    'ang',
+    'and',
+    'or',
+    'cap',
+    'cup',
+    'int',
+    'there4',
+    'sim',
+    'cong',
+    'asymp',
+    'ne',
+    'equiv',
+    'le',
+    'ge',
+    'sub',
+    'sup',
+    'nsub',
+    'sube',
+    'supe',
+    'oplus',
+    'otimes',
+    'perp',
     # Alternate (long) names
-    'infinity', 'integral', 'product',
-    '>=', '<=',
-    ]
+    'infinity',
+    'integral',
+    'product',
+    '>=',
+    '<=',
+]
 # Convert to a set, for quick lookup
 _SYMBOLS = set(SYMBOLS)
 
 # Add symbols to the docstring.
 symblist = '      '
-symblist += ';\n      '.join(' - C{E{S}{%s}}=S{%s}' % (symbol, symbol)
-                             for symbol in SYMBOLS)
+symblist += ';\n      '.join(' - C{E{S}{%s}}=S{%s}' % (symbol, symbol) for symbol in SYMBOLS)
 __doc__ = __doc__.replace('<<<SYMBOLS>>>', symblist)
 del symblist
 
@@ -269,10 +356,10 @@ _COLORIZING_TAGS = {
     'I': 'italic',
     'B': 'bold',
     'U': 'uri',
-    'L': 'link',       # A Python identifier that should be linked to
-    'E': 'escape',     # escapes characters or creates symbols
+    'L': 'link',  # A Python identifier that should be linked to
+    'E': 'escape',  # escapes characters or creates symbols
     'S': 'symbol',
-    }
+}
 
 # Which tags can use "link syntax" (e.g., U{Python<www.python.org>})?
 _LINK_COLORIZING_TAGS = ['link', 'uri']
@@ -280,6 +367,7 @@ _LINK_COLORIZING_TAGS = ['link', 'uri']
 ##################################################
 ## Structuring (Top Level)
 ##################################################
+
 
 def parse(text: str, errors: List[ParseError]) -> Optional[Element]:
     """
@@ -296,7 +384,7 @@ def parse(text: str, errors: List[ParseError]) -> Optional[Element]:
         accumulator was provided.
     @raise ParseError: If C{errors} is C{None} and an error is
         encountered while parsing.
-    """    
+    """
     # Preprocess the string.
     text = re.sub('\015\012', '\012', text)
     text = text.expandtabs()
@@ -325,7 +413,7 @@ def parse(text: str, errors: List[ParseError]) -> Optional[Element]:
 
     for token in tokens:
         # Uncomment this for debugging:
-        #print('%s: %s\n%s: %s\n' %
+        # print('%s: %s\n%s: %s\n' %
         #       (''.join('%-11s' % (t and t.tag) for t in stack),
         #        token.tag, ''.join('%-11s' % i for i in indent_stack),
         #        token.indent))
@@ -360,8 +448,7 @@ def parse(text: str, errors: List[ParseError]) -> Optional[Element]:
             encountered_field = True
         elif encountered_field:
             if len(stack) <= 3:
-                estr = ("Fields must be the final elements in an "+
-                        "epytext string.")
+                estr = "Fields must be the final elements in an " + "epytext string."
                 errors.append(StructuringError(estr, token.startline))
 
     # If there was an error, then signal it!
@@ -373,11 +460,8 @@ def parse(text: str, errors: List[ParseError]) -> Optional[Element]:
     # Return the top-level epytext DOM element.
     return doc
 
-def _pop_completed_blocks(
-        token: 'Token',
-        stack: List[Element],
-        indent_stack: List[Optional[int]]
-        ) -> None:
+
+def _pop_completed_blocks(token: 'Token', stack: List[Element], indent_stack: List[Optional[int]]) -> None:
     """
     Pop any completed blocks off the stack.  This includes any
     blocks that we have dedented past, as well as any list item
@@ -387,7 +471,7 @@ def _pop_completed_blocks(
     """
     indent = token.indent
     if indent is not None:
-        while (len(stack) > 2):
+        while len(stack) > 2:
             pop = False
 
             # Dedent past a block
@@ -398,25 +482,23 @@ def _pop_completed_blocks(
 
             # Dedent to a list item, if it is follwed by another list
             # item with the same indentation.
-            elif (token.tag == 'bullet' and indent==indent_stack[-2] and
-                  stack[-1].tag in ('li', 'field')): pop = True
+            elif token.tag == 'bullet' and indent == indent_stack[-2] and stack[-1].tag in ('li', 'field'):
+                pop = True
 
             # End of a list (no more list items available)
-            elif (stack[-1].tag in ('ulist', 'olist') and
-                  (token.tag != 'bullet' or token.contents[-1] == ':')):
+            elif stack[-1].tag in ('ulist', 'olist') and (token.tag != 'bullet' or token.contents[-1] == ':'):
                 pop = True
 
             # Pop the block, if it's complete.  Otherwise, we're done.
-            if not pop: return
+            if not pop:
+                return
             stack.pop()
             indent_stack.pop()
 
+
 def _add_para(
-        para_token: 'Token',
-        stack: List[Element],
-        indent_stack: List[Optional[int]],
-        errors: List[ParseError]
-        ) -> None:
+    para_token: 'Token', stack: List[Element], indent_stack: List[Optional[int]], errors: List[ParseError]
+) -> None:
     """Colorize the given paragraph, and add it to the DOM tree."""
     # Check indentation, and update the parent's indentation
     # when appropriate.
@@ -430,12 +512,10 @@ def _add_para(
         estr = "Improper paragraph indentation."
         errors.append(StructuringError(estr, para_token.startline))
 
+
 def _add_section(
-        heading_token: 'Token',
-        stack: List[Element],
-        indent_stack: List[Optional[int]],
-        errors: List[ParseError]
-        ) -> None:
+    heading_token: 'Token', stack: List[Element], indent_stack: List[Optional[int]], errors: List[ParseError]
+) -> None:
     """Add a new section to the DOM tree, with the given heading."""
     if indent_stack[-1] is None:
         indent_stack[-1] = heading_token.indent
@@ -469,12 +549,10 @@ def _add_section(
     sec.children.append(head)
     indent_stack.append(None)
 
+
 def _add_list(
-        bullet_token: 'Token',
-        stack: List[Element],
-        indent_stack: List[Optional[int]],
-        errors: List[ParseError]
-        ) -> None:
+    bullet_token: 'Token', stack: List[Element], indent_stack: List[Optional[int]], errors: List[ParseError]
+) -> None:
     """
     Add a new list item or field to the DOM tree, with the given
     bullet or field tag.  When necessary, create the associated
@@ -498,8 +576,7 @@ def _add_list(
         old_listitem = cast(Element, stack[-1].children[-1])
         old_bullet = old_listitem.attribs['bullet'].split('.')[:-1]
         new_bullet = bullet_token.contents.split('.')[:-1]
-        if (new_bullet[:-1] != old_bullet[:-1] or
-            int(new_bullet[-1]) != int(old_bullet[-1])+1):
+        if new_bullet[:-1] != old_bullet[:-1] or int(new_bullet[-1]) != int(old_bullet[-1]) + 1:
             newlist = True
 
     # Create the new list.
@@ -517,8 +594,7 @@ def _add_list(
             stack.pop()
             indent_stack.pop()
 
-        if (list_type != 'fieldlist' and indent_stack[-1] is not None and
-            bullet_token.indent == indent_stack[-1]):
+        if list_type != 'fieldlist' and indent_stack[-1] is not None and bullet_token.indent == indent_stack[-1]:
             # Ignore this error if there's text on the same line as
             # the comment-opening quote -- epydoc can't reliably
             # determine the indentation for that line.
@@ -531,8 +607,7 @@ def _add_list(
             for tok in stack[2:]:
                 if tok.tag != 'section':
                     estr = "Fields must be at the top level."
-                    errors.append(
-                        StructuringError(estr, bullet_token.startline))
+                    errors.append(StructuringError(estr, bullet_token.startline))
                     break
             stack[2:] = []
             indent_stack[2:] = []
@@ -572,9 +647,11 @@ def _add_list(
     stack.append(li)
     indent_stack.append(None)
 
+
 ##################################################
 ## Tokenization
 ##################################################
+
 
 class Token:
     """
@@ -636,6 +713,7 @@ class Token:
         value is also used for field tag C{Token}s, since fields
         function syntactically the same as list items.
     """
+
     # The possible token types.
     PARA = 'para'
     LBLOCK = 'literalblock'
@@ -643,13 +721,7 @@ class Token:
     HEADING = 'heading'
     BULLET = 'bullet'
 
-    def __init__(self,
-            tag: str,
-            startline: int,
-            contents: str,
-            indent: Optional[int],
-            level: Optional[int] = None
-            ):
+    def __init__(self, tag: str, startline: int, contents: str, indent: Optional[int], level: Optional[int] = None):
         """
         Create a new C{Token}.
 
@@ -685,26 +757,22 @@ class Token:
         e.children.append(self.contents)
         return e
 
+
 # Construct regular expressions for recognizing bullets.  These are
 # global so they don't have to be reconstructed each time we tokenize
 # a docstring.
 _ULIST_BULLET = r'[-]( +|$)'
 _OLIST_BULLET = r'(\d+[.])+( +|$)'
 _FIELD_BULLET = r'@\w+( [^{}:\n]+)?:'
-_BULLET_RE = re.compile(_ULIST_BULLET + '|' +
-                        _OLIST_BULLET + '|' +
-                        _FIELD_BULLET)
+_BULLET_RE = re.compile(_ULIST_BULLET + '|' + _OLIST_BULLET + '|' + _FIELD_BULLET)
 _LIST_BULLET_RE = re.compile(_ULIST_BULLET + '|' + _OLIST_BULLET)
 _FIELD_BULLET_RE = re.compile(_FIELD_BULLET)
 del _ULIST_BULLET, _OLIST_BULLET, _FIELD_BULLET
 
+
 def _tokenize_doctest(
-        lines: List[str],
-        start: int,
-        block_indent: int,
-        tokens: List[Token],
-        errors: List[ParseError]
-        ) -> int:
+    lines: List[str], start: int, block_indent: int, tokens: List[Token], errors: List[ParseError]
+) -> int:
     """
     Construct a L{Token} containing the doctest block starting at
     C{lines[start]}, and append it to C{tokens}.  C{block_indent}
@@ -735,7 +803,8 @@ def _tokenize_doctest(
         indent = len(line) - len(line.lstrip())
 
         # A blank line ends doctest block.
-        if indent == len(line): break
+        if indent == len(line):
+            break
 
         # A Dedent past block_indent is an error.
         if indent < block_indent:
@@ -751,13 +820,10 @@ def _tokenize_doctest(
     tokens.append(Token(Token.DTBLOCK, start, contents, block_indent))
     return linenum
 
+
 def _tokenize_literal(
-        lines: List[str],
-        start: int,
-        block_indent: int,
-        tokens: List[Token],
-        errors: List[ParseError]
-        ) -> int:
+    lines: List[str], start: int, block_indent: int, tokens: List[Token], errors: List[ParseError]
+) -> int:
     """
     Construct a L{Token} containing the literal block starting at
     C{lines[start]}, and append it to C{tokens}.  C{block_indent}
@@ -796,13 +862,10 @@ def _tokenize_literal(
     tokens.append(Token(Token.LBLOCK, start, contents, block_indent))
     return linenum
 
+
 def _tokenize_listart(
-        lines: List[str],
-        start: int,
-        bullet_indent: int,
-        tokens: List[Token],
-        errors: List[ParseError]
-        ) -> int:
+    lines: List[str], start: int, bullet_indent: int, tokens: List[Token], errors: List[ParseError]
+) -> int:
     """
     Construct L{Token}s for the bullet and the first paragraph of the
     list item (or field) starting at C{lines[start]}, and append them
@@ -829,7 +892,7 @@ def _tokenize_listart(
     match = _BULLET_RE.match(lines[start], bullet_indent)
     assert match is not None
     para_start = match.end()
-    bcontents = lines[start][bullet_indent : para_start].strip()
+    bcontents = lines[start][bullet_indent:para_start].strip()
 
     while linenum < len(lines):
         # Find the indentation of this line.
@@ -837,24 +900,31 @@ def _tokenize_listart(
         indent = len(line) - len(line.lstrip())
 
         # "::" markers end paragraphs.
-        if doublecolon: break
-        if line.rstrip()[-2:] == '::': doublecolon = True
+        if doublecolon:
+            break
+        if line.rstrip()[-2:] == '::':
+            doublecolon = True
 
         # A blank line ends the token
-        if indent == len(line): break
+        if indent == len(line):
+            break
 
         # Dedenting past bullet_indent ends the list item.
-        if indent < bullet_indent: break
+        if indent < bullet_indent:
+            break
 
         # A line beginning with a bullet ends the token.
-        if _BULLET_RE.match(line, indent): break
+        if _BULLET_RE.match(line, indent):
+            break
 
         # If this is the second line, set the paragraph indentation, or
         # end the token, as appropriate.
-        if para_indent is None: para_indent = indent
+        if para_indent is None:
+            para_indent = indent
 
         # A change in indentation ends the token
-        if indent != para_indent: break
+        if indent != para_indent:
+            break
 
         # Go on to the next line.
         linenum += 1
@@ -864,22 +934,18 @@ def _tokenize_listart(
 
     # Add the paragraph token.
     pcontents = ' '.join(
-        [lines[start][para_start:].strip()] +
-        [ln.strip() for ln in lines[start+1:linenum]]
-        ).strip()
+        [lines[start][para_start:].strip()] + [ln.strip() for ln in lines[start + 1 : linenum]]
+    ).strip()
     if pcontents:
         tokens.append(Token(Token.PARA, start, pcontents, para_indent))
 
     # Return the linenum after the paragraph token ends.
     return linenum
 
+
 def _tokenize_para(
-        lines: List[str],
-        start: int,
-        para_indent: int,
-        tokens: List[Token],
-        errors: List[ParseError]
-        ) -> int:
+    lines: List[str], start: int, para_indent: int, tokens: List[Token], errors: List[ParseError]
+) -> int:
     """
     Construct a L{Token} containing the paragraph starting at
     C{lines[start]}, and append it to C{tokens}.  C{para_indent}
@@ -906,17 +972,22 @@ def _tokenize_para(
         indent = len(line) - len(line.lstrip())
 
         # "::" markers end paragraphs.
-        if doublecolon: break
-        if line.rstrip()[-2:] == '::': doublecolon = True
+        if doublecolon:
+            break
+        if line.rstrip()[-2:] == '::':
+            doublecolon = True
 
         # Blank lines end paragraphs
-        if indent == len(line): break
+        if indent == len(line):
+            break
 
         # Indentation changes end paragraphs
-        if indent != para_indent: break
+        if indent != para_indent:
+            break
 
         # List bullets end paragraphs
-        if _BULLET_RE.match(line, indent): break
+        if _BULLET_RE.match(line, indent):
+            break
 
         # Check for mal-formatted field items.
         if line[indent] == '@':
@@ -929,9 +1000,7 @@ def _tokenize_para(
     contents = [ln.strip() for ln in lines[start:linenum]]
 
     # Does this token look like a heading?
-    if ((len(contents) < 2) or
-        (contents[1][0] not in _HEADING_CHARS) or
-        (abs(len(contents[0])-len(contents[1])) > 5)):
+    if (len(contents) < 2) or (contents[1][0] not in _HEADING_CHARS) or (abs(len(contents[0]) - len(contents[1])) > 5):
         looks_like_heading = False
     else:
         looks_like_heading = True
@@ -942,19 +1011,21 @@ def _tokenize_para(
 
     if looks_like_heading:
         if len(contents[0]) != len(contents[1]):
-            estr = ("Possible heading typo: the number of "+
-                    "underline characters must match the "+
-                    "number of heading characters.")
+            estr = (
+                "Possible heading typo: the number of "
+                + "underline characters must match the "
+                + "number of heading characters."
+            )
             errors.append(TokenizationError(estr, start, is_fatal=False))
         else:
             level = _HEADING_CHARS.index(contents[1][0])
-            tokens.append(Token(Token.HEADING, start,
-                                contents[0], para_indent, level))
-            return start+2
+            tokens.append(Token(Token.HEADING, start, contents[0], para_indent, level))
+            return start + 2
 
     # Add the paragraph token, and return the linenum after it ends.
     tokens.append(Token(Token.PARA, start, ' '.join(contents), para_indent))
     return linenum
+
 
 def _tokenize(text: str, errors: List[ParseError]) -> List[Token]:
     """
@@ -976,20 +1047,18 @@ def _tokenize(text: str, errors: List[ParseError]) -> List[Token]:
     while linenum < len(lines):
         # Get the current line and its indentation.
         line = lines[linenum]
-        indent = len(line)-len(line.lstrip())
+        indent = len(line) - len(line.lstrip())
 
         if indent == len(line):
             # Ignore blank lines.
             linenum += 1
             continue
-        elif line[indent:indent+4] == '>>> ':
+        elif line[indent : indent + 4] == '>>> ':
             # blocks starting with ">>> " are doctest block tokens.
-            linenum = _tokenize_doctest(lines, linenum, indent,
-                                        tokens, errors)
+            linenum = _tokenize_doctest(lines, linenum, indent, tokens, errors)
         elif _BULLET_RE.match(line, indent):
             # blocks starting with a bullet are LI start tokens.
-            linenum = _tokenize_listart(lines, linenum, indent,
-                                        tokens, errors)
+            linenum = _tokenize_listart(lines, linenum, indent, tokens, errors)
             if tokens[-1].indent is not None:
                 indent = tokens[-1].indent
         else:
@@ -1002,8 +1071,7 @@ def _tokenize(text: str, errors: List[ParseError]) -> List[Token]:
             linenum = _tokenize_para(lines, linenum, indent, tokens, errors)
 
         # Paragraph tokens ending in '::' initiate literal blocks.
-        if (tokens[-1].tag == Token.PARA and
-            tokens[-1].contents[-2:] == '::'):
+        if tokens[-1].tag == Token.PARA and tokens[-1].contents[-2:] == '::':
             tokens[-1].contents = tokens[-1].contents[:-1]
             linenum = _tokenize_literal(lines, linenum, indent, tokens, errors)
 
@@ -1017,6 +1085,7 @@ def _tokenize(text: str, errors: List[ParseError]) -> List[Token]:
 # Assorted regular expressions used for colorizing.
 _BRACE_RE = re.compile(r'{|}')
 _TARGET_RE = re.compile(r'^(.*?)\s*<(?:URI:|URL:)?([^<>]+)>$')
+
 
 def _colorize(token: Token, errors: List[ParseError], tagName: str = 'para') -> Element:
     """
@@ -1056,7 +1125,8 @@ def _colorize(token: Token, errors: List[ParseError], tagName: str = 'para') -> 
     start = 0
     while 1:
         match = _BRACE_RE.search(text, start)
-        if match is None: break
+        if match is None:
+            break
         end = match.start()
 
         # Open braces start new colorizing elements.  When preceeded
@@ -1066,15 +1136,15 @@ def _colorize(token: Token, errors: List[ParseError], tagName: str = 'para') -> 
         # and convert them to literal braces once we find the matching
         # close-brace.
         if match.group() == '{':
-            if (end>0) and 'A' <= text[end-1] <= 'Z':
-                if (end-1) > start:
-                    stack[-1].children.append(text[start:end-1])
-                if text[end-1] not in _COLORIZING_TAGS:
+            if (end > 0) and 'A' <= text[end - 1] <= 'Z':
+                if (end - 1) > start:
+                    stack[-1].children.append(text[start : end - 1])
+                if text[end - 1] not in _COLORIZING_TAGS:
                     estr = "Unknown inline markup tag."
-                    errors.append(ColorizingError(estr, token, end-1))
+                    errors.append(ColorizingError(estr, token, end - 1))
                     stack.append(Element('unknown'))
                 else:
-                    tag = _COLORIZING_TAGS[text[end-1]]
+                    tag = _COLORIZING_TAGS[text[end - 1]]
                     stack.append(Element(tag))
             else:
                 if end > start:
@@ -1098,8 +1168,7 @@ def _colorize(token: Token, errors: List[ParseError], tagName: str = 'para') -> 
 
             # Special handling for symbols:
             if stack[-1].tag == 'symbol':
-                if (len(stack[-1].children) != 1 or
-                    not isinstance(stack[-1].children[0], str)):
+                if len(stack[-1].children) != 1 or not isinstance(stack[-1].children[0], str):
                     estr = "Invalid symbol code."
                     errors.append(ColorizingError(estr, token, end))
                 else:
@@ -1113,8 +1182,7 @@ def _colorize(token: Token, errors: List[ParseError], tagName: str = 'para') -> 
 
             # Special handling for escape elements:
             if stack[-1].tag == 'escape':
-                if (len(stack[-1].children) != 1 or
-                    not isinstance(stack[-1].children[0], str)):
+                if len(stack[-1].children) != 1 or not isinstance(stack[-1].children[0], str):
                     estr = "Invalid escape code."
                     errors.append(ColorizingError(estr, token, end))
                 else:
@@ -1141,7 +1209,7 @@ def _colorize(token: Token, errors: List[ParseError], tagName: str = 'para') -> 
             openbrace_stack.pop()
             stack.pop()
 
-        start = end+1
+        start = end + 1
 
     # Add any final text.
     if start < len(text):
@@ -1153,11 +1221,12 @@ def _colorize(token: Token, errors: List[ParseError], tagName: str = 'para') -> 
 
     return stack[0]
 
+
 def _colorize_link(link: Element, token: Token, end: int, errors: List[ParseError]) -> None:
     variables = link.children[:]
 
     # If the last child isn't text, we know it's bad.
-    if len(variables)==0 or not isinstance(variables[-1], str):
+    if len(variables) == 0 or not isinstance(variables[-1], str):
         estr = f"Bad {link.tag} target."
         errors.append(ColorizingError(estr, token, end))
         return
@@ -1181,13 +1250,13 @@ def _colorize_link(link: Element, token: Token, end: int, errors: List[ParseErro
     # Clean up the target.  For URIs, assume http or mailto if they
     # don't specify (no relative urls)
     target = re.sub(r'\s', '', target)
-    if link.tag=='uri':
+    if link.tag == 'uri':
         if not re.match(r'\w+:', target):
             if re.match(r'\w+@(\w+)(\.\w+)*', target):
                 target = 'mailto:' + target
             else:
-                target = 'http://'+target
-    elif link.tag=='link':
+                target = 'http://' + target
+    elif link.tag == 'link':
         # Remove arg lists for functions (e.g., L{_colorize_link()})
         target = re.sub(r'\(.*\)$', '', target)
         if not re.match(r'^[a-zA-Z_]\w*(\.[a-zA-Z_]\w*)*$', target):
@@ -1201,9 +1270,11 @@ def _colorize_link(link: Element, token: Token, end: int, errors: List[ParseErro
     # Add them to the link element.
     link.children = [name_elt, target_elt]
 
+
 ##################################################
 ## Parse Errors
 ##################################################
+
 
 class TokenizationError(ParseError):
     """
@@ -1211,16 +1282,19 @@ class TokenizationError(ParseError):
     string.
     """
 
+
 class StructuringError(ParseError):
     """
     An error generated while structuring a formatted documentation
     string.
     """
 
+
 class ColorizingError(ParseError):
     """
     An error generated while colorizing a paragraph.
     """
+
     def __init__(self, descr: str, token: Token, charnum: int, is_fatal: bool = True):
         """
         Construct a new colorizing exception.
@@ -1235,22 +1309,24 @@ class ColorizingError(ParseError):
         self.charnum = charnum
 
     CONTEXT_RANGE = 20
+
     def descr(self) -> str:
         RANGE = self.CONTEXT_RANGE
         if self.charnum <= RANGE:
-            left = self.token.contents[0:self.charnum]
+            left = self.token.contents[0 : self.charnum]
         else:
-            left = '...'+self.token.contents[self.charnum-RANGE:self.charnum]
-        if (len(self.token.contents)-self.charnum) <= RANGE:
-            right = self.token.contents[self.charnum:]
+            left = '...' + self.token.contents[self.charnum - RANGE : self.charnum]
+        if (len(self.token.contents) - self.charnum) <= RANGE:
+            right = self.token.contents[self.charnum :]
         else:
-            right = (self.token.contents[self.charnum:self.charnum+RANGE]
-                     + '...')
+            right = self.token.contents[self.charnum : self.charnum + RANGE] + '...'
         return f"{self._descr}\n\n{left}{right}\n{' '*len(left)}^"
+
 
 #################################################################
 ##                    SUPPORT FOR EPYDOC
 #################################################################
+
 
 def parse_docstring(docstring: str, errors: List[ParseError]) -> ParsedDocstring:
     """
@@ -1279,8 +1355,7 @@ def parse_docstring(docstring: str, errors: List[ParseError]) -> ParsedDocstring
 
             # Get the argument.
             if field.children and cast(Element, field.children[0]).tag == 'arg':
-                arg: Optional[str] = \
-                    cast(str, cast(Element, field.children.pop(0)).children[0])
+                arg: Optional[str] = cast(str, cast(Element, field.children.pop(0)).children[0])
             else:
                 arg = None
 
@@ -1296,57 +1371,124 @@ def parse_docstring(docstring: str, errors: List[ParseError]) -> ParsedDocstring
     else:
         return ParsedEpytextDocstring(None, fields)
 
+
 def get_parser(_: ObjClass | None) -> ParserFunction:
     """
-    Get the L{parse_docstring} function. 
+    Get the L{parse_docstring} function.
     """
     return parse_docstring
+
 
 class ParsedEpytextDocstring(ParsedDocstring):
     SYMBOL_TO_CODEPOINT = {
         # Symbols
-        '<-': 8592, '->': 8594, '^': 8593, 'v': 8595,
-
+        '<-': 8592,
+        '->': 8594,
+        '^': 8593,
+        'v': 8595,
         # Greek letters
-        'alpha': 945, 'beta': 946, 'gamma': 947,
-        'delta': 948, 'epsilon': 949, 'zeta': 950,
-        'eta': 951, 'theta': 952, 'iota': 953,
-        'kappa': 954, 'lambda': 955, 'mu': 956,
-        'nu': 957, 'xi': 958, 'omicron': 959,
-        'pi': 960, 'rho': 961, 'sigma': 963,
-        'tau': 964, 'upsilon': 965, 'phi': 966,
-        'chi': 967, 'psi': 968, 'omega': 969,
-        'Alpha': 913, 'Beta': 914, 'Gamma': 915,
-        'Delta': 916, 'Epsilon': 917, 'Zeta': 918,
-        'Eta': 919, 'Theta': 920, 'Iota': 921,
-        'Kappa': 922, 'Lambda': 923, 'Mu': 924,
-        'Nu': 925, 'Xi': 926, 'Omicron': 927,
-        'Pi': 928, 'Rho': 929, 'Sigma': 931,
-        'Tau': 932, 'Upsilon': 933, 'Phi': 934,
-        'Chi': 935, 'Psi': 936, 'Omega': 937,
-
+        'alpha': 945,
+        'beta': 946,
+        'gamma': 947,
+        'delta': 948,
+        'epsilon': 949,
+        'zeta': 950,
+        'eta': 951,
+        'theta': 952,
+        'iota': 953,
+        'kappa': 954,
+        'lambda': 955,
+        'mu': 956,
+        'nu': 957,
+        'xi': 958,
+        'omicron': 959,
+        'pi': 960,
+        'rho': 961,
+        'sigma': 963,
+        'tau': 964,
+        'upsilon': 965,
+        'phi': 966,
+        'chi': 967,
+        'psi': 968,
+        'omega': 969,
+        'Alpha': 913,
+        'Beta': 914,
+        'Gamma': 915,
+        'Delta': 916,
+        'Epsilon': 917,
+        'Zeta': 918,
+        'Eta': 919,
+        'Theta': 920,
+        'Iota': 921,
+        'Kappa': 922,
+        'Lambda': 923,
+        'Mu': 924,
+        'Nu': 925,
+        'Xi': 926,
+        'Omicron': 927,
+        'Pi': 928,
+        'Rho': 929,
+        'Sigma': 931,
+        'Tau': 932,
+        'Upsilon': 933,
+        'Phi': 934,
+        'Chi': 935,
+        'Psi': 936,
+        'Omega': 937,
         # HTML character entities
-        'larr': 8592, 'rarr': 8594, 'uarr': 8593,
-        'darr': 8595, 'harr': 8596, 'crarr': 8629,
-        'lArr': 8656, 'rArr': 8658, 'uArr': 8657,
-        'dArr': 8659, 'hArr': 8660,
-        'copy': 169, 'times': 215, 'forall': 8704,
-        'exist': 8707, 'part': 8706,
-        'empty': 8709, 'isin': 8712, 'notin': 8713,
-        'ni': 8715, 'prod': 8719, 'sum': 8721,
-        'prop': 8733, 'infin': 8734, 'ang': 8736,
-        'and': 8743, 'or': 8744, 'cap': 8745, 'cup': 8746,
-        'int': 8747, 'there4': 8756, 'sim': 8764,
-        'cong': 8773, 'asymp': 8776, 'ne': 8800,
-        'equiv': 8801, 'le': 8804, 'ge': 8805,
-        'sub': 8834, 'sup': 8835, 'nsub': 8836,
-        'sube': 8838, 'supe': 8839, 'oplus': 8853,
-        'otimes': 8855, 'perp': 8869,
-
+        'larr': 8592,
+        'rarr': 8594,
+        'uarr': 8593,
+        'darr': 8595,
+        'harr': 8596,
+        'crarr': 8629,
+        'lArr': 8656,
+        'rArr': 8658,
+        'uArr': 8657,
+        'dArr': 8659,
+        'hArr': 8660,
+        'copy': 169,
+        'times': 215,
+        'forall': 8704,
+        'exist': 8707,
+        'part': 8706,
+        'empty': 8709,
+        'isin': 8712,
+        'notin': 8713,
+        'ni': 8715,
+        'prod': 8719,
+        'sum': 8721,
+        'prop': 8733,
+        'infin': 8734,
+        'ang': 8736,
+        'and': 8743,
+        'or': 8744,
+        'cap': 8745,
+        'cup': 8746,
+        'int': 8747,
+        'there4': 8756,
+        'sim': 8764,
+        'cong': 8773,
+        'asymp': 8776,
+        'ne': 8800,
+        'equiv': 8801,
+        'le': 8804,
+        'ge': 8805,
+        'sub': 8834,
+        'sup': 8835,
+        'nsub': 8836,
+        'sube': 8838,
+        'supe': 8839,
+        'oplus': 8853,
+        'otimes': 8855,
+        'perp': 8869,
         # Alternate (long) names
-        'infinity': 8734, 'integral': 8747, 'product': 8719,
-        '<=': 8804, '>=': 8805,
-        }
+        'infinity': 8734,
+        'integral': 8747,
+        'product': 8719,
+        '<=': 8804,
+        '>=': 8805,
+    }
 
     def __init__(self, body: Optional[Element], fields: Sequence['Field']):
         ParsedDocstring.__init__(self, fields)
@@ -1363,14 +1505,14 @@ class ParsedEpytextDocstring(ParsedDocstring):
     def has_body(self) -> bool:
         return self._tree is not None
 
-    def _slugify(self, text:str) -> str:
-        # Takes special care to ensure we don't generate 
+    def _slugify(self, text: str) -> str:
+        # Takes special care to ensure we don't generate
         # twice the same ID for sections.
         s = slugify(text)
         i = 1
         while s in self._section_slugs:
             s = slugify(f"{text}-{i}")
-            i+=1
+            i += 1
         self._section_slugs.add(s)
         return s
 
@@ -1382,15 +1524,15 @@ class ParsedEpytextDocstring(ParsedDocstring):
         self._document = new_document('epytext')
 
         if self._tree is not None:
-            node, = self._to_node(self._tree)
-            # The contents is encapsulated inside a section node. 
-            # Reparent the contents of the second level to the root level. 
+            (node,) = self._to_node(self._tree)
+            # The contents is encapsulated inside a section node.
+            # Reparent the contents of the second level to the root level.
             self._document = set_node_attributes(self._document, children=node.children)
-        
+
         return self._document
-    
+
     def _to_node(self, tree: Element) -> Iterable[nodes.Node]:
-        
+
         # Process the children first.
         variables: List[nodes.Node] = []
         for child in tree.children:
@@ -1408,22 +1550,27 @@ class ParsedEpytextDocstring(ParsedDocstring):
             yield set_node_attributes(nodes.literal('', ''), document=self._document, children=variables)
         elif tree.tag == 'uri':
             label, target = variables
-            yield set_node_attributes(nodes.reference(
-                    '', internal=False, refuri=target), document=self._document, children=label.children)
+            yield set_node_attributes(
+                nodes.reference('', internal=False, refuri=target), document=self._document, children=label.children
+            )
         elif tree.tag == 'link':
             label, target = variables
             assert isinstance(target, nodes.Text)
             assert isinstance(label, nodes.inline)
-            # Figure the line number to warn on precise lines. 
+            # Figure the line number to warn on precise lines.
             # This is needed only for links currently.
             lineno = int(cast(Element, tree.children[1]).attribs['lineno'])
-            yield set_node_attributes(nodes.title_reference(
-                   '', '', refuri=target.astext()), document=self._document, lineno=lineno, children=label.children)
-        elif tree.tag  == 'name':
+            yield set_node_attributes(
+                nodes.title_reference('', '', refuri=target.astext()),
+                document=self._document,
+                lineno=lineno,
+                children=label.children,
+            )
+        elif tree.tag == 'name':
             # name can contain nested inline markup, so we use nodes.inline instead of nodes.Text
             yield set_node_attributes(nodes.inline('', ''), document=self._document, children=variables)
         elif tree.tag == 'target':
-            value, = variables
+            (value,) = variables
             if not isinstance(value, nodes.Text):
                 raise AssertionError("target contents must be a simple text.")
             yield set_node_attributes(value, document=self._document)
@@ -1446,15 +1593,18 @@ class ParsedEpytextDocstring(ParsedDocstring):
         elif tree.tag == 'literalblock':
             yield set_node_attributes(nodes.literal_block('', ''), document=self._document, children=variables)
         elif tree.tag == 'doctestblock':
-            if not isinstance(contents:=tree.children[0], str):
+            if not isinstance(contents := tree.children[0], str):
                 raise AssertionError("doctest block contents is not a string")
             yield set_node_attributes(nodes.doctest_block(contents, contents), document=self._document)
         elif tree.tag in ('fieldlist', 'tag', 'arg'):
             raise AssertionError("There should not be any field lists left")
         elif tree.tag == 'section':
-            assert len(tree.children)>0, f"empty section {tree}"
-            yield set_node_attributes(nodes.section('', ids=[self._slugify(' '.join(gettext(tree.children[0])))]), 
-                document=self._document, children=variables)
+            assert len(tree.children) > 0, f"empty section {tree}"
+            yield set_node_attributes(
+                nodes.section('', ids=[self._slugify(' '.join(gettext(tree.children[0])))]),
+                document=self._document,
+                children=variables,
+            )
         elif tree.tag == 'epytext':
             yield set_node_attributes(nodes.section(''), document=self._document, children=variables)
         elif tree.tag == 'symbol':

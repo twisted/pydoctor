@@ -31,6 +31,7 @@ classes record information about the cause, location, and severity of
 each error.
 """
 from __future__ import annotations
+
 __docformat__ = 'epytext en'
 
 from typing import Callable, ContextManager, List, Optional, Sequence, Iterator, TYPE_CHECKING
@@ -74,6 +75,7 @@ A simpler version of L{DocumentableKind} used for docstring parsing only.
 
 ParserFunction = Callable[[str, List['ParseError']], 'ParsedDocstring']
 
+
 def get_supported_docformats() -> Iterator[str]:
     """
     Get the list of currently supported docformat.
@@ -85,42 +87,46 @@ def get_supported_docformats() -> Iterator[str]:
         else:
             yield moduleName
 
+
 def get_parser_by_name(docformat: str, objclass: ObjClass | None = None) -> ParserFunction:
     """
-    Get the C{parse_docstring(str, List[ParseError], bool) -> ParsedDocstring} function based on a parser name. 
+    Get the C{parse_docstring(str, List[ParseError], bool) -> ParsedDocstring} function based on a parser name.
 
     @raises ImportError: If the parser could not be imported, probably meaning that your are missing a dependency
         or it could be that the docformat name do not match any know L{pydoctor.epydoc.markup} submodules.
     """
     mod = import_module(f'pydoctor.epydoc.markup.{docformat}')
-    # We can be sure the 'get_parser' function exist and is "correct" 
+    # We can be sure the 'get_parser' function exist and is "correct"
     # since the docformat is validated beforehand.
     get_parser: Callable[[ObjClass | None], ParserFunction] = mod.get_parser
     return get_parser(objclass)
 
-def processtypes(parse:ParserFunction) -> ParserFunction:
+
+def processtypes(parse: ParserFunction) -> ParserFunction:
     """
     Wraps a docstring parser function to provide option --process-types.
     """
-    
+
     def _processtypes(doc: 'ParsedDocstring', errs: List['ParseError']) -> None:
         """
-        Mutates the type fields of the given parsed docstring to replace 
+        Mutates the type fields of the given parsed docstring to replace
         their body by parsed version with type auto-linking.
         """
         from pydoctor.epydoc.markup._types import ParsedTypeDocstring
+
         for field in doc.fields:
             if field.tag() in ParsedTypeDocstring.FIELDS:
                 body = ParsedTypeDocstring(field.body().to_node(), lineno=field.lineno)
-                append_warnings(body.warnings, errs, lineno=field.lineno+1)
+                append_warnings(body.warnings, errs, lineno=field.lineno + 1)
                 field.replace_body(body)
-    
-    def parse_and_processtypes(doc:str, errs:List['ParseError']) -> 'ParsedDocstring':
+
+    def parse_and_processtypes(doc: str, errs: List['ParseError']) -> 'ParsedDocstring':
         parsed_doc = parse(doc, errs)
         _processtypes(parsed_doc, errs)
         return parsed_doc
 
     return parse_and_processtypes
+
 
 ##################################################
 ## ParsedDocstring
@@ -133,10 +139,10 @@ class ParsedDocstring(abc.ABC):
     or L{pydoctor.epydoc.markup.restructuredtext.parse_docstring()}.
 
     Subclasses must implement L{has_body()} and L{to_node()}.
-    
+
     A default implementation for L{to_stan()} method, relying on L{to_node()} is provided.
     But some subclasses override this behaviour.
-    
+
     Implementation of L{get_toc()} also relies on L{to_node()}.
     """
 
@@ -158,7 +164,7 @@ class ParsedDocstring(abc.ABC):
         The body is the part of the docstring that remains after the fields
         have been split off.
         """
-    
+
     def get_toc(self, depth: int) -> Optional['ParsedDocstring']:
         """
         The table of contents of the docstring if titles are defined or C{None}.
@@ -172,6 +178,7 @@ class ParsedDocstring(abc.ABC):
         if contents:
             docstring_toc.extend(contents)
             from pydoctor.epydoc.markup.restructuredtext import ParsedRstDocstring
+
             return ParsedRstDocstring(docstring_toc, ())
         else:
             return None
@@ -180,7 +187,7 @@ class ParsedDocstring(abc.ABC):
         """
         Translate this docstring to a Stan tree.
 
-        @note: The default implementation relies on functionalities 
+        @note: The default implementation relies on functionalities
             provided by L{node2stan.node2stan} and L{ParsedDocstring.to_node()}.
 
         @param docstring_linker: An HTML translator for crossreference
@@ -193,7 +200,7 @@ class ParsedDocstring(abc.ABC):
             return self._stan
         self._stan = Tag('', children=node2stan.node2stan(self.to_node(), docstring_linker).children)
         return self._stan
-    
+
     @abc.abstractmethod
     def to_node(self) -> nodes.document:
         """
@@ -205,28 +212,31 @@ class ParsedDocstring(abc.ABC):
             This method might raise L{NotImplementedError} in such cases. (i.e. L{pydoctor.epydoc.markup._types.ParsedTypeDocstring})
         """
         raise NotImplementedError()
-    
+
     def get_summary(self) -> 'ParsedDocstring':
         """
         Returns the summary of this docstring.
-        
+
         @note: The summary is cached.
         """
         # Avoid rare cyclic import error, see https://github.com/twisted/pydoctor/pull/538#discussion_r845668735
         from pydoctor import epydoc2stan
+
         if self._summary is not None:
             return self._summary
-        try: 
+        try:
             _document = self.to_node()
             visitor = SummaryExtractor(_document)
             _document.walk(visitor)
-        except Exception: 
+        except Exception:
             self._summary = epydoc2stan.ParsedStanOnly(tags.span(class_='undocumented')("Broken summary"))
         else:
-            self._summary = visitor.summary or epydoc2stan.ParsedStanOnly(tags.span(class_='undocumented')("No summary"))
+            self._summary = visitor.summary or epydoc2stan.ParsedStanOnly(
+                tags.span(class_='undocumented')("No summary")
+            )
         return self._summary
 
-      
+
 ##################################################
 ## Fields
 ##################################################
@@ -269,8 +279,8 @@ class Field:
         @return: This field's body.
         """
         return self._body
-    
-    def replace_body(self, newbody:ParsedDocstring) -> None:
+
+    def replace_body(self, newbody: ParsedDocstring) -> None:
         self._body = newbody
 
     def __repr__(self) -> str:
@@ -278,6 +288,7 @@ class Field:
             return f'<Field @{self._tag}: ...>'
         else:
             return f'<Field @{self._tag} {self._arg}: ...>'
+
 
 ##################################################
 ## Docstring Linker (resolves crossreferences)
@@ -315,24 +326,26 @@ class DocstringLinker(Protocol):
             In either case, the returned top-level tag will be C{<code>}.
         """
 
-    def switch_context(self, ob:Optional['Documentable']) -> ContextManager[None]:
+    def switch_context(self, ob: Optional['Documentable']) -> ContextManager[None]:
         """
         Switch the context of the linker, keeping the same underlying lookup rules.
 
         Useful to resolve links with the right L{Documentable} context but
-        create correct - absolute or relative - links to be clicked on from another page 
+        create correct - absolute or relative - links to be clicked on from another page
         rather than the initial page of the context. "Cannot find link target" errors will be reported
         relatively to the new context object.
 
-        Pass C{None} to always generate full URLs (for summaries for example), 
+        Pass C{None} to always generate full URLs (for summaries for example),
         in this case error will NOT be reported at all.
         """
+
 
 ##################################################
 ## ParseError exceptions
 ##################################################
 
-def append_warnings(warns:List[str], errs:List['ParseError'], lineno:int) -> None:
+
+def append_warnings(warns: List[str], errs: List['ParseError'], lineno: int) -> None:
     """
     Utility method to create non fatal L{ParseError}s and append them to the provided list.
 
@@ -342,16 +355,13 @@ def append_warnings(warns:List[str], errs:List['ParseError'], lineno:int) -> Non
     for warn in warns:
         errs.append(ParseError(warn, linenum=lineno, is_fatal=False))
 
+
 class ParseError(Exception):
     """
     The base class for errors generated while parsing docstrings.
     """
 
-    def __init__(self,
-            descr: str,
-            linenum: Optional[int] = None,
-            is_fatal: bool = True
-            ):
+    def __init__(self, descr: str, linenum: Optional[int] = None, is_fatal: bool = True):
         """
         @param descr: A description of the error.
         @param linenum: The line on which the error occured within
@@ -376,8 +386,10 @@ class ParseError(Exception):
         any offset).  If the line number is unknown, then return
         C{None}.
         """
-        if self._linenum is None: return None
-        else: return self._linenum + 1
+        if self._linenum is None:
+            return None
+        else:
+            return self._linenum + 1
 
     def descr(self) -> str:
         """
@@ -411,15 +423,17 @@ class ParseError(Exception):
         else:
             return f'<ParseError on line {self._linenum + 1:d}>'
 
+
 class SummaryExtractor(nodes.NodeVisitor):
     """
     A docutils node visitor that extracts first sentences from
     the first paragraph in a document.
     """
-    def __init__(self, document: nodes.document, maxchars:int=200) -> None:
+
+    def __init__(self, document: nodes.document, maxchars: int = 200) -> None:
         """
         @param document: The docutils document to extract a summary from.
-        @param maxchars: Maximum of characters the summary can span. 
+        @param maxchars: Maximum of characters the summary can span.
             Sentences are not cut in the middle, so the actual length
             might be longer if your have a large first paragraph.
         """
@@ -442,7 +456,7 @@ class SummaryExtractor(nodes.NodeVisitor):
         summary_doc = new_document('summary')
         summary_pieces: list[nodes.Node] = []
 
-        # Extract the first sentences from the first paragraph until maximum number 
+        # Extract the first sentences from the first paragraph until maximum number
         # of characters is reach or until the end of the paragraph.
         char_count = 0
 
@@ -450,16 +464,16 @@ class SummaryExtractor(nodes.NodeVisitor):
 
             if char_count > self.maxchars:
                 break
-            
+
             if isinstance(child, nodes.Text):
                 text = child.astext().replace('\n', ' ')
-                sentences = [item for item in self._SENTENCE_RE_SPLIT.split(text) if item] # Not empty values only
-                
-                for i,s in enumerate(sentences):
-                    
+                sentences = [item for item in self._SENTENCE_RE_SPLIT.split(text) if item]  # Not empty values only
+
+                for i, s in enumerate(sentences):
+
                     if char_count > self.maxchars:
                         # Leave final point alone.
-                        if not (i == len(sentences)-1 and len(s)==1):
+                        if not (i == len(sentences) - 1 and len(s) == 1):
                             break
 
                     summary_pieces.append(set_node_attributes(nodes.Text(s), document=summary_doc))
@@ -468,17 +482,21 @@ class SummaryExtractor(nodes.NodeVisitor):
             else:
                 summary_pieces.append(set_node_attributes(child.deepcopy(), document=summary_doc))
                 char_count += len(''.join(node2stan.gettext(child)))
-            
+
         if char_count > self.maxchars:
             if not summary_pieces[-1].astext().endswith('.'):
                 summary_pieces.append(set_node_attributes(nodes.Text('...'), document=summary_doc))
             self.other_docs = True
 
-        set_node_attributes(summary_doc, children=[
-            set_node_attributes(nodes.paragraph('', ''), document=summary_doc, lineno=1, 
-            children=summary_pieces)])
+        set_node_attributes(
+            summary_doc,
+            children=[
+                set_node_attributes(nodes.paragraph('', ''), document=summary_doc, lineno=1, children=summary_pieces)
+            ],
+        )
 
         from pydoctor.epydoc.markup.restructuredtext import ParsedRstDocstring
+
         self.summary = ParsedRstDocstring(summary_doc, fields=[])
 
     def visit_field(self, node: nodes.Node) -> None:

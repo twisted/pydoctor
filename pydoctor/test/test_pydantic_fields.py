@@ -1,6 +1,7 @@
 import ast
 from typing import List, Type
-from pydoctor import astutils, extensions,  model
+from pydoctor import astutils, extensions, model
+
 
 class ModVisitor(extensions.ModuleVisitorExt):
 
@@ -18,10 +19,10 @@ class ModVisitor(extensions.ModuleVisitorExt):
             return
 
         dottedname = astutils.node2dottedname(node.target)
-        if not dottedname or len(dottedname)!=1:
+        if not dottedname or len(dottedname) != 1:
             # check if the assignment is a simple name, otherwise ignore it
             return
-        
+
         # Get the attribute from current context
         attr = ctx.contents[dottedname[0]]
 
@@ -34,13 +35,16 @@ class ModVisitor(extensions.ModuleVisitorExt):
         if attr.kind == model.DocumentableKind.CLASS_VARIABLE:
             attr.kind = model.DocumentableKind.INSTANCE_VARIABLE
 
-def setup_pydoctor_extension(r:extensions.ExtRegistrar) -> None:
+
+def setup_pydoctor_extension(r: extensions.ExtRegistrar) -> None:
     r.register_astbuilder_visitor(ModVisitor)
+
 
 class PydanticSystem2(model.System):
     # Add our custom extension
     extensions: List[str] = []
     custom_extensions = ['pydoctor.test.test_pydantic_fields']
+
 
 ## Testing code
 
@@ -48,6 +52,7 @@ import pytest
 from pydoctor.test.test_astbuilder import fromText, PydanticSystem
 
 pydantic_systemcls_param = pytest.mark.parametrize('systemcls', (PydanticSystem, PydanticSystem2))
+
 
 @pydantic_systemcls_param
 def test_pydantic_fields(systemcls: Type[model.System]) -> None:
@@ -67,4 +72,3 @@ def test_pydantic_fields(systemcls: Type[model.System]) -> None:
     assert mod.contents['Model'].contents['b'].kind == model.DocumentableKind.INSTANCE_VARIABLE
     assert mod.contents['Model'].contents['name'].kind == model.DocumentableKind.INSTANCE_VARIABLE
     assert mod.contents['Model'].contents['kind'].kind == model.DocumentableKind.CLASS_VARIABLE
-

@@ -9,26 +9,29 @@ Special patterns are::
     [seq]   matches any character in seq
     [!seq]  matches any char not in seq
 """
+
 from __future__ import annotations
 
 import functools
 import re
 from typing import Any, Callable
 
+
 @functools.lru_cache(maxsize=256, typed=True)
 def _compile_pattern(pat: str) -> Callable[[str], Any]:
     res = translate(pat)
     return re.compile(res).match
 
-def qnmatch(name:str, pattern:str) -> bool:
-    """Test whether C{name} matches C{pattern}.
-    """
+
+def qnmatch(name: str, pattern: str) -> bool:
+    """Test whether C{name} matches C{pattern}."""
     match = _compile_pattern(pattern)
     return match(name) is not None
 
+
 # Barely changed from https://github.com/python/cpython/blob/3.8/Lib/fnmatch.py
 # Not using python3.9+ version because implementation is significantly more complex.
-def translate(pat:str) -> str:
+def translate(pat: str) -> str:
     """Translate a shell PATTERN to a regular expression.
     There is no way to quote meta-characters.
     """
@@ -36,7 +39,7 @@ def translate(pat:str) -> str:
     res = ''
     while i < n:
         c = pat[i]
-        i = i+1
+        i = i + 1
         if c == '*':
             # Changes begins: understands '**'.
             if i < n and pat[i] == '*':
@@ -50,18 +53,18 @@ def translate(pat:str) -> str:
         elif c == '[':
             j = i
             if j < n and pat[j] == '!':
-                j = j+1
+                j = j + 1
             if j < n and pat[j] == ']':
-                j = j+1
+                j = j + 1
             while j < n and pat[j] != ']':
-                j = j+1
+                j = j + 1
             if j >= n:
                 res = res + '\\['
             else:
                 stuff = pat[i:j]
                 # Changes begins: simplifications handling backslashes and hyphens not required for fully qualified names.
                 stuff = stuff.replace('\\', r'\\')
-                i = j+1
+                i = j + 1
                 if stuff[0] == '!':
                     stuff = '^' + stuff[1:]
                 elif stuff[0] in ('^', '['):

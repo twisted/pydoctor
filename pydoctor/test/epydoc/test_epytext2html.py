@@ -18,20 +18,25 @@ from pydoctor.test.epydoc.test_restructuredtext import prettify
 
 from docutils import nodes, __version_info__ as docutils_version_info
 
+
 def parse_epytext(s: str) -> ParsedDocstring:
     errors: List[ParseError] = []
     parsed = parse_docstring(s, errors)
     assert not errors
     return parsed
 
-def epytext2node(s: str)-> nodes.document:
+
+def epytext2node(s: str) -> nodes.document:
     return parse_epytext(s).to_node()
+
 
 def epytext2html(s: str) -> str:
     return squash(flatten(node2stan(epytext2node(s), NotFoundLinker())))
 
+
 def squash(s: str) -> str:
     return ''.join(l.strip() for l in prettify(s).splitlines())
+
 
 def test_epytext_paragraph() -> None:
     doc = '''
@@ -58,7 +63,7 @@ def test_epytext_paragraph() -> None:
 
         '''
     assert epytext2html(doc) == squash(expected)
-    
+
 
 def test_epytext_ordered_list() -> None:
     doc = '''
@@ -84,7 +89,7 @@ def test_epytext_ordered_list() -> None:
         <ol class="rst-simple"> <li>  This new list starts at four. </li></ol>
         '''
     assert epytext2html(doc) == squash(expected)
-    
+
 
 def test_epytext_nested_list() -> None:
     doc = '''
@@ -99,7 +104,7 @@ def test_epytext_nested_list() -> None:
     <li>This is a second list item.<ul><li>This is a sublist.</li></ul></li></ol>
     '''
     assert epytext2html(doc) == squash(expected)
-    
+
 
 def test_epytext_complex_list() -> None:
     doc = '''
@@ -129,7 +134,7 @@ def test_epytext_complex_list() -> None:
         <span class="py-output">23</span></pre><p>This is the second paragraph.</p></li></ol>
         '''
     assert epytext2html(doc) == squash(expected)
-    
+
 
 def test_epytext_sections() -> None:
     doc = '''
@@ -179,7 +184,7 @@ def test_epytext_sections() -> None:
 
         '''
     assert epytext2html(doc) == squash(expected)
-    
+
 
 def test_epytext_literal_block() -> None:
     doc = '''
@@ -206,7 +211,7 @@ def test_epytext_literal_block() -> None:
 
         '''
     assert epytext2html(doc) == squash(expected)
-    
+
 
 def test_epytext_inline() -> None:
     doc = '''
@@ -231,7 +236,7 @@ def test_epytext_inline() -> None:
         <span class="pre">   my_dict={1:2,  </span>  3:4} </tt> .</p>
         '''
     assert epytext2html(doc) == squash(expected)
-    
+
 
 def test_epytext_url() -> None:
     doc = '''
@@ -254,6 +259,7 @@ def test_epytext_url() -> None:
 
     assert epytext2html(doc) == squash(expected)
 
+
 def test_epytext_symbol() -> None:
     doc = '''
         Symbols can be used in equations:
@@ -270,16 +276,17 @@ def test_epytext_symbol() -> None:
     '''
     assert epytext2html(doc) == squash(expected)
 
+
 def test_nested_markup() -> None:
     """
-    The Epytext nested inline markup are correctly transformed to HTML. 
+    The Epytext nested inline markup are correctly transformed to HTML.
     """
     doc = '''
         I{B{Inline markup} may be nested; and
         it may span} multiple lines.
         '''
     expected = '''<em> <strong>  Inline markup </strong> may be nested; and it may span</em>multiple lines.'''
-    
+
     assert epytext2html(doc) == squash(expected)
 
     doc = '''
@@ -288,11 +295,12 @@ def test_nested_markup() -> None:
     expected = '''
       It becomes a little bit complicated with<a class="rst-external rst-reference" href="https://google.ca" target="_top"><strong>custom</strong>links</a>
       '''
-    
+
     assert epytext2html(doc) == squash(expected)
 
+
 # From docutils 0.18 the toc entries uses different ids.
-@pytest.mark.skipif(docutils_version_info < (0,18), reason="HTML ids in toc tree changed in docutils 0.18.0.")
+@pytest.mark.skipif(docutils_version_info < (0, 18), reason="HTML ids in toc tree changed in docutils 0.18.0.")
 def test_get_toc() -> None:
 
     docstring = """
@@ -327,12 +335,12 @@ Other
     errors: List[ParseError] = []
     parsed = parse_docstring(docstring, errors)
     assert not errors, [str(e.descr()) for e in errors]
-    
+
     toc = parsed.get_toc(4)
     assert toc is not None
     html = flatten(toc.to_stan(NotFoundLinker()))
-    
-    expected_html="""
+
+    expected_html = """
     <li>
  <p class="rst-first">
   <a class="rst-internal rst-reference" href="#rst-titles" id="rst-toc-entry-1">

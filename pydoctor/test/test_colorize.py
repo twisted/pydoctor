@@ -35,6 +35,7 @@ class Foo:
 '''.strip()
     assert flatten(colorize_codeblock(src)) == expected
 
+
 def test_colorize_doctest_more_string() -> None:
     src = '''
 Test multi-line string:
@@ -55,6 +56,7 @@ Test multi-line string:
 </pre>
 '''.strip()
     assert flatten(colorize_doctest(src)) == expected
+
 
 def test_colorize_doctest_more_input() -> None:
     src = '''
@@ -77,6 +79,7 @@ Test multi-line expression:
 '''.strip()
     assert flatten(colorize_doctest(src)) == expected
 
+
 def test_colorize_doctest_exception() -> None:
     src = '''
 Test division by zero:
@@ -95,6 +98,7 @@ Test division by zero:
 </pre>
 '''.strip()
     assert flatten(colorize_doctest(src)) == expected
+
 
 def test_colorize_doctest_no_output() -> None:
     src = '''

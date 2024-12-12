@@ -2,56 +2,58 @@ import unittest
 
 from pydoctor.qnmatch import qnmatch, translate
 
+
 def test_qnmatch() -> None:
 
-    assert(qnmatch('site.yml', 'site.yml'))
+    assert qnmatch('site.yml', 'site.yml')
 
-    assert(not qnmatch('site.yml', '**.site.yml'))
-    assert(not qnmatch('site.yml', 'site.yml.**'))
-    assert(not qnmatch('SITE.YML', 'site.yml'))
-    assert(not qnmatch('SITE.YML', '**.site.yml'))
+    assert not qnmatch('site.yml', '**.site.yml')
+    assert not qnmatch('site.yml', 'site.yml.**')
+    assert not qnmatch('SITE.YML', 'site.yml')
+    assert not qnmatch('SITE.YML', '**.site.yml')
 
-    assert(qnmatch('images.logo.png', '*.*.png'))
-    assert(not qnmatch('images.images.logo.png', '*.*.png'))
-    assert(not qnmatch('images.logo.png', '*.*.*.png'))
-    assert(qnmatch('images.logo.png', '**.png'))
-    assert(qnmatch('images.logo.png', '**.*.png'))
-    assert(qnmatch('images.logo.png', '**png'))
+    assert qnmatch('images.logo.png', '*.*.png')
+    assert not qnmatch('images.images.logo.png', '*.*.png')
+    assert not qnmatch('images.logo.png', '*.*.*.png')
+    assert qnmatch('images.logo.png', '**.png')
+    assert qnmatch('images.logo.png', '**.*.png')
+    assert qnmatch('images.logo.png', '**png')
 
-    assert(not qnmatch('images.logo.png', 'images.**.*.png'))
-    assert(not qnmatch('images.logo.png', '**.images.**.png'))
-    assert(not qnmatch('images.logo.png', '**.images.**.???'))
-    assert(not qnmatch('images.logo.png', '**.image?.**.???'))
+    assert not qnmatch('images.logo.png', 'images.**.*.png')
+    assert not qnmatch('images.logo.png', '**.images.**.png')
+    assert not qnmatch('images.logo.png', '**.images.**.???')
+    assert not qnmatch('images.logo.png', '**.image?.**.???')
 
-    assert(qnmatch('images.logo.png', 'images.**.png'))
-    assert(qnmatch('images.logo.png', 'images.**.png'))
-    assert(qnmatch('images.logo.png', 'images.**.???'))
-    assert(qnmatch('images.logo.png', 'image?.**.???'))
+    assert qnmatch('images.logo.png', 'images.**.png')
+    assert qnmatch('images.logo.png', 'images.**.png')
+    assert qnmatch('images.logo.png', 'images.**.???')
+    assert qnmatch('images.logo.png', 'image?.**.???')
 
-    assert(qnmatch('images.gitkeep', '**.*'))
-    assert(qnmatch('output.gitkeep', '**.*'))
+    assert qnmatch('images.gitkeep', '**.*')
+    assert qnmatch('output.gitkeep', '**.*')
 
-    assert(qnmatch('images.gitkeep', '*.**'))
-    assert(qnmatch('output.gitkeep', '*.**'))
+    assert qnmatch('images.gitkeep', '*.**')
+    assert qnmatch('output.gitkeep', '*.**')
 
-    assert(qnmatch('.hidden', '**.*'))
-    assert(qnmatch('sub.hidden', '**.*'))
-    assert(qnmatch('sub.sub.hidden', '**.*'))
+    assert qnmatch('.hidden', '**.*')
+    assert qnmatch('sub.hidden', '**.*')
+    assert qnmatch('sub.sub.hidden', '**.*')
 
-    assert(qnmatch('.hidden', '**.hidden'))
-    assert(qnmatch('sub.hidden', '**.hidden'))
-    assert(qnmatch('sub.sub.hidden', '**.hidden'))
+    assert qnmatch('.hidden', '**.hidden')
+    assert qnmatch('sub.hidden', '**.hidden')
+    assert qnmatch('sub.sub.hidden', '**.hidden')
 
-    assert(qnmatch('site.yml.Class', 'site.yml.*'))
-    assert(not qnmatch('site.yml.Class.property', 'site.yml.*'))
-    assert(not qnmatch('site.yml.Class.property', 'site.yml.Class'))
+    assert qnmatch('site.yml.Class', 'site.yml.*')
+    assert not qnmatch('site.yml.Class.property', 'site.yml.*')
+    assert not qnmatch('site.yml.Class.property', 'site.yml.Class')
 
-    assert(qnmatch('site.yml.Class.__init__', '**.__*__'))
-    assert(qnmatch('site._yml.Class.property', '**._*.**'))
-    assert(qnmatch('site.yml._Class.property', '**._*.**'))
-    assert(not qnmatch('site.yml.Class.property', '**._*.**'))
-    assert(not qnmatch('site.yml_.Class.property', '**._*.**'))
-    assert(not qnmatch('site.yml.Class._property', '**._*.**'))
+    assert qnmatch('site.yml.Class.__init__', '**.__*__')
+    assert qnmatch('site._yml.Class.property', '**._*.**')
+    assert qnmatch('site.yml._Class.property', '**._*.**')
+    assert not qnmatch('site.yml.Class.property', '**._*.**')
+    assert not qnmatch('site.yml_.Class.property', '**._*.**')
+    assert not qnmatch('site.yml.Class._property', '**._*.**')
+
 
 class TranslateTestCase(unittest.TestCase):
     def test_translate(self) -> None:
@@ -65,17 +67,14 @@ class TranslateTestCase(unittest.TestCase):
         self.assertEqual(translate('[^x]'), r'(?s:[\^x])\Z')
         self.assertEqual(translate('[x'), r'(?s:\[x)\Z')
 
+
 class FnmatchTestCase(unittest.TestCase):
 
-    def check_match(self, filename, pattern, should_match=True, fn=qnmatch) -> None: # type: ignore
+    def check_match(self, filename, pattern, should_match=True, fn=qnmatch) -> None:  # type: ignore
         if should_match:
-            self.assertTrue(fn(filename, pattern),
-                         "expected %r to match pattern %r"
-                         % (filename, pattern))
+            self.assertTrue(fn(filename, pattern), "expected %r to match pattern %r" % (filename, pattern))
         else:
-            self.assertFalse(fn(filename, pattern),
-                         "expected %r not to match pattern %r"
-                         % (filename, pattern))
+            self.assertFalse(fn(filename, pattern), "expected %r not to match pattern %r" % (filename, pattern))
 
     def test_fnmatch(self) -> None:
         check = self.check_match

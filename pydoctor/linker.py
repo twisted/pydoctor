@@ -1,25 +1,23 @@
 """
 This module provides implementations of epydoc's L{DocstringLinker} class.
 """
+
 from __future__ import annotations
 
 import contextlib
 from twisted.web.template import Tag, tags
-from typing import  (
-     TYPE_CHECKING, Iterable, Iterator, 
-     Optional, Union
-)
+from typing import TYPE_CHECKING, Iterable, Iterator, Optional, Union
 
 from pydoctor.epydoc.markup import DocstringLinker
 
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable
-    
+
     # This import must be kept in the TYPE_CHECKING block for circular references issues.
     from pydoctor import model
 
-def taglink(o: 'model.Documentable', page_url: str, 
-            label: Optional["Flattenable"] = None) -> Tag:
+
+def taglink(o: 'model.Documentable', page_url: str, label: Optional["Flattenable"] = None) -> Tag:
     """
     Create a link to an object that exists in the system.
 
@@ -29,7 +27,7 @@ def taglink(o: 'model.Documentable', page_url: str,
     @param label: The label to use for the link
     """
     if not o.isVisible:
-        o.system.msg("html", "don't link to %s"%o.fullName())
+        o.system.msg("html", "don't link to %s" % o.fullName())
 
     if label is None:
         label = o.fullName()
@@ -39,20 +37,22 @@ def taglink(o: 'model.Documentable', page_url: str,
         # When linking to an item on the same page, omit the path.
         # Besides shortening the HTML, this also avoids the page being reloaded
         # if the query string is non-empty.
-        url = url[len(page_url):]
+        url = url[len(page_url) :]
 
     ret: Tag = tags.a(label, href=url, class_='internal-link')
     if label != o.fullName():
         ret(title=o.fullName())
     return ret
 
-def intersphinx_link(label:"Flattenable", url:str) -> Tag:
+
+def intersphinx_link(label: "Flattenable", url: str) -> Tag:
     """
-    Create a intersphinx link. 
-    
+    Create a intersphinx link.
+
     It's special because it uses the 'intersphinx-link' CSS class.
     """
     return tags.a(label, href=url, class_='intersphinx-link')
+
 
 class _EpydocLinker(DocstringLinker):
     """
@@ -60,26 +60,26 @@ class _EpydocLinker(DocstringLinker):
     """
 
     def __init__(self, obj: 'model.Documentable') -> None:
-        self.reporting_obj:Optional['model.Documentable'] = obj
+        self.reporting_obj: Optional['model.Documentable'] = obj
         """
         Object used for reporting link not found errors. Changed when the linker L{switch_context}.
         """
-        
+
         self._init_obj = obj
         self._page_object: Optional['model.Documentable'] = obj.page_object
-    
+
     @property
     def obj(self) -> 'model.Documentable':
         """
         Object used for resolving the target name, it's NOT changed when the linker L{switch_context}.
         """
         return self._init_obj
-    
+
     @property
     def page_url(self) -> str:
         """
-        URL of the page used to compute the relative links from. 
-        Can be an empty string to always generate full urls. 
+        URL of the page used to compute the relative links from.
+        Can be an empty string to always generate full urls.
         """
         pageob = self._page_object
         if pageob is not None:
@@ -87,24 +87,22 @@ class _EpydocLinker(DocstringLinker):
         return ''
 
     @contextlib.contextmanager
-    def switch_context(self, ob:Optional['model.Documentable']) -> Iterator[None]:
-        
+    def switch_context(self, ob: Optional['model.Documentable']) -> Iterator[None]:
+
         old_page_object = self._page_object
         old_reporting_object = self.reporting_obj
 
         self._page_object = None if ob is None else ob.page_object
         self.reporting_obj = ob
-        
+
         yield
-        
+
         self._page_object = old_page_object
         self.reporting_obj = old_reporting_object
 
-    def look_for_name(self,
-            name: str,
-            candidates: Iterable['model.Documentable'],
-            lineno: int
-            ) -> Optional['model.Documentable']:
+    def look_for_name(
+        self, name: str, candidates: Iterable['model.Documentable'], lineno: int
+    ) -> Optional['model.Documentable']:
         part0 = name.split('.')[0]
         potential_targets = []
         for src in candidates:
@@ -117,10 +115,10 @@ class _EpydocLinker(DocstringLinker):
             return potential_targets[0]
         elif len(potential_targets) > 1 and self.reporting_obj:
             self.reporting_obj.report(
-                "ambiguous ref to %s, could be %s" % (
-                    name,
-                    ', '.join(ob.fullName() for ob in potential_targets)),
-                'resolve_identifier_xref', lineno)
+                "ambiguous ref to %s, could be %s" % (name, ', '.join(ob.fullName() for ob in potential_targets)),
+                'resolve_identifier_xref',
+                lineno,
+            )
         return None
 
     def look_for_intersphinx(self, name: str) -> Optional[str]:
@@ -159,13 +157,10 @@ class _EpydocLinker(DocstringLinker):
                 xref = intersphinx_link(label, url=resolved)
             else:
                 xref = taglink(resolved, self.page_url, label)
-                
+
         return tags.code(xref)
 
-    def _resolve_identifier_xref(self,
-            identifier: str,
-            lineno: int
-            ) -> Union[str, 'model.Documentable']:
+    def _resolve_identifier_xref(self, identifier: str, lineno: int) -> Union[str, 'model.Documentable']:
         """
         Resolve a crossreference link to a Python identifier.
         This will resolve the identifier to any reasonable target,
@@ -228,7 +223,10 @@ class _EpydocLinker(DocstringLinker):
         # found, complain.
         target = self.look_for_name(
             # System.objectsOfType now supports passing the type as string.
-            identifier, self.obj.system.objectsOfType('pydoctor.model.Module'), lineno)
+            identifier,
+            self.obj.system.objectsOfType('pydoctor.model.Module'),
+            lineno,
+        )
         if target is not None:
             return target
 
@@ -242,48 +240,51 @@ class _EpydocLinker(DocstringLinker):
             self.reporting_obj.report(message, 'resolve_identifier_xref', lineno)
         raise LookupError(identifier)
 
+
 class _AnnotationLinker(DocstringLinker):
     """
-    Specialized linker to resolve annotations attached to the given L{Documentable}. 
+    Specialized linker to resolve annotations attached to the given L{Documentable}.
 
-    Links will be created in the context of C{obj} but 
+    Links will be created in the context of C{obj} but
     generated with the C{obj.module}'s linker when possible.
     """
-    def __init__(self, obj:'model.Documentable') -> None:
+
+    def __init__(self, obj: 'model.Documentable') -> None:
         self._obj = obj
         self._module = obj.module
         self._scope = obj.parent or obj
         self._scope_linker = _EpydocLinker(self._scope)
-    
+
     @property
     def obj(self) -> 'model.Documentable':
         return self._obj
 
-    def warn_ambiguous_annotation(self, target:str) -> None:
+    def warn_ambiguous_annotation(self, target: str) -> None:
         # report a low-level message about ambiguous annotation
         mod_ann = self._module.expandName(target)
         obj_ann = self._scope.expandName(target)
         if mod_ann != obj_ann and '.' in obj_ann and '.' in mod_ann:
             self.obj.report(
-                f'ambiguous annotation {target!r}, could be interpreted as '
-                f'{obj_ann!r} instead of {mod_ann!r}', section='annotation',
-                thresh=1
+                f'ambiguous annotation {target!r}, could be interpreted as ' f'{obj_ann!r} instead of {mod_ann!r}',
+                section='annotation',
+                thresh=1,
             )
-    
+
     def link_to(self, target: str, label: "Flattenable") -> Tag:
         with self.switch_context(self._obj):
             if self._module.isNameDefined(target):
                 self.warn_ambiguous_annotation(target)
             return self._scope_linker.link_to(target, label, is_annotation=True)
-    
+
     def link_xref(self, target: str, label: "Flattenable", lineno: int) -> Tag:
         with self.switch_context(self._obj):
             return self.obj.docstring_linker.link_xref(target, label, lineno)
 
     @contextlib.contextmanager
-    def switch_context(self, ob:Optional['model.Documentable']) -> Iterator[None]:
+    def switch_context(self, ob: Optional['model.Documentable']) -> Iterator[None]:
         with self._scope_linker.switch_context(ob):
             yield
+
 
 class NotFoundLinker(DocstringLinker):
     """A DocstringLinker implementation that cannot find any links."""
@@ -293,7 +294,7 @@ class NotFoundLinker(DocstringLinker):
 
     def link_xref(self, target: str, label: "Flattenable", lineno: int) -> Tag:
         return tags.code(label)
-    
+
     @contextlib.contextmanager
     def switch_context(self, ob: Optional[model.Documentable]) -> Iterator[None]:
         yield

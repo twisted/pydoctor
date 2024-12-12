@@ -18,12 +18,7 @@ class AttributeChild(TemplateElement):
 
     filename = 'attribute-child.html'
 
-    def __init__(self,
-            docgetter: util.DocGetter,
-            ob: Attribute,
-            extras: List["Flattenable"],
-            loader: ITemplateLoader
-            ):
+    def __init__(self, docgetter: util.DocGetter, ob: Attribute, extras: List["Flattenable"], loader: ITemplateLoader):
         super().__init__(loader)
         self.docgetter = docgetter
         self.ob = ob
@@ -43,12 +38,12 @@ class AttributeChild(TemplateElement):
     @renderer
     def shortFunctionAnchor(self, request: object, tag: Tag) -> str:
         return self.ob.name
-    
+
     @renderer
     def anchorHref(self, request: object, tag: Tag) -> str:
         name = self.shortFunctionAnchor(request, tag)
         return f'#{name}'
-    
+
     @renderer
     def decorator(self, request: object, tag: Tag) -> "Flattenable":
         return list(format_decorators(self.ob))

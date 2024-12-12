@@ -8,6 +8,7 @@ Forked from ``sphinx.ext.napoleon.iterators``.
     :copyright: Copyright 2007-2021 by the Sphinx team, see AUTHORS.
     :license: BSD, see LICENSE for details.
 """
+
 from __future__ import annotations
 
 import collections
@@ -45,9 +46,7 @@ class peek_iter(Generic[T]):
         Store and increment line number to report correct lines!
     """
 
-    def __init__(
-        self, o: Union[Callable[[], T], Iterable[T]], sentinel: Optional[T] = None
-    ) -> None:
+    def __init__(self, o: Union[Callable[[], T], Iterable[T]], sentinel: Optional[T] = None) -> None:
         """
         Parameters
         ----------
@@ -70,9 +69,7 @@ class peek_iter(Generic[T]):
             self._iterable = iter(o, sentinel)
         else:
             if sentinel:
-                raise TypeError(
-                    "If sentinel is given, then o must be a callable object."
-                )
+                raise TypeError("If sentinel is given, then o must be a callable object.")
             self._iterable = iter(o)
 
         self._cache: Deque[T] = collections.deque()
@@ -118,12 +115,10 @@ class peek_iter(Generic[T]):
         return self.peek() != self.sentinel
 
     @overload
-    def next(self, n: int) -> Sequence[T]:
-        ...
+    def next(self, n: int) -> Sequence[T]: ...
 
     @overload
-    def next(self) -> T:
-        ...
+    def next(self) -> T: ...
 
     def next(self, n: Optional[int] = None) -> Union[Sequence[T], T]:
         """
@@ -162,12 +157,10 @@ class peek_iter(Generic[T]):
         return result
 
     @overload
-    def peek(self, n: int) -> Sequence[T]:
-        ...
+    def peek(self, n: int) -> Sequence[T]: ...
 
     @overload
-    def peek(self) -> T:
-        ...
+    def peek(self) -> T: ...
 
     def peek(self, n: Optional[int] = None) -> Union[Sequence[T], T]:
         """Preview the next item or ``n`` items of the iterator.

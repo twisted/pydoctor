@@ -15,12 +15,13 @@ if TYPE_CHECKING:
 
 class TableRow(Element):
 
-    def __init__(self,
-            loader: ITemplateLoader,
-            docgetter: util.DocGetter,
-            ob: Documentable,
-            child: Documentable,
-            ):
+    def __init__(
+        self,
+        loader: ITemplateLoader,
+        docgetter: util.DocGetter,
+        ob: Documentable,
+        child: Documentable,
+    ):
         super().__init__(loader)
         self.docgetter = docgetter
         self.ob = ob
@@ -48,9 +49,9 @@ class TableRow(Element):
 
     @renderer
     def name(self, request: object, tag: Tag) -> Tag:
-        return tag.clear()(tags.code(
-            epydoc2stan.taglink(self.child, self.ob.url, epydoc2stan.insert_break_points(self.child.name))
-            ))
+        return tag.clear()(
+            tags.code(epydoc2stan.taglink(self.child, self.ob.url, epydoc2stan.insert_break_points(self.child.name)))
+        )
 
     @renderer
     def summaryDoc(self, request: object, tag: Tag) -> Tag:
@@ -63,12 +64,13 @@ class ChildTable(TemplateElement):
 
     filename = 'table.html'
 
-    def __init__(self,
-            docgetter: util.DocGetter,
-            ob: Documentable,
-            children: Collection[Documentable],
-            loader: ITemplateLoader,
-            ):
+    def __init__(
+        self,
+        docgetter: util.DocGetter,
+        ob: Documentable,
+        children: Collection[Documentable],
+        loader: ITemplateLoader,
+    ):
         super().__init__(loader)
         self.children = children
         ChildTable.last_id += 1
@@ -82,12 +84,4 @@ class ChildTable(TemplateElement):
 
     @renderer
     def rows(self, request: object, tag: Tag) -> "Flattenable":
-        return [
-            TableRow(
-                TagLoader(tag),
-                self.docgetter,
-                self.ob,
-                child)
-            for child in self.children
-            if child.isVisible
-            ]
+        return [TableRow(TagLoader(tag), self.docgetter, self.ob, child) for child in self.children if child.isVisible]

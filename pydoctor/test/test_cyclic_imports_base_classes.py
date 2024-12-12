@@ -7,6 +7,7 @@ import os
 import subprocess
 import sys
 
+
 def test_cyclic_imports_base_classes() -> None:
     if sys.platform == 'win32':
         # Running this script with the following subprocess call fails on Windows
@@ -23,7 +24,7 @@ def test_cyclic_imports_base_classes() -> None:
 
 
 if __name__ == '__main__':
-    from test_packages import processPackage, model # type: ignore
+    from test_packages import processPackage, model  # type: ignore
 
     assert os.environ['PYTHONHASHSEED'] == '0'
 

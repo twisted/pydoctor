@@ -1,6 +1,7 @@
 """
 Support for Sphinx compatibility.
 """
+
 from __future__ import annotations
 
 import logging
@@ -8,10 +9,7 @@ import os
 import shutil
 import textwrap
 import zlib
-from typing import (
-    TYPE_CHECKING, Callable, ContextManager, Dict, IO, Iterable, Mapping,
-    Optional, Tuple
-)
+from typing import TYPE_CHECKING, Callable, ContextManager, Dict, IO, Iterable, Mapping, Optional, Tuple
 
 import platformdirs
 import attr
@@ -27,6 +25,7 @@ if TYPE_CHECKING:
     class CacheT(Protocol):
         def get(self, url: str) -> Optional[bytes]: ...
         def close(self) -> None: ...
+
 else:
     Documentable = object
     CacheT = object
@@ -40,11 +39,7 @@ class SphinxInventory:
     Sphinx inventory handler.
     """
 
-    def __init__(
-            self,
-            logger: Callable[..., None],
-            project_name: Optional[str] = None
-            ):
+    def __init__(self, logger: Callable[..., None], project_name: Optional[str] = None):
         """
         @param project_name: Dummy argument.
         """
@@ -60,8 +55,7 @@ class SphinxInventory:
         """
         parts = url.rsplit('/', 1)
         if len(parts) != 2:
-            self.error(
-                'sphinx', 'Failed to get remote base url for %s' % (url,))
+            self.error('sphinx', 'Failed to get remote base url for %s' % (url,))
             return
 
         base_url = parts[0]
@@ -69,8 +63,7 @@ class SphinxInventory:
         data = cache.get(url)
 
         if not data:
-            self.error(
-                'sphinx', 'Failed to get object inventory from %s' % (url, ))
+            self.error('sphinx', 'Failed to get object inventory from %s' % (url,))
             return
 
         payload = self._getPayload(base_url, data)
@@ -93,23 +86,15 @@ class SphinxInventory:
         try:
             decompressed = zlib.decompress(payload)
         except zlib.error:
-            self.error(
-                'sphinx',
-                'Failed to uncompress inventory from %s' % (base_url,))
+            self.error('sphinx', 'Failed to uncompress inventory from %s' % (base_url,))
             return ''
         try:
             return decompressed.decode('utf-8')
         except UnicodeError:
-            self.error(
-                'sphinx',
-                'Failed to decode inventory from %s' % (base_url,))
+            self.error('sphinx', 'Failed to decode inventory from %s' % (base_url,))
             return ''
 
-    def _parseInventory(
-            self,
-            base_url: str,
-            payload: str
-            ) -> Dict[str, Tuple[str, str]]:
+    def _parseInventory(self, base_url: str, payload: str) -> Dict[str, Tuple[str, str]]:
         """
         Parse clear text payload and return a dict with module to link mapping.
         """
@@ -121,7 +106,7 @@ class SphinxInventory:
                 self.error(
                     'sphinx',
                     'Failed to parse line "%s" for %s' % (line, base_url),
-                    )
+                )
                 continue
 
             if not typ.startswith('py:'):
@@ -220,7 +205,9 @@ class SphinxInventoryWriter:
 # Project: {self._project_name}
 # Version: {self._project_version}
 # The rest of this file is compressed with zlib.
-""".encode('utf-8')
+""".encode(
+            'utf-8'
+        )
 
     def _generateContent(self, subjects: Iterable[Documentable]) -> bytes:
         """
@@ -266,7 +253,13 @@ class SphinxInventoryWriter:
         else:
             domainname = 'obj'
             self.error(
-                'sphinx', "Unknown type %r for %s." % (type(obj), full_name,))
+                'sphinx',
+                "Unknown type %r for %s."
+                % (
+                    type(obj),
+                    full_name,
+                ),
+            )
 
         return f'{full_name} py:{domainname} -1 {url} {display}\n'
 
@@ -296,16 +289,13 @@ class _Unit:
 # to a 32 bit value.  Per the documentation, days are limited to
 # 999999999, and weeks are converted to days by multiplying 7.
 _maxAgeUnits = {
-    "s": _Unit("seconds", minimum=1, maximum=2 ** 32 - 1),
-    "m": _Unit("minutes", minimum=1, maximum=2 ** 32 - 1),
-    "h": _Unit("hours", minimum=1, maximum=2 ** 32 - 1),
+    "s": _Unit("seconds", minimum=1, maximum=2**32 - 1),
+    "m": _Unit("minutes", minimum=1, maximum=2**32 - 1),
+    "h": _Unit("hours", minimum=1, maximum=2**32 - 1),
     "d": _Unit("days", minimum=1, maximum=999999999 + 1),
     "w": _Unit("weeks", minimum=1, maximum=(999999999 + 1) // 7),
 }
-_maxAgeUnitNames = ", ".join(
-    f"{indicator} ({unit.name})"
-    for indicator, unit in _maxAgeUnits.items()
-)
+_maxAgeUnitNames = ", ".join(f"{indicator} ({unit.name})" for indicator, unit in _maxAgeUnits.items())
 
 
 MAX_AGE_HELP = textwrap.dedent(
@@ -341,14 +331,14 @@ def parseMaxAge(maxAge: str) -> Dict[str, int]:
     try:
         unit = _maxAgeUnits[maxAge[-1]]
     except (IndexError, KeyError):
-        raise InvalidMaxAge(
-            f"Maximum age's units must be one of {_maxAgeUnitNames}")
+        raise InvalidMaxAge(f"Maximum age's units must be one of {_maxAgeUnitNames}")
 
     if not (unit.minimum <= amount < unit.maximum):
         raise InvalidMaxAge(
             f"Maximum age in {unit.name} must be "
             f"greater than or equal to {unit.minimum} "
-            f"and less than {unit.maximum}")
+            f"and less than {unit.maximum}"
+        )
 
     return {unit.name: amount}
 
@@ -366,11 +356,8 @@ class IntersphinxCache(CacheT):
 
     @classmethod
     def fromParameters(
-            cls,
-            sessionFactory: Callable[[], requests.Session],
-            cachePath: str,
-            maxAgeDictionary: Mapping[str, int]
-            ) -> 'IntersphinxCache':
+        cls, sessionFactory: Callable[[], requests.Session], cachePath: str, maxAgeDictionary: Mapping[str, int]
+    ) -> 'IntersphinxCache':
         """
         Construct an instance with the given parameters.
 
@@ -381,9 +368,7 @@ class IntersphinxCache(CacheT):
             age of any cache entry.
         @see: L{parseMaxAge}
         """
-        session = CacheControl(sessionFactory(),
-                               cache=FileCache(cachePath),
-                               heuristic=ExpiresAfter(**maxAgeDictionary))
+        session = CacheControl(sessionFactory(), cache=FileCache(cachePath), heuristic=ExpiresAfter(**maxAgeDictionary))
         return cls(session)
 
     def get(self, url: str) -> Optional[bytes]:
@@ -396,22 +381,20 @@ class IntersphinxCache(CacheT):
         try:
             return self._session.get(url).content
         except Exception:
-            self._logger.exception(
-                "Could not retrieve intersphinx object.inv from %s",
-                url
-            )
+            self._logger.exception("Could not retrieve intersphinx object.inv from %s", url)
             return None
 
     def close(self) -> None:
         self._session.close()
 
+
 def prepareCache(
-        clearCache: bool,
-        enableCache: bool,
-        cachePath: str,
-        maxAge: str,
-        sessionFactory: Callable[[], requests.Session] = requests.Session,
-        ) -> IntersphinxCache:
+    clearCache: bool,
+    enableCache: bool,
+    cachePath: str,
+    maxAge: str,
+    sessionFactory: Callable[[], requests.Session] = requests.Session,
+) -> IntersphinxCache:
     """
     Prepare an Intersphinx cache.
 

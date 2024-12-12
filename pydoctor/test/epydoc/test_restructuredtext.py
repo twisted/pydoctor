@@ -11,8 +11,10 @@ from docutils import nodes, __version_info__ as docutils_version_info
 from bs4 import BeautifulSoup
 import pytest
 
+
 def prettify(html: str) -> str:
     return BeautifulSoup(html, features="html.parser").prettify()  # type: ignore[no-any-return]
+
 
 def parse_rst(s: str) -> ParsedDocstring:
     errors: List[ParseError] = []
@@ -20,49 +22,58 @@ def parse_rst(s: str) -> ParsedDocstring:
     assert not errors
     return parsed
 
+
 def rst2html(docstring: str, linker: DocstringLinker = NotFoundLinker()) -> str:
     """
     Render a docstring to HTML.
     """
     return flatten(parse_rst(docstring).to_stan(linker))
-    
+
+
 def node2html(node: nodes.Node, oneline: bool = True) -> str:
     if oneline:
         return ''.join(prettify(flatten(node2stan(node, NotFoundLinker()))).splitlines())
     else:
         return flatten(node2stan(node, NotFoundLinker()))
 
+
 def rst2node(s: str) -> nodes.document:
     return parse_rst(s).to_node()
 
+
 def test_rst_partial() -> None:
     """
-    The L{node2html()} function can convert fragment of a L{docutils} document, 
-    it's not restricted to actual L{docutils.nodes.document} object. 
-    
-    Really, any nodes can be passed to that function, the only requirement is 
+    The L{node2html()} function can convert fragment of a L{docutils} document,
+    it's not restricted to actual L{docutils.nodes.document} object.
+
+    Really, any nodes can be passed to that function, the only requirement is
     that the node's C{document} attribute is set to a valid L{docutils.nodes.document} object.
     """
-    doc = dedent('''
+    doc = dedent(
+        '''
         This is a paragraph.  Paragraphs can
         span multiple lines, and can contain
         `inline markup`.
 
         This is another paragraph.  Paragraphs
         are separated by blank lines.
-        ''')
-    expected = dedent('''
+        '''
+    )
+    expected = dedent(
+        '''
         <p>This is another paragraph.  Paragraphs
         are separated by blank lines.</p>
-        ''').lstrip()
-    
+        '''
+    ).lstrip()
+
     node = rst2node(doc)
 
     for child in node[:]:
-          assert isinstance(child, nodes.paragraph)
-    
+        assert isinstance(child, nodes.paragraph)
+
     assert node2html(node[-1], oneline=False) == expected
     assert node[-1].parent == node
+
 
 def test_rst_body_empty() -> None:
     src = """
@@ -75,6 +86,7 @@ def test_rst_body_empty() -> None:
     assert not pdoc.has_body
     assert len(pdoc.fields) == 2
 
+
 def test_rst_body_nonempty() -> None:
     src = """
     Only body text, no fields.
@@ -84,6 +96,7 @@ def test_rst_body_nonempty() -> None:
     assert not errors
     assert pdoc.has_body
     assert len(pdoc.fields) == 0
+
 
 def test_rst_anon_link_target_missing() -> None:
     src = """
@@ -95,6 +108,7 @@ def test_rst_anon_link_target_missing() -> None:
     assert errors[0].descr().startswith("Anonymous hyperlink mismatch:")
     assert errors[0].is_fatal()
 
+
 def test_rst_anon_link_email() -> None:
     src = "`<postmaster@example.net>`__"
     html = rst2html(src)
@@ -102,18 +116,21 @@ def test_rst_anon_link_email() -> None:
     assert ' href="mailto:postmaster@example.net"' in html
     assert html.endswith('>mailto:postmaster@example.net</a>')
 
+
 def test_rst_xref_with_target() -> None:
     src = "`mapping <typing.MutableMapping>`"
     html = rst2html(src)
     assert html.startswith('<code>mapping</code>')
+
 
 def test_rst_xref_implicit_target() -> None:
     src = "`func()`"
     html = rst2html(src)
     assert html.startswith('<code>func()</code>')
 
+
 def test_rst_directive_adnomitions() -> None:
-    expected_html_multiline="""
+    expected_html_multiline = """
         <div class="rst-admonition rst-{}">
         <p class="rst-admonition-title rst-first">{}</p>
         <p>this is the first line</p>
@@ -129,45 +146,37 @@ def test_rst_directive_adnomitions() -> None:
 """
 
     admonition_map = {
-            'Attention': 'attention',
-            'Caution': 'caution',
-            'Danger': 'danger',
-            'Error': 'error',
-            'Hint': 'hint',
-            'Important': 'important',
-            'Note': 'note',
-            'Tip': 'tip',
-            'Warning': 'warning',
-        }
+        'Attention': 'attention',
+        'Caution': 'caution',
+        'Danger': 'danger',
+        'Error': 'error',
+        'Hint': 'hint',
+        'Important': 'important',
+        'Note': 'note',
+        'Tip': 'tip',
+        'Warning': 'warning',
+    }
 
     for title, admonition_name in admonition_map.items():
         # Multiline
-        docstring = (".. {}::\n"
-                    "\n"
-                    "   this is the first line\n"
-                    "   \n"
-                    "   and this is the second line\n"
-                    ).format(admonition_name)
-
-        expect = expected_html_multiline.format(
-            admonition_name, title
+        docstring = (".. {}::\n" "\n" "   this is the first line\n" "   \n" "   and this is the second line\n").format(
+            admonition_name
         )
+
+        expect = expected_html_multiline.format(admonition_name, title)
 
         actual = rst2html(docstring)
 
-        assert prettify(expect)==prettify(actual)
+        assert prettify(expect) == prettify(actual)
 
         # Single line
-        docstring = (".. {}:: this is a single line\n"
-                    ).format(admonition_name)
+        docstring = (".. {}:: this is a single line\n").format(admonition_name)
 
-        expect = expected_html_single_line.format(
-            admonition_name, title
-        )
+        expect = expected_html_single_line.format(admonition_name, title)
 
         actual = rst2html(docstring)
 
-        assert prettify(expect)==prettify(actual)
+        assert prettify(expect) == prettify(actual)
 
 
 def test_rst_directive_versionadded() -> None:
@@ -176,35 +185,42 @@ def test_rst_directive_versionadded() -> None:
     dedicated CSS classes.
     """
     html = rst2html(".. versionadded:: 0.6")
-    expected_html="""<div class="rst-versionadded">
+    expected_html = """<div class="rst-versionadded">
 <span class="rst-added rst-versionmodified">New in version 0.6.</span></div>
 """
-    assert html==expected_html, html
+    assert html == expected_html, html
+
 
 def test_rst_directive_versionchanged() -> None:
     """
     It renders the C{versionchanged} RST directive with custom markup and supports
     an extra text besides the version information.
     """
-    html = rst2html(""".. versionchanged:: 0.7
-    Add extras""")
-    expected_html="""<div class="rst-versionchanged">
+    html = rst2html(
+        """.. versionchanged:: 0.7
+    Add extras"""
+    )
+    expected_html = """<div class="rst-versionchanged">
 <span class="rst-changed rst-versionmodified">Changed in version 0.7: </span><span>Add extras</span></div>
 """
-    assert html==expected_html, html
+    assert html == expected_html, html
+
 
 def test_rst_directive_deprecated() -> None:
     """
     It renders the C{deprecated} RST directive with custom markup and supports
     an extra text besides the version information.
     """
-    html = rst2html(""".. deprecated:: 0.2
-    For security reasons""")
-    expected_html="""<div class="rst-deprecated">
+    html = rst2html(
+        """.. deprecated:: 0.2
+    For security reasons"""
+    )
+    expected_html = """<div class="rst-deprecated">
 <span class="rst-deprecated rst-versionmodified">Deprecated since version 0.2: </span><span>For security reasons</span></div>
 """
-    assert html==expected_html, html
-    
+    assert html == expected_html, html
+
+
 def test_rst_directive_seealso() -> None:
 
     html = rst2html(".. seealso:: Hey")
@@ -215,46 +231,56 @@ def test_rst_directive_seealso() -> None:
         </div>"""
     assert prettify(html).strip() == prettify(expected_html).strip(), html
 
-@pytest.mark.parametrize(
-    'markup', ('epytext', 'plaintext', 'restructuredtext', 'numpy', 'google')
-    )
-def test_summary(markup:str) -> None:
+
+@pytest.mark.parametrize('markup', ('epytext', 'plaintext', 'restructuredtext', 'numpy', 'google'))
+def test_summary(markup: str) -> None:
     """
-    Summaries are generated from the inline text inside the first paragraph. 
+    Summaries are generated from the inline text inside the first paragraph.
     The text is trimmed as soon as we reach a break point (or another docutils element) after 200 characters.
     """
     cases = [
-        ("Single line", "Single line"), 
-        ("Single line.", "Single line."), 
+        ("Single line", "Single line"),
+        ("Single line.", "Single line."),
         ("Single line with period.", "Single line with period."),
-        ("""
+        (
+            """
         Single line with period.
         
         @type: Also with a tag.
-        """, "Single line with period."), 
+        """,
+            "Single line with period.",
+        ),
         ("Other lines with period.\nThis is attached", "Other lines with period. This is attached"),
-        ("Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. ", 
-         "Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line..."),
-        ("Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line. Single line Single line Single line ", 
-         "Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line..."),
-        ("Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line.",
-         "Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line."),
-        ("""
+        (
+            "Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. ",
+            "Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line...",
+        ),
+        (
+            "Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line. Single line Single line Single line ",
+            "Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line...",
+        ),
+        (
+            "Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line.",
+            "Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line.",
+        ),
+        (
+            """
         Return a fully qualified name for the possibly-dotted name.
 
         To explain what this means, consider the following modules... blabla""",
-        "Return a fully qualified name for the possibly-dotted name.")
+            "Return a fully qualified name for the possibly-dotted name.",
+        ),
     ]
     for src, summary_text in cases:
         errors: List[ParseError] = []
         pdoc = get_parser_by_name(markup)(dedent(src), errors)
         assert not errors
-        assert pdoc.get_summary() == pdoc.get_summary() # summary is cached inside ParsedDocstring as well.
+        assert pdoc.get_summary() == pdoc.get_summary()  # summary is cached inside ParsedDocstring as well.
         assert flatten_text(pdoc.get_summary().to_stan(NotFoundLinker())) == summary_text
 
 
 # From docutils 0.18 the toc entries uses different ids.
-@pytest.mark.skipif(docutils_version_info < (0,18), reason="HTML ids in toc tree changed in docutils 0.18.0.")
+@pytest.mark.skipif(docutils_version_info < (0, 18), reason="HTML ids in toc tree changed in docutils 0.18.0.")
 def test_get_toc() -> None:
 
     docstring = """
@@ -289,12 +315,12 @@ Other
     errors: List[ParseError] = []
     parsed = parse_docstring(docstring, errors)
     assert not errors, [str(e.descr) for e in errors]
-    
+
     toc = parsed.get_toc(4)
     assert toc is not None
     html = flatten(toc.to_stan(NotFoundLinker()))
-    
-    expected_html="""
+
+    expected_html = """
 <li>
  <p class="rst-first">
   <a class="rst-internal rst-reference" href="#rst-titles" id="rst-toc-entry-1">
@@ -345,4 +371,3 @@ Other
 </li>
 """
     assert prettify(html) == prettify(expected_html)
-

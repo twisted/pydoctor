@@ -4,6 +4,7 @@ Parser for numpy-style docstrings.
 @See: L{pydoctor.epydoc.markup.google}
 @See: L{pydoctor.epydoc.markup._napoleon}
 """
+
 from __future__ import annotations
 
 from pydoctor.epydoc.markup import ObjClass, ParserFunction

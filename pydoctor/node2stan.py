@@ -1,6 +1,7 @@
 """
 Helper function to convert L{docutils} nodes to Stan tree.
 """
+
 from __future__ import annotations
 
 from itertools import chain
@@ -11,6 +12,7 @@ from docutils.writers import html4css1
 from docutils import nodes, frontend, __version_info__ as docutils_version_info
 
 from twisted.web.template import Tag
+
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable
     from pydoctor.epydoc.markup import DocstringLinker
@@ -20,15 +22,17 @@ from pydoctor.epydoc.docutils import get_lineno
 from pydoctor.epydoc.doctest import colorize_codeblock, colorize_doctest
 from pydoctor.stanutils import flatten, html2stan
 
+
 def node2html(node: nodes.Node, docstring_linker: 'DocstringLinker') -> List[str]:
     """
     Convert a L{docutils.nodes.Node} object to HTML strings.
     """
-    if (doc:=node.document) is None:
+    if (doc := node.document) is None:
         raise AssertionError(f'missing document attribute on {node}')
     visitor = HTMLTranslator(doc, docstring_linker)
     node.walkabout(visitor)
     return visitor.body
+
 
 def node2stan(node: Union[nodes.Node, Iterable[nodes.Node]], docstring_linker: 'DocstringLinker') -> Tag:
     """
@@ -36,7 +40,7 @@ def node2stan(node: Union[nodes.Node, Iterable[nodes.Node]], docstring_linker: '
 
     @param node: An docutils document or a fragment of document.
     @return: The element as a stan tree.
-    @note:  Any L{nodes.Node} can be passed to that function, the only requirement is 
+    @note:  Any L{nodes.Node} can be passed to that function, the only requirement is
         that the node's L{nodes.Node.document} attribute is set to a valid L{nodes.document} object.
     """
     html = []
@@ -62,56 +66,57 @@ def gettext(node: Union[nodes.Node, List[nodes.Node]]) -> List[str]:
 _TARGET_RE = re.compile(r'^(.*?)\s*<(?:URI:|URL:)?([^<>]+)>$')
 _VALID_IDENTIFIER_RE = re.compile('[^0-9a-zA-Z_]')
 
+
 def _valid_identifier(s: str) -> str:
-    """Remove invalid characters to create valid CSS identifiers. """
+    """Remove invalid characters to create valid CSS identifiers."""
     return _VALID_IDENTIFIER_RE.sub('', s)
+
 
 class HTMLTranslator(html4css1.HTMLTranslator):
     """
     Pydoctor's HTML translator.
     """
-    
+
     settings: ClassVar[Optional[optparse.Values]] = None
     body: List[str]
 
-    def __init__(self,
-            document: nodes.document,
-            docstring_linker: 'DocstringLinker'
-            ):
+    def __init__(self, document: nodes.document, docstring_linker: 'DocstringLinker'):
         self._linker = docstring_linker
 
         # Set the document's settings.
         if self.settings is None:
-            if docutils_version_info >= (0,19):
+            if docutils_version_info >= (0, 19):
                 # Direct access to OptionParser is deprecated from Docutils 0.19
                 settings = frontend.get_default_settings(html4css1.Writer())
             else:
-                settings = frontend.OptionParser([html4css1.Writer()]).get_default_values() # type: ignore
-            
+                settings = frontend.OptionParser([html4css1.Writer()]).get_default_values()  # type: ignore
+
             # Save default settings as class attribute not to re-compute it all the times
             self.__class__.settings = settings
         else:
             #                        yes "optparse.Values" and "docutils.frontend.Values" are compatible.
-            settings = self.settings # type: ignore
-        
+            settings = self.settings  # type: ignore
+
         document.settings = settings
 
         super().__init__(document)
 
         # don't allow <h1> tags, start at <h2>
-        # h1 is reserved for the page nodes.title. 
+        # h1 is reserved for the page nodes.title.
         self.section_level += 1
 
     # Handle interpreted text (crossreferences)
     def visit_title_reference(self, node: nodes.title_reference) -> None:
         lineno = get_lineno(node)
         self._handle_reference(node, link_func=lambda target, label: self._linker.link_xref(target, label, lineno))
-    
+
     # Handle internal references
     def visit_obj_reference(self, node: obj_reference) -> None:
         self._handle_reference(node, link_func=self._linker.link_to)
-    
-    def _handle_reference(self, node: nodes.title_reference, link_func: Callable[[str, "Flattenable"], "Flattenable"]) -> None:
+
+    def _handle_reference(
+        self, node: nodes.title_reference, link_func: Callable[[str, "Flattenable"], "Flattenable"]
+    ) -> None:
         label: "Flattenable"
         if 'refuri' in node.attributes:
             # Epytext parsed or manually constructed nodes.
@@ -123,10 +128,10 @@ class HTMLTranslator(html4css1.HTMLTranslator):
                 label, target = m.groups()
             else:
                 label = target = node.astext()
-        
+
         # Support linking to functions and methods with () at the end
         if target.endswith('()'):
-            target = target[:len(target)-2]
+            target = target[: len(target) - 2]
 
         self.body.append(flatten(link_func(target, label)))
         raise nodes.SkipNode()
@@ -154,9 +159,7 @@ class HTMLTranslator(html4css1.HTMLTranslator):
           - all headings (C{<hM{n}>}) are given the css class C{'heading'}
         """
 
-        to_list_names = {'name':'names', 
-                         'id':'ids', 
-                         'class':'classes'}
+        to_list_names = {'name': 'names', 'id': 'ids', 'class': 'classes'}
 
         # Get the list of all attribute dictionaries we need to munge.
         attr_dicts = [attributes]
@@ -169,22 +172,22 @@ class HTMLTranslator(html4css1.HTMLTranslator):
         # versions of docutils don't case-normalize attributes.
         for attr_dict in attr_dicts:
             # Prefix all CSS classes with "rst-"; and prefix all
-                # names with "rst-" to avoid conflicts.
+            # names with "rst-" to avoid conflicts.
             done = set()
             for key, val in tuple(attr_dict.items()):
                 if key.lower() in ('class', 'id', 'name'):
                     list_key = to_list_names[key.lower()]
-                    attr_dict[list_key] = [f'rst-{cls}' if not cls.startswith('rst-') 
-                                      else cls for cls in sorted(chain(val.split(), 
-                                        attr_dict.get(list_key, ())))]
+                    attr_dict[list_key] = [
+                        f'rst-{cls}' if not cls.startswith('rst-') else cls
+                        for cls in sorted(chain(val.split(), attr_dict.get(list_key, ())))
+                    ]
                     del attr_dict[key]
                     done.add(list_key)
             for key, val in tuple(attr_dict.items()):
                 if key.lower() in ('classes', 'ids', 'names') and key.lower() not in done:
-                    attr_dict[key] = [f'rst-{cls}' if not cls.startswith('rst-') 
-                                      else cls for cls in sorted(val)]
+                    attr_dict[key] = [f'rst-{cls}' if not cls.startswith('rst-') else cls for cls in sorted(val)]
                 elif key.lower() == 'href':
-                    if attr_dict[key][:1]=='#':
+                    if attr_dict[key][:1] == '#':
                         href = attr_dict[key][1:]
                         # We check that the class doesn't alrealy start with "rst-"
                         if not href.startswith('rst-'):
@@ -196,8 +199,7 @@ class HTMLTranslator(html4css1.HTMLTranslator):
 
         # For headings, use class="heading"
         if re.match(r'^h\d+$', tagname):
-            attributes['class'] = ' '.join([attributes.get('class',''),
-                                            'heading']).strip()
+            attributes['class'] = ' '.join([attributes.get('class', ''), 'heading']).strip()
 
         return super().starttag(node, tagname, suffix, **attributes)  # type: ignore[no-any-return]
 
@@ -209,7 +211,6 @@ class HTMLTranslator(html4css1.HTMLTranslator):
             self.body.append(flatten(colorize_doctest(pysrc)))
         raise nodes.SkipNode()
 
-
     # Other ressources on how to extend docutils:
     # https://docutils.sourceforge.io/docs/user/tools.html
     # https://docutils.sourceforge.io/docs/dev/hacking.html
@@ -220,8 +221,7 @@ class HTMLTranslator(html4css1.HTMLTranslator):
     # this part of the HTMLTranslator is based on sphinx's HTMLTranslator:
     # https://github.com/sphinx-doc/sphinx/blob/3.x/sphinx/writers/html.py#L271
     def _visit_admonition(self, node: nodes.Element, name: str) -> None:
-        self.body.append(self.starttag(
-            node, 'div', CLASS=('admonition ' + _valid_identifier(name))))
+        self.body.append(self.starttag(node, 'div', CLASS=('admonition ' + _valid_identifier(name))))
         node.insert(0, nodes.title(name, name.title()))
         self.set_first_last(node)
 
@@ -281,7 +281,7 @@ class HTMLTranslator(html4css1.HTMLTranslator):
 
     def visit_wbr(self, node: nodes.Node) -> None:
         self.body.append('<wbr></wbr>')
-    
+
     def depart_wbr(self, node: nodes.Node) -> None:
         pass
 

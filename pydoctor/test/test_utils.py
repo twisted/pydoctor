@@ -3,8 +3,9 @@ import pytest
 
 from pydoctor.templatewriter.util import CaseInsensitiveDict
 
+
 class TestCaseInsensitiveDict:
-    
+
     @pytest.fixture(autouse=True)
     def setup(self) -> None:
         """CaseInsensitiveDict instance with "Accept" header."""
@@ -36,12 +37,6 @@ class TestCaseInsensitiveDict:
         assert copy is not self.case_insensitive_dict
         assert copy == self.case_insensitive_dict
 
-    @pytest.mark.parametrize(
-        'other, result', (
-            ({'AccePT': 'application/json'}, True),
-            ({}, False),
-            (None, False)
-        )
-    )
+    @pytest.mark.parametrize('other, result', (({'AccePT': 'application/json'}, True), ({}, False), (None, False)))
     def test_instance_equality(self, other: Optional[Dict[str, str]], result: bool) -> None:
         assert (self.case_insensitive_dict == other) is result

@@ -26,6 +26,7 @@ class FakeOptions:
     """
     A fake options object as if it came from argparse.
     """
+
     sourcehref = None
     htmlsourcebase: Optional[str] = None
     projectbasedirectory: Path
@@ -37,15 +38,14 @@ class FakeDocumentable:
     A fake of pydoctor.model.Documentable that provides a system and
     sourceHref attribute.
     """
+
     system: model.System
     sourceHref = None
     filepath: str
 
 
-
-@pytest.mark.parametrize('projectBaseDir', [
-    PurePosixPath("/foo/bar/ProjectName"),
-    PureWindowsPath("C:\\foo\\bar\\ProjectName")]
+@pytest.mark.parametrize(
+    'projectBaseDir', [PurePosixPath("/foo/bar/ProjectName"), PureWindowsPath("C:\\foo\\bar\\ProjectName")]
 )
 def test_setSourceHrefOption(projectBaseDir: Path) -> None:
     """
@@ -58,11 +58,12 @@ def test_setSourceHrefOption(projectBaseDir: Path) -> None:
     options = FakeOptions()
     options.projectbasedirectory = projectBaseDir
     options.htmlsourcebase = "http://example.org/trac/browser/trunk"
-    system = model.System(options) # type:ignore[arg-type]
+    system = model.System(options)  # type:ignore[arg-type]
     mod.system = system
     system.setSourceHref(mod, projectBaseDir / "package" / "module.py")
 
     assert mod.sourceHref == "http://example.org/trac/browser/trunk/package/module.py"
+
 
 def test_htmlsourcetemplate_auto_detect() -> None:
     """
@@ -76,34 +77,46 @@ def test_htmlsourcetemplate_auto_detect() -> None:
         SourceForge : {}#l{lineno}
     """
     cases = [
-        ("http://example.org/trac/browser/trunk", 
-         "http://example.org/trac/browser/trunk/pydoctor/test/testpackages/basic/mod.py#L7"),
-
-        ("https://sourceforge.net/p/epydoc/code/HEAD/tree/trunk/epydoc", 
-         "https://sourceforge.net/p/epydoc/code/HEAD/tree/trunk/epydoc/pydoctor/test/testpackages/basic/mod.py#l7"),
-        
-        ("https://bitbucket.org/user/scripts/src/master", 
-         "https://bitbucket.org/user/scripts/src/master/pydoctor/test/testpackages/basic/mod.py#lines-7"),
+        (
+            "http://example.org/trac/browser/trunk",
+            "http://example.org/trac/browser/trunk/pydoctor/test/testpackages/basic/mod.py#L7",
+        ),
+        (
+            "https://sourceforge.net/p/epydoc/code/HEAD/tree/trunk/epydoc",
+            "https://sourceforge.net/p/epydoc/code/HEAD/tree/trunk/epydoc/pydoctor/test/testpackages/basic/mod.py#l7",
+        ),
+        (
+            "https://bitbucket.org/user/scripts/src/master",
+            "https://bitbucket.org/user/scripts/src/master/pydoctor/test/testpackages/basic/mod.py#lines-7",
+        ),
     ]
     for base, var_href in cases:
         options = model.Options.from_args([f'--html-viewsource-base={base}', '--project-base-dir=.'])
         system = model.System(options)
 
-        processPackage('basic', systemcls=lambda:system)
+        processPackage('basic', systemcls=lambda: system)
         assert system.allobjects['basic.mod.C'].sourceHref == var_href
+
 
 def test_htmlsourcetemplate_custom() -> None:
     """
     The links to source code web pages can be customized via an CLI argument.
     """
-    options = model.Options.from_args([
-        '--html-viewsource-base=http://example.org/trac/browser/trunk', 
-        '--project-base-dir=.', 
-        '--html-viewsource-template={mod_source_href}#n{lineno}'])
+    options = model.Options.from_args(
+        [
+            '--html-viewsource-base=http://example.org/trac/browser/trunk',
+            '--project-base-dir=.',
+            '--html-viewsource-template={mod_source_href}#n{lineno}',
+        ]
+    )
     system = model.System(options)
 
-    processPackage('basic', systemcls=lambda:system)
-    assert system.allobjects['basic.mod.C'].sourceHref == "http://example.org/trac/browser/trunk/pydoctor/test/testpackages/basic/mod.py#n7"
+    processPackage('basic', systemcls=lambda: system)
+    assert (
+        system.allobjects['basic.mod.C'].sourceHref
+        == "http://example.org/trac/browser/trunk/pydoctor/test/testpackages/basic/mod.py#n7"
+    )
+
 
 def test_initialization_default() -> None:
     """
@@ -151,38 +164,33 @@ def test_fetchIntersphinxInventories_content() -> None:
     options.intersphinx = [
         'http://sphinx/objects.inv',
         'file:///twisted/index.inv',
-        ]
+    ]
     url_content = {
-        'http://sphinx/objects.inv': zlib.compress(
-            b'sphinx.module py:module -1 sp.html -'),
-        'file:///twisted/index.inv': zlib.compress(
-            b'twisted.package py:module -1 tm.html -'),
-        }
+        'http://sphinx/objects.inv': zlib.compress(b'sphinx.module py:module -1 sp.html -'),
+        'file:///twisted/index.inv': zlib.compress(b'twisted.package py:module -1 tm.html -'),
+    }
     sut = model.System(options=options)
     log = []
+
     def log_msg(part: str, msg: str) -> None:
         log.append((part, msg))
-    sut.msg = log_msg # type: ignore[assignment]
+
+    sut.msg = log_msg  # type: ignore[assignment]
 
     class Cache(CacheT):
         """Avoid touching the network."""
+
         def get(self, url: str) -> bytes:
             return url_content[url]
+
         def close(self) -> None:
             return None
-        
 
     sut.fetchIntersphinxInventories(Cache())
 
     assert [] == log
-    assert (
-        'http://sphinx/sp.html' ==
-        sut.intersphinx.getLink('sphinx.module')
-        )
-    assert (
-        'file:///twisted/tm.html' ==
-        sut.intersphinx.getLink('twisted.package')
-        )
+    assert 'http://sphinx/sp.html' == sut.intersphinx.getLink('sphinx.module')
+    assert 'file:///twisted/tm.html' == sut.intersphinx.getLink('twisted.package')
 
 
 def test_docsources_class_attribute() -> None:
@@ -238,6 +246,7 @@ def test_constructor_params_inherited() -> None:
     assert isinstance(C, model.Class)
     assert C.constructor_params.keys() == {'self', 'a', 'b'}
 
+
 def test_constructor_params_new() -> None:
     src = '''
     class A:
@@ -254,6 +263,7 @@ def test_constructor_params_new() -> None:
     assert isinstance(C, model.Class)
     assert C.constructor_params.keys() == {'cls', 'kwargs'}
 
+
 def test_docstring_lineno() -> None:
     src = '''
     def f():
@@ -267,7 +277,7 @@ def test_docstring_lineno() -> None:
     mod = fromText(src)
     func = mod.contents['f']
     assert func.linenumber == 2
-    assert func.docstring_lineno == 4 # first non-blank line
+    assert func.docstring_lineno == 4  # first non-blank line
 
 
 class Dummy:
@@ -302,6 +312,7 @@ def test_introspection_python() -> None:
     assert isinstance(func, model.Function)
     assert func.signature == signature(dummy_function_with_complex_signature)
 
+
 def test_introspection_extension() -> None:
     """Find docstrings from this test using introspection of an extension."""
 
@@ -311,15 +322,9 @@ def test_introspection_extension() -> None:
         pytest.skip("cython_test_exception_raiser not installed")
 
     system = model.System()
-    package = system.introspectModule(
-        Path(cython_test_exception_raiser.__file__),
-        'cython_test_exception_raiser',
-        None)
+    package = system.introspectModule(Path(cython_test_exception_raiser.__file__), 'cython_test_exception_raiser', None)
     assert isinstance(package, model.Package)
-    module = system.introspectModule(
-        Path(cython_test_exception_raiser.raiser.__file__),
-        'raiser',
-        package)
+    module = system.introspectModule(Path(cython_test_exception_raiser.raiser.__file__), 'raiser', package)
     system.process()
 
     assert not isinstance(module, model.Package)
@@ -338,21 +343,25 @@ def test_introspection_extension() -> None:
     assert func.docstring is not None
     assert func.docstring.strip() == "Raise L{RaiserException}."
 
+
 testpackages = Path(__file__).parent / 'testpackages'
 
+
 @pytest.mark.skipif("platform.python_implementation() == 'PyPy' or platform.system() == 'Windows'")
-def test_c_module_text_signature(capsys:CapSys) -> None:
-    
+def test_c_module_text_signature(capsys: CapSys) -> None:
+
     c_module_invalid_text_signature = testpackages / 'c_module_invalid_text_signature'
     package_path = c_module_invalid_text_signature / 'mymod'
-    
+
     # build extension
     try:
         cwd = os.getcwd()
-        code, outstr = subprocess.getstatusoutput(f'cd {c_module_invalid_text_signature} && python3 setup.py build_ext --inplace')
+        code, outstr = subprocess.getstatusoutput(
+            f'cd {c_module_invalid_text_signature} && python3 setup.py build_ext --inplace'
+        )
         os.chdir(cwd)
-        
-        assert code==0, outstr
+
+        assert code == 0, outstr
 
         system = model.System()
         system.options.introspect_c_modules = True
@@ -360,9 +369,9 @@ def test_c_module_text_signature(capsys:CapSys) -> None:
         builder = system.systemBuilder(system)
         builder.addModule(package_path)
         builder.buildModules()
-        
+
         assert "Cannot parse signature of mymod.base.invalid_text_signature" in capsys.readouterr().out
-        
+
         mymod_base = system.allobjects['mymod.base']
         assert isinstance(mymod_base, model.Module)
         func = mymod_base.contents['invalid_text_signature']
@@ -372,25 +381,27 @@ def test_c_module_text_signature(capsys:CapSys) -> None:
         assert isinstance(valid_func, model.Function)
 
         assert "(...)" == pages.format_signature(func)
-        assert "(a='r', b=-3.14)" == stanutils.flatten_text(
-            cast(Tag, pages.format_signature(valid_func)))
+        assert "(a='r', b=-3.14)" == stanutils.flatten_text(cast(Tag, pages.format_signature(valid_func)))
 
     finally:
         # cleanup
         subprocess.getoutput(f'rm -f {package_path}/*.so')
 
+
 @pytest.mark.skipif("platform.python_implementation() == 'PyPy' or platform.system() == 'Windows'")
-def test_c_module_python_module_name_clash(capsys:CapSys) -> None:
+def test_c_module_python_module_name_clash(capsys: CapSys) -> None:
     c_module_python_module_name_clash = testpackages / 'c_module_python_module_name_clash'
     package_path = c_module_python_module_name_clash / 'mymod'
-    
+
     # build extension
     try:
         cwd = os.getcwd()
-        code, outstr = subprocess.getstatusoutput(f'cd {c_module_python_module_name_clash} && python3 setup.py build_ext --inplace')
+        code, outstr = subprocess.getstatusoutput(
+            f'cd {c_module_python_module_name_clash} && python3 setup.py build_ext --inplace'
+        )
         os.chdir(cwd)
-        
-        assert code==0, outstr
+
+        assert code == 0, outstr
         system = model.System()
         system.options.introspect_c_modules = True
 
@@ -407,7 +418,8 @@ def test_c_module_python_module_name_clash(capsys:CapSys) -> None:
         # cleanup
         subprocess.getoutput(f'rm -f {package_path}/*.so')
 
-def test_resolve_name_subclass(capsys:CapSys) -> None:
+
+def test_resolve_name_subclass(capsys: CapSys) -> None:
     """
     C{Model.resolveName} knows about single inheritance.
     """
@@ -421,13 +433,35 @@ def test_resolve_name_subclass(capsys:CapSys) -> None:
     )
     assert m.resolveName('C.v') == m.contents['B'].contents['v']
 
-@pytest.mark.parametrize('privacy', [
-    (['public:m._public**', 'public:m.tests', 'public:m.tests.helpers', 'private:m._public.private', 'hidden:m._public.hidden', 'hidden:m.tests.*']), 
-    (reversed(['private:**private', 'hidden:**hidden', 'public:**_public', 'hidden:m.tests.test**', ])), 
-])
-def test_privacy_switch(privacy:object) -> None:
+
+@pytest.mark.parametrize(
+    'privacy',
+    [
+        (
+            [
+                'public:m._public**',
+                'public:m.tests',
+                'public:m.tests.helpers',
+                'private:m._public.private',
+                'hidden:m._public.hidden',
+                'hidden:m.tests.*',
+            ]
+        ),
+        (
+            reversed(
+                [
+                    'private:**private',
+                    'hidden:**hidden',
+                    'public:**_public',
+                    'hidden:m.tests.test**',
+                ]
+            )
+        ),
+    ],
+)
+def test_privacy_switch(privacy: object) -> None:
     s = model.System()
-    s.options.privacy = [parse_privacy_tuple(p, '--privacy') for p in privacy] # type:ignore
+    s.options.privacy = [parse_privacy_tuple(p, '--privacy') for p in privacy]  # type:ignore
 
     fromText(
         """
@@ -448,7 +482,9 @@ def test_privacy_switch(privacy:object) -> None:
                 ...
             class test3:
                 ...
-        """, system=s, modname='m'
+        """,
+        system=s,
+        modname='m',
     )
     allobjs = s.allobjects
 
@@ -463,22 +499,27 @@ def test_privacy_switch(privacy:object) -> None:
     assert allobjs['m.tests.test2'].privacyClass == model.PrivacyClass.HIDDEN
     assert allobjs['m.tests.test3'].privacyClass == model.PrivacyClass.HIDDEN
 
+
 def test_privacy_reparented() -> None:
     """
-    Test that the privacy of an object changes if 
+    Test that the privacy of an object changes if
     the name of the object changes (with reparenting).
     """
 
     system = model.System()
 
-    mod_private = fromText('''
+    mod_private = fromText(
+        '''
     class _MyClass:
         pass
-    ''', modname='private', system=system)
+    ''',
+        modname='private',
+        system=system,
+    )
 
     mod_export = fromText(
-        'from private import _MyClass # not needed for the test to pass', 
-        modname='public', system=system)
+        'from private import _MyClass # not needed for the test to pass', modname='public', system=system
+    )
 
     base = mod_private.contents['_MyClass']
     assert base.privacyClass == model.PrivacyClass.PRIVATE
@@ -490,6 +531,7 @@ def test_privacy_reparented() -> None:
     assert mod_export.resolveName("MyClass") == base
 
     assert base.privacyClass == model.PrivacyClass.PUBLIC
+
 
 def test_name_defined() -> None:
     src = '''
@@ -549,27 +591,29 @@ def test_name_defined() -> None:
     assert not innerFn.isNameDefined('var')
     assert innerFn.isNameDefined('f')
 
-def test_priority_processor(capsys:CapSys) -> None:
+
+def test_priority_processor(capsys: CapSys) -> None:
     system = model.System()
     r = extensions.ExtRegistrar(system)
     processor = system._post_processor
     processor._post_processors.clear()
 
-    r.register_post_processor(lambda s:print('priority 200'), priority=200)
-    r.register_post_processor(lambda s:print('priority 100'))
-    r.register_post_processor(lambda s:print('priority 25'), priority=25)
-    r.register_post_processor(lambda s:print('priority 150'), priority=150)
-    r.register_post_processor(lambda s:print('priority 100 (bis)'))
-    r.register_post_processor(lambda s:print('priority 200 (bis)'), priority=200)
+    r.register_post_processor(lambda s: print('priority 200'), priority=200)
+    r.register_post_processor(lambda s: print('priority 100'))
+    r.register_post_processor(lambda s: print('priority 25'), priority=25)
+    r.register_post_processor(lambda s: print('priority 150'), priority=150)
+    r.register_post_processor(lambda s: print('priority 100 (bis)'))
+    r.register_post_processor(lambda s: print('priority 200 (bis)'), priority=200)
 
-    assert len(processor._post_processors)==6
+    assert len(processor._post_processors) == 6
     processor.apply_processors()
-    assert len(processor.applied)==6
-    
-    assert capsys.readouterr().out.strip().splitlines() == ['priority 200', 
-                                                            'priority 200 (bis)',
-                                                            'priority 150',
-                                                            'priority 100',
-                                                            'priority 100 (bis)',
-                                                            'priority 25',
-                                                            ]
+    assert len(processor.applied) == 6
+
+    assert capsys.readouterr().out.strip().splitlines() == [
+        'priority 200',
+        'priority 200 (bis)',
+        'priority 150',
+        'priority 100',
+        'priority 100 (bis)',
+        'priority 25',
+    ]

@@ -1,4 +1,5 @@
 """General purpose utility functions."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -14,17 +15,15 @@ else:
 
 T = TypeVar('T')
 
+
 def error(msg: str, *args: object) -> NoReturn:
     if args:
-        msg = msg%args
+        msg = msg % args
     print(msg, file=sys.stderr)
     sys.exit(1)
 
-def findClassFromDottedName(
-        dottedname: str,
-        optionname: str,
-        base_class: Union[str, Type[T]]
-        ) -> Type[T]:
+
+def findClassFromDottedName(dottedname: str, optionname: str, base_class: Union[str, Type[T]]) -> Type[T]:
     """
     Looks up a class by full name.
 
@@ -42,11 +41,12 @@ def findClassFromDottedName(
     except AttributeError:
         raise ValueError(f"did not find {parts[1]} in module {parts[0]}")
     if isinstance(base_class, str):
-        base_class = findClassFromDottedName(base_class, optionname, object) # type:ignore[arg-type]
+        base_class = findClassFromDottedName(base_class, optionname, object)  # type:ignore[arg-type]
     assert isinstance(base_class, type)
     if not issubclass(cls, base_class):
         raise ValueError(f"{cls} is not a subclass of {base_class}")
     return cast(Type[T], cls)
+
 
 def resolve_path(path: str) -> Path:
     """
@@ -64,6 +64,7 @@ def resolve_path(path: str) -> Path:
     # when operating on a non-existing path.
     return Path(Path.cwd(), path).resolve()
 
+
 def parse_path(value: str, opt: str) -> Path:
     """
     Parse a str path to a L{Path} object
@@ -76,30 +77,37 @@ def parse_path(value: str, opt: str) -> Path:
     except Exception as ex:
         error(f"{opt}: invalid path, {ex}.")
 
-def parse_privacy_tuple(value:str, opt: str) -> Tuple['model.PrivacyClass', str]:
+
+def parse_privacy_tuple(value: str, opt: str) -> Tuple['model.PrivacyClass', str]:
     """
     Parse string like 'public:match*' to a tuple (PrivacyClass.PUBLIC, 'match*').
 
     Watch out, prints a message and SystemExits on error!
     """
     parts = value.split(':')
-    if len(parts)!=2:
+    if len(parts) != 2:
         error(f"{opt}: malformatted value {value!r} should be like '<privacy>:<PATTERN>'.")
     # Late import to avoid cyclic import error
     from pydoctor import model
+
     try:
         priv = model.PrivacyClass[parts[0].strip().upper()]
     except:
-        error(f"{opt}: unknown privacy value {parts[0]!r} should be one of {', '.join(repr(m.name) for m in model.PrivacyClass)}")
+        error(
+            f"{opt}: unknown privacy value {parts[0]!r} should be one of {', '.join(repr(m.name) for m in model.PrivacyClass)}"
+        )
     else:
         return (priv, parts[1].strip())
+
 
 def partialclass(cls: Type[Any], *args: Any, **kwds: Any) -> Type[Any]:
     """
     Bind a class to be created with some predefined __init__ arguments.
     """
+
     class NewPartialCls(cls):
-        __init__ = functools.partialmethod(cls.__init__, *args, **kwds) #type: ignore
+        __init__ = functools.partialmethod(cls.__init__, *args, **kwds)  # type: ignore
         __class__ = cls
+
     assert isinstance(NewPartialCls, type)
     return NewPartialCls

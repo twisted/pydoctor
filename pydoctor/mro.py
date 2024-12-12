@@ -31,6 +31,7 @@ from typing import Callable, List, Tuple, Optional, TypeVar
 
 T = TypeVar('T')
 
+
 class Dependency(deque):
     @property
     def head(self) -> Optional[T]:
@@ -40,7 +41,7 @@ class Dependency(deque):
             return None
 
     @property
-    def tail(self) -> islice: 
+    def tail(self) -> islice:
         """
         Return islice object, which is suffice for iteration or calling `in`
         """
@@ -57,6 +58,7 @@ class DependencyList:
     It's needed  to the merge process preserves the local
     precedence order of direct parent classes.
     """
+
     def __init__(self, *lists: Tuple[List[T]]) -> None:
         self._lists = [Dependency(i) for i in lists]
 

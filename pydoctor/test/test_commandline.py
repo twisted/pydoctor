@@ -31,17 +31,21 @@ def geterrtext(*options: str) -> str:
         sys.stderr = se
     return f.getvalue()
 
+
 def test_invalid_option() -> None:
     err = geterrtext('--no-such-option')
     assert 'unrecognized arguments: --no-such-option' in err
+
 
 def test_cannot_advance_blank_system() -> None:
     err = geterrtext('--make-html')
     assert 'No source paths given' in err
 
+
 def test_no_systemclasses_py3() -> None:
     err = geterrtext('--system-class')
     assert 'expected one argument' in err
+
 
 def test_invalid_systemclasses() -> None:
     err = geterrtext('--system-class=notdotted')
@@ -103,7 +107,7 @@ def test_projectbasedir_relative() -> None:
 
 def test_help_option(capsys: CapSys) -> None:
     """
-    pydoctor --help 
+    pydoctor --help
     """
     try:
         driver.main(args=['--help'])
@@ -111,6 +115,7 @@ def test_help_option(capsys: CapSys) -> None:
         assert '--project-name PROJECTNAME' in capsys.readouterr().out
     else:
         assert False
+
 
 def test_cache_enabled_by_default() -> None:
     """
@@ -153,10 +158,7 @@ def test_main_project_name_guess(capsys: CapSys) -> None:
     When no project name is provided in the CLI arguments, a default name
     is used and logged.
     """
-    exit_code = driver.main(args=[
-        '-v', '--testing',
-        'pydoctor/test/testpackages/basic/'
-        ])
+    exit_code = driver.main(args=['-v', '--testing', 'pydoctor/test/testpackages/basic/'])
 
     assert exit_code == 0
     assert "Guessing 'basic' for project name." in capsys.readouterr().out
@@ -166,11 +168,7 @@ def test_main_project_name_option(capsys: CapSys) -> None:
     """
     When a project name is provided in the CLI arguments nothing is logged.
     """
-    exit_code = driver.main(args=[
-        '-v', '--testing',
-        '--project-name=some-name',
-        'pydoctor/test/testpackages/basic/'
-        ])
+    exit_code = driver.main(args=['-v', '--testing', '--project-name=some-name', 'pydoctor/test/testpackages/basic/'])
 
     assert exit_code == 0
     assert 'Guessing ' not in capsys.readouterr().out
@@ -182,10 +180,9 @@ def test_main_return_zero_on_warnings() -> None:
     """
     stream = StringIO()
     with redirect_stdout(stream):
-        exit_code = driver.main(args=[
-            '--html-writer=pydoctor.test.InMemoryWriter',
-            'pydoctor/test/testpackages/report_trigger/'
-            ])
+        exit_code = driver.main(
+            args=['--html-writer=pydoctor.test.InMemoryWriter', 'pydoctor/test/testpackages/report_trigger/']
+        )
 
     assert exit_code == 0
     assert "__init__.py:8: Unknown field 'bad_field'" in stream.getvalue()
@@ -198,11 +195,9 @@ def test_main_return_non_zero_on_warnings() -> None:
     """
     stream = StringIO()
     with redirect_stdout(stream):
-        exit_code = driver.main(args=[
-            '-W',
-            '--html-writer=pydoctor.test.InMemoryWriter',
-            'pydoctor/test/testpackages/report_trigger/'
-            ])
+        exit_code = driver.main(
+            args=['-W', '--html-writer=pydoctor.test.InMemoryWriter', 'pydoctor/test/testpackages/report_trigger/']
+        )
 
     assert exit_code == 3
     assert "__init__.py:8: Unknown field 'bad_field'" in stream.getvalue()
@@ -219,11 +214,13 @@ def test_main_symlinked_paths(tmp_path: Path) -> None:
     link = tmp_path / 'src'
     link.symlink_to(Path.cwd(), target_is_directory=True)
 
-    exit_code = driver.main(args=[
-        '--project-base-dir=.',
-        '--html-viewsource-base=http://example.com',
-        f'{link}/pydoctor/test/testpackages/basic/'
-        ])
+    exit_code = driver.main(
+        args=[
+            '--project-base-dir=.',
+            '--html-viewsource-base=http://example.com',
+            f'{link}/pydoctor/test/testpackages/basic/',
+        ]
+    )
     assert exit_code == 0
 
 
@@ -233,25 +230,30 @@ def test_main_source_outside_basedir(capsys: CapSys) -> None:
     be located inside that base directory if source links wants to be generated.
     Otherwise it's OK, but no source links will be genrated
     """
-    assert driver.main(args=[
-        '--html-viewsource-base=notnone',
-        '--project-base-dir=docs',
-        'pydoctor/test/testpackages/basic/'
-        ]) == 0
-    re.match("No source links can be generated for module .+/pydoctor/test/testpackages/basic/: source path lies outside base directory .+/docs\n", 
-        capsys.readouterr().out)
+    assert (
+        driver.main(
+            args=['--html-viewsource-base=notnone', '--project-base-dir=docs', 'pydoctor/test/testpackages/basic/']
+        )
+        == 0
+    )
+    re.match(
+        "No source links can be generated for module .+/pydoctor/test/testpackages/basic/: source path lies outside base directory .+/docs\n",
+        capsys.readouterr().out,
+    )
 
-    assert driver.main(args=[
-        '--project-base-dir=docs',
-        'pydoctor/test/testpackages/basic/'
-        ]) == 0
+    assert driver.main(args=['--project-base-dir=docs', 'pydoctor/test/testpackages/basic/']) == 0
     assert "No source links can be generated" not in capsys.readouterr().out
 
-    assert driver.main(args=[
-        '--html-viewsource-base=notnone',
-        '--project-base-dir=pydoctor/test/testpackages/',
-        'pydoctor/test/testpackages/basic/'
-        ]) == 0
+    assert (
+        driver.main(
+            args=[
+                '--html-viewsource-base=notnone',
+                '--project-base-dir=pydoctor/test/testpackages/',
+                'pydoctor/test/testpackages/basic/',
+            ]
+        )
+        == 0
+    )
     assert "No source links can be generated" not in capsys.readouterr().out
 
 
@@ -262,20 +264,24 @@ def test_make_intersphix(tmp_path: Path) -> None:
     This is also an integration test for the Sphinx inventory writer.
     """
     inventory = tmp_path / 'objects.inv'
-    exit_code = driver.main(args=[
-        '--project-base-dir=.',
-        '--make-intersphinx',
-        '--project-name=acme-lib',
-        '--project-version=20.12.0-dev123',
-        '--html-output', str(tmp_path),
-        'pydoctor/test/testpackages/basic/'
-        ])
+    exit_code = driver.main(
+        args=[
+            '--project-base-dir=.',
+            '--make-intersphinx',
+            '--project-name=acme-lib',
+            '--project-version=20.12.0-dev123',
+            '--html-output',
+            str(tmp_path),
+            'pydoctor/test/testpackages/basic/',
+        ]
+    )
 
     assert exit_code == 0
     # No other files are created, other than the inventory.
     assert [p.name for p in tmp_path.iterdir()] == ['objects.inv']
     assert inventory.is_file()
     assert b'Project: acme-lib\n# Version: 20.12.0-dev123\n' in inventory.read_bytes()
+
 
 def test_index_symlink(tmp_path: Path) -> None:
     """
@@ -285,20 +291,24 @@ def test_index_symlink(tmp_path: Path) -> None:
     See https://github.com/twisted/pydoctor/issues/808, https://github.com/twisted/pydoctor/issues/720.
     """
     import platform
+
     exit_code = driver.main(args=['--html-output', str(tmp_path), 'pydoctor/test/testpackages/basic/'])
     assert exit_code == 0
-    link = (tmp_path / 'basic.html')
+    link = tmp_path / 'basic.html'
     assert link.exists()
     if platform.system() == 'Windows':
         assert link.is_symlink() or link.is_file()
     else:
         assert link.is_symlink()
 
+
 def test_index_hardlink(tmp_path: Path) -> None:
     """
     Test for option --use-hardlink wich enforce the usage of harlinks.
     """
-    exit_code = driver.main(args=['--use-hardlink', '--html-output', str(tmp_path), 'pydoctor/test/testpackages/basic/'])
+    exit_code = driver.main(
+        args=['--use-hardlink', '--html-output', str(tmp_path), 'pydoctor/test/testpackages/basic/']
+    )
     assert exit_code == 0
     assert (tmp_path / 'basic.html').exists()
     assert not (tmp_path / 'basic.html').is_symlink()
@@ -314,20 +324,24 @@ def test_apidocs_help(tmp_path: Path) -> None:
     help_page = (tmp_path / 'apidocs-help.html').read_text()
     assert '>Search</h2>' in help_page
 
+
 def test_htmlbaseurl_option_all_pages(tmp_path: Path) -> None:
     """
     Check that the canonical link is included in all html pages, including summary pages.
     """
-    exit_code = driver.main(args=[
-        '--html-base-url=https://example.com.abcde',
-        '--html-output', str(tmp_path), 'pydoctor/test/testpackages/basic/'])
+    exit_code = driver.main(
+        args=[
+            '--html-base-url=https://example.com.abcde',
+            '--html-output',
+            str(tmp_path),
+            'pydoctor/test/testpackages/basic/',
+        ]
+    )
     assert exit_code == 0
     for t in tmp_path.iterdir():
         if not t.name.endswith('.html'):
             continue
         filename = t.name
         if t.stem == 'basic':
-            filename = 'index.html' # since we have only one module it's linked as index.html
+            filename = 'index.html'  # since we have only one module it's linked as index.html
         assert f'<link rel="canonical" href="https://example.com.abcde/{filename}"' in t.read_text(encoding='utf-8')
-    
-

@@ -1,12 +1,14 @@
 """
 Create customizable model classes. 
 """
+
 from __future__ import annotations
 
 from typing import Dict, List, Tuple, Type, Any, Union, Sequence, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from pydoctor import model
+
 
 class GenericFactory:
 
@@ -15,22 +17,22 @@ class GenericFactory:
         self.mixins: Dict[str, List[Type[Any]]] = {}
         self._class_cache: Dict[Tuple[str, Tuple[Type[Any], ...]], Type[Any]] = {}
 
-    def add_mixin(self, for_class: str, mixin:Type[Any]) -> None:
+    def add_mixin(self, for_class: str, mixin: Type[Any]) -> None:
         """
-        Add a mixin class to the specified object in the factory. 
+        Add a mixin class to the specified object in the factory.
         """
         try:
             mixins = self.mixins[for_class]
         except KeyError:
             mixins = []
             self.mixins[for_class] = mixins
-        
+
         assert isinstance(mixins, list)
         mixins.append(mixin)
 
-    def add_mixins(self, **kwargs:Union[Sequence[Type[Any]], Type[Any]]) -> None:
+    def add_mixins(self, **kwargs: Union[Sequence[Type[Any]], Type[Any]]) -> None:
         """
-        Add mixin classes to objects in the factory. 
+        Add mixin classes to objects in the factory.
         Example::
             class MyClassMixin: ...
             class MyDataMixin: ...
@@ -38,15 +40,15 @@ class GenericFactory:
             factory.add_mixins(Class=MyClassMixin, Attribute=MyDataMixin)
         :param kwargs: Minin(s) classes to apply to names.
         """
-        for key,value in kwargs.items():
+        for key, value in kwargs.items():
             if isinstance(value, Sequence):
                 for item in value:
                     self.add_mixin(key, item)
             else:
                 self.add_mixin(key, value)
 
-    def get_class(self, name:str) -> Type[Any]:
-        class_id = name, tuple(self.mixins.get(name, [])+[self.bases[name]])
+    def get_class(self, name: str) -> Type[Any]:
+        class_id = name, tuple(self.mixins.get(name, []) + [self.bases[name]])
         cached = self._class_cache.get(class_id)
         if cached is not None:
             cls = cached
@@ -55,14 +57,16 @@ class GenericFactory:
             self._class_cache[class_id] = cls
         return cls
 
+
 class Factory(GenericFactory):
     """
-    Classes are created dynamically with `type` such that they can inherith from customizable mixin classes. 
+    Classes are created dynamically with `type` such that they can inherith from customizable mixin classes.
     """
 
     def __init__(self) -> None:
         # Workaround cyclic import issue.
         from pydoctor import model
+
         self.model = model
         _bases = {
             'Class': model.Class,
@@ -101,7 +105,7 @@ class Factory(GenericFactory):
         mod = self.get_class('Module')
         assert issubclass(mod, self.model.Module)
         return mod
-    
+
     @property
     def Package(self) -> Type['model.Package']:
         mod = self.get_class('Package')

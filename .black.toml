@@ -1,5 +1,5 @@
 [tool.black]
-line-length = 120
+line-length = 88
 skip-string-normalization = 1
 required-version = 24
 target-version = ['py39']

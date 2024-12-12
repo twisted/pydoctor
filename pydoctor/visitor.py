@@ -1,6 +1,7 @@
 """
 General purpose visitor pattern implementation, with extensions.
 """
+
 from __future__ import annotations
 
 from collections import defaultdict
@@ -13,166 +14,172 @@ T = TypeVar("T")
 
 __docformat__ = 'restructuredtext'
 
+
 class _BaseVisitor(Generic[T]):
-      
-  def visit(self, ob: T) -> None:
-    """Visit an object."""
-    method = 'visit_' + ob.__class__.__name__
-    visitor = getattr(self, method, getattr(self, method.lower(), self.unknown_visit))
-    visitor(ob)
-  
-  def depart(self, ob: T) -> None:
-    """Depart an object."""
-    method = 'depart_' + ob.__class__.__name__
-    visitor = getattr(self, method, getattr(self, method.lower(), self.unknown_departure))
-    visitor(ob)
-  
-  def unknown_visit(self, ob: T) -> None:
-    """
-    Called when entering unknown object types.
 
-    Raise an exception unless overridden.
-    """
-    raise NotImplementedError(
-        '%s visiting unknown object type: %s'
-        % (self.__class__, ob.__class__.__name__))
+    def visit(self, ob: T) -> None:
+        """Visit an object."""
+        method = 'visit_' + ob.__class__.__name__
+        visitor = getattr(self, method, getattr(self, method.lower(), self.unknown_visit))
+        visitor(ob)
 
-  def unknown_departure(self, ob: T) -> None:
-    """
-    Called before exiting unknown object types.
+    def depart(self, ob: T) -> None:
+        """Depart an object."""
+        method = 'depart_' + ob.__class__.__name__
+        visitor = getattr(self, method, getattr(self, method.lower(), self.unknown_departure))
+        visitor(ob)
 
-    Raise exception unless overridden.
-    """
-    raise NotImplementedError(
-        '%s departing unknown object type: %s'
-        % (self.__class__, ob.__class__.__name__))
+    def unknown_visit(self, ob: T) -> None:
+        """
+        Called when entering unknown object types.
+
+        Raise an exception unless overridden.
+        """
+        raise NotImplementedError('%s visiting unknown object type: %s' % (self.__class__, ob.__class__.__name__))
+
+    def unknown_departure(self, ob: T) -> None:
+        """
+        Called before exiting unknown object types.
+
+        Raise exception unless overridden.
+        """
+        raise NotImplementedError('%s departing unknown object type: %s' % (self.__class__, ob.__class__.__name__))
+
 
 class Visitor(_BaseVisitor[T], abc.ABC):
-  """
-  "Visitor" pattern abstract superclass implementation for tree traversals.
-
-  Each class has corresponding methods, doing nothing by
-  default; override individual methods for specific and useful
-  behaviour.  The `visit()` method is called by
-  `walkabout()`  upon entering a object, it also calls
-  the `depart()` method before exiting a object.
-
-  The generic methods call "``visit_`` + objet class name" or
-  "``depart_`` + objet class name", resp.
-
-  This is a base class for visitors whose ``visit_...`` & ``depart_...``
-  methods should be implemented for *all* concrete objets types encountered. 
-
-  This visitor can be composed by other vistitors, see L{VisitorExt}.
-  """
-
-  def __init__(self, extensions: Optional['ExtList[T]']=None) -> None:
-      self.extensions: 'ExtList[T]' = extensions or ExtList()
-      self.extensions.attach_visitor(self)
-      self._skipped_nodes: set[T] = set()
-
-  @classmethod
-  def get_children(cls, ob: T) -> Iterable[T]:
-    raise NotImplementedError(f"Method '{cls.__name__}.get_children(ob:T) -> Iterable[T]' must be implemented.")
-
-  class _TreePruningException(Exception):
     """
-    Base class for `Visitor`-related tree pruning exceptions.
+    "Visitor" pattern abstract superclass implementation for tree traversals.
 
-    Raise subclasses from within ``visit_...`` or ``depart_...`` methods
-    called from `Visitor.walkabout()` tree traversals to prune
-    the tree traversed.
-    """
-  class SkipChildren(_TreePruningException):
-    """
-    Do not visit any children of the current node.  The current node's
-    siblings and ``depart_...`` method are not affected.
-    """
-  class SkipNode(_TreePruningException):
-    """
-    Do not visit the current node's children, and do not call the current
-    node's ``depart_...`` method. The extensions will still be called.
-    """
-  class IgnoreNode(_TreePruningException):
-    """
-    Comletely stop visiting the current node, extensions will not be run on that node.
-    """
-    
-  def visit(self, ob: T) -> None:
-    """Extend the base visit with extensions.
+    Each class has corresponding methods, doing nothing by
+    default; override individual methods for specific and useful
+    behaviour.  The `visit()` method is called by
+    `walkabout()`  upon entering a object, it also calls
+    the `depart()` method before exiting a object.
 
-    Parameters:
-        node: The node to visit.
+    The generic methods call "``visit_`` + objet class name" or
+    "``depart_`` + objet class name", resp.
+
+    This is a base class for visitors whose ``visit_...`` & ``depart_...``
+    methods should be implemented for *all* concrete objets types encountered.
+
+    This visitor can be composed by other vistitors, see L{VisitorExt}.
     """
-    for v in chain(self.extensions.before_visit, self.extensions.outter_visit):
-      v.visit(ob)
-    
-    pruning = None
-    try:
-      super().visit(ob)
-    except self._TreePruningException as ex:
-      if isinstance(ex, self.IgnoreNode):
-        # this exception should be raised right away since it means
-        # not visiting the extension visitors.
-        raise
-      pruning = ex
 
-    for v in chain(self.extensions.after_visit, self.extensions.inner_visit):
-      v.visit(ob)
-    
-    if pruning:
-      raise pruning
-  
-  def depart(self, ob: T) -> None:
-    """Extend the base depart with extensions."""
-    
-    for v in chain(self.extensions.before_visit, self.extensions.inner_visit):
-      v.depart(ob)
-    
-    if ob not in self._skipped_nodes:
-      super().depart(ob)
+    def __init__(self, extensions: Optional['ExtList[T]'] = None) -> None:
+        self.extensions: 'ExtList[T]' = extensions or ExtList()
+        self.extensions.attach_visitor(self)
+        self._skipped_nodes: set[T] = set()
 
-    for v in chain(self.extensions.after_visit, self.extensions.outter_visit):
-      v.depart(ob)
+    @classmethod
+    def get_children(cls, ob: T) -> Iterable[T]:
+        raise NotImplementedError(f"Method '{cls.__name__}.get_children(ob:T) -> Iterable[T]' must be implemented.")
 
-  def walkabout(self, ob: T) -> None:
-    """
-    Perform a tree traversal, calling `visit()` method when entering a 
-    node and the `depart()` method before exiting each node.
+    class _TreePruningException(Exception):
+        """
+        Base class for `Visitor`-related tree pruning exceptions.
 
-    Takes special care to handle  L{_TreePruningException} the following way:
+        Raise subclasses from within ``visit_...`` or ``depart_...`` methods
+        called from `Visitor.walkabout()` tree traversals to prune
+        the tree traversed.
+        """
 
-    - If a L{SkipNode} exception is raised inside the main visitor C{visit()} method,
-      the C{depart_*} method on the extensions will still be called. 
+    class SkipChildren(_TreePruningException):
+        """
+        Do not visit any children of the current node.  The current node's
+        siblings and ``depart_...`` method are not affected.
+        """
 
-    :param ob: An object to walk.
-    """
-    try:
-      try:
-        self.visit(ob)
-      except self.SkipNode:
-        self._skipped_nodes.add(ob)
-      except self.IgnoreNode:
-         return
-      else:
-        for child in self.get_children(ob):
-          self.walkabout(child)
-    except self.SkipChildren:
-      pass
-    self.depart(ob)
+    class SkipNode(_TreePruningException):
+        """
+        Do not visit the current node's children, and do not call the current
+        node's ``depart_...`` method. The extensions will still be called.
+        """
+
+    class IgnoreNode(_TreePruningException):
+        """
+        Comletely stop visiting the current node, extensions will not be run on that node.
+        """
+
+    def visit(self, ob: T) -> None:
+        """Extend the base visit with extensions.
+
+        Parameters:
+            node: The node to visit.
+        """
+        for v in chain(self.extensions.before_visit, self.extensions.outter_visit):
+            v.visit(ob)
+
+        pruning = None
+        try:
+            super().visit(ob)
+        except self._TreePruningException as ex:
+            if isinstance(ex, self.IgnoreNode):
+                # this exception should be raised right away since it means
+                # not visiting the extension visitors.
+                raise
+            pruning = ex
+
+        for v in chain(self.extensions.after_visit, self.extensions.inner_visit):
+            v.visit(ob)
+
+        if pruning:
+            raise pruning
+
+    def depart(self, ob: T) -> None:
+        """Extend the base depart with extensions."""
+
+        for v in chain(self.extensions.before_visit, self.extensions.inner_visit):
+            v.depart(ob)
+
+        if ob not in self._skipped_nodes:
+            super().depart(ob)
+
+        for v in chain(self.extensions.after_visit, self.extensions.outter_visit):
+            v.depart(ob)
+
+    def walkabout(self, ob: T) -> None:
+        """
+        Perform a tree traversal, calling `visit()` method when entering a
+        node and the `depart()` method before exiting each node.
+
+        Takes special care to handle  L{_TreePruningException} the following way:
+
+        - If a L{SkipNode} exception is raised inside the main visitor C{visit()} method,
+          the C{depart_*} method on the extensions will still be called.
+
+        :param ob: An object to walk.
+        """
+        try:
+            try:
+                self.visit(ob)
+            except self.SkipNode:
+                self._skipped_nodes.add(ob)
+            except self.IgnoreNode:
+                return
+            else:
+                for child in self.get_children(ob):
+                    self.walkabout(child)
+        except self.SkipChildren:
+            pass
+        self.depart(ob)
+
 
 # Adapted from https://github.com/pawamoy/griffe
 # Copyright (c) 2021, Timothée Mazzucotelli
 
+
 class PartialVisitor(Visitor[T]):
-  """
-  Visitor class that do not have to define all possible ``visit_.*`` methods since it overrides
-  the default behaviour of `unknown_visit()` and `unknown_departure()` not to raise `NotImplementedError`.
-  """
-  def unknown_visit(self, ob: T) -> None:
-    pass
-  def unknown_departure(self, ob: T) -> None:
-    pass    
+    """
+    Visitor class that do not have to define all possible ``visit_.*`` methods since it overrides
+    the default behaviour of `unknown_visit()` and `unknown_departure()` not to raise `NotImplementedError`.
+    """
+
+    def unknown_visit(self, ob: T) -> None:
+        pass
+
+    def unknown_departure(self, ob: T) -> None:
+        pass
+
 
 class When(enum.Enum):
     """
@@ -193,11 +200,12 @@ class When(enum.Enum):
     """
     Same as `AFTER` except that the ``depart()`` method will be called **before** calling ``depart()`` on the customizable visitor.
     """
-    
+
     OUTTER = enum.auto()
     """
     Same as `BEFORE` except that the ``depart()`` method will be called **after** calling ``depart()`` on the customizable visitor.
     """
+
 
 class ExtList(Generic[T]):
     """
@@ -220,10 +228,14 @@ class ExtList(Generic[T]):
         :param extensions: The extensions to add.
         """
         for extension in extensions:
-            assert isinstance(extension, type) and issubclass(extension, VisitorExt), f"Visitor extension must be a subclass of 'VisitorExt', got '{extension!r}'"
-            assert extension.when != NotImplemented, f'Class variable "when" must be set on visitor extension {type(extension)}'
+            assert isinstance(extension, type) and issubclass(
+                extension, VisitorExt
+            ), f"Visitor extension must be a subclass of 'VisitorExt', got '{extension!r}'"
+            assert (
+                extension.when != NotImplemented
+            ), f'Class variable "when" must be set on visitor extension {type(extension)}'
             self._visitors[extension.when].append(extension())
-            
+
     def attach_visitor(self, parent_visitor: 'Visitor[T]') -> None:
         """
         Attach a parent visitor to the visitor extensions.
@@ -244,24 +256,25 @@ class ExtList(Generic[T]):
     def after_visit(self) -> List['VisitorExt[T]']:
         """Return the visitors that run after the visit."""
         return self._visitors[When.AFTER]
-    
+
     @property
     def inner_visit(self) -> List['VisitorExt[T]']:
         return self._visitors[When.INNER]
-    
+
     @property
     def outter_visit(self) -> List['VisitorExt[T]']:
         return self._visitors[When.OUTTER]
-   
+
+
 class VisitorExt(_BaseVisitor[T]):
     """
     The node visitor extension base class, to inherit from.
 
     Subclasses must define the `when` class variable, and any custom ``visit_*`` methods.
-    
-    See: `When` 
+
+    See: `When`
     """
-    
+
     when: When = NotImplemented
     When = When
 
@@ -270,12 +283,13 @@ class VisitorExt(_BaseVisitor[T]):
         super().__init__()
         self.visitor: Visitor[T] = None  # type: ignore[assignment]
         """The parent visitor"""
-    
+
     def unknown_visit(self, ob: T) -> None:
         pass
+
     def unknown_departure(self, ob: T) -> None:
-        pass    
-    
+        pass
+
     def attach(self, visitor: Visitor[T]) -> None:
         """Attach the parent visitor to this extension.
 

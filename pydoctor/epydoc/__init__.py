@@ -62,4 +62,3 @@ __license__ = 'IBM Open Source License'
 #   - Add a faq?
 #   - @type a,b,c: ...
 #   - new command line option: --command-line-order
-

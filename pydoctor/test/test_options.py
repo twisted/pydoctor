@@ -67,7 +67,8 @@ extra_files =
     ez_setup.py
 """
 
-PYDOCTOR_SECTIONS = ["""
+PYDOCTOR_SECTIONS = [
+    """
 [pydoctor]
 intersphinx = ["https://docs.python.org/3/objects.inv",
                 "https://twistedmatrix.com/documents/current/api/objects.inv",
@@ -81,9 +82,8 @@ project-url = "https://github.com/twisted/pydoctor"
 privacy = ["HIDDEN:pydoctor.test"]
 quiet = 1
 warnings-as-errors = true
-""", # toml/ini
-
-"""
+""",  # toml/ini
+    """
 [tool.pydoctor]
 intersphinx = ["https://docs.python.org/3/objects.inv",
                 "https://twistedmatrix.com/documents/current/api/objects.inv",
@@ -97,9 +97,8 @@ project-url = "https://github.com/twisted/pydoctor"
 privacy = ["HIDDEN:pydoctor.test"]
 quiet = 1
 warnings-as-errors = true
-""", # toml/ini
-
-"""
+""",  # toml/ini
+    """
 [tool:pydoctor]
 intersphinx = 
     https://docs.python.org/3/objects.inv
@@ -115,9 +114,8 @@ privacy =
     HIDDEN:pydoctor.test
 quiet = 1
 warnings-as-errors = true
-""", # ini only
-
-"""
+""",  # ini only
+    """
 [pydoctor]
 intersphinx: ["https://docs.python.org/3/objects.inv",
                 "https://twistedmatrix.com/documents/current/api/objects.inv",
@@ -132,17 +130,19 @@ privacy =
     HIDDEN:pydoctor.test
 quiet = 1
 warnings-as-errors = true
-""", # ini only
+""",  # ini only
 ]
+
 
 @pytest.fixture(scope='module')
 def tempDir(request: FixtureRequest, tmp_path_factory: TempPathFactory) -> Path:
     name = request.module.__name__.split('.')[-1]
     return tmp_path_factory.mktemp(f'{name}-cache')
 
+
 @pytest.mark.parametrize('project_conf', [EXAMPLE_TOML_CONF, EXAMPLE_INI_CONF])
 @pytest.mark.parametrize('pydoctor_conf', PYDOCTOR_SECTIONS)
-def test_config_parsers(project_conf:str, pydoctor_conf:str, tempDir:Path) -> None:
+def test_config_parsers(project_conf: str, pydoctor_conf: str, tempDir: Path) -> None:
 
     if '[tool:pydoctor]' in pydoctor_conf and '[tool.poetry]' in project_conf:
         # colons in section names are not supported in TOML (without quotes)
@@ -158,9 +158,9 @@ def test_config_parsers(project_conf:str, pydoctor_conf:str, tempDir:Path) -> No
     assert data['docformat'] == 'restructuredtext', data
     assert data['project-url'] == 'https://github.com/twisted/pydoctor', data
     assert len(data['intersphinx']) == 6, data
-    
-    conf_file = (tempDir / "pydoctor_temp_conf")
-    
+
+    conf_file = tempDir / "pydoctor_temp_conf"
+
     with conf_file.open('w') as f:
         f.write(project_conf + '\n' + pydoctor_conf)
 
@@ -171,7 +171,8 @@ def test_config_parsers(project_conf:str, pydoctor_conf:str, tempDir:Path) -> No
     assert options.intersphinx[0] == "https://docs.python.org/3/objects.inv"
     assert options.intersphinx[-1] == "https://tristanlatr.github.io/apidocs/docutils/objects.inv"
 
-def test_repeatable_options_multiple_configs_and_args(tempDir:Path) -> None:
+
+def test_repeatable_options_multiple_configs_and_args(tempDir: Path) -> None:
     config1 = """
 [pydoctor]
 intersphinx = ["https://docs.python.org/3/objects.inv"]
@@ -192,40 +193,54 @@ project-name = "Hello World!"
 
     cwd = os.getcwd()
     try:
-        conf_file1 = (tempDir / "pydoctor.ini")
-        conf_file2 = (tempDir / "pyproject.toml")
-        conf_file3 = (tempDir / "setup.cfg")
+        conf_file1 = tempDir / "pydoctor.ini"
+        conf_file2 = tempDir / "pyproject.toml"
+        conf_file3 = tempDir / "setup.cfg"
 
-        for cfg, file in zip([config1, config2, config3],[conf_file1, conf_file2, conf_file3]):
+        for cfg, file in zip([config1, config2, config3], [conf_file1, conf_file2, conf_file3]):
             with open(file, 'w') as f:
                 f.write(cfg)
-        
+
         os.chdir(tempDir)
         options = Options.defaults()
 
         assert options.verbosity == 1
-        assert options.intersphinx == ["https://docs.python.org/3/objects.inv",]
+        assert options.intersphinx == [
+            "https://docs.python.org/3/objects.inv",
+        ]
         assert options.projectname == "Hello World!"
         assert options.projectversion == "2050.4C"
 
         options = Options.from_args(['-vv'])
 
-        assert options.verbosity == 3 
-        assert options.intersphinx == ["https://docs.python.org/3/objects.inv",]
+        assert options.verbosity == 3
+        assert options.intersphinx == [
+            "https://docs.python.org/3/objects.inv",
+        ]
         assert options.projectname == "Hello World!"
         assert options.projectversion == "2050.4C"
 
-        options = Options.from_args(['-vv', '--intersphinx=https://twistedmatrix.com/documents/current/api/objects.inv', '--intersphinx=https://urllib3.readthedocs.io/en/latest/objects.inv'])
+        options = Options.from_args(
+            [
+                '-vv',
+                '--intersphinx=https://twistedmatrix.com/documents/current/api/objects.inv',
+                '--intersphinx=https://urllib3.readthedocs.io/en/latest/objects.inv',
+            ]
+        )
 
         assert options.verbosity == 3
-        assert options.intersphinx == ["https://twistedmatrix.com/documents/current/api/objects.inv", "https://urllib3.readthedocs.io/en/latest/objects.inv"]
+        assert options.intersphinx == [
+            "https://twistedmatrix.com/documents/current/api/objects.inv",
+            "https://urllib3.readthedocs.io/en/latest/objects.inv",
+        ]
         assert options.projectname == "Hello World!"
         assert options.projectversion == "2050.4C"
 
     finally:
         os.chdir(cwd)
 
-def test_validations(tempDir:Path) -> None:
+
+def test_validations(tempDir: Path) -> None:
     config = """
 [tool:pydoctor]
 # should be a string, but hard to detect - no warnings
@@ -241,7 +256,7 @@ warnings-as-errors = 0
 not-found = 423
 """
 
-    conf_file = (tempDir / "pydoctor_temp_conf")
+    conf_file = tempDir / "pydoctor_temp_conf"
     with conf_file.open('w') as f:
         f.write(config)
 
@@ -249,10 +264,10 @@ not-found = 423
         warnings.simplefilter("always")
         options = Options.from_args([f"--config={conf_file}"])
 
-    warn_messages = [str(w.message) for w in catch_warnings]    
+    warn_messages = [str(w.message) for w in catch_warnings]
     assert len(warn_messages) == 1, warn_messages
     assert warn_messages[0] == "No such config option: 'not-found'"
-    
+
     assert options.docformat == 'epytext'
     assert options.projectname == 'true'
     assert options.privacy == [(model.PrivacyClass.HIDDEN, 'pydoctor.test')]

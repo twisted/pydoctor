@@ -1,6 +1,7 @@
 """
 Utilities related to Stan tree building and HTML flattening.
 """
+
 import re
 from types import GeneratorType
 from typing import Union, List, TYPE_CHECKING
@@ -11,11 +12,8 @@ from twisted.python.failure import Failure
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable
 
-_RE_CONTROL = re.compile((
-    '[' + ''.join(
-    ch for ch in map(chr, range(0, 32)) if ch not in '\r\n\t\f'
-    ) + ']'
-    ).encode())
+_RE_CONTROL = re.compile(('[' + ''.join(ch for ch in map(chr, range(0, 32)) if ch not in '\r\n\t\f') + ']').encode())
+
 
 def html2stan(html: Union[bytes, str]) -> Tag:
     """
@@ -29,7 +27,7 @@ def html2stan(html: Union[bytes, str]) -> Tag:
     if isinstance(html, str):
         html = html.encode('utf8')
 
-    html = _RE_CONTROL.sub(lambda m:b'\\x%02x' % ord(m.group()), html)
+    html = _RE_CONTROL.sub(lambda m: b'\\x%02x' % ord(m.group()), html)
     if not html.startswith(b'<?xml'):
         stan = XMLString(b'<div>%s</div>' % html).load()[0]
         assert isinstance(stan, Tag)
@@ -40,6 +38,7 @@ def html2stan(html: Union[bytes, str]) -> Tag:
         assert stan.tagName == 'html'
     stan.tagName = ''
     return stan
+
 
 def flatten(stan: "Flattenable") -> str:
     """
@@ -56,10 +55,11 @@ def flatten(stan: "Flattenable") -> str:
     else:
         return ret[0].decode()
 
+
 def flatten_text(stan: 'Flattenable') -> str:
     """
     Return the text inside a stan tree.
-    
+
     @note: Only compatible with L{Tag}, generators, and lists.
     """
     text = ''
@@ -79,7 +79,7 @@ def flatten_text(stan: 'Flattenable') -> str:
             # flatten_text() does not support the object received.
             # Since this function is currently only used in the tests
             # it's ok to silently ignore the unknown flattenable, which can be
-            # a Comment for instance. 
+            # a Comment for instance.
             # Actually, some tests fails if we try to raise
             # an error here instead of ignoring.
     return text
