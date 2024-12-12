@@ -579,8 +579,8 @@ def is_exception(cls: 'Class') -> bool:
 
 def topsort(graph: Mapping[Any, Sequence[T]]) -> Iterable[T]:
     """
-    Given a mapping where each keys corespond to a node 
-    and keys the predecessors of the node, return the topological order of the nodes.
+    Given a mapping where each key-value pair correspond to a node and it's
+    predecessors, return the topological order of the nodes.
 
     This is a simpple wrapper for L{graphlib.TopologicalSorter.static_order}.
     """
@@ -674,7 +674,7 @@ class ClassHierarchyFinalizer:
         
         for cls in static_order:
             if cls in self.computed_mros or isinstance(cls, str):
-                # If it's already computed, it means it's boggus like with cycle or something.
+                # If it's already computed, it means it's bogus
                 continue
             self.computed_mros[cls] = cls._mro = self._compute_mro(cls)
 
