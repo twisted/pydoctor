@@ -577,7 +577,7 @@ def is_exception(cls: 'Class') -> bool:
             return True
     return False
 
-Graph: TypeAlias = 'dict[T, list[T]]'
+Graph: TypeAlias = 'dict[object, list[T]]'
 
 def topsort(graph: Graph[T]) -> Iterable[T]:
     """
