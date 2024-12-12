@@ -654,7 +654,7 @@ class ClassHierarchyFinalizer:
         # this calls _init_finalbaseobjects for every class and 
         # create the graph object for the ones that did not raised
         # a cycle-error.
-        self.graph: dict[ClassOrStr, list[ClassOrStr]]  = {}
+        self.graph: dict[Class, list[ClassOrStr]]  = {}
         self.computed_mros: dict[ClassOrStr, list[ClassOrStr]] = {}
         
         for cls in classes:
@@ -669,12 +669,9 @@ class ClassHierarchyFinalizer:
                 self.graph[cls] = bases = []
                 for b in self._getbases(cls):
                     bases.append(b)
-
-                    # string should explicitely be part of the graph
-                    if isinstance(b, str):
-                        self.graph[b] = []
-                        self.computed_mros[b] = []
-
+                    # strings are not part of the graph
+                    # because they always have the same MRO: empty list.
+                    
     def compute_mros(self) -> None:
         
         # If this raises a CycleError, our code is boggus since we already
@@ -682,11 +679,9 @@ class ClassHierarchyFinalizer:
         static_order: Iterable[ClassOrStr] = topsort(self.graph)
         
         for cls in static_order:
-            if cls in self.computed_mros:
+            if cls in self.computed_mros or isinstance(cls, str):
+                # If it's already computed, it means it's boggus like with cycle or something.
                 continue
-            # All strings bases are already pre-computed to the empty list, 
-            # so the cls varible must be a Class at this point
-            assert isinstance(cls, Class)
             self.computed_mros[cls] = cls._mro = self._compute_mro(cls)
 
     def _compute_mro(self, cls: Class) -> list[ClassOrStr]:
@@ -695,6 +690,9 @@ class ClassHierarchyFinalizer:
         This assumes that the MRO of the bases of the class 
         have already been computed and stored in C{self.computed_mros}.
         """
+        if cls not in self.graph:
+            raise ValueError
+        
         result: list[ClassOrStr] = [cls]
 
         if not (bases:=self.graph[cls]):
@@ -702,12 +700,12 @@ class ClassHierarchyFinalizer:
         
         # since we compute all MRO in topological order, we can safely assume
         # that self.computed_mros contains all the MROs of the bases of this class.
-        bases_mros = [self.computed_mros[kls] for kls in bases]
+        bases_mros = [self.computed_mros.get(kls, []) for kls in bases]
 
         # handle multiple typing.Generic case, 
         # see https://github.com/twisted/pydoctor/issues/846.
         # support documenting typing.py module by using allobject.get.
-        generic = cls.system.allobjects.get(d:='typing.Generic', d)
+        generic = cls.system.allobjects.get(_d:='typing.Generic', _d)
         if generic in bases and any(generic in _mro for _mro in bases_mros):
             # this is cafe since we checked 'generic in bases'.
             bases.remove(generic) # type: ignore[arg-type]
