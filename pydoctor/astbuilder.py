@@ -26,10 +26,7 @@ def parseFile(path: Path) -> ast.Module:
         src = f.read() + b'\n'
     return _parse(src, filename=str(path))
 
-if sys.version_info >= (3,8):
-    _parse = partial(ast.parse, type_comments=True)
-else:
-    _parse = ast.parse
+_parse = partial(ast.parse, type_comments=True)
 
 def _maybeAttribute(cls: model.Class, name: str) -> bool:
     """Check whether a name is a potential attribute of the given class.

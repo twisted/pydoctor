@@ -13,7 +13,6 @@ from itertools import chain
 from collections import defaultdict
 import datetime
 import importlib
-import platform
 import sys
 import textwrap
 import types
@@ -56,12 +55,6 @@ T = TypeVar('T')
 #       Classes
 #   Functions can't contain anything.
 
-
-_string_lineno_is_end = sys.version_info < (3,8) \
-                    and platform.python_implementation() != 'PyPy'
-"""True iff the 'lineno' attribute of an AST string node points to the last
-line in the string, rather than the first line.
-"""
 
 class LineFromAst(int):
     "Simple L{int} wrapper for linenumbers coming from ast analysis."
@@ -707,7 +700,7 @@ class ClassHierarchyFinalizer:
         # support documenting typing.py module by using allobject.get.
         generic = cls.system.allobjects.get(_d:='typing.Generic', _d)
         if generic in bases and any(generic in _mro for _mro in bases_mros):
-            # this is cafe since we checked 'generic in bases'.
+            # this is safe since we checked 'generic in bases'.
             bases.remove(generic) # type: ignore[arg-type]
         
         try:
