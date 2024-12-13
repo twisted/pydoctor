@@ -45,7 +45,6 @@ from functools import lru_cache
 from typing import TYPE_CHECKING, Any, Iterable, List, Optional, Sequence, Set, cast
 if TYPE_CHECKING:
     from typing import TypeAlias
-    from pydoctor.model import Documentable
     
 import re
 from docutils import nodes

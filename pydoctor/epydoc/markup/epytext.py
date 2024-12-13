@@ -132,7 +132,7 @@ __docformat__ = 'epytext en'
 #   4. helpers
 #   5. testing
 
-from typing import Any, Iterable, List, Optional, Sequence, Set, Union, cast, TYPE_CHECKING
+from typing import Any, Iterable, List, Optional, Sequence, Set, Union, cast
 import re
 import unicodedata
 

@@ -62,9 +62,6 @@ class NapoelonDocstringParser:
         errors: list[ParseError],
         docstring_cls: type[GoogleDocstring],
     ) -> ParsedDocstring:
-        # TODO: would be best to avoid this import
-        from pydoctor.model import Attribute
-
         docstring_obj = docstring_cls(
             docstring, 
             what=self.objclass,

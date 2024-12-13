@@ -12,7 +12,7 @@ from __future__ import annotations
 
 __docformat__ = 'epytext en'
 
-from typing import List, Optional, TYPE_CHECKING
+from typing import List, Optional
 
 from docutils import nodes
 from twisted.web.template import Tag, tags
@@ -20,9 +20,6 @@ from twisted.web.template import Tag, tags
 from pydoctor.epydoc.markup import DocstringLinker, ObjClass, ParsedDocstring, ParseError, ParserFunction
 
 from pydoctor.epydoc.docutils import set_node_attributes, new_document
-
-if TYPE_CHECKING:
-    from pydoctor.model import Documentable
 
 def parse_docstring(docstring: str, errors: List[ParseError]) -> ParsedDocstring:
     """
