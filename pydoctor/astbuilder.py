@@ -28,10 +28,7 @@ def parseFile(path: Path) -> ast.Module:
         src = f.read() + b'\n'
     return _parse(src, filename=str(path))
 
-if sys.version_info >= (3,8):
-    _parse = partial(ast.parse, type_comments=True)
-else:
-    _parse = ast.parse
+_parse = partial(ast.parse, type_comments=True)
 
 def _maybeAttribute(cls: model.Class, name: str) -> bool:
     """Check whether a name is a potential attribute of the given class.
@@ -90,9 +87,11 @@ def is_constant(obj: model.Attribute,
     
     @note: Must be called after setting obj.annotation to detect variables using Final.
     """
+    if is_using_typing_final(annotation, obj):
+        return True
     if not is_attribute_overridden(obj, value) and value:
         if not any(isinstance(n, _CONTROL_FLOW_BLOCKS) for n in get_parents(value)):
-            return obj.name.isupper() or is_using_typing_final(annotation, obj)
+            return obj.name.isupper()
     return False
 
 class TypeAliasVisitorExt(extensions.ModuleVisitorExt):
@@ -148,24 +147,14 @@ def is_attribute_overridden(obj: model.Attribute, new_value: Optional[ast.expr])
     """
     return obj.value is not None and new_value is not None
 
-def _extract_annotation_subscript(annotation: ast.Subscript) -> ast.AST:
-    """
-    Extract the "str, bytes" part from annotations like  "Union[str, bytes]".
-    """
-    ann_slice = annotation.slice
-    if sys.version_info < (3,9) and isinstance(ann_slice, ast.Index):
-        return ann_slice.value
-    else:
-        return ann_slice
-
 def extract_final_subscript(annotation: ast.Subscript) -> ast.expr:
     """
     Extract the "str" part from annotations like  "Final[str]".
 
     @raises ValueError: If the "Final" annotation is not valid.
     """ 
-    ann_slice = _extract_annotation_subscript(annotation)
-    if isinstance(ann_slice, (ast.ExtSlice, ast.Slice, ast.Tuple)):
+    ann_slice = annotation.slice
+    if isinstance(ann_slice, (ast.Slice, ast.Tuple)):
         raise ValueError("Annotation is invalid, it should not contain slices.")
     else:
         assert isinstance(ann_slice, ast.expr)
@@ -219,6 +208,14 @@ class ModuleVistor(NodeVisitor):
             if attrib.annotation is None and attrib.value is not None:
                 # do not override explicit annotation
                 attrib.annotation = infer_type(attrib.value)
+    
+    def _tweak_constants_annotations(self, scope: model.Documentable) -> None:
+        # tweak constants annotations when we leave the scope so we can still
+        # check whether the annotation uses Final while we're visiting other nodes.
+        for attrib in scope.contents.values():
+            if not isinstance(attrib, model.Attribute) or attrib.kind is not model.DocumentableKind.CONSTANT :
+                continue
+            self._tweak_constant_annotation(attrib)
 
     def visit_If(self, node: ast.If) -> None:
         if isinstance(node.test, ast.Compare):
@@ -261,6 +258,7 @@ class ModuleVistor(NodeVisitor):
             epydoc2stan.extract_fields(self.module)
 
     def depart_Module(self, node: ast.Module) -> None:
+        self._tweak_constants_annotations(self.builder.current)
         self._infer_attr_annotations(self.builder.current)
         self.builder.pop(self.module)
 
@@ -349,6 +347,7 @@ class ModuleVistor(NodeVisitor):
 
 
     def depart_ClassDef(self, node: ast.ClassDef) -> None:
+        self._tweak_constants_annotations(self.builder.current)
         self._infer_attr_annotations(self.builder.current)
         self.builder.popClass()
 
@@ -565,29 +564,31 @@ class ModuleVistor(NodeVisitor):
                              defaultKind:model.DocumentableKind) -> None:
         if is_constant(obj, annotation=annotation, value=value):
             obj.kind = model.DocumentableKind.CONSTANT
-            cls._tweakConstantAnnotation(obj=obj, annotation=annotation, 
-                                value=value, lineno=lineno)
+            # do not call tweak annotation just yet...
         elif obj.kind is model.DocumentableKind.CONSTANT:
-            obj.kind = defaultKind
+            # reset to the default kind only for attributes that were heuristically
+            # declared as constants
+            if not is_using_typing_final(obj.annotation, obj):
+                obj.kind = defaultKind
     
     @staticmethod
-    def _tweakConstantAnnotation(obj: model.Attribute, annotation:Optional[ast.expr], 
-                        value: Optional[ast.expr], lineno: int) -> None:
+    def _tweak_constant_annotation(obj: model.Attribute) -> None:
         # Display variables annotated with Final with the real type instead.
+        annotation = obj.annotation
         if is_using_typing_final(annotation, obj):
             if isinstance(annotation, ast.Subscript):
                 try:
                     annotation = extract_final_subscript(annotation)
                 except ValueError as e:
-                    obj.report(str(e), section='ast', lineno_offset=lineno-obj.linenumber)
-                    obj.annotation = infer_type(value) if value else None
+                    obj.report(str(e), section='ast', lineno_offset=annotation.lineno-obj.linenumber)
+                    obj.annotation = infer_type(obj.value) if obj.value else None
                 else:
                     # Will not display as "Final[str]" but rather only "str"
                     obj.annotation = annotation
             else:
                 # Just plain "Final" annotation.
                 # Simply ignore it because it's duplication of information.
-                obj.annotation = infer_type(value) if value else None
+                obj.annotation = infer_type(obj.value) if obj.value else None
 
     @staticmethod
     def _setAttributeAnnotation(obj: model.Attribute, 
@@ -1019,8 +1020,7 @@ class ModuleVistor(NodeVisitor):
         elif is_classmethod:
             func.kind = model.DocumentableKind.CLASS_METHOD
 
-        # Position-only arguments were introduced in Python 3.8.
-        posonlyargs: Sequence[ast.arg] = getattr(node.args, 'posonlyargs', ())
+        posonlyargs: Sequence[ast.arg] = node.args.posonlyargs
 
         num_pos_args = len(posonlyargs) + len(node.args.args)
         defaults = node.args.defaults
@@ -1129,11 +1129,7 @@ class ModuleVistor(NodeVisitor):
         """
         def _get_all_args() -> Iterator[ast.arg]:
             base_args = func.args
-            # New on Python 3.8 -- handle absence gracefully
-            try:
-                yield from base_args.posonlyargs
-            except AttributeError:
-                pass
+            yield from base_args.posonlyargs
             yield from base_args.args
             varargs = base_args.vararg
             if varargs:

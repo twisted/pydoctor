@@ -1,9 +1,8 @@
 from io import BytesIO
 import re
-from typing import Callable, Union, Any, cast, Type, TYPE_CHECKING
+from typing import Callable, Union, cast, Type, TYPE_CHECKING
 import pytest
 import warnings
-import sys
 import tempfile
 import os
 from pathlib import Path, PurePath
@@ -24,19 +23,12 @@ from pydoctor.themes import get_themes
 
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable
-
     # Newer APIs from importlib_resources should arrive to stdlib importlib.resources in Python 3.9.
-    if sys.version_info >= (3, 9):
-        from importlib.abc import Traversable
-    else:
-        Traversable = Any
+    from importlib.abc import Traversable
 else:
     Traversable = object
 
-if sys.version_info < (3, 9):
-    import importlib_resources
-else:
-    import importlib.resources as importlib_resources
+import importlib.resources as importlib_resources
 
 template_dir = importlib_resources.files("pydoctor.themes") / "base"
 

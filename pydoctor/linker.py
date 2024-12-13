@@ -241,3 +241,17 @@ class _EpydocLinker(DocstringLinker):
         if self.reporting_obj:
             self.reporting_obj.report(message, 'resolve_identifier_xref', lineno)
         raise LookupError(identifier)
+
+class NotFoundLinker(DocstringLinker):
+    """A DocstringLinker implementation that cannot find any links."""
+
+    def link_to(self, target: str, label: "Flattenable") -> Tag:
+        return tags.transparent(label)
+
+    def link_xref(self, target: str, label: "Flattenable", lineno: int) -> Tag:
+        return tags.code(label)
+    
+    @contextlib.contextmanager
+    def switch_context(self, ob: Optional[model.Documentable]) -> Iterator[None]:
+        yield
+
