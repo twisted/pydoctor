@@ -257,7 +257,7 @@ ul ul ul ul ul ul ul {
     word-break: break-word;
     /* It not seems to work with percentage values
     so I used px values, these are just indications for the
-    CSS auto layour table algo not to create tables 
+    CSS auto layout table algo not to create tables 
     with rather unbalanced columns width. */
     max-width: 400px;
 }

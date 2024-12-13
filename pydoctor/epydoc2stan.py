@@ -1191,11 +1191,7 @@ def _colorize_signature_param(param: inspect.Parameter,
                               has_next: bool, 
                               is_first: bool, ) -> ParsedDocstring:
     """
-    One parameter is converted to a series of ParsedDocstrings. 
-        
-        - one, the first, for the param name
-        - two others if the parameter is annotated: one for ': ' and one for the annotation
-        - two others if the paramter has a default value: one for ' = ' and one for the annotation
+    Convert a single parameter to a parsed docstring representation.
     """
     kind = param.kind
     result: list[ParsedDocstring] = []
@@ -1203,11 +1199,10 @@ def _colorize_signature_param(param: inspect.Parameter,
         result.append(parsed_text(f'*{param.name}'))
     elif kind == _VAR_KEYWORD:
         result.append(parsed_text(f'**{param.name}'))
+    elif is_first and _is_less_important_param(param, ctx):
+        result.append(parsed_text_with_css(param.name, css_class='undocumented'))
     else:
-        if is_first and _is_less_important_param(param, ctx):
-            result.append(parsed_text_with_css(param.name, css_class='undocumented'))
-        else:
-            result.append(parsed_text(param.name))
+        result.append(parsed_text(param.name))
     
     # Add annotation and default value
     if param.annotation is not _empty:

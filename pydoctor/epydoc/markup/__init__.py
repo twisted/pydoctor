@@ -385,7 +385,7 @@ class DocstringLinker(Protocol):
             should be linked to.
         @param label: The label to show for the link.
         @param is_annotation: Generated links will give precedence to the module
-            defined varaible rather the nested definitions when there are name colisions.
+            defined variables rather the nested definitions when there are name collisions.
         @return: The link, or just the label if the target was not found.
         """
 
