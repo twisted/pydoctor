@@ -209,7 +209,8 @@ def test_lunr_index() -> None:
                     'pydoctor.epydoc.markup._types.ParsedTypeDocstring.to_node',
                     'pydoctor.epydoc.markup.restructuredtext.ParsedRstDocstring.to_node',
                     'pydoctor.epydoc.markup.epytext.ParsedEpytextDocstring.to_node',
-                    'pydoctor.epydoc2stan.ParsedStanOnly.to_node',
+                    'pydoctor.epydoc.markup._ParsedDocstringTree.to_node',
+                    'pydoctor.epydoc.markup._ParsedDocstringWithTag.to_node',
                 ]
         test_search('to_node*', to_node_results, order_is_important=False)
         test_search('to_node', to_node_results, order_is_important=False)
