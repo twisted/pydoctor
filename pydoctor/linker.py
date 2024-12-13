@@ -245,7 +245,7 @@ class _EpydocLinker(DocstringLinker):
 class NotFoundLinker(DocstringLinker):
     """A DocstringLinker implementation that cannot find any links."""
 
-    def link_to(self, target: str, label: "Flattenable") -> Tag:
+    def link_to(self, target: str, label: "Flattenable", *, is_annotation: bool = False) -> Tag:
         return tags.transparent(label)
 
     def link_xref(self, target: str, label: "Flattenable", lineno: int) -> Tag:
