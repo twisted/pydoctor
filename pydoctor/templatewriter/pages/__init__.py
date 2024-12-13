@@ -150,7 +150,12 @@ def format_function_def(func_name: str, is_async: bool,
         func_name = func_name[:func_name.rindex('.')]
     
     func_signature_css_class = 'function-signature'
-    if epydoc2stan.function_signature_len(func) > LONG_SIGNATURE:
+    
+    # We never mark the overloaded functions as long since this could make the output of pydoctor
+    # worst that before when there are many overloads to be wrapped. It allows to
+    # to scroll less to get to the actual main documentation of the function.
+    if not isinstance(func, model.FunctionOverload) and \
+        epydoc2stan.function_signature_len(func) > LONG_SIGNATURE:
         func_signature_css_class += ' long-signature'
     
     r.extend([
