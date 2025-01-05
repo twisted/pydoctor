@@ -35,8 +35,8 @@ def get_system(options: model.Options) -> model.System:
     # Support source date epoch:
     # https://reproducible-builds.org/specs/source-date-epoch/
     try:
-        system.buildtime = datetime.datetime.utcfromtimestamp(
-            int(os.environ['SOURCE_DATE_EPOCH']))
+        system.buildtime = datetime.datetime.fromtimestamp(
+            int(os.environ['SOURCE_DATE_EPOCH']), datetime.UTC)
     except ValueError as e:
         error(str(e))
     except KeyError:
