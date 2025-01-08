@@ -74,6 +74,10 @@ in development
 ^^^^^^^^^^^^^^
 
 * Drop support for Python 3.8.
+
+pydoctor 24.11.2
+^^^^^^^^^^^^^^^^
+
 * Replace deprecated usage of ``datetime.datetime.utcfromtimestamp()``
 
 pydoctor 24.11.1
