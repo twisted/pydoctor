@@ -304,6 +304,16 @@ def test_index_hardlink(tmp_path: Path) -> None:
     assert not (tmp_path / 'basic.html').is_symlink()
     assert (tmp_path / 'basic.html').is_file()
 
+
+def test_apidocs_help(tmp_path: Path) -> None:
+    """
+    Checks that the help page is well generated.
+    """
+    exit_code = driver.main(args=['--html-output', str(tmp_path), 'pydoctor/test/testpackages/basic/'])
+    assert exit_code == 0
+    help_page = (tmp_path / 'apidocs-help.html').read_text()
+    assert '>Search</h2>' in help_page
+
 def test_htmlbaseurl_option_all_pages(tmp_path: Path) -> None:
     """
     Check that the canonical link is included in all html pages, including summary pages.
@@ -320,3 +330,4 @@ def test_htmlbaseurl_option_all_pages(tmp_path: Path) -> None:
             filename = 'index.html' # since we have only one module it's linked as index.html
         assert f'<link rel="canonical" href="https://example.com.abcde/{filename}"' in t.read_text(encoding='utf-8')
     
+

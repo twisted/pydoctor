@@ -12,24 +12,13 @@ from typing import Any, Callable, Collection, Iterator, Optional, List, Iterable
 from inspect import BoundArguments, Signature
 import ast
 
-if sys.version_info >= (3, 9):
-    from ast import unparse as _unparse
-else:
-    from astor import to_source as _unparse
+unparse = ast.unparse
 
 from pydoctor import visitor
 
 if TYPE_CHECKING:
     from pydoctor import model
 
-def unparse(node:ast.AST) -> str:
-    """
-    This function convert a node tree back into python sourcecode.
-
-    Uses L{ast.unparse} or C{astor.to_source} for python versions before 3.9.
-    """
-    return _unparse(node)
-    
 # AST visitors
 
 def iter_values(node: ast.AST) -> Iterator[ast.AST]:
@@ -147,32 +136,16 @@ def bind_args(sig: Signature, call: ast.Call) -> BoundArguments:
     return sig.bind(*call.args, **kwargs)
 
 
-
-if sys.version_info[:2] >= (3, 8):
-    # Since Python 3.8 "foo" is parsed as ast.Constant.
-    def get_str_value(expr:ast.expr) -> Optional[str]:
-        if isinstance(expr, ast.Constant) and isinstance(expr.value, str):
-            return expr.value
-        return None
-    def get_num_value(expr:ast.expr) -> Optional[Number]:
-        if isinstance(expr, ast.Constant) and isinstance(expr.value, Number):
-            return expr.value
-        return None
-    def _is_str_constant(expr: ast.expr, s: str) -> bool:
-        return isinstance(expr, ast.Constant) and expr.value == s
-else:
-    # Before Python 3.8 "foo" was parsed as ast.Str.
-    # TODO: remove me when python3.7 is not supported anymore
-    def get_str_value(expr:ast.expr) -> Optional[str]:
-        if isinstance(expr, ast.Str):
-            return expr.s
-        return None
-    def get_num_value(expr:ast.expr) -> Optional[Number]:
-        if isinstance(expr, ast.Num):
-            return expr.n
-        return None
-    def _is_str_constant(expr: ast.expr, s: str) -> bool:
-        return isinstance(expr, ast.Str) and expr.s == s
+def get_str_value(expr:ast.expr) -> Optional[str]:
+    if isinstance(expr, ast.Constant) and isinstance(expr.value, str):
+        return expr.value
+    return None
+def get_num_value(expr:ast.expr) -> Optional[Number]:
+    if isinstance(expr, ast.Constant) and isinstance(expr.value, Number):
+        return expr.value
+    return None
+def _is_str_constant(expr: ast.expr, s: str) -> bool:
+    return isinstance(expr, ast.Constant) and expr.value == s
 
 def get_int_value(expr: ast.expr) -> Optional[int]:
     num = get_num_value(expr)
@@ -262,11 +235,7 @@ def get_assign_docstring_node(assign:ast.Assign | ast.AnnAssign) -> Str | None:
 
 def is_none_literal(node: ast.expr) -> bool:
     """Does this AST node represent the literal constant None?"""
-    if sys.version_info >= (3,8):
-        return isinstance(node, ast.Constant) and node.value is None
-    else:
-        # TODO: remove me when python3.7 is not supported anymore
-        return isinstance(node, (ast.Constant, ast.NameConstant)) and node.value is None
+    return isinstance(node, ast.Constant) and node.value is None
     
 def unstring_annotation(node: ast.expr, ctx:'model.Documentable', section:str='annotation') -> ast.expr:
     """Replace all strings in the given expression by parsed versions.
@@ -324,8 +293,6 @@ class _AnnotationStringParser(ast.NodeTransformer):
     
     visit_Attribute = visit_Name = visit_fast
 
-    # For Python >= 3.8:
-
     def visit_Constant(self, node: ast.Constant) -> ast.expr:
         value = node.value
         if isinstance(value, str):
@@ -334,12 +301,6 @@ class _AnnotationStringParser(ast.NodeTransformer):
             const = self.generic_visit(node)
             assert isinstance(const, ast.Constant), const
             return const
-
-    # For Python < 3.8:
-    if sys.version_info < (3,8):
-        # TODO: remove me when python3.7 is not supported anymore
-        def visit_Str(self, node: ast.Str) -> ast.expr:
-            return ast.copy_location(self._parse_string(node.s), node)
 
 def upgrade_annotation(node: ast.expr, ctx: model.Documentable, section:str='annotation') -> ast.expr:
     """
@@ -387,8 +348,6 @@ class _UpgradeDeprecatedAnnotations(ast.NodeTransformer):
             # tuple of types, includea single element tuple, which is the same
             # as the directly using the type: Union[x] == Union[(x,)] == x
             slice_ = node.slice
-            if sys.version_info <= (3,9) and isinstance(slice_, ast.Index): # Compat
-                slice_ = slice_.value
             if isinstance(slice_, ast.Tuple):
                 args = slice_.elts
                 if len(args) > 1:
@@ -401,8 +360,6 @@ class _UpgradeDeprecatedAnnotations(ast.NodeTransformer):
         elif fullName == 'typing.Optional':
             # typing.Optional requires a single type, so we don't process when slice is a tuple.
             slice_ = node.slice
-            if sys.version_info <= (3,9) and isinstance(slice_, ast.Index): # Compat
-                slice_ = slice_.value
             if isinstance(slice_, (ast.Attribute, ast.Name, ast.Subscript, ast.BinOp)):
                 return self._union_args_to_bitor([slice_, ast.Constant(value=None)], node)
 
@@ -531,23 +488,11 @@ def get_docstring_node(node: ast.AST) -> Str | None:
             return node.value
     return None
 
-_string_lineno_is_end = sys.version_info < (3,8) \
-                    and platform.python_implementation() != 'PyPy'
-"""True iff the 'lineno' attribute of an AST string node points to the last
-line in the string, rather than the first line.
-"""
-
-
 class _StrMeta(type):
-    if sys.version_info >= (3,8):
-        def __instancecheck__(self, instance: object) -> bool:
-            if isinstance(instance, ast.expr):
-                return get_str_value(instance) is not None
-            return False
-    else:
-        # TODO: remove me when python3.7 is not supported
-        def __instancecheck__(self, instance: object) -> bool:
-            return isinstance(instance, ast.Str)
+    def __instancecheck__(self, instance: object) -> bool:
+        if isinstance(instance, ast.expr):
+            return get_str_value(instance) is not None
+        return False
 
 class Str(ast.expr, metaclass=_StrMeta):
     """
@@ -556,14 +501,10 @@ class Str(ast.expr, metaclass=_StrMeta):
     Do not try to instanciate this class.
     """
 
+    value: str
+
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         raise TypeError(f'{Str.__qualname__} cannot be instanciated')
-
-    if sys.version_info >= (3,8):
-        value: str
-    else:
-        # TODO: remove me when python3.7 is not supported
-        s: str
 
 def extract_docstring_linenum(node: Str) -> int:
     r"""
@@ -575,18 +516,8 @@ def extract_docstring_linenum(node: Str) -> int:
     Leading blank lines are stripped by cleandoc(), so we must
     return the line number of the first non-blank line.
     """
-    if sys.version_info >= (3,8):
-        doc = node.value
-    else:
-        # TODO: remove me when python3.7 is not supported
-        doc = node.s
+    doc = node.value
     lineno = node.lineno
-    if _string_lineno_is_end:
-        # In older CPython versions, the AST only tells us the end line
-        # number and we must approximate the start line number.
-        # This approximation is correct if the docstring does not contain
-        # explicit newlines ('\n') or joined lines ('\' at end of line).
-        lineno -= doc.count('\n')
 
     # Leading blank lines are stripped by cleandoc(), so we must
     # return the line number of the first non-blank line.
@@ -606,11 +537,7 @@ def extract_docstring(node: Str) -> Tuple[int, str]:
         - The line number of the first non-blank line of the docsring. See L{extract_docstring_linenum}.
         - The docstring to be parsed, cleaned by L{inspect.cleandoc}.
     """
-    if sys.version_info >= (3,8):
-        value = node.value
-    else:
-        # TODO: remove me when python3.7 is not supported
-        value = node.s
+    value = node.value
     lineno = extract_docstring_linenum(node)
     return lineno, inspect.cleandoc(value)
 

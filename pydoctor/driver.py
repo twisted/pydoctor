@@ -15,10 +15,7 @@ from pydoctor.sphinx import SphinxInventoryWriter, prepareCache
 
 # In newer Python versions, use importlib.resources from the standard library.
 # On older versions, a compatibility package must be installed from PyPI.
-if sys.version_info < (3, 9):
-    import importlib_resources
-else:
-    import importlib.resources as importlib_resources
+import importlib.resources as importlib_resources
 
 def get_system(options: model.Options) -> model.System:
     """
@@ -38,8 +35,8 @@ def get_system(options: model.Options) -> model.System:
     # Support source date epoch:
     # https://reproducible-builds.org/specs/source-date-epoch/
     try:
-        system.buildtime = datetime.datetime.utcfromtimestamp(
-            int(os.environ['SOURCE_DATE_EPOCH']))
+        system.buildtime = datetime.datetime.fromtimestamp(
+            int(os.environ['SOURCE_DATE_EPOCH']), datetime.UTC)
     except ValueError as e:
         error(str(e))
     except KeyError:

@@ -1020,14 +1020,8 @@ def test_ast_slice() -> None:
         o
     [
     <wbr>
-    x:y, (z)
-    ]\n""" if sys.version_info < (3,9) else """<document source="pyval_repr">
-    <obj_reference refuri="o">
-        o
-    [
-    <wbr>
     x:y
-    ,
+    , 
     <wbr>
     <obj_reference refuri="z">
         z
@@ -1535,32 +1529,21 @@ def test_expressions_parens(subtests:Any) -> None:
     check_src("(x if x else y).C")
     check_src("not (x == y)")
 
-    if sys.version_info>=(3,8):
-        check_src("(a := b)")
+    check_src("(a := b)")
     
     if sys.version_info >= (3,11):
         check_src("(lambda: int)()")
     else:
         check_src("(lambda : int)()")
     
-    if sys.version_info > (3,9):
-        check_src("3 .__abs__()")
-        check_src("await x")
-        check_src("x if x else y")
-        check_src("lambda x: x")
-        check_src("x == (not y)")
-        check_src("P * V if P and V else n * R * T")
-        check_src("lambda P, V, n: P * V == n * R * T")
-    else:
-        check_src("(3).__abs__()")
-        if sys.version_info>=(3,7):
-            check_src("(await x)")
-        check_src("(x if x else y)")
-        check_src("(lambda x: x)")
-        check_src("(x == (not y))")
-        check_src("(P * V if P and V else n * R * T)")
-        check_src("(lambda P, V, n: P * V == n * R * T)")
-    
+    check_src("3 .__abs__()")
+    check_src("await x")
+    check_src("x if x else y")
+    check_src("lambda x: x")
+    check_src("x == (not y)")
+    check_src("P * V if P and V else n * R * T")
+    check_src("lambda P, V, n: P * V == n * R * T")
+
     check_src("f(**x)")
     check_src("{**x}")
 

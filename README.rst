@@ -73,6 +73,24 @@ What's New?
 in development
 ^^^^^^^^^^^^^^
 
+* Drop support for Python 3.8.
+
+pydoctor 24.11.2
+^^^^^^^^^^^^^^^^
+
+* Replace deprecated usage of ``datetime.datetime.utcfromtimestamp()``
+
+pydoctor 24.11.1
+^^^^^^^^^^^^^^^^
+
+* Fix a bug that would cause a variable marked as `Final` not being considered as a constant if
+  it was declared under a control-flow block.
+* Fix a bug in google and numpy "Attributes" section in module docstring: 
+  the module attributes now shows as "Variables" instead of "Instance Variables".
+
+pydoctor 24.11.0
+^^^^^^^^^^^^^^^^
+
 * Drop Python 3.7 and support Python 3.13.
 * Add support for doc-comments as found in Sphinx. Use the special comment formatting ``#:`` to start the comment instead of just ``#``.
   Comments need to be either on a line of their own before the definition, or immediately after the assignment on the same line. 
@@ -93,6 +111,10 @@ in development
   from the ``pydoctor_url_path`` config option now includes a project name which defaults to 'main' (instead of putting None), 
   use mapping instead of a list to define your own project name.
 * Improve the themes so the adds injected by ReadTheDocs are rendered with the correct width and do not overlap too much with the main content.
+* Fix an issue in the readthedocs theme that prevented to use the search bar from the summary pages (like the class hierarchy).
+* The generated documentation now includes a help page under the path ``/apidocs-help.html``. 
+  This page is accessible by clicking on the information icon in the navbar (``ℹ``).
+* Improve the javascript searching code to better understand terms that contains a dot (``.``).
 
 pydoctor 24.3.3
 ^^^^^^^^^^^^^^^

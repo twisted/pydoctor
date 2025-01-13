@@ -16,8 +16,7 @@ from typing import List, Optional
 from docutils import nodes
 from twisted.web.template import Tag, tags
 
-from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring, ParseError, ParserFunction
-from pydoctor.model import Documentable
+from pydoctor.epydoc.markup import DocstringLinker, ObjClass, ParsedDocstring, ParseError, ParserFunction
 from pydoctor.epydoc.docutils import set_node_attributes, new_document
 
 def parse_docstring(docstring: str, errors: List[ParseError]) -> ParsedDocstring:
@@ -31,7 +30,7 @@ def parse_docstring(docstring: str, errors: List[ParseError]) -> ParsedDocstring
     """
     return ParsedPlaintextDocstring(docstring)
 
-def get_parser(obj: Optional[Documentable]) -> ParserFunction:
+def get_parser(_: ObjClass | None) -> ParserFunction:
     """
     Just return the L{parse_docstring} function. 
     """

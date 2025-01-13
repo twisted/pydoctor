@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import Optional, Tuple, Type, List, overload, cast
 import ast
-import sys
 
 from pydoctor import astbuilder, astutils, model
 from pydoctor import epydoc2stan
@@ -14,7 +13,7 @@ from pydoctor.epydoc2stan import _get_docformat, format_summary, get_parsed_type
 from pydoctor.test.test_packages import processPackage
 from pydoctor.utils import partialclass
 
-from . import CapSys, NotFoundLinker, posonlyargs, typecomment
+from . import CapSys, NotFoundLinker
 import pytest
 
 class SimpleSystem(model.System):
@@ -237,7 +236,6 @@ def test_function_signature(signature: str, systemcls: Type[model.System]) -> No
     text = flatten_text(html2stan(str(docfunc.signature)))
     assert text == signature
 
-@posonlyargs
 @pytest.mark.parametrize('signature', (
     '(x, y, /)',
     '(x, y=0, /)',
@@ -1363,7 +1361,6 @@ def test_annotated_variables(systemcls: Type[model.System]) -> None:
     assert m.docstring == """module-level"""
     assert type2html(m) == '<code>bytes</code>'
 
-@typecomment
 @systemcls_param
 def test_type_comment(systemcls: Type[model.System], capsys: CapSys) -> None:
     mod = fromText('''
@@ -1955,7 +1952,7 @@ def test_not_a_constant_module(systemcls: Type[model.System], capsys:CapSys) -> 
         THING = 'EN'
     OTHER = 1
     OTHER += 1
-    E: typing.Final = 2
+    E: typing.Final = 2 # it's considered a constant because it's explicitely marked Final
     E = 4
     LIST = [2.14]
     LIST.insert(0,0)
@@ -1963,7 +1960,7 @@ def test_not_a_constant_module(systemcls: Type[model.System], capsys:CapSys) -> 
     assert mod.contents['LANG'].kind is model.DocumentableKind.VARIABLE
     assert mod.contents['THING'].kind is model.DocumentableKind.VARIABLE
     assert mod.contents['OTHER'].kind is model.DocumentableKind.VARIABLE
-    assert mod.contents['E'].kind is model.DocumentableKind.VARIABLE
+    assert mod.contents['E'].kind is model.DocumentableKind.CONSTANT
 
     # all-caps mutables variables are flagged as constant: this is a trade-off
     # in between our weeknesses in terms static analysis (that is we don't recognized list modifications) 
@@ -2943,7 +2940,7 @@ def test_augmented_assignment(systemcls: Type[model.System]) -> None:
     attr = mod.contents['var']
     assert isinstance(attr, model.Attribute)
     assert attr.value
-    assert astutils.unparse(attr.value).strip() == '1 + 3' if sys.version_info >= (3,9) else '(1 + 3)'
+    assert astutils.unparse(attr.value).strip() == '1 + 3'
 
 @systemcls_param
 def test_augmented_assignment_in_class(systemcls: Type[model.System]) -> None:
@@ -2955,7 +2952,7 @@ def test_augmented_assignment_in_class(systemcls: Type[model.System]) -> None:
     attr = mod.contents['c'].contents['var']
     assert isinstance(attr, model.Attribute)
     assert attr.value
-    assert astutils.unparse(attr.value).strip() == '1 + 3' if sys.version_info >= (3,9) else '(1 + 3)'
+    assert astutils.unparse(attr.value).strip() == '1 + 3'
 
 
 @systemcls_param
@@ -2973,7 +2970,7 @@ def test_augmented_assignment_conditionnal_else_ignored(systemcls: Type[model.Sy
     attr = mod.contents['var']
     assert isinstance(attr, model.Attribute)
     assert attr.value
-    assert astutils.unparse(attr.value).strip() == '1 + 3' if sys.version_info >= (3,9) else '(1 + 3)'
+    assert astutils.unparse(attr.value).strip() == '1 + 3'
 
 @systemcls_param
 def test_augmented_assignment_conditionnal_multiple_assignments(systemcls: Type[model.System]) -> None:
@@ -2991,7 +2988,7 @@ def test_augmented_assignment_conditionnal_multiple_assignments(systemcls: Type[
     attr = mod.contents['var']
     assert isinstance(attr, model.Attribute)
     assert attr.value
-    assert astutils.unparse(attr.value).strip() == '1 + 3 + 4' if sys.version_info >= (3,9) else '(1 + 3 + 4)'
+    assert astutils.unparse(attr.value).strip() == '1 + 3 + 4'
 
 @systemcls_param
 def test_augmented_assignment_instance_var(systemcls: Type[model.System]) -> None:
@@ -3007,7 +3004,7 @@ def test_augmented_assignment_instance_var(systemcls: Type[model.System]) -> Non
     attr = mod.contents['c'].contents['var']
     assert isinstance(attr, model.Attribute)
     assert attr.value
-    assert astutils.unparse(attr.value).strip() == '1' if sys.version_info >= (3,9) else '(1)'
+    assert astutils.unparse(attr.value).strip() == '1'
 
 @systemcls_param
 def test_augmented_assignment_not_suitable_for_inline_docstring(systemcls: Type[model.System]) -> None:
@@ -3376,3 +3373,32 @@ def test_inline_docstring_at_wrong_place(systemcls: Type[model.System], capsys: 
     assert not mod.contents['c'].docstring
     assert not mod.contents['d'].docstring
     assert not mod.contents['e'].docstring
+
+@systemcls_param
+def test_Final_constant_under_control_flow_block_is_still_constant(systemcls: Type[model.System], capsys: CapSys) -> None:
+    """
+    Test for issue https://github.com/twisted/pydoctor/issues/818
+    """
+    src = '''
+    import sys, random, typing as t
+    if sys.version_info > (3,10):
+        v:t.Final = 1
+    else:
+        v:t.Final = 2
+    
+    if random.choice([True, False]):
+        w:t.Final = 1
+    else:
+        w:t.Final = 2
+    
+    x: t.Final
+    x = 34
+    '''
+
+    mod =  fromText(src, systemcls=systemcls)
+    assert not capsys.readouterr().out
+
+    assert mod.contents['v'].kind == model.DocumentableKind.CONSTANT
+    assert mod.contents['w'].kind == model.DocumentableKind.CONSTANT
+    assert mod.contents['x'].kind == model.DocumentableKind.CONSTANT
+    

@@ -139,9 +139,8 @@ import unicodedata
 from docutils import nodes
 from twisted.web.template import Tag
 
-from pydoctor.epydoc.markup import Field, ParseError, ParsedDocstring, ParserFunction
+from pydoctor.epydoc.markup import Field, ObjClass, ParseError, ParsedDocstring, ParserFunction
 from pydoctor.epydoc.docutils import set_node_attributes, new_document
-from pydoctor.model import Documentable
 
 ##################################################
 ## Helper functions
@@ -1297,7 +1296,7 @@ def parse_docstring(docstring: str, errors: List[ParseError]) -> ParsedDocstring
     else:
         return ParsedEpytextDocstring(None, fields)
 
-def get_parser(obj: Optional[Documentable]) -> ParserFunction:
+def get_parser(_: ObjClass | None) -> ParserFunction:
     """
     Get the L{parse_docstring} function. 
     """

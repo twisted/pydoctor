@@ -56,10 +56,9 @@ from docutils.utils import Reporter
 from docutils.parsers.rst import Directive, directives
 from docutils.transforms import Transform, frontmatter
 
-from pydoctor.epydoc.markup import Field, ParseError, ParsedDocstring, ParserFunction
+from pydoctor.epydoc.markup import Field, ObjClass, ParseError, ParsedDocstring, ParserFunction
 from pydoctor.epydoc.markup.plaintext import ParsedPlaintextDocstring
 from pydoctor.epydoc.docutils import new_document
-from pydoctor.model import Documentable
 
 CONSOLIDATED_FIELDS = {
     'parameters': 'param',
@@ -111,7 +110,7 @@ def parse_docstring(docstring: str,
 
     return ParsedRstDocstring(document, visitor.fields)
 
-def get_parser(obj:Documentable) -> ParserFunction:
+def get_parser(_: ObjClass | None) -> ParserFunction:
     """
     Get the L{parse_docstring} function. 
     """

@@ -1,24 +1,14 @@
 """PyDoctor's test suite."""
 
-import contextlib
 from logging import LogRecord
-from typing import Iterable, TYPE_CHECKING, Iterator, Optional, Sequence
-import sys
-import pytest
+from typing import Iterable, TYPE_CHECKING, Sequence
 from pathlib import Path
-
-from twisted.web.template import Tag, tags
 
 from pydoctor import epydoc2stan, model
 from pydoctor.templatewriter import IWriter, TemplateLookup
-from pydoctor.epydoc.markup import DocstringLinker
+from pydoctor.linker import NotFoundLinker
 
-if TYPE_CHECKING:
-    from twisted.web.template import Flattenable
-
-posonlyargs = pytest.mark.skipif(sys.version_info < (3, 8), reason="requires python 3.8")
-typecomment = pytest.mark.skipif(sys.version_info < (3, 8), reason="requires python 3.8")
-
+NotFoundLinker = NotFoundLinker
 
 # Because pytest 6.1 does not yet export types for fixtures, we define
 # approximations that are good enough for our test cases:
@@ -87,18 +77,4 @@ class InMemoryWriter(IWriter):
 
         for o in ob.contents.values():
             self._writeDocsFor(o)
-
-
-class NotFoundLinker(DocstringLinker):
-    """A DocstringLinker implementation that cannot find any links."""
-
-    def link_to(self, target: str, label: "Flattenable") -> Tag:
-        return tags.transparent(label)
-
-    def link_xref(self, target: str, label: "Flattenable", lineno: int) -> Tag:
-        return tags.code(label)
-    
-    @contextlib.contextmanager
-    def switch_context(self, ob: Optional[model.Documentable]) -> Iterator[None]:
-        yield
         
