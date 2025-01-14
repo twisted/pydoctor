@@ -751,13 +751,16 @@ from tokenize import COMMENT, generate_tokens, tok_name
 class Token:
     """Better token wrapper for tokenize module."""
 
-    def __init__(self, kind: int, value: Any, start: Tuple[int, int], end: Tuple[int, int],
+    def __init__(self, kind: int, 
+                 value: str, 
+                 start: Tuple[int, int], 
+                 end: Tuple[int, int],
                  source: str) -> None:
         self.kind = kind
         self.value = value
         self.start = start
         self.end = end
-        self.source = source
+        self.source = source #: Source line
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, int):
@@ -861,6 +864,7 @@ class AfterCommentParser(TokenProcessor):
         # skip lvalue (or whole of AnnAssign)
         while (current:=self.fetch_token()) and not current.match([OP, '='], NEWLINE, COMMENT):
             assert self.current
+            continue
 
         # skip rvalue (if exists)
         if self.current == [OP, '=']:
