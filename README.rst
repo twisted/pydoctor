@@ -78,6 +78,11 @@ in development
 * The first parameter of classmethods and methods (``cls`` or ``self``) is colored in gray so it's clear that these are not part of the API.
 * When pydoctor encounters an invalid signature, it shows (…) as the signature instead of the misleading zero argument signature.
 
+pydoctor 24.11.2
+^^^^^^^^^^^^^^^^
+
+* Replace deprecated usage of ``datetime.datetime.utcfromtimestamp()``
+
 pydoctor 24.11.1
 ^^^^^^^^^^^^^^^^
 
