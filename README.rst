@@ -79,6 +79,11 @@ in development
   for valid types extending ``typing.Generic`` as well as other generic classes.
 
 
+pydoctor 24.11.2
+^^^^^^^^^^^^^^^^
+
+* Replace deprecated usage of ``datetime.datetime.utcfromtimestamp()``
+
 pydoctor 24.11.1
 ^^^^^^^^^^^^^^^^
 
