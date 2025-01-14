@@ -4,7 +4,6 @@ Various bits of reusable code related to L{ast.AST} node processing.
 from __future__ import annotations
 
 import inspect
-import platform
 import re
 import sys
 from numbers import Number
