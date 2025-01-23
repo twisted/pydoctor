@@ -107,7 +107,8 @@ def source_order_func(o: model.Documentable) -> Tuple[Any, ...]:
         # last implicit orderring is the order of insertion.
 
 def _map_kind(kind: model.DocumentableKind) -> model.DocumentableKind:
-    if kind == model.DocumentableKind.PACKAGE:
+    if kind in (model.DocumentableKind.PACKAGE, 
+                model.DocumentableKind.NAMESPACE_PACKAGE):
         # packages and modules should be listed together
         return model.DocumentableKind.MODULE
     return kind

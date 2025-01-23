@@ -37,6 +37,7 @@ class FakeDocumentable:
     A fake of pydoctor.model.Documentable that provides a system and
     sourceHref attribute.
     """
+    kind = None
     system: model.System
     sourceHref = None
     filepath: str

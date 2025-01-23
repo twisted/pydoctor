@@ -1,15 +1,20 @@
+from __future__ import annotations
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Sequence
 import pytest
 
 from pydoctor import model
 
 testpackages = Path(__file__).parent / 'testpackages'
 
-def processPackage(packname: str, systemcls: Callable[[], model.System] = model.System) -> model.System:
+def processPackage(pack: str | Sequence[str], systemcls: Callable[[], model.System] = model.System) -> model.System:
     system = systemcls()
     builder = system.systemBuilder(system)
-    builder.addModule(testpackages / packname)
+    if isinstance(pack, str):
+        builder.addModule(testpackages / pack)
+    else:
+        for p in pack:
+            builder.addModule(testpackages / p)
     builder.buildModules()
     return system
 
@@ -167,3 +172,25 @@ def test_reparenting_crash(modname: str) -> None:
     assert isinstance(mod.contents[modname], model.Class)
     assert isinstance(mod.contents['reparented_func'], model.Function)
     assert isinstance(mod.contents[modname].contents['reparented_func'], model.Function)
+
+def test_namespace_packages() -> None:
+    systemcls = lambda: model.System(model.Options.from_args(
+        ['--html-viewsource-base=https://github.com/some/repo/tree/master',
+         f'--project-base-dir={testpackages / "namespaces"}']))
+
+    system = processPackage(['namespaces/project1/lvl1', 
+                             'namespaces/project2/lvl1'], systemcls)
+    
+    assert isinstance(root:=system.allobjects['lvl1'], model.Package)
+    assert root.kind is model.DocumentableKind.NAMESPACE_PACKAGE
+
+    assert isinstance(nested:=root.contents['lvl2'], model.Package)
+    assert nested.kind is model.DocumentableKind.NAMESPACE_PACKAGE
+
+    assert len(root.source_paths) == 2
+    assert len(nested.source_paths) == 2
+
+    assert root.sourcesHrefs == ['https://github.com/some/repo/tree/master/project1/lvl1', 
+                                   'https://github.com/some/repo/tree/master/project2/lvl1']
+    assert nested.sourcesHrefs == ['https://github.com/some/repo/tree/master/project1/lvl1/lvl2', 
+                                   'https://github.com/some/repo/tree/master/project2/lvl1/lvl2']

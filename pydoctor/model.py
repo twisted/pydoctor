@@ -93,6 +93,7 @@ class DocumentableKind(Enum):
 
     @note: Presentation order is derived from the enum values
     """
+    NAMESPACE_PACKAGE   = 1001
     PACKAGE             = 1000
     MODULE              = 900
     CLASS               = 800
@@ -541,6 +542,29 @@ class Module(CanContainImportsDocumentable):
 
 class Package(Module):
     kind = DocumentableKind.PACKAGE
+
+    # Support for namespace packages: 
+    def setup(self) -> None:
+        super().setup()
+        self._source_paths = [self.source_path]
+        self.sourcesHrefs = []
+    
+    @property
+    def source_paths(self) -> Sequence[Path]:
+        """
+        Might contain more than one entry if this is a namespace package.
+        """
+        return self._source_paths
+    
+    def add_source_path(self, path: Path) -> None:
+        """
+        Add a source path to this namespace package.
+        
+        @note: Only call this function for L{NAMESPACE_PACKAGE} kind of objects.
+        """
+        if self.kind is not DocumentableKind.NAMESPACE_PACKAGE:
+            raise AssertionError('a regular package can only have a single source path')
+        self._source_paths.append(path)
 
 # List of exceptions class names in the standard library, Python 3.8.10
 _STD_LIB_EXCEPTIONS = ('ArithmeticError', 'AssertionError', 'AttributeError', 
@@ -1212,48 +1236,88 @@ class System:
     #  http://divmod.org/trac/browser/trunk
     #                          ~/src/Divmod/Nevow/nevow/flat/ten.py
 
-    def setSourceHref(self, mod: _ModuleT, source_path: Path) -> None:
+    def _formatSourceHref(self, source_path: Path) -> str | None:
         if self.sourcebase is None:
-            mod.sourceHref = None
-        else:
-            # pydoctor supports generating documentation covering more than one package, 
-            # in which case it is not certain that all of the source is even viewable below a single URL.
-            # We ignore this limitation by not assigning sourceHref for now, but it would be good to add support for it.
-            projBaseDir = mod.system.options.projectbasedirectory
-            assert projBaseDir is not None
-            try:
-                relative = source_path.relative_to(projBaseDir).as_posix()
-            except ValueError:
-                # The links cannot be computed because the source path lies outside base directory.
-                pass
-            else:
-                mod.sourceHref = f'{self.sourcebase}/{relative}'
+            return None
+        projBaseDir = self.options.projectbasedirectory
+        assert projBaseDir is not None
+        try:
+            relative = source_path.relative_to(projBaseDir).as_posix()
+        except ValueError:
+            # The links cannot be computed because the source path lies outside base directory.
+            return None
+        
+        return f'{self.sourcebase}/{relative}'
+
+    def setSourceHref(self, mod: _ModuleT, source_path: Path) -> None:
+        # Note: this is used only for module, for other objects
+        # it's done in setLineNumber().
+
+        # pydoctor supports generating documentation covering more than one package, 
+        # in which case it is not certain that all of the source is even viewable below a single URL.
+        # We ignore this limitation by not assigning sourceHref for now, but it would be good to add support for it.
+        # a way to do it would be to match package names to different source bases and project base directories. 
+        # --html-viewsource-base=zope.interface:https://github.com/zopefoundation/zope.interface/tree/master
+        # --html-viewsource-base=zope.component:https://github.com/zopefoundation/zope.component/tree/master
+        # --project-base-dir=zope.interface:./zope.interface/
+        # --project-base-dir=zope.component:./zope.component/
+        # ./zope.interface/src/zope ./zope.component/src/zope
+        
+        if href:=self._formatSourceHref(source_path):
+            if mod.sourceHref is None:
+                mod.sourceHref = href
+            # Support for namespace packages: their location can be split off
+            # several distributions, needing several hrefs.
+            if mod.kind is DocumentableKind.NAMESPACE_PACKAGE:
+                assert isinstance(mod, Package)
+                mod.sourcesHrefs.append(href)
 
     @overload
-    def analyzeModule(self,
+    def addUnprocessedModule(self,
             modpath: Path,
             modname: str,
-            parentPackage: Optional[_PackageT],
+            parent_package: Optional[_PackageT],
             is_package: Literal[False] = False
             ) -> _ModuleT: ...
 
     @overload
-    def analyzeModule(self,
+    def addUnprocessedModule(self,
             modpath: Path,
             modname: str,
-            parentPackage: Optional[_PackageT],
-            is_package: Literal[True]
+            parent_package: Optional[_PackageT],
+            is_package: Literal[True], 
+            is_namespace_package: bool, 
             ) -> _PackageT: ...
 
-    def analyzeModule(self,
+    def addUnprocessedModule(self,
             modpath: Path,
             modname: str,
-            parentPackage: Optional[_PackageT] = None,
-            is_package: bool = False
+            parent_package: Optional[_PackageT] = None,
+            is_package: bool = False, 
+            is_namespace_package: bool = False,
             ) -> _ModuleT:
-        factory = self.Package if is_package else self.Module
-        mod = factory(self, modname, parentPackage, modpath)
-        self._addUnprocessedModule(mod)
+        
+        
+        add_new_module = True
+        if is_namespace_package:
+            modfullname = f'{parent_package.fullName()}.{modname}' if parent_package else modname
+            if mod := self.allobjects.get(modfullname):
+                if mod.kind is DocumentableKind.NAMESPACE_PACKAGE:
+                    # A namespace package already exist for this package name, then
+                    # simply add a new source path to it, calling setSourceHref() will
+                    # append a new ref
+                    assert isinstance(mod, Package)
+                    mod.add_source_path(modpath)
+                    add_new_module = False
+        
+        if add_new_module:
+            cls = self.Package if is_package else self.Module
+            # Create the new module
+            mod = cls(self, modname, parent_package, modpath)
+            if is_namespace_package:
+                mod.kind = DocumentableKind.NAMESPACE_PACKAGE
+            self._addUnprocessedModule(mod)
+        
         self.setSourceHref(mod, modpath)
         return mod
 
@@ -1358,15 +1422,33 @@ class System:
         
         self._addUnprocessedModule(module)
         return module
+    
+    def _validatePackagePath(self, path: Path, is_namespace_package: bool) -> None:
+        if (not is_namespace_package) and (not (path / '__init__.py').is_file()):
+            raise InvalidPackage(f"Expected a **file** named __init__.py under {path}")
 
-    def addPackage(self, package_path: Path, parentPackage: Optional[_PackageT] = None) -> None:
-        package = self.analyzeModule(
-            package_path / '__init__.py', package_path.name, parentPackage, is_package=True)
+    def addPackage(self, package_path: Path, parent_package: Optional[_PackageT] = None, 
+                   is_namespace_package: bool = False) -> None:
+        self._validatePackagePath(package_path, is_namespace_package)
+        if not is_namespace_package:
+            pkg_source_path = package_path / '__init__.py'
+        else:
+            pkg_source_path = package_path
+        
+        package = self.addUnprocessedModule(pkg_source_path, package_path.name, 
+                                     parent_package, is_package=True, 
+                                     is_namespace_package=is_namespace_package)
 
         for path in sorted(package_path.iterdir()):
             if path.is_dir():
-                if (path / '__init__.py').exists():
-                    self.addPackage(path, package)
+                is_namespace_subpackage = not (path / '__init__.py').exists()
+                if (is_namespace_subpackage and is_namespace_package) \
+                    or not is_namespace_subpackage:
+                    # A namespace package should only be nested under other nspackages
+                    # if it's nested under a regular package, then we ignore it since 
+                    # the chances are this is not part of the API. 
+                    self.addPackage(path, package, is_namespace_package)
+                    # TODO: What if we have an empty namespace package?
             elif path.name != '__init__.py' and not path.name.startswith('.'):
                 self.addModuleFromPath(path, package)
 
@@ -1380,7 +1462,7 @@ class System:
                 if self.options.introspect_c_modules:
                     self.introspectModule(path, module_name, package)
             elif suffix in importlib.machinery.SOURCE_SUFFIXES:
-                self.analyzeModule(path, module_name, package)
+                self.addUnprocessedModule(path, module_name, package)
             break
     
     def _remove(self, o: Documentable) -> None:
@@ -1449,9 +1531,11 @@ class System:
             assert head == mod.fullName()
         else:
             builder = self.defaultBuilder(self)
+            ast = None
             if mod._py_string is not None:
                 ast = builder.parseString(mod._py_string, mod)
-            else:
+            elif mod.kind is not DocumentableKind.NAMESPACE_PACKAGE:
+                # There is no AST for namespace packages.
                 assert mod.source_path is not None
                 ast = builder.parseFile(mod.source_path, mod)
             if ast:
@@ -1546,6 +1630,9 @@ def get_docstring(
             return None, source
     return None, None
 
+class InvalidPackage(Exception):
+    ...
+
 class SystemBuildingError(Exception):
     """
     Raised when there is a (handled) fatal error while adding modules to the builder.
@@ -1613,9 +1700,11 @@ class SystemBuilder(ISystemBuilder):
             parent = _p
         if path.is_dir():
             self.system.msg('addPackage', f"adding directory {path}")
-            if not (path / '__init__.py').is_file():
-                raise SystemBuildingError(f"Source directory lacks __init__.py: {path}")
-            self.system.addPackage(path, parent)
+            is_namespace_package = not (path / '__init__.py').exists()
+            try:
+                self.system.addPackage(path, parent, is_namespace_package)
+            except ValueError as e:
+                raise SystemBuildingError(str(e)) from e 
         elif path.is_file():
             self.system.msg('addModuleFromPath', f"adding module {path}")
             self.system.addModuleFromPath(path, parent)

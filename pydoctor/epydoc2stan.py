@@ -964,6 +964,7 @@ def format_kind(kind: model.DocumentableKind, plural: bool = False) -> str:
     Transform a `model.DocumentableKind` Enum value to string.
     """
     names = {
+        model.DocumentableKind.NAMESPACE_PACKAGE : 'Namespace Package',
         model.DocumentableKind.PACKAGE         : 'Package',
         model.DocumentableKind.MODULE          : 'Module',
         model.DocumentableKind.INTERFACE       : 'Interface',
