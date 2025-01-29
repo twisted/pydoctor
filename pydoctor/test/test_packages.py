@@ -223,11 +223,18 @@ def test_empty_namespace_package() -> None:
 
 def test_collision_regular_package_with_nspack(capsys: CapSys) -> None:
     
-    processPackage(['namespaces/basic', 'basic'])
+    assert (system:=processPackage(['namespaces/basic', 'basic'])).allobjects['basic'].kind is model.DocumentableKind.NAMESPACE_PACKAGE
     assert "discarding duplicate Package 'basic' because existing namespace package has the same name" in capsys.readouterr().out
+    assert list(map(repr, filter(lambda o: isinstance(o, model.Module), system.allobjects.values()))) == ["Namespace Package 'basic'", 
+                                                                                                          "Package 'basic.subpack'", 
+                                                                                                          "Module 'basic.subpack.mod'",]
 
-    processPackage(['basic', 'namespaces/basic'])
+    assert (system:=processPackage(['basic', 'namespaces/basic'])).allobjects['basic'].kind is model.DocumentableKind.NAMESPACE_PACKAGE
     assert "discarding existing Package 'basic' because Namespace Package 'basic' overrides it" in capsys.readouterr().out
+    assert list(map(repr, filter(lambda o: isinstance(o, model.Module), system.allobjects.values()))) == ["Namespace Package 'basic'", 
+                                                                                                          "Package 'basic.subpack'", 
+                                                                                                          "Module 'basic.subpack.mod'",]
+
 
 def test_prepend_package_works_with_namespace_packages() -> None:
     systemcls = lambda: model.System(model.Options.from_args(
@@ -236,6 +243,6 @@ def test_prepend_package_works_with_namespace_packages() -> None:
     system = processPackage(['namespaces/project1/lvl1', 
                              'namespaces/project2/lvl1'], systemcls)
     
-    assert list(system.allobjects) == [['some', 'some.package', 'some.package.lvl1', 'some.package.lvl1.lvl2', 
+    assert list(system.allobjects) == ['some', 'some.package', 'some.package.lvl1', 'some.package.lvl1.lvl2', 
                                         'some.package.lvl1.lvl2.sub1', 'some.package.lvl1.lvl2.sub2', 
-                                        'some.package.lvl1.lvl2.sub1.f1', 'some.package.lvl1.lvl2.sub2.f2']]
+                                        'some.package.lvl1.lvl2.sub1.f1', 'some.package.lvl1.lvl2.sub2.f2']

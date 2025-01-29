@@ -940,6 +940,11 @@ if hasattr(types, "ClassMethodDescriptorType"):
 else:
     func_types += (type(dict.__dict__["fromkeys"]), )
 
+class ModuleNotAdded(Exception):
+    def __init__(self, mod, *args):
+        super().__init__(*args)
+        self.mod = mod
+
 _default_extensions = object()
 class System:
     """A collection of related documentable objects.
@@ -1295,15 +1300,22 @@ class System:
     def _addPackageOrModule(self,
             modpath: Path,
             modname: str,
-            parent_package: Optional[_PackageT] = None,
+            parent: Optional[_PackageT] = None,
             is_package: bool = False, 
             is_namespace_package: bool = False,
             ) -> _ModuleT:
         
+        """
+        Add a single package or module from path.
+
+        @raise ModuleNotAdded: If the module has been discarded because a module under the same 
+            name already Exist.
+        """
+        
         
         add_new_module = True
         if is_namespace_package:
-            modfullname = f'{parent_package.fullName()}.{modname}' if parent_package else modname
+            modfullname = f'{parent.fullName()}.{modname}' if parent else modname
             if mod := self.allobjects.get(modfullname):
                 if mod.kind is DocumentableKind.NAMESPACE_PACKAGE:
                     # A namespace package already exist for this package name, then
@@ -1316,61 +1328,66 @@ class System:
         if add_new_module:
             cls = self.Package if is_package else self.Module
             # Create the new module
-            mod = cls(self, modname, parent_package, modpath)
+            mod = cls(self, modname, parent, modpath)
             if is_namespace_package:
                 mod.kind = DocumentableKind.NAMESPACE_PACKAGE
-            self._addUnprocessedModule(mod)
+            if not self._addUnprocessedModule(mod):
+                raise ModuleNotAdded(mod)
         
         self.setSourceHref(mod, modpath)
         return mod
 
-    def _addUnprocessedModule(self, mod: _ModuleT) -> None:
+    def _addUnprocessedModule(self, mod: _ModuleT) -> bool:
         """
         First add the new module into the unprocessed_modules list. 
         Handle eventual duplication of module names, and finally add the 
         module to the system.
+
+        @returns: Whether the module has been sucessfully added.
         """
         assert mod.state is ProcessingState.UNPROCESSED
         first = self.allobjects.get(mod.fullName())
         if first is not None:
             # At this step of processing only modules exists
             assert isinstance(first, Module)
-            self._handleDuplicateModule(first, mod)
-        else:
-            self.unprocessed_modules.append(mod)
-            self.addObject(mod)
-            self.progress(
-                "analyzeModule", len(self.allobjects),
-                None, "modules and packages discovered")        
-            self.module_count += 1
+            return self._handleDuplicateModule(first, mod)
 
-    def _handleDuplicateModule(self, first: _ModuleT, dup: _ModuleT) -> None:
+        self.unprocessed_modules.append(mod)
+        self.addObject(mod)
+        self.progress(
+            "analyzeModule", len(self.allobjects),
+            None, "modules and packages discovered")        
+        self.module_count += 1
+        return True
+
+    def _handleDuplicateModule(self, first: _ModuleT, dup: _ModuleT) -> bool:
         """
         This is called when two modules have the same name. 
 
         Current rules are the following: 
             - C-modules wins over regular python modules
             - Packages wins over modules
+            - Namespace Packages wins over regular packages
             - Else, the last added module wins
         """
         if first._is_c_module and not isinstance(dup, Package):
             # C-modules wins
             dup.report(f"discarding duplicate {str(dup)} because existing C extension has the same name", thresh=1)
-            return
+            return False
         elif isinstance(first, Package) and not isinstance(dup, Package):
             # Packages wins over module
             dup.report(f"discarding duplicate {str(dup)} because existing package has the same name", thresh=1)
-            return
+            return False
         elif first.kind is DocumentableKind.NAMESPACE_PACKAGE and dup.kind is not DocumentableKind.NAMESPACE_PACKAGE:
             # Namespace packages wins over regular package
             dup.report(f"discarding duplicate {str(dup)} because existing namespace package has the same name", thresh=1)
-            return
-        else:
-            # Else, the last added module wins
-            dup.report(f"discarding existing {str(first)} because {str(dup)} overrides it", thresh=1)
-            self._remove(first)
-            self.unprocessed_modules.remove(first)
-            self._addUnprocessedModule(dup)
+            return False
+
+        # Else, the last added module wins
+        dup.report(f"discarding existing {str(first)} because {str(dup)} overrides it", thresh=1)
+        self._remove(first)
+        self.unprocessed_modules.remove(first)
+        return self._addUnprocessedModule(dup)
 
     def _introspectThing(self, thing: object, parent: CanContainImportsDocumentable, parentMod: _ModuleT) -> None:
         for k, v in thing.__dict__.items():
@@ -1443,10 +1460,14 @@ class System:
         else:
             pkg_source_path = package_path
         
-        package = self._addPackageOrModule(pkg_source_path, package_path.name, 
-                                     parent, is_package=True, 
-                                     is_namespace_package=is_namespace_package)
-
+        try:
+            package = self._addPackageOrModule(pkg_source_path, package_path.name, 
+                                        parent, is_package=True, 
+                                        is_namespace_package=is_namespace_package)
+        except ModuleNotAdded:
+            # a message is logged in case of clashing modules.
+            return 
+        
         for path in sorted(package_path.iterdir()):
             if path.is_dir():
                 is_namespace_subpackage = not (path / '__init__.py').exists()
@@ -1470,7 +1491,10 @@ class System:
                 if self.options.introspect_c_modules:
                     self.introspectModule(path, module_name, parent)
             elif suffix in importlib.machinery.SOURCE_SUFFIXES:
-                self._addPackageOrModule(path, module_name, parent)
+                try:
+                    self._addPackageOrModule(path, module_name, parent)
+                except ModuleNotAdded: 
+                    pass
             break
     
     def _remove(self, o: Documentable) -> None:
