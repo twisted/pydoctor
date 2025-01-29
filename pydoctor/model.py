@@ -593,8 +593,8 @@ class ClassHierarchyFinalizer:
     Encapsulate code related to class hierarchies post-processing.
     """
 
-    @staticmethod
-    def _init_finalbaseobjects(o: Class, path:list[Class] | None = None) -> None:
+    @classmethod
+    def _init_finalbaseobjects(cls, o: Class, path:list[Class] | None = None) -> None:
         """
         The base objects are computed in two passes, first the ast visitor sets C{_initialbaseobjects}, 
         then we set C{_finalbaseobjects} from this function which should be called during post-processing.
@@ -628,7 +628,7 @@ class ClassHierarchyFinalizer:
                         finalbases.append(o._initialbases[i])
                 if base:
                     # Recurse on super classes
-                    ClassHierarchyFinalizer._init_finalbaseobjects(base, path.copy())
+                    cls._init_finalbaseobjects(base, path.copy())
             o._finalbaseobjects = finalbaseobjects
             o._finalbases = finalbases
 
