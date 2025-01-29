@@ -941,9 +941,7 @@ else:
     func_types += (type(dict.__dict__["fromkeys"]), )
 
 class ModuleNotAdded(Exception):
-    def __init__(self, mod, *args):
-        super().__init__(*args)
-        self.mod = mod
+    ...
 
 _default_extensions = object()
 class System:
@@ -1332,7 +1330,7 @@ class System:
             if is_namespace_package:
                 mod.kind = DocumentableKind.NAMESPACE_PACKAGE
             if not self._addUnprocessedModule(mod):
-                raise ModuleNotAdded(mod)
+                raise ModuleNotAdded
         
         self.setSourceHref(mod, modpath)
         return mod
