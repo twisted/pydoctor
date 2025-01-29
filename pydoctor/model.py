@@ -543,6 +543,9 @@ class Module(CanContainImportsDocumentable):
 class Package(Module):
     kind = DocumentableKind.PACKAGE
 
+    def __repr__(self) -> str:
+        return f"{self.kind.name.lower().replace('_', ' ').title()} {self.fullName()!r}"
+
     # Support for namespace packages: 
     def setup(self) -> None:
         super().setup()
@@ -1273,7 +1276,7 @@ class System:
                 mod.sourcesHrefs.append(href)
 
     @overload
-    def addUnprocessedModule(self,
+    def _addPackageOrModule(self,
             modpath: Path,
             modname: str,
             parent_package: Optional[_PackageT],
@@ -1281,7 +1284,7 @@ class System:
             ) -> _ModuleT: ...
 
     @overload
-    def addUnprocessedModule(self,
+    def _addPackageOrModule(self,
             modpath: Path,
             modname: str,
             parent_package: Optional[_PackageT],
@@ -1289,7 +1292,7 @@ class System:
             is_namespace_package: bool, 
             ) -> _PackageT: ...
 
-    def addUnprocessedModule(self,
+    def _addPackageOrModule(self,
             modpath: Path,
             modname: str,
             parent_package: Optional[_PackageT] = None,
@@ -1350,16 +1353,21 @@ class System:
             - Packages wins over modules
             - Else, the last added module wins
         """
-        dup.report(f"duplicate {str(first)}", thresh=1)
-
         if first._is_c_module and not isinstance(dup, Package):
             # C-modules wins
+            dup.report(f"discarding duplicate {str(dup)} because existing C extension has the same name", thresh=1)
             return
         elif isinstance(first, Package) and not isinstance(dup, Package):
-            # Packages wins
+            # Packages wins over module
+            dup.report(f"discarding duplicate {str(dup)} because existing package has the same name", thresh=1)
+            return
+        elif first.kind is DocumentableKind.NAMESPACE_PACKAGE and dup.kind is not DocumentableKind.NAMESPACE_PACKAGE:
+            # Namespace packages wins over regular package
+            dup.report(f"discarding duplicate {str(dup)} because existing namespace package has the same name", thresh=1)
             return
         else:
             # Else, the last added module wins
+            dup.report(f"discarding existing {str(first)} because {str(dup)} overrides it", thresh=1)
             self._remove(first)
             self.unprocessed_modules.remove(first)
             self._addUnprocessedModule(dup)
@@ -1425,9 +1433,9 @@ class System:
     
     def _validatePackagePath(self, path: Path, is_namespace_package: bool) -> None:
         if (not is_namespace_package) and (not (path / '__init__.py').is_file()):
-            raise InvalidPackage(f"Expected a **file** named __init__.py under {path}")
+            raise SystemBuildingError(f"Expected a **file** named __init__.py under {path}")
 
-    def addPackage(self, package_path: Path, parent_package: Optional[_PackageT] = None, 
+    def addPackage(self, package_path: Path, parent: Optional[_PackageT] = None, 
                    is_namespace_package: bool = False) -> None:
         self._validatePackagePath(package_path, is_namespace_package)
         if not is_namespace_package:
@@ -1435,8 +1443,8 @@ class System:
         else:
             pkg_source_path = package_path
         
-        package = self.addUnprocessedModule(pkg_source_path, package_path.name, 
-                                     parent_package, is_package=True, 
+        package = self._addPackageOrModule(pkg_source_path, package_path.name, 
+                                     parent, is_package=True, 
                                      is_namespace_package=is_namespace_package)
 
         for path in sorted(package_path.iterdir()):
@@ -1447,12 +1455,12 @@ class System:
                     # A namespace package should only be nested under other nspackages
                     # if it's nested under a regular package, then we ignore it since 
                     # the chances are this is not part of the API. 
-                    self.addPackage(path, package, is_namespace_package)
-                    # TODO: What if we have an empty namespace package?
+                    self.addPackage(path, package, is_namespace_subpackage)
+                    # What if we have an empty namespace package? Then nohting special happens
             elif path.name != '__init__.py' and not path.name.startswith('.'):
-                self.addModuleFromPath(path, package)
+                self.addModule(path, package)
 
-    def addModuleFromPath(self, path: Path, package: Optional[_PackageT]) -> None:
+    def addModule(self, path: Path, parent: Optional[_PackageT]) -> None:
         name = path.name
         for suffix in importlib.machinery.all_suffixes():
             if not name.endswith(suffix):
@@ -1460,9 +1468,9 @@ class System:
             module_name = name[:-len(suffix)]
             if suffix in importlib.machinery.EXTENSION_SUFFIXES:
                 if self.options.introspect_c_modules:
-                    self.introspectModule(path, module_name, package)
+                    self.introspectModule(path, module_name, parent)
             elif suffix in importlib.machinery.SOURCE_SUFFIXES:
-                self.addUnprocessedModule(path, module_name, package)
+                self._addPackageOrModule(path, module_name, parent)
             break
     
     def _remove(self, o: Documentable) -> None:
@@ -1630,8 +1638,6 @@ def get_docstring(
             return None, source
     return None, None
 
-class InvalidPackage(Exception):
-    ...
 
 class SystemBuildingError(Exception):
     """
@@ -1706,8 +1712,8 @@ class SystemBuilder(ISystemBuilder):
             except ValueError as e:
                 raise SystemBuildingError(str(e)) from e 
         elif path.is_file():
-            self.system.msg('addModuleFromPath', f"adding module {path}")
-            self.system.addModuleFromPath(path, parent)
+            self.system.msg('addModule', f"adding module {path}")
+            self.system.addModule(path, parent)
         elif path.exists():
             raise SystemBuildingError(f"Source path is neither file nor directory: {path}")
         else:
