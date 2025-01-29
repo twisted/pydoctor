@@ -10,7 +10,7 @@ from inspect import Parameter, Signature
 from pathlib import Path
 from typing import (
     Any, Callable, Collection, Dict, Iterable, Iterator, List, Mapping, Optional, Sequence, Tuple,
-    Type, TypeVar, Union, Set, cast, overload, TYPE_CHECKING,
+    Type, TypeVar, Union, Set, cast
 )
 
 from pydoctor import epydoc2stan, model, node2stan, extensions, linker
@@ -19,8 +19,6 @@ from pydoctor.astutils import (is_none_literal, is_typing_annotation, is_using_a
                                is__name__equals__main__, unstring_annotation, upgrade_annotation, iterassign, extract_docstring_linenum, infer_type, get_parents,
                                get_docstring_node, get_assign_docstring_node, unparse, NodeVisitor, Parentage, Str)
 
-if TYPE_CHECKING:
-    from typing import Literal
 
 def parseFile(path: Path) -> ast.Module:
     """Parse the contents of a Python source file."""
@@ -1232,10 +1230,6 @@ class ASTBuilder:
         assert isinstance(self.current, cls)
         self.pop(self.current)
 
-    @overload
-    def push(self, obj: model.Module, lineno: Literal[0]) -> None:...
-    @overload
-    def push(self, obj: model.Class | model.Inheritable, lineno: int) -> None:...
     def push(self, obj: model.Documentable, lineno: int) -> None:
         """
         Enter a documentable.
