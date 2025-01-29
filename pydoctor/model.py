@@ -1448,13 +1448,9 @@ class System:
         self._addUnprocessedModule(module)
         return module
     
-    def _validatePackagePath(self, path: Path, is_namespace_package: bool) -> None:
-        if (not is_namespace_package) and (not (path / '__init__.py').is_file()):
-            raise SystemBuildingError(f"Expected a **file** named __init__.py under {path}")
-
     def addPackage(self, package_path: Path, parent: Optional[_PackageT] = None, 
                    is_namespace_package: bool = False) -> None:
-        self._validatePackagePath(package_path, is_namespace_package)
+
         if not is_namespace_package:
             pkg_source_path = package_path / '__init__.py'
         else:
@@ -1470,7 +1466,7 @@ class System:
         
         for path in sorted(package_path.iterdir()):
             if path.is_dir():
-                is_namespace_subpackage = not (path / '__init__.py').exists()
+                is_namespace_subpackage = not (path / '__init__.py').is_file()
                 if (is_namespace_subpackage and is_namespace_package) \
                     or not is_namespace_subpackage:
                     # A namespace package should only be nested under other nspackages
@@ -1730,11 +1726,9 @@ class SystemBuilder(ISystemBuilder):
             parent = _p
         if path.is_dir():
             self.system.msg('addPackage', f"adding directory {path}")
-            is_namespace_package = not (path / '__init__.py').exists()
-            try:
-                self.system.addPackage(path, parent, is_namespace_package)
-            except ValueError as e:
-                raise SystemBuildingError(str(e)) from e 
+            __init__file = path / '__init__.py'
+            is_namespace_package = not __init__file.is_file()
+            self.system.addPackage(path, parent, is_namespace_package)
         elif path.is_file():
             self.system.msg('addModule', f"adding module {path}")
             self.system.addModule(path, parent)
