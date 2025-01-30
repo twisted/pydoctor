@@ -789,7 +789,7 @@ class _OldSchoolNamespacePackageVis(ast.NodeVisitor):
     def visit_AnnAssign(self, node: ast.AnnAssign) -> None:
         setattr(node, 'targets', [node.target])
         try:
-            self.visit_Assign(node)
+            self.visit_Assign(node) # type:ignore[arg-type]
         finally:
             delattr(node, 'targets')
 
