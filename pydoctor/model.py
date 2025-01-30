@@ -544,7 +544,7 @@ class Package(Module):
     kind = DocumentableKind.PACKAGE
 
     def __repr__(self) -> str:
-        return f"{self.kind.name.lower().replace('_', ' ').title()} {self.fullName()!r}"
+        return f"{self.kind.name.replace('_', ' ').title()} {self.fullName()!r}"
 
     # Support for namespace packages: 
     def setup(self) -> None:
