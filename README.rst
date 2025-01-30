@@ -74,6 +74,9 @@ in development
 ^^^^^^^^^^^^^^
 
 * Drop support for Python 3.8.
+* Add support for `Namespace Packages <https://packaging.python.org/en/latest/guides/packaging-namespace-packages>`_: 
+  - Support implicit native namespace packages (PEP 420).
+  - Support legacy namespace packages as well (with `declare_namespace()` or `extend_path()`).
 
 pydoctor 24.11.2
 ^^^^^^^^^^^^^^^^
