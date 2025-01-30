@@ -378,7 +378,7 @@ def source_tag(href: str) -> Tag:
 class ModulePage(CommonPage):
     ob: model.Module
 
-    def source_links(self) -> Tag | None:
+    def source_links(self) -> Flattenable | None:
         if sourceHref:=util.srclink(self.ob):
             return source_tag(sourceHref)
         return None
@@ -411,14 +411,14 @@ class PackagePage(ModulePage):
         else:
             return ()
     
-    def source_links(self) -> Tag | None:
+    def source_links(self) -> Flattenable | None:
         # supports multiple source links, since there could be multiple source paths
         # for namespace packages
         links = util.package_srclinks(self.ob)
         links_max_index = len(links) - 1
         if links_max_index == -1:
             return
-        r = []
+        r: list[Flattenable] = []
         for i, href in enumerate(links):
             r.append(source_tag(href))
             if 0 < i < links_max_index:

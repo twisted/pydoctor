@@ -1291,6 +1291,8 @@ class System:
         """
         Add a single package or module from path.
 
+        @returns: The added module or package. In the case of namespace packages, 
+            the existing package will be returned if it's found.
         @raise ModuleNotAdded: If the module has been discarded because a module under the same 
             name already Exist.
         """
@@ -1300,6 +1302,7 @@ class System:
         if is_namespace_package:
             modfullname = f'{parent.fullName()}.{modname}' if parent else modname
             if mod := self.allobjects.get(modfullname):
+                assert isinstance(mod, Module)
                 if mod.kind is DocumentableKind.NAMESPACE_PACKAGE:
                     # A namespace package already exist for this package name, then
                     # simply add a new source path to it, calling setSourceHref() will
