@@ -421,7 +421,7 @@ class PackagePage(ModulePage):
         r: list[Flattenable] = []
         for i, href in enumerate(links):
             r.append(source_tag(href))
-            if 0 < i < links_max_index:
+            if 0 <= i < links_max_index:
                 r.append(', ')
         return tags.transparent(*r)
 
