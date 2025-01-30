@@ -1620,6 +1620,15 @@ def defaultPostProcess(system:'System') -> None:
     for attrib in system.objectsOfType(Attribute):
        _inherits_instance_variable_kind(attrib)
 
+    from pydoctor import epydoc2stan
+    for ns in system.objectsOfType(Package):
+        if ns.kind is not DocumentableKind.NAMESPACE_PACKAGE:
+            continue
+        # This overrides the namespace package docstring, 
+        # but since they are not supposed to include
+        # any documentation this will not be an issue.
+        ns.docstring = epydoc2stan.get_namespace_docstring(ns)
+
 def _inherits_instance_variable_kind(attr: Attribute) -> None:
     """
     If any of the inherited members of a class variable is an instance variable,
