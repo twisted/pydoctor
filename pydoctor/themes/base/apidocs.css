@@ -263,12 +263,12 @@ tr.fieldStart{
 /* Add border to separate parameter rows */
 .fieldTable tr:not(:last-of-type):has(.fieldArgContainer):has(+ tr:not(.fieldStart)) {
     /* This is a way to add a margin in between table rows */
-    border-bottom: 4px solid;
+    border-bottom: 5px solid;
     border-color: transparent;
 }
 
 .fieldTable tr:has(.fieldArgContainer):nth-child(odd) {
-    background-color: rgba(215, 215, 215, 0.18);
+    background-color: rgba(215, 215, 215, 0.15);
 }
 
 /* Argument name + type column table  */
