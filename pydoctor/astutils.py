@@ -737,3 +737,65 @@ class op_util:
 
 del _op_data, _index, _precedence_data, _symbol_data, _deprecated
 # This was part of the astor library for Python AST manipulation.
+
+
+class _OldSchoolNamespacePackageVis(ast.NodeVisitor):
+
+    is_namespace_package: bool = False
+
+    def visit_Module(self, node):
+        try:
+            self.generic_visit(node)
+        except StopIteration:
+            pass
+    
+    def visit_skip(self, node: ast.AST) -> None:
+        pass
+    
+    visit_FunctionDef = visit_AsyncFunctionDef = visit_ClassDef = visit_skip
+    visit_AugAssign = visit_AnnAssign = visit_skip
+    visit_Return = visit_Raise = visit_Assert = visit_skip
+    visit_Pass = visit_Break = visit_Continue = visit_Delete = visit_skip
+    visit_Global = visit_Nonlocal = visit_skip
+    visit_Import = visit_ImportFrom = visit_skip
+
+    def visit_Expr(self, node: ast.Expr):
+        # Search for ast.Expr nodes that contains a call to a name or attribute 
+        # access of "declare_namespace".
+        if not isinstance(val:=node.value, ast.Call):
+            return
+        if not isinstance(func:=val.func, (ast.Name, ast.Attribute)):
+            return
+        if isinstance(func, ast.Name) and func.id == 'declare_namespace' or \
+           isinstance(func, ast.Attribute) and func.attr == 'declare_namespace':
+            self.is_namespace_package = True
+            raise StopIteration
+        
+    def visit_Assign(self, node: ast.Assign):
+        # search for assignments nodes that contains a call in the 
+        # rhs to name or attribute acess of "extend_path".
+
+        if not any(isinstance(t, ast.Name) and t.id == '__path__' for t in node.targets):
+            return
+        if not isinstance(val:=node.value, ast.Call):
+            return
+        if not isinstance(func:=val.func, (ast.Name, ast.Attribute)):
+            return
+        if isinstance(func, ast.Name) and func.id == 'extend_path' or \
+           isinstance(func, ast.Attribute) and func.attr == 'extend_path':
+            self.is_namespace_package = True
+            raise StopIteration
+       
+def is_old_school_namespace_package(tree: ast.Module) -> bool:
+    """
+    Returns True if the module is a pre PEP 420 namespace package::
+    
+        from pkgutil import extend_path
+        __path__ = extend_path(__path__, __name__)
+        # OR
+        import pkg_resources
+        pkg_resources.declare_namespace(__name__)
+    """
+    v =_OldSchoolNamespacePackageVis()
+    v.visit(tree)
+    return v.is_namespace_package

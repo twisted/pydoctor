@@ -1206,7 +1206,21 @@ class ASTBuilder:
         self.currentMod: Optional[model.Module] = None # current module, set when visiting ast.Module.
         
         self._stack: List[model.Documentable] = []
-        self.ast_cache: Dict[Path, Optional[ast.Module]] = {}
+
+    
+    def parseFile(self, path: Path, ctx: model.Module) -> Optional[ast.Module]:
+        try:
+            return self.system._ast_parser.parseFile(path)
+        except Exception as e:
+            ctx.report(f"cannot parse file, {e}")
+            return None
+    
+    def parseString(self, string:str, ctx: model.Module) -> Optional[ast.Module]:
+        try:
+            return self.system._ast_parser.parseString(string)
+        except Exception:
+            ctx.report("cannot parse string")
+            return None
 
     def _push(self, 
               cls: Type[DocumentableT], 
@@ -1312,28 +1326,39 @@ class ASTBuilder:
         vis.extensions.attach_visitor(vis)
         vis.walkabout(mod_ast)
 
-    def parseFile(self, path: Path, ctx: model.Module) -> Optional[ast.Module]:
-        try:
-            return self.ast_cache[path]
-        except KeyError:
-            mod: Optional[ast.Module] = None
-            try:
-                mod = parseFile(path)
-            except (SyntaxError, ValueError) as e:
-                ctx.report(f"cannot parse file, {e}")
+class SyntaxTreeParser:
 
-            self.ast_cache[path] = mod
-            return mod
+    def __init__(self) -> None:
+        self.ast_cache: Dict[Path, ast.Module | Exception] = {}
+
+    def parseFile(self, path: Path) -> ast.Module:
+        try:
+            r = self.ast_cache[path]
+        except KeyError:
+            tree: ast.Module | Exception
+            try:
+                tree = parseFile(path)
+                return tree
+            except Exception as e:
+                tree = e
+                raise
+            finally:
+                self.ast_cache[path] = tree
+        else:
+            if isinstance(r, Exception):
+                raise r
+            return r
     
-    def parseString(self, py_string:str, ctx: model.Module) -> Optional[ast.Module]:
+    def parseString(self, string:str) -> ast.Module:
         mod = None
         try:
-            mod = _parse(py_string)
-        except (SyntaxError, ValueError):
-            ctx.report("cannot parse string")
+            mod = _parse(string)
+        except (SyntaxError, ValueError) as e:
+            raise SyntaxError("cannot parse string") from e
         return mod
 
 model.System.defaultBuilder = ASTBuilder
+model.System.syntaxTreeParser = SyntaxTreeParser
 
 def findModuleLevelAssign(mod_ast: ast.Module) -> Iterator[Tuple[str, ast.Assign]]:
     """

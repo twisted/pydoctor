@@ -205,6 +205,34 @@ def test_namespace_packages() -> None:
     assert nested.source_hrefs == ['https://github.com/some/repo/tree/master/project1/lvl1/lvl2', 
                                    'https://github.com/some/repo/tree/master/project2/lvl1/lvl2']
 
+def test_namespace_packages_oldschool() -> None:
+    systemcls = lambda: model.System(model.Options.from_args(
+        ['--html-viewsource-base=https://github.com/some/repo/tree/master',
+         f'--project-base-dir={testpackages / "namespaces"}']))
+
+    system = processPackage(['namespaces/project1-oldschool/lvl1', 
+                             'namespaces/project2-oldschool/lvl1'], systemcls)
+    
+    assert list(system.allobjects) == ['lvl1', 'lvl1.lvl2', 'lvl1.lvl2.sub1', 'lvl1.lvl2.sub2', 
+                                       'lvl1.lvl2.sub1.f1', 'lvl1.lvl2.sub2.f2']
+    
+    assert isinstance(root:=system.allobjects['lvl1'], model.Package)
+    assert root.kind is model.DocumentableKind.NAMESPACE_PACKAGE
+
+    assert isinstance(nested:=root.contents['lvl2'], model.Package)
+    assert nested.kind is model.DocumentableKind.NAMESPACE_PACKAGE
+
+    assert len(root.source_paths) == 2
+    assert len(nested.source_paths) == 2
+
+    assert system.allobjects['lvl1.lvl2.sub1'].kind == model.DocumentableKind.PACKAGE
+    assert system.allobjects['lvl1.lvl2.sub2'].kind == model.DocumentableKind.PACKAGE
+
+    assert root.source_hrefs == ['https://github.com/some/repo/tree/master/project1-oldschool/lvl1', 
+                                   'https://github.com/some/repo/tree/master/project2-oldschool/lvl1']
+    assert nested.source_hrefs == ['https://github.com/some/repo/tree/master/project1-oldschool/lvl1/lvl2', 
+                                   'https://github.com/some/repo/tree/master/project2-oldschool/lvl1/lvl2']
+
 def test_namespace_packages_nested_under_regular_pack_ignored() -> None:
     system = processPackage(['namespaces/project_regular_pack_contains_ns'],)
     

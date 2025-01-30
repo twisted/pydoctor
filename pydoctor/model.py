@@ -34,7 +34,7 @@ from pydoctor.sphinx import CacheT, SphinxInventory
 
 if TYPE_CHECKING:
     from typing_extensions import Literal, Protocol
-    from pydoctor.astbuilder import ASTBuilder, DocumentableT
+    from pydoctor.astbuilder import ASTBuilder, DocumentableT, SyntaxTreeParser
 else:
     Literal = {True: bool, False: bool}
     ASTBuilder = Protocol = object
@@ -935,11 +935,12 @@ class System:
     package.
     """
 
+    systemBuilder: Type[ISystemBuilder]
+
     # Not assigned here for circularity reasons:
-    #defaultBuilder = astbuilder.ASTBuilder
     defaultBuilder: Type[ASTBuilder]
-    systemBuilder: Type['ISystemBuilder']
-    options: 'Options'
+    syntaxTreeParser: Type[SyntaxTreeParser]
+
     extensions: List[str] = cast('List[str]', _default_extensions)
     """
     List of extensions.
@@ -972,7 +973,7 @@ class System:
         """
 
         if options:
-            self.options = options
+            self.options: Options = options
         else:
             self.options = Options.defaults()
             self.options.verbosity = 3
@@ -997,6 +998,7 @@ class System:
         self.processing_modules: List[str] = []
         self.buildtime = datetime.datetime.now()
         self.intersphinx = SphinxInventory(logger=self.msg)
+        self._ast_parser = self.syntaxTreeParser()
 
         # Since privacy handling now uses fnmatch, we cache results so we don't re-run matches all the time.
         # We use the fullName of the objets as the dict key in order to bind a full name to a privacy, not an object to a privacy.
@@ -1447,14 +1449,16 @@ class System:
         
         for path in sorted(package_path.iterdir()):
             if path.is_dir():
-                is_namespace_subpackage = not (path / '__init__.py').is_file()
-                if (is_namespace_subpackage and is_namespace_package) \
-                    or not is_namespace_subpackage:
+                if is_namespace_package:
                     # A namespace package should only be nested under other nspackages
                     # if it's nested under a regular package, then we ignore it since 
                     # the chances are this is not part of the API. 
-                    self.addPackage(path, package, is_namespace_subpackage)
                     # What if we have an empty namespace package? Then nohting special happens
+                    self.addPackage(path, package, (self._is_pep420_namespace_package(path) or 
+                                                    self._is_oldschool_namespace_package(path)))
+                elif not self._is_pep420_namespace_package(path):
+                    self.addPackage(path, package)
+
             elif path.name != '__init__.py' and not path.name.startswith('.'):
                 self.addModule(path, package)
 
@@ -1473,6 +1477,17 @@ class System:
                 except ModuleNotAdded: 
                     pass
             break
+
+    def _is_pep420_namespace_package(self, path: Path) -> bool:
+        return not path.joinpath('__init__.py').is_file()
+    
+    def _is_oldschool_namespace_package(self, path: Path) -> bool:
+        try:
+            tree = self._ast_parser.parseFile(
+                path.joinpath('__init__.py'))
+        except Exception:
+            return False
+        return astutils.is_old_school_namespace_package(tree)
     
     def _remove(self, o: Documentable) -> None:
         del self.allobjects[o.fullName()]
@@ -1708,9 +1723,9 @@ class SystemBuilder(ISystemBuilder):
             parent = _p
         if path.is_dir():
             self.system.msg('addPackage', f"adding directory {path}")
-            __init__file = path / '__init__.py'
-            is_namespace_package = not __init__file.is_file()
-            self.system.addPackage(path, parent, is_namespace_package)
+            self.system.addPackage(path, parent, 
+                                   self.system._is_pep420_namespace_package(path) or 
+                                   self.system._is_oldschool_namespace_package(path))
         elif path.is_file():
             self.system.msg('addModule', f"adding module {path}")
             self.system.addModule(path, parent)
