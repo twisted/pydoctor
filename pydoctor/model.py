@@ -1267,8 +1267,8 @@ class System:
             modpath: Path,
             modname: str,
             parent: Optional[_PackageT],
-            is_package: Literal[False],
-            is_namespace_package: Literal[False],
+            is_package: Literal[False] = False,
+            is_namespace_package: Literal[False] = False,
             ) -> _ModuleT: ...
 
     @overload
@@ -1277,7 +1277,7 @@ class System:
             modname: str,
             parent: Optional[_PackageT],
             is_package: Literal[True], 
-            is_namespace_package: bool, 
+            is_namespace_package: bool = False, 
             ) -> _PackageT: ...
 
     def _addPackageOrModule(self,
@@ -1296,22 +1296,16 @@ class System:
         @raise ModuleNotAdded: If the module has been discarded because a module under the same 
             name already Exist.
         """
-        
-        
-        add_new_module = True
-        if is_namespace_package:
-            modfullname = f'{parent.fullName()}.{modname}' if parent else modname
-            if mod := self.allobjects.get(modfullname):
-                assert isinstance(mod, Module)
-                if mod.kind is DocumentableKind.NAMESPACE_PACKAGE:
-                    # A namespace package already exist for this package name, then
-                    # simply add a new source path to it, calling setSourceHref() will
-                    # append a new ref
-                    assert isinstance(mod, Package)
-                    mod.source_paths.append(modpath)
-                    add_new_module = False
-        
-        if add_new_module:
+        if is_namespace_package and isinstance(maybe_mod := self.allobjects.get(
+            f'{parent.fullName()}.{modname}' if parent else modname), Package) and \
+            maybe_mod.kind is DocumentableKind.NAMESPACE_PACKAGE:
+            # A namespace package already exist for this package name, then
+            # simply add a new source path to it, calling setSourceHref() will
+            # append a new ref
+            mod = maybe_mod
+            mod.source_paths.append(modpath)
+
+        else:
             cls = self.Package if is_package else self.Module
             # Create the new module
             mod = cls(self, modname, parent, modpath)
