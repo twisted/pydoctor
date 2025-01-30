@@ -148,9 +148,12 @@ def format_desc_list(label: str, descs: Sequence[FieldDesc]) -> list[Tag]:
 
     @arg label: Section "mini heading"
     @arg descs: L{FieldDesc}s
-    @returns: A table tag or None if no C{descs} is provided.
+    @returns: A list containing a single table tag or an empty list if no C{descs} are provided.
     """
-    def _yield():
+    if not descs: 
+        return []
+    
+    def rows() -> Iterator[Tag]:
         # <label>
         row = tags.tr(class_="fieldStart")
         row(tags.td(class_="fieldName", colspan="2")(label))
@@ -165,10 +168,7 @@ def format_desc_list(label: str, descs: Sequence[FieldDesc]) -> list[Tag]:
             row(d.format())
             yield row
     
-    if not descs: 
-        return []
-    contents = list(_yield())
-    return [tags.table(class_='fieldTable')(contents)]
+    return [tags.table(class_='fieldTable')(*rows())]
 
 @attr.s(auto_attribs=True)
 class Field:
@@ -220,9 +220,12 @@ def format_field_list(singular: str, plural: str, fields: Sequence[Field]) -> li
         | <desc ... >                        |
         +------------------------------------+
 
-    @returns: A table tag or None.
+    @returns: A list containing a single table tag or an empty list if no C{fields} are provided.
     """
-    def _yield():
+    if not fields: 
+        return []
+    
+    def rows() -> Iterator[Tag]:
         label = singular if len(fields) == 1 else plural
         row = tags.tr(class_="fieldStart")
         row(tags.td(class_="fieldName", colspan="2")(label))
@@ -232,11 +235,8 @@ def format_field_list(singular: str, plural: str, fields: Sequence[Field]) -> li
             row = tags.tr()
             row(tags.td(colspan="2")(field.format()))
             yield row
-    
-    if not fields: 
-        return []
-    contents = list(_yield())
-    return [tags.table(class_='fieldTable')(contents)]
+
+    return [tags.table(class_='fieldTable')(*rows())]
 
 class VariableArgument(str):
     """
