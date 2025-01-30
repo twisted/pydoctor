@@ -743,7 +743,7 @@ class _OldSchoolNamespacePackageVis(ast.NodeVisitor):
 
     is_namespace_package: bool = False
 
-    def visit_Module(self, node):
+    def visit_Module(self, node: ast.Module) -> None:
         try:
             self.generic_visit(node)
         except StopIteration:
@@ -753,13 +753,13 @@ class _OldSchoolNamespacePackageVis(ast.NodeVisitor):
         pass
     
     visit_FunctionDef = visit_AsyncFunctionDef = visit_ClassDef = visit_skip
-    visit_AugAssign = visit_AnnAssign = visit_skip
+    visit_AugAssign = visit_skip
     visit_Return = visit_Raise = visit_Assert = visit_skip
     visit_Pass = visit_Break = visit_Continue = visit_Delete = visit_skip
     visit_Global = visit_Nonlocal = visit_skip
     visit_Import = visit_ImportFrom = visit_skip
 
-    def visit_Expr(self, node: ast.Expr):
+    def visit_Expr(self, node: ast.Expr) -> None:
         # Search for ast.Expr nodes that contains a call to a name or attribute 
         # access of "declare_namespace".
         if not isinstance(val:=node.value, ast.Call):
@@ -771,7 +771,7 @@ class _OldSchoolNamespacePackageVis(ast.NodeVisitor):
             self.is_namespace_package = True
             raise StopIteration
         
-    def visit_Assign(self, node: ast.Assign):
+    def visit_Assign(self, node: ast.Assign) -> None:
         # search for assignments nodes that contains a call in the 
         # rhs to name or attribute acess of "extend_path".
 
@@ -785,6 +785,14 @@ class _OldSchoolNamespacePackageVis(ast.NodeVisitor):
            isinstance(func, ast.Attribute) and func.attr == 'extend_path':
             self.is_namespace_package = True
             raise StopIteration
+    
+    def visit_AnnAssign(self, node: ast.AnnAssign) -> None:
+        setattr(node, 'targets', [node.target])
+        try:
+            self.visit_Assign(node)
+        finally:
+            delattr(node, 'targets')
+
        
 def is_old_school_namespace_package(tree: ast.Module) -> bool:
     """
