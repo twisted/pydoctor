@@ -29,7 +29,13 @@ def srclink(o: model.Documentable) -> Optional[str]:
     """
     Get object source code URL, i.e. hosted on github. 
     """
-    return o.sourceHref
+    return o.source_href
+
+def package_srclinks(o: model.Package) -> list[str]:
+    """
+    Get (namespace) package source code URLs, i.e. hosted on github. 
+    """
+    return o.source_hrefs
 
 def css_class(o: model.Documentable) -> str:
     """
