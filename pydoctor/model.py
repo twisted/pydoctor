@@ -1487,12 +1487,7 @@ class System:
                 path.joinpath('__init__.py'))
         except Exception:
             return False
-        try:
-            return astutils.is_old_school_namespace_package(tree)
-        except astutils.NamespacePackageUnsupported:
-            self.msg('parsing', f'{path}: The manner you declare this namespace package is not supported, '
-                     'pydoctor might give unexpected result')
-            return True
+        return astutils.is_old_school_namespace_package(tree)
 
     
     def _remove(self, o: Documentable) -> None:

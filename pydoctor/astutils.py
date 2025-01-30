@@ -774,7 +774,7 @@ class _OldSchoolNamespacePackageVis(ast.NodeVisitor):
             except ValueError:
                 raise StopIteration
             if not isinstance(arg1, ast.Name) or arg1.id != '__name__':
-                raise NamespacePackageUnsupported
+                raise StopIteration
             
             self.is_namespace_package = True
             raise StopIteration
@@ -797,10 +797,10 @@ class _OldSchoolNamespacePackageVis(ast.NodeVisitor):
                 arg1, arg2 = (*val.args, *(k.value for k in val.keywords))
             except ValueError:
                 raise StopIteration
-            if not isinstance(arg1, ast.Name) or arg1.id != '__path__':
-                raise NamespacePackageUnsupported
-            if not isinstance(arg2, ast.Name) or arg1.id != '__name__':
-                raise NamespacePackageUnsupported
+            if (not isinstance(arg1, ast.Name)) or arg1.id != '__path__':
+                raise StopIteration
+            if (not isinstance(arg2, ast.Name)) or arg2.id != '__name__':
+                raise StopIteration
 
             self.is_namespace_package = True
             raise StopIteration
@@ -811,9 +811,6 @@ class _OldSchoolNamespacePackageVis(ast.NodeVisitor):
             self.visit_Assign(node) # type:ignore[arg-type]
         finally:
             delattr(node, 'targets')
-
-class NamespacePackageUnsupported(Exception):
-    ...
        
 def is_old_school_namespace_package(tree: ast.Module) -> bool:
     """
@@ -830,7 +827,7 @@ def is_old_school_namespace_package(tree: ast.Module) -> bool:
         import pkg_resources
         pkg_resources.declare_namespace(name=__name__)
 
-    The following code will raise an NamespacePackageUnsupported::
+    The following code will return False, tho::
 
         from pkgutil import extend_path
         __path__ = extend_path(__path__, __name__ + '.impl')
