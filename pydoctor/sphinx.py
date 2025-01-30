@@ -13,7 +13,7 @@ from typing import (
     Optional, Tuple
 )
 
-import appdirs
+import platformdirs
 import attr
 import requests
 from cachecontrol import CacheControl
@@ -46,8 +46,7 @@ class SphinxInventory:
             project_name: Optional[str] = None
             ):
         """
-        @param project_name: Dummy argument to stay compatible with
-                             L{twisted.python._pydoctor}.
+        @param project_name: Dummy argument.
         """
         self._links: Dict[str, Tuple[str, str]] = {}
         self._logger = logger
@@ -278,7 +277,7 @@ class SphinxInventoryWriter:
         return f'{full_name} py:{domainname} -1 {url} {display}\n'
 
 
-USER_INTERSPHINX_CACHE = appdirs.user_cache_dir("pydoctor")
+USER_INTERSPHINX_CACHE = platformdirs.user_cache_dir("pydoctor")
 
 
 @attr.s(auto_attribs=True)

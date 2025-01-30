@@ -35,7 +35,6 @@ __docformat__ = 'epytext en'
 
 from typing import Callable, ContextManager, List, Optional, Sequence, Iterator, TYPE_CHECKING
 import abc
-import sys
 import re
 from importlib import import_module
 from inspect import getmodulename
@@ -49,15 +48,12 @@ from pydoctor.epydoc.docutils import set_node_attributes, build_table_of_content
 
 # In newer Python versions, use importlib.resources from the standard library.
 # On older versions, a compatibility package must be installed from PyPI.
-if sys.version_info < (3, 9):
-    import importlib_resources
-else:
-    import importlib.resources as importlib_resources
+import importlib.resources as importlib_resources
 
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable
     from pydoctor.model import Documentable
-    from typing import Protocol
+    from typing import Protocol, Literal, TypeAlias
 else:
     Protocol = object
 
@@ -70,6 +66,11 @@ else:
 # 3. Docstring Linker
 # 4. ParseError exceptions
 #
+
+ObjClass: TypeAlias = "Literal['module', 'class', 'function', 'attribute']"
+"""
+A simpler version of L{DocumentableKind} used for docstring parsing only.
+"""
 
 ParserFunction = Callable[[str, List['ParseError']], 'ParsedDocstring']
 
@@ -84,7 +85,7 @@ def get_supported_docformats() -> Iterator[str]:
         else:
             yield moduleName
 
-def get_parser_by_name(docformat: str, obj: Optional['Documentable'] = None) -> ParserFunction:
+def get_parser_by_name(docformat: str, objclass: ObjClass | None = None) -> ParserFunction:
     """
     Get the C{parse_docstring(str, List[ParseError], bool) -> ParsedDocstring} function based on a parser name. 
 
@@ -92,8 +93,10 @@ def get_parser_by_name(docformat: str, obj: Optional['Documentable'] = None) -> 
         or it could be that the docformat name do not match any know L{pydoctor.epydoc.markup} submodules.
     """
     mod = import_module(f'pydoctor.epydoc.markup.{docformat}')
-    # We can safely ignore this mypy warning, since we can be sure the 'get_parser' function exist and is "correct".
-    return mod.get_parser(obj) # type:ignore[no-any-return]
+    # We can be sure the 'get_parser' function exist and is "correct" 
+    # since the docformat is validated beforehand.
+    get_parser: Callable[[ObjClass | None], ParserFunction] = mod.get_parser
+    return get_parser(objclass)
 
 def processtypes(parse:ParserFunction) -> ParserFunction:
     """
@@ -430,14 +433,14 @@ class SummaryExtractor(nodes.NodeVisitor):
 
     _SENTENCE_RE_SPLIT = re.compile(r'( *[\.\?!][\'"\)\]]* *)')
 
-    def visit_paragraph(self, node: nodes.Node) -> None:
+    def visit_paragraph(self, node: nodes.paragraph) -> None:
         if self.summary is not None:
             # found a paragraph after the first one
             self.other_docs = True
             raise nodes.StopTraversal()
 
         summary_doc = new_document('summary')
-        summary_pieces = []
+        summary_pieces: list[nodes.Node] = []
 
         # Extract the first sentences from the first paragraph until maximum number 
         # of characters is reach or until the end of the paragraph.

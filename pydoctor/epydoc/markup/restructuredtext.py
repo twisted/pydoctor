@@ -41,22 +41,24 @@ the list.
 from __future__ import annotations
 __docformat__ = 'epytext en'
 
-from typing import Iterable, List, Optional, Sequence, Set, cast
+from typing import TYPE_CHECKING, Any, Iterable, List, Optional, Sequence, Set, cast
+if TYPE_CHECKING:
+    from typing import TypeAlias
+    
 import re
 from docutils import nodes
 
 from docutils.core import publish_string
 from docutils.writers import Writer
-from docutils.parsers.rst.directives.admonitions import BaseAdmonition # type: ignore[import-untyped]
+from docutils.parsers.rst.directives.admonitions import BaseAdmonition
 from docutils.readers.standalone import Reader as StandaloneReader
 from docutils.utils import Reporter
 from docutils.parsers.rst import Directive, directives
 from docutils.transforms import Transform, frontmatter
 
-from pydoctor.epydoc.markup import Field, ParseError, ParsedDocstring, ParserFunction
+from pydoctor.epydoc.markup import Field, ObjClass, ParseError, ParsedDocstring, ParserFunction
 from pydoctor.epydoc.markup.plaintext import ParsedPlaintextDocstring
 from pydoctor.epydoc.docutils import new_document
-from pydoctor.model import Documentable
 
 #: A dictionary whose keys are the "consolidated fields" that are
 #: recognized by epydoc; and whose values are the corresponding epydoc
@@ -111,7 +113,7 @@ def parse_docstring(docstring: str,
 
     return ParsedRstDocstring(document, visitor.fields)
 
-def get_parser(obj:Documentable) -> ParserFunction:
+def get_parser(_: ObjClass | None) -> ParserFunction:
     """
     Get the L{parse_docstring} function. 
     """
@@ -123,7 +125,7 @@ class OptimizedReporter(Reporter):
     isn't very fast about processing its own debug messages.
     """
 
-    def debug(self, *args: object, **kwargs: object) -> None:
+    def debug(self, *args: Any, **kwargs: Any) -> None: # type:ignore[override]
         pass
 
 class ParsedRstDocstring(ParsedDocstring):
@@ -190,7 +192,12 @@ class _EpydocReader(StandaloneReader):
 
         self._errors.append(ParseError(msg, linenum, is_fatal))
 
-class _DocumentPseudoWriter(Writer):
+if TYPE_CHECKING:
+    _StrWriter: TypeAlias = Writer[str]
+else:
+    _StrWriter = Writer
+
+class _DocumentPseudoWriter(_StrWriter):
     """
     A pseudo-writer for the docutils framework, that can be used to
     access the document itself.  The output of C{_DocumentPseudoWriter}
@@ -227,10 +234,10 @@ class _SplitFieldsTranslator(nodes.NodeVisitor):
         self.fields: List[Field] = []
         self._newfields: Set[str] = set()
 
-    def visit_document(self, node: nodes.Node) -> None:
+    def visit_document(self, node: nodes.document) -> None:
         self.fields = []
 
-    def visit_field(self, node: nodes.Node) -> None:
+    def visit_field(self, node: nodes.field) -> None:
         # Remove the field from the tree.
         node.parent.remove(node)
 
@@ -247,6 +254,7 @@ class _SplitFieldsTranslator(nodes.NodeVisitor):
 
         # Handle special fields:
         fbody = node[1]
+        assert isinstance(fbody, nodes.Element)
         if arg is None:
             for (list_tag, entry_tag) in CONSOLIDATED_FIELDS.items():
                 if tagname.lower() == list_tag:
@@ -263,7 +271,7 @@ class _SplitFieldsTranslator(nodes.NodeVisitor):
                         if tagname.lower() not in self._newfields:
                             newfield = Field('newfield', tagname.lower(),
                                              ParsedPlaintextDocstring(tagname),
-                                             node.line - 1)
+                                             (node.line or 1) - 1)
                             self.fields.append(newfield)
                             self._newfields.add(tagname.lower())
 
@@ -273,37 +281,40 @@ class _SplitFieldsTranslator(nodes.NodeVisitor):
             tagname: str,
             arg: Optional[str],
             fbody: Iterable[nodes.Node],
-            lineno: int
+            lineno: int | None
             ) -> None:
         field_doc = self.document.copy()
         for child in fbody: 
             field_doc.append(child)
         field_parsed_doc = ParsedRstDocstring(field_doc, ())
-        self.fields.append(Field(tagname, arg, field_parsed_doc, lineno - 1))
+        self.fields.append(Field(tagname, arg, field_parsed_doc, (lineno or 1) - 1))
 
-    def visit_field_list(self, node: nodes.Node) -> None:
+    def visit_field_list(self, node: nodes.field_list) -> None:
         # Remove the field list from the tree.  The visitor will still walk
         # over the node's children.
         node.parent.remove(node)
 
-    def handle_consolidated_field(self, body: Sequence[nodes.Node], tagname: str) -> None:
+    def handle_consolidated_field(self, body: nodes.Element, tagname: str) -> None:
         """
         Attempt to handle a consolidated section.
         """
         if len(body) != 1:
             raise ValueError('does not contain a single list.')
-        elif body[0].tagname == 'bullet_list':
-            self.handle_consolidated_bullet_list(body[0], tagname)
-        elif (body[0].tagname == 'definition_list' and
+        if not isinstance(b0:=body[0], nodes.Element):
+            # unfornutate assertion required for typing purposes
+            raise ValueError('does not contain a list.')
+        if isinstance(b0, nodes.bullet_list):
+            self.handle_consolidated_bullet_list(b0, tagname)
+        elif (isinstance(b0, nodes.definition_list) and
               tagname in CONSOLIDATED_DEFLIST_FIELDS):
-            self.handle_consolidated_definition_list(body[0], tagname)
+            self.handle_consolidated_definition_list(b0, tagname)
         elif tagname in CONSOLIDATED_DEFLIST_FIELDS:
             raise ValueError('does not contain a bulleted list or '
                              'definition list.')
         else:
             raise ValueError('does not contain a bulleted list.')
 
-    def handle_consolidated_bullet_list(self, items: Iterable[nodes.Node], tagname: str) -> None:
+    def handle_consolidated_bullet_list(self, items: nodes.bullet_list, tagname: str) -> None:
         # Check the contents of the list.  In particular, each list
         # item should have the form:
         #   - `arg`: description...
@@ -314,29 +325,30 @@ class _SplitFieldsTranslator(nodes.NodeVisitor):
                      "description.")
         for item in items:
             n += 1
-            if item.tagname != 'list_item' or len(item) == 0:
+            if not isinstance(item, nodes.list_item) or len(item) == 0:
                 raise ValueError('bad bulleted list (bad child %d).' % n)
-            if item[0].tagname != 'paragraph':
-                if item[0].tagname == 'definition_list':
+            if not isinstance(i0:=item[0], nodes.paragraph):
+                if isinstance(i0, nodes.definition_list):
                     raise ValueError(('list item %d contains a definition '+
                                       'list (it\'s probably indented '+
                                       'wrong).') % n)
                 else:
                     raise ValueError(_BAD_ITEM % n)
-            if len(item[0]) == 0:
+            if len(i0) == 0:
                 raise ValueError(_BAD_ITEM % n)
-            if item[0][0].tagname != 'title_reference':
+            if not isinstance(i0[0], nodes.title_reference):
                 raise ValueError(_BAD_ITEM % n)
 
         # Everything looks good; convert to multiple fields.
         for item in items:
-            # Extract the arg
-            arg = item[0][0].astext()
+            assert isinstance(item, nodes.list_item) # for typing
+            # Extract the arg, item[0][0] is safe since we checked eariler for malformated list.
+            arg = item[0][0].astext() # type: ignore
 
             # Extract the field body, and remove the arg
-            fbody = item[:]
+            fbody = cast('list[nodes.Element]', item[:])
             fbody[0] = fbody[0].copy()
-            fbody[0][:] = item[0][1:]
+            fbody[0][:] = cast(nodes.paragraph, item[0])[1:]
 
             # Remove the separating ":", if present
             if (len(fbody[0]) > 0 and
@@ -350,7 +362,7 @@ class _SplitFieldsTranslator(nodes.NodeVisitor):
             # Wrap the field body, and add a new field
             self._add_field(tagname, arg, fbody, fbody[0].line)
 
-    def handle_consolidated_definition_list(self, items: Iterable[nodes.Node], tagname: str) -> None:
+    def handle_consolidated_definition_list(self, items: nodes.definition_list, tagname: str) -> None:
         # Check the list contents.
         n = 0
         _BAD_ITEM = ("item %d is not well formed.  Each item's term must "
@@ -359,29 +371,31 @@ class _SplitFieldsTranslator(nodes.NodeVisitor):
                      "a type description.")
         for item in items:
             n += 1
-            if (item.tagname != 'definition_list_item' or len(item) < 2 or
-                item[-1].tagname != 'definition'):
+            if (not isinstance(item, nodes.definition_list_item) or len(item) < 2 or
+                not isinstance(item[-1], nodes.definition) or 
+                not isinstance(i0:=item[0], nodes.Element)):
                 raise ValueError('bad definition list (bad child %d).' % n)
             if len(item) > 3:
                 raise ValueError(_BAD_ITEM % n)
-            if not ((item[0][0].tagname == 'title_reference') or
+            if not ((isinstance(i0[0], nodes.title_reference)) or
                     (self.ALLOW_UNMARKED_ARG_IN_CONSOLIDATED_FIELD and
-                     isinstance(item[0][0], nodes.Text))):
+                     isinstance(i0[0], nodes.Text))):
                 raise ValueError(_BAD_ITEM % n)
-            for child in item[0][1:]:
+            for child in i0[1:]:
                 if child.astext() != '':
                     raise ValueError(_BAD_ITEM % n)
 
         # Extract it.
         for item in items:
+            assert isinstance(item, nodes.definition_list_item) # for typing
             # The basic field.
-            arg = item[0][0].astext()
+            arg = cast(nodes.Element, item[0])[0].astext()
             lineno = item[0].line
-            fbody = item[-1]
+            fbody = cast(nodes.definition, item[-1])
             self._add_field(tagname, arg, fbody, lineno)
             # If there's a classifier, treat it as a type.
             if len(item) == 3:
-                type_descr = item[1]
+                type_descr = cast(nodes.Element, item[1])
                 self._add_field('type', arg, type_descr, lineno)
 
     def unknown_visit(self, node: nodes.Node) -> None:

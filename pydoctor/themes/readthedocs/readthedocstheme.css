@@ -11,12 +11,36 @@ body {
 }
 
 .container-fluid {
-    max-width: 960px;
+    max-width: 1030px;
+}
+
+body > footer {
+    margin-top: 0px!important;
+    max-width: 1030px;
+    margin-left: 300px!important;
+}
+
+@media only screen and (max-width: 1850px) {
+    .container-fluid {
+        max-width: 980px;
+    }
+    body > footer {
+        max-width: 980px;
+    }
+}
+
+/* For laptop displays */
+@media only screen and (max-width: 1750px) {
+    .container-fluid {
+        max-width: 880px;
+    }
+    body > footer {
+        max-width: 880px;
+    }
 }
 
 body > nav {
     background-color: rgb(52, 49, 49);
-    color: rgb(155, 155, 155);
     left: 0px;
     height: 100%;
     position: fixed;
@@ -31,18 +55,11 @@ body > nav::-webkit-scrollbar{
     width: 0;
 }
 
-body > div, body > footer {
+body > .container-fluid, body > footer {
     margin-left: 300px!important;
     padding: 0 40px 0 40px;
     background-color: rgb(252, 252, 252)!important;
     width: calc(100% - 380px)!important;
-}
-
-body > footer {
-    /* border-top: 1px solid rgb(210, 220, 216); */
-    margin-top: 0px!important;
-    max-width: 960px;
-    margin-left: 300px!important;
 }
 
 body > footer > hr {
@@ -59,7 +76,6 @@ body > footer > hr {
     box-shadow: none;
     margin-top: 0;
     padding: 5px 0 5px 0;
-    position: relative;
 }
 
 /* xref stlyles */
@@ -667,7 +683,7 @@ nav.sidebar > div:nth-child(1) li li .tocChildrenToggle:checked ~ .expandableCon
         width: auto!important;
     }
     
-    body > div, body > footer {
+    body > .container-fluid, body > footer {
         margin-left: 0!important;
         width: auto!important;
         padding: 5px 15px 5px 15px;
@@ -697,7 +713,7 @@ nav.sidebar > div:nth-child(1) li li .tocChildrenToggle:checked ~ .expandableCon
     
 }
 
-#search-help-button{
+#apidocs-help-button{
     background-color: transparent!important;
 }
 

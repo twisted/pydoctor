@@ -89,12 +89,12 @@ def test_html_empty_module() -> None:
     mod = fromText('''
     """C{thing}"""
     ''', modname='module')
-    assert docstring2html(mod) == '<div>\n<p>\n<tt class="rst-docutils literal">thing</tt>\n</p>\n</div>'
+    assert docstring2html(mod) == '<div>\n<p>\n<tt class="rst-docutils rst-literal">thing</tt>\n</p>\n</div>'
 
     mod = fromText('''
     """My C{thing}."""
     ''', modname='module')
-    assert docstring2html(mod) == '<div>\n<p>My <tt class="rst-docutils literal">thing</tt>.</p>\n</div>'
+    assert docstring2html(mod) == '<div>\n<p>My <tt class="rst-docutils rst-literal">thing</tt>.</p>\n</div>'
 
     mod = fromText('''
     """
@@ -423,7 +423,7 @@ def test_func_arg_not_inherited(capsys: CapSys) -> None:
     class Sub(Base):
         def __init__(self):
             super().__init__(1)
-    ''')
+    ''', modname='test')
     epydoc2stan.format_docstring(mod.contents['Base'].contents['__init__'])
     assert capsys.readouterr().out == ''
     epydoc2stan.format_docstring(mod.contents['Sub'].contents['__init__'])
@@ -487,7 +487,7 @@ def test_constructor_param_on_class(capsys: CapSys) -> None:
         """
         def __init__(self, p):
             pass
-    ''')
+    ''', modname='test')
     html = ''.join(docstring2html(mod.contents['C']).splitlines())
     assert '<td class="fieldArgDesc">Constructor parameter.</td>' in html
     # Non-existing parameters should still end up in the output, because:
@@ -496,7 +496,7 @@ def test_constructor_param_on_class(capsys: CapSys) -> None:
     #   an existing parameter but the name in the @param field has a typo
     assert '<td class="fieldArgDesc">Not a constructor parameter.</td>' in html
     captured = capsys.readouterr().out
-    assert captured == '<test>:5: Documented parameter "q" does not exist\n'
+    assert captured == 'test:5: Documented parameter "q" does not exist\n'
 
 
 def test_func_raise_linked() -> None:
@@ -566,7 +566,7 @@ def test_func_starargs(capsys: CapSys) -> None:
         """
         def __init__(*args: int, **kwargs) -> None:
             ...
-    ''', modname='<great>')
+    ''', modname='great')
 
     mod_epy_no_star = fromText('''
     class f:
@@ -579,7 +579,7 @@ def test_func_starargs(capsys: CapSys) -> None:
         """
         def __init__(*args: int, **kwargs) -> None:
             ...
-    ''', modname='<good>')
+    ''', modname='good')
 
     mod_rst_star = fromText(r'''
     __docformat__='restructuredtext'
@@ -593,7 +593,7 @@ def test_func_starargs(capsys: CapSys) -> None:
         """
         def __init__(*args: int, **kwargs) -> None:
             ...
-    ''', modname='<great>')
+    ''', modname='great')
 
     mod_rst_no_star = fromText('''
     __docformat__='restructuredtext'
@@ -607,7 +607,7 @@ def test_func_starargs(capsys: CapSys) -> None:
         """
         def __init__(*args: int, **kwargs) -> None:
             ...
-    ''', modname='<great>')
+    ''', modname='great')
 
     mod_epy_star_fmt = docstring2html(mod_epy_star.contents['f'])
     mod_epy_no_star_fmt = docstring2html(mod_epy_no_star.contents['f'])
@@ -2428,4 +2428,36 @@ def test_regression_not_found_linenumbers(capsys: CapSys) -> None:
     docstring2html(mod.contents['Settings'])
     captured = capsys.readouterr().out
     assert captured == '<test>:15: Cannot find link target for "TypeError"\n'
+
+def test_does_not_loose_type_linenumber(capsys: CapSys) -> None:
+    # exmaple from numpy/distutils/ccompiler_opt.py
+    src = '''
+    class C:
+        """
+        Some docs bla
+        bla
+        bla
+        bla
+
+        @ivar one: trash
+        @type cc_noopt: L{bool}
+        @ivar cc_noopt: docs
+        """
+        def __init__(self):
+            self.cc_noopt = True
+            """
+            docs again
+            """
+    '''
+
+    system = model.System(model.Options.from_args('-q'))
+    mod =  fromText(src, system=system)
+    assert mod.contents['C'].contents['cc_noopt'].docstring == 'docs again'
+    
+    from pydoctor.test.test_templatewriter import getHTMLOf 
+    # we use this function as a shortcut to trigger
+    # the link not found warnings.
+    getHTMLOf(mod.contents['C'])
+    assert capsys.readouterr().out == ('<test>:16: Existing docstring at line 10 is overriden\n'
+                                       '<test>:10: Cannot find link target for "bool"\n')
 

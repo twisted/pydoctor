@@ -73,7 +73,12 @@ class IWriter(Protocol):
 
     def writeIndividualFiles(self, obs: Iterable[Documentable]) -> None:
         """
-        Called last.
+        Called third.
+        """
+    
+    def writeLinks(self, system: System) -> None:
+        """
+        Called after writeIndividualFiles when option --html-subject is not used.
         """
 
 class Template(abc.ABC):

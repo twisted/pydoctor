@@ -4,12 +4,9 @@ L{pydoctor.epydoc.markup.numpy} and L{pydoctor.epydoc.markup.google}.
 """
 from __future__ import annotations
 
-from typing import List, Optional, Type
-
-from pydoctor.epydoc.markup import ParsedDocstring, ParseError, processtypes
+from pydoctor.epydoc.markup import ObjClass, ParsedDocstring, ParseError, processtypes
 from pydoctor.epydoc.markup import restructuredtext
 from pydoctor.napoleon.docstring import GoogleDocstring, NumpyDocstring
-from pydoctor.model import Attribute, Documentable
 
 
 class NapoelonDocstringParser:
@@ -24,14 +21,14 @@ class NapoelonDocstringParser:
     will be parsed differently.
     """
 
-    def __init__(self, obj: Optional[Documentable] = None):
+    def __init__(self, objclass: ObjClass | None = None):
         """
-        @param obj: Documentable object we're parsing the docstring for.
+        @param objclass: Class of the documentable object we're parsing the docstring for.
         """
-        self.obj = obj
+        self.objclass = objclass
 
     def parse_google_docstring(
-        self, docstring: str, errors: List[ParseError]
+        self, docstring: str, errors: list[ParseError]
     ) -> ParsedDocstring:
         """
         Parse the given docstring, which is formatted as Google style docstring.
@@ -45,7 +42,7 @@ class NapoelonDocstringParser:
             docstring, errors, GoogleDocstring, )
 
     def parse_numpy_docstring(
-        self, docstring: str, errors: List[ParseError]
+        self, docstring: str, errors: list[ParseError]
     ) -> ParsedDocstring:
         """
         Parse the given docstring, which is formatted as NumPy style docstring.
@@ -61,21 +58,20 @@ class NapoelonDocstringParser:
     def _parse_docstring(
         self,
         docstring: str,
-        errors: List[ParseError],
-        docstring_cls: Type[GoogleDocstring],
+        errors: list[ParseError],
+        docstring_cls: type[GoogleDocstring],
     ) -> ParsedDocstring:
 
         docstring_obj = docstring_cls(
-            docstring, is_attribute=isinstance(self.obj, Attribute)
+            docstring, 
+            what=self.objclass,
         )
 
-        parsed_doc = self._parse_docstring_obj(docstring_obj, errors)
-
-        return parsed_doc
+        return self._parse_docstring_obj(docstring_obj, errors)
 
     @staticmethod
     def _parse_docstring_obj(
-        docstring_obj: GoogleDocstring, errors: List[ParseError]
+        docstring_obj: GoogleDocstring, errors: list[ParseError]
     ) -> ParsedDocstring:
         """
         Helper method to parse L{GoogleDocstring} or L{NumpyDocstring} objects.

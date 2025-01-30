@@ -93,6 +93,7 @@ def test_page_contains_infos():
         - nav and links to modules, classes, names
         - js script source
         - pydoctor github link in the footer
+        - canonical link
     """
 
     infos = (f'<meta name="generator" content="pydoctor {__version__}"', 
@@ -101,7 +102,8 @@ def test_page_contains_infos():
               '<a href="classIndex.html"',
               '<a href="nameIndex.html"',
               '<script src="pydoctor.js" type="text/javascript"></script>',
-              '<a href="https://github.com/twisted/pydoctor/">pydoctor</a>',)
+              '<a href="https://github.com/twisted/pydoctor/">pydoctor</a>',
+              '<link rel="canonical" href="https://pydoctor.readthedocs.io/en/latest/api/pydoctor.driver.html"',)
 
     with open(BASE_DIR / 'api' / 'pydoctor.driver.html', 'r', encoding='utf-8') as stream:
         page = stream.read()
@@ -117,6 +119,7 @@ def test_custom_template_contains_infos():
         - pydoctor github link in the footer
         - the custom header
         - link to teh extra.css
+        - canonical link
     """
 
     infos = (f'<meta name="generator" content="pydoctor {__version__}"', 
@@ -126,7 +129,8 @@ def test_custom_template_contains_infos():
               '<a href="nameIndex.html"',
               '<a href="https://github.com/twisted/pydoctor/">pydoctor</a>',
               '<img src="https://twistedmatrix.com/trac/chrome/common/trac_banner.png" alt="Twisted" />',
-              '<link rel="stylesheet" type="text/css" href="extra.css" />',)
+              '<link rel="stylesheet" type="text/css" href="extra.css" />',
+              '<link rel="canonical" href="https://pydoctor.readthedocs.io/en/latest/custom_template_demo/index.html"',)
 
     with open(BASE_DIR / 'custom_template_demo' / 'index.html', 'r', encoding='utf-8') as stream:
         page = stream.read()
@@ -185,14 +189,15 @@ def test_lunr_index() -> None:
             ['pydoctor.model.Class', 
              'pydoctor.factory.Factory.Class',
              'pydoctor.model.DocumentableKind.CLASS',
-             'pydoctor.model.System.Class'])
+             'pydoctor.model.System.Class', 
+             ])
         
         to_stan_results = [
                     'pydoctor.epydoc.markup.ParsedDocstring.to_stan', 
                     'pydoctor.epydoc.markup.plaintext.ParsedPlaintextDocstring.to_stan',
                     'pydoctor.epydoc.markup._types.ParsedTypeDocstring.to_stan',
                     'pydoctor.epydoc.markup._pyval_repr.ColorizedPyvalRepr.to_stan',
-                    'pydoctor.epydoc2stan.ParsedStanOnly.to_stan'
+                    'pydoctor.epydoc2stan.ParsedStanOnly.to_stan',
                 ]
         test_search('to_stan*', to_stan_results, order_is_important=False)
         test_search('to_stan', to_stan_results, order_is_important=False)
@@ -203,7 +208,7 @@ def test_lunr_index() -> None:
                     'pydoctor.epydoc.markup._types.ParsedTypeDocstring.to_node',
                     'pydoctor.epydoc.markup.restructuredtext.ParsedRstDocstring.to_node',
                     'pydoctor.epydoc.markup.epytext.ParsedEpytextDocstring.to_node',
-                    'pydoctor.epydoc2stan.ParsedStanOnly.to_node'
+                    'pydoctor.epydoc2stan.ParsedStanOnly.to_node',
                 ]
         test_search('to_node*', to_node_results, order_is_important=False)
         test_search('to_node', to_node_results, order_is_important=False)
@@ -246,7 +251,7 @@ def test_missing_subclasses():
         'pydoctor.epydoc.markup.epytext.ParsedEpytextDocstring', 
         'pydoctor.epydoc.markup.plaintext.ParsedPlaintextDocstring', 
         'pydoctor.epydoc.markup.restructuredtext.ParsedRstDocstring', 
-        'pydoctor.epydoc2stan.ParsedStanOnly')
+        'pydoctor.epydoc2stan.ParsedStanOnly', )
 
     with open(BASE_DIR / 'api' / 'pydoctor.epydoc.markup.ParsedDocstring.html', 'r', encoding='utf-8') as stream:
         page = stream.read()

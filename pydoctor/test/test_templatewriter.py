@@ -1,9 +1,8 @@
 from io import BytesIO
 import re
-from typing import Callable, Union, Any, cast, Type, TYPE_CHECKING
+from typing import Callable, Union, cast, Type, TYPE_CHECKING
 import pytest
 import warnings
-import sys
 import tempfile
 import os
 from pathlib import Path, PurePath
@@ -24,19 +23,12 @@ from pydoctor.themes import get_themes
 
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable
-
     # Newer APIs from importlib_resources should arrive to stdlib importlib.resources in Python 3.9.
-    if sys.version_info >= (3, 9):
-        from importlib.abc import Traversable
-    else:
-        Traversable = Any
+    from importlib.abc import Traversable
 else:
     Traversable = object
 
-if sys.version_info < (3, 9):
-    import importlib_resources
-else:
-    import importlib.resources as importlib_resources
+import importlib.resources as importlib_resources
 
 template_dir = importlib_resources.files("pydoctor.themes") / "base"
 
@@ -139,6 +131,7 @@ def test_basic_package(tmp_path: Path) -> None:
     root, = system.rootobjects
     w._writeDocsFor(root)
     w.writeSummaryPages(system)
+    w.writeLinks(system)
     for ob in system.allobjects.values():
         url = ob.url
         if '#' in url:
@@ -910,3 +903,39 @@ def test_class_hierarchy_links_top_level_names() -> None:
     index = flatten(ClassIndexPage(mod.system, TemplateLookup(template_dir)))
     assert 'href="https://docs.python.org/3/library/socket.html#socket.socket"' in index
 
+def test_canonical_links() -> None:
+    src = '''
+    var = True
+    class Cls:
+        foo = False
+    '''
+    mod = fromText(src, modname='t', system=model.System(model.Options.from_args(
+        ['--html-base-url=https://example.org/t/docs']
+    )))
+    html1 = getHTMLOf(mod)
+    html2 = getHTMLOf(mod.contents['Cls'])
+
+    assert '<link rel="canonical" href="https://example.org/t/docs/index.html"' in html1
+    assert '<link rel="canonical" href="https://example.org/t/docs/t.Cls.html"' in html2
+
+def test_canonical_links_two_root_modules() -> None:
+    src = '''
+    var = True
+    class Cls:
+        foo = False
+    '''
+    mod = fromText(src, modname='t', system=model.System(model.Options.from_args(
+        ['--html-base-url=https://example.org/t/docs']
+    )))
+    mod2 = fromText(src, modname='t2', system=mod.system)
+    html1 = getHTMLOf(mod)
+    html2 = getHTMLOf(mod.contents['Cls'])
+
+    assert '<link rel="canonical" href="https://example.org/t/docs/t.html"' in html1
+    assert '<link rel="canonical" href="https://example.org/t/docs/t.Cls.html"' in html2
+
+    html3 = getHTMLOf(mod2)
+    html4 = getHTMLOf(mod2.contents['Cls'])
+
+    assert '<link rel="canonical" href="https://example.org/t/docs/t2.html"' in html3
+    assert '<link rel="canonical" href="https://example.org/t/docs/t2.Cls.html"' in html4

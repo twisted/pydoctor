@@ -131,8 +131,11 @@ class _EpydocLinker(DocstringLinker):
         """
         return self.obj.system.intersphinx.getLink(name)
 
-    def link_to(self, identifier: str, label: "Flattenable") -> Tag:
-        fullID = self.obj.expandName(identifier)
+    def link_to(self, identifier: str, label: "Flattenable", *, is_annotation: bool = False) -> Tag:
+        if is_annotation:
+            fullID = self.obj.expandAnnotationName(identifier)
+        else:
+            fullID = self.obj.expandName(identifier)
 
         try:
             target = self.obj.system.find_object(fullID)
@@ -277,8 +280,7 @@ class _AnnotationLinker(DocstringLinker):
         self._obj = obj
         self._module = obj.module
         self._scope = obj.parent or obj
-        self._module_linker = self._module.docstring_linker
-        self._scope_linker = self._scope.docstring_linker
+        self._scope_linker = _EpydocLinker(self._scope)
     
     @property
     def obj(self) -> 'model.Documentable':
@@ -291,8 +293,7 @@ class _AnnotationLinker(DocstringLinker):
                 return self._module_linker.link_to(target, label)
             elif self._scope.isNameDefined(target):
                 return self._scope_linker.link_to(target, label)
-            else:
-                return self._module_linker.link_to(target, label)
+            return self._module_linker.link_to(target, label)
     
     def link_xref(self, target: str, label: "Flattenable", lineno: int) -> Tag:
         with self.switch_context(self._obj):
@@ -300,6 +301,18 @@ class _AnnotationLinker(DocstringLinker):
 
     @contextlib.contextmanager
     def switch_context(self, ob:Optional['model.Documentable']) -> Iterator[None]:
-        with self._module_linker.switch_context(ob):
-            with self._scope_linker.switch_context(ob):
-                yield
+        with self._scope_linker.switch_context(ob):
+            yield
+
+class NotFoundLinker(DocstringLinker):
+    """A DocstringLinker implementation that cannot find any links."""
+
+    def link_to(self, target: str, label: "Flattenable") -> Tag:
+        return tags.transparent(label)
+
+    def link_xref(self, target: str, label: "Flattenable", lineno: int) -> Tag:
+        return tags.code(label)
+    
+    @contextlib.contextmanager
+    def switch_context(self, ob: Optional[model.Documentable]) -> Iterator[None]:
+        yield

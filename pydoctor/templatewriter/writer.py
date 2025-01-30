@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import itertools
 from pathlib import Path
+import shutil
 from typing import IO, Iterable, Type, TYPE_CHECKING
 
 from pydoctor import model
@@ -97,18 +98,24 @@ class TemplateWriter(IWriter):
         T = time.time()
         search.write_lunr_index(self.build_directory, system=system)
         system.msg('html', "took %fs"%(time.time() - T), wantsnl=False)
-
+    
+    def writeLinks(self, system: model.System) -> None:
         if len(system.root_names) == 1:
             # If there is just a single root module it is written to index.html to produce nicer URLs.
-            # To not break old links we also create a symlink from the full module name to the index.html
+            # To not break old links we also create a link from the full module name to the index.html
             # file. This is also good for consistency: every module is accessible by <full module name>.html
             root_module_path = (self.build_directory / (list(system.root_names)[0] + '.html'))
+            root_module_path.unlink(missing_ok=True) # introduced in Python 3.8
+            
             try:
-                root_module_path.unlink()
-                # not using missing_ok=True because that was only added in Python 3.8 and we still support Python 3.6
-            except FileNotFoundError:
-                pass
-            root_module_path.symlink_to('index.html')
+                if system.options.use_hardlinks:
+                    # The use wants only harlinks, so simulate an OSError 
+                    # to jump directly to the hardlink part.
+                    raise OSError()
+                root_module_path.symlink_to('index.html')
+            except (OSError, NotImplementedError): # symlink is not implemented for windows on pypy :/ 
+                hardlink_path = (self.build_directory / 'index.html')
+                shutil.copy(hardlink_path, root_module_path)
 
     def _writeDocsFor(self, ob: model.Documentable) -> None:
         if not ob.isVisible:

@@ -149,6 +149,11 @@ def get_parser() -> ArgumentParser:
             "But in some cases you might have to override the template string, for instance to make it work with git-web, use: "
             '--html-viewsource-template="{mod_source_href}#n{lineno}"'), metavar='SOURCETEMPLATE', default=Options.HTML_SOURCE_TEMPLATE_DEFAULT)
     parser.add_argument(
+        '--html-base-url', dest='htmlbaseurl', 
+            help=("A base URL used to include a canonical link in every html page. "
+                  "This help search engine to link to the preferred version of "
+                  "a web page to prevent duplicated or oudated content. "), default=None, metavar='BASEURL', )
+    parser.add_argument(
         '--buildtime', dest='buildtime',
         help=("Use the specified build time over the current time. "
               f"Format: {BUILDTIME_FORMAT_HELP}"), metavar='TIME')
@@ -244,6 +249,9 @@ def get_parser() -> ArgumentParser:
     parser.add_argument(
         '--mod-member-order', dest='mod_member_order', default="alphabetical", choices=["alphabetical", "source"],
         help=("Presentation order of module/package members. (default: alphabetical)"))
+    parser.add_argument(
+        '--use-hardlinks', default=False, action='store_true', dest='use_hardlinks',
+        help=("Always copy files instead of creating a symlink (hardlinks will be automatically used if the symlink process failed)."))
     
     parser.add_argument('-V', '--version', action='version', version=f'%(prog)s {__version__}')
     
@@ -294,6 +302,10 @@ def _convert_htmlwriter(s: str) -> Type['IWriter']:
         error(str(e))
 def _convert_privacy(l: List[str]) -> List[Tuple['model.PrivacyClass', str]]:
     return list(map(functools.partial(parse_privacy_tuple, opt='--privacy'), l))
+def _convert_htmlbaseurl(url:str | None) -> str | None:
+    if url and not url.endswith('/'): 
+        url += '/'
+    return url
 
 _RECOGNIZED_SOURCE_HREF = {
         # Sourceforge
@@ -358,6 +370,7 @@ class Options:
     htmlwriter:             Type['IWriter']                         = attr.ib(converter=_convert_htmlwriter)
     htmlsourcebase:         Optional[str]                           = attr.ib()
     htmlsourcetemplate:     str                                     = attr.ib()
+    htmlbaseurl:            str | None                              = attr.ib(converter=_convert_htmlbaseurl)
     buildtime:              Optional[str]                           = attr.ib()
     warnings_as_errors:     bool                                    = attr.ib()
     verbosity:              int                                     = attr.ib()
@@ -375,6 +388,7 @@ class Options:
     nosidebar:              int                                     = attr.ib()
     cls_member_order:       'Literal["alphabetical", "source"]'     = attr.ib()
     mod_member_order:       'Literal["alphabetical", "source"]'     = attr.ib()
+    use_hardlinks:         bool                                    = attr.ib()
 
     def __attrs_post_init__(self) -> None:
         # do some validations...

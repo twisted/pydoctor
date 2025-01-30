@@ -13,7 +13,7 @@ pydoctor
 .. image:: https://img.shields.io/badge/-documentation-blue
   :target: https://pydoctor.readthedocs.io/
 
-This is *pydoctor*, an API documentation generator that works by
+This is *pydoctor*, a standalone API documentation generator that works by
 static analysis.
 
 It was written primarily to replace ``epydoc`` for the purposes of the
@@ -27,15 +27,12 @@ Twisted, knows about ``zope.interface``'s declaration API and can present
 information about which classes implement which interface, and vice
 versa.
 
-.. contents:: Contents:
-
-
 Simple Usage
 ~~~~~~~~~~~~
 
 You can run pydoctor on your project like this::
 
-    $ pydoctor --make-html --html-output=docs/api src/mylib
+    $ pydoctor --html-output=docs/api src/mylib
 
 For more info, `Read The Docs <https://pydoctor.readthedocs.io/>`_.
 
@@ -76,10 +73,59 @@ What's New?
 in development
 ^^^^^^^^^^^^^^
 
+* Drop support for Python 3.8.
+
+pydoctor 24.11.2
+^^^^^^^^^^^^^^^^
+
+* Replace deprecated usage of ``datetime.datetime.utcfromtimestamp()``
+
+pydoctor 24.11.1
+^^^^^^^^^^^^^^^^
+
+* Fix a bug that would cause a variable marked as `Final` not being considered as a constant if
+  it was declared under a control-flow block.
+* Fix a bug in google and numpy "Attributes" section in module docstring: 
+  the module attributes now shows as "Variables" instead of "Instance Variables".
+
+pydoctor 24.11.0
+^^^^^^^^^^^^^^^^
+
+* Drop Python 3.7 and support Python 3.13.
+* Implement canonical HTML element (``<link rel="canonical" href="..."/>``) to help search engines reduce outdated content. 
+  Enable this feature by passing the base URL of the API documentation with option ``--html-base-url``.
+* Improve collection of objects:
+   - Document objects declared in the ``else`` block of 'if' statements (previously they were ignored).
+   - Document objects declared in ``finalbody`` and ``else`` block of 'try' statements (previously they were ignored).
+   - Objects declared in the ``else`` block of if statements and in the ``handlers`` of 'try' statements
+     are ignored if a concurrent object is declared before (`more infos on branch priorities <https://pydoctor.readthedocs.io/en/latest/codedoc.html#branch-priorities>`_).
+* Trigger a warning when several docstrings are detected for the same object.
+* Improve typing of docutils related code.
+* Run unit tests on all supported combinations of Python versions and platforms, including PyPy for Windows. Previously, tests where ran on all supported Python version for Linux, but not for MacOS and Windows.
+* Replace the deprecated dependency appdirs with platformdirs.
+* Fix WinError caused by the failure of the symlink creation process.
+  Pydoctor should now run on windows without the need to be administrator.
+* Adjust the sphinx extension to support Sphinx 8.1. The entries dynamically added to the intersphinx config
+  from the ``pydoctor_url_path`` config option now includes a project name which defaults to 'main' (instead of putting None), 
+  use mapping instead of a list to define your own project name.
+* Improve the themes so the adds injected by ReadTheDocs are rendered with the correct width and do not overlap too much with the main content.
+* Fix an issue in the readthedocs theme that prevented to use the search bar from the summary pages (like the class hierarchy).
+* The generated documentation now includes a help page under the path ``/apidocs-help.html``. 
+  This page is accessible by clicking on the information icon in the navbar (``ℹ``).
+* Improve the javascript searching code to better understand terms that contains a dot (``.``).
+
+pydoctor 24.3.3
+^^^^^^^^^^^^^^^
+
+* Fix release pipeline.
+
+pydoctor 24.3.0
+^^^^^^^^^^^^^^^
+
 This is the last major release to support Python 3.7.
 
 * Drop support for Python 3.6.
-* Add support for Python 3.12 and Python 3.13.
+* Add support for Python 3.12.
 * Astor is no longer a requirement starting at Python 3.9.
 * `ExtRegistrar.register_post_processor()` now supports a `priority` argument that is an int.
   Highest priority callables will be called first during post-processing.
@@ -89,6 +135,10 @@ This is the last major release to support Python 3.7.
   order of class members and module/package members, the supported values are "alphabetical" or "source".
   The default behavior is to sort all members alphabetically.
 * Make sure the line number coming from ast analysis has precedence over the line of a ``ivar`` field.
+* Ensure that all docutils generated css classes have the ``rst-`` prefix, the base theme have been updated accordingly.
+* Fix compatibility issue with docutils 0.21.x
+* Transform annotations to use python 3.10 style: ``typing.Union[x, y]`` -> ``x | y``; ``typing.Optional[x]`` -> ``x | None``; ``typing.List[x]`` -> ``list[x]``.
+* Do not output useless parenthesis when colourizing subscripts. 
 
 pydoctor 23.9.1
 ^^^^^^^^^^^^^^^

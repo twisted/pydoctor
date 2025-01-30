@@ -5,7 +5,7 @@ Simple GitHub Action to publish API docs
 
 Here is an example of a simple GitHub Action to automatically
 generate your documentation with Pydoctor
-and publish it to your default GitHub Pages website.
+and publish it to your default GitHub Pages website when there is a push on the ``main`` branch.
 
 Just substitute `(projectname)` and `(packagedirectory)`
 with the appropriate information.
@@ -14,7 +14,8 @@ with the appropriate information.
 
     name: apidocs
     on:
-    - push
+      push:
+        branches: [main]
 
     jobs:
       deploy:
@@ -22,15 +23,15 @@ with the appropriate information.
 
         steps:
         - uses: actions/checkout@master
-        - name: Set up Python 3.8
+        - name: Set up Python 3.12
           uses: actions/setup-python@v2
           with:
-            python-version: 3.8
+            python-version: 3.12
 
         - name: Install requirements for documentation generation
           run: |
             python -m pip install --upgrade pip setuptools wheel
-            python -m pip install docutils pydoctor
+            python -m pip install pydoctor
 
         - name: Generate API documentation with pydoctor
           run: |
@@ -40,9 +41,8 @@ with the appropriate information.
                 --project-name=(projectname) \
                 --project-url=https://github.com/$GITHUB_REPOSITORY \
                 --html-viewsource-base=https://github.com/$GITHUB_REPOSITORY/tree/$GITHUB_SHA \
-                --make-html \
+                --html-base-url=https://$GITHUB_REPOSITORY_OWNER.github.io/${GITHUB_REPOSITORY#*/} \
                 --html-output=./apidocs \
-                --project-base-dir="$(pwd)" \
                 --docformat=restructuredtext \
                 --intersphinx=https://docs.python.org/3/objects.inv \
                 ./(packagedirectory)
