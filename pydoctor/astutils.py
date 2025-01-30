@@ -761,19 +761,28 @@ class _OldSchoolNamespacePackageVis(ast.NodeVisitor):
 
     def visit_Expr(self, node: ast.Expr) -> None:
         # Search for ast.Expr nodes that contains a call to a name or attribute 
-        # access of "declare_namespace".
+        # access of "declare_namespace" and a single argument: __name__
         if not isinstance(val:=node.value, ast.Call):
             return
         if not isinstance(func:=val.func, (ast.Name, ast.Attribute)):
             return
         if isinstance(func, ast.Name) and func.id == 'declare_namespace' or \
            isinstance(func, ast.Attribute) and func.attr == 'declare_namespace':
+            # checks the arguments are the basic one, not custom
+            try:
+                arg1, = (*val.args, *(k.value for k in val.keywords))
+            except ValueError:
+                raise StopIteration
+            if not isinstance(arg1, ast.Name) or arg1.id != '__name__':
+                raise NamespacePackageUnsupported
+            
             self.is_namespace_package = True
             raise StopIteration
         
     def visit_Assign(self, node: ast.Assign) -> None:
         # search for assignments nodes that contains a call in the 
-        # rhs to name or attribute acess of "extend_path".
+        # rhs to name or attribute acess of "extend_path" and two arguments: 
+        # __path__ and __name__. 
 
         if not any(isinstance(t, ast.Name) and t.id == '__path__' for t in node.targets):
             return
@@ -783,6 +792,16 @@ class _OldSchoolNamespacePackageVis(ast.NodeVisitor):
             return
         if isinstance(func, ast.Name) and func.id == 'extend_path' or \
            isinstance(func, ast.Attribute) and func.attr == 'extend_path':
+            # checks the arguments are the basic one, not custom
+            try:
+                arg1, arg2 = (*val.args, *(k.value for k in val.keywords))
+            except ValueError:
+                raise StopIteration
+            if not isinstance(arg1, ast.Name) or arg1.id != '__path__':
+                raise NamespacePackageUnsupported
+            if not isinstance(arg2, ast.Name) or arg1.id != '__name__':
+                raise NamespacePackageUnsupported
+
             self.is_namespace_package = True
             raise StopIteration
     
@@ -793,6 +812,8 @@ class _OldSchoolNamespacePackageVis(ast.NodeVisitor):
         finally:
             delattr(node, 'targets')
 
+class NamespacePackageUnsupported:
+    ...
        
 def is_old_school_namespace_package(tree: ast.Module) -> bool:
     """
@@ -803,6 +824,17 @@ def is_old_school_namespace_package(tree: ast.Module) -> bool:
         # OR
         import pkg_resources
         pkg_resources.declare_namespace(__name__)
+        # OR
+        __import__('pkg_resources').declare_namespace(__name__)
+        # OR
+        import pkg_resources
+        pkg_resources.declare_namespace(name=__name__)
+
+    The following code will raise an NamespacePackageUnsupported::
+
+        from pkgutil import extend_path
+        __path__ = extend_path(__path__, __name__ + '.impl')
+    
     """
     v =_OldSchoolNamespacePackageVis()
     v.visit(tree)
