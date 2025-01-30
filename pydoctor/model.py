@@ -1353,19 +1353,19 @@ class System:
         """
         if first._is_c_module and not isinstance(dup, Package):
             # C-modules wins
-            dup.report(f"discarding duplicate {str(dup)} because existing C extension has the same name", thresh=1)
+            dup.report(f"discarding duplicate {str(dup)} because existing C extension has the same name", thresh=0)
             return False
         elif isinstance(first, Package) and not isinstance(dup, Package):
             # Packages wins over module
-            dup.report(f"discarding duplicate {str(dup)} because existing package has the same name", thresh=1)
+            dup.report(f"discarding duplicate {str(dup)} because existing package has the same name", thresh=0)
             return False
         elif first.kind is DocumentableKind.NAMESPACE_PACKAGE and dup.kind is not DocumentableKind.NAMESPACE_PACKAGE:
             # Namespace packages wins over regular package
-            dup.report(f"discarding duplicate {str(dup)} because existing namespace package has the same name", thresh=1)
+            dup.report(f"discarding duplicate {str(dup)} because existing namespace package has the same name", thresh=0)
             return False
 
         # Else, the last added module wins
-        dup.report(f"discarding existing {str(first)} because {str(dup)} overrides it", thresh=1)
+        dup.report(f"discarding existing {str(first)} because {str(dup)} overrides it", thresh=0)
         self._remove(first)
         self.unprocessed_modules.remove(first)
         return self._addUnprocessedModule(dup)
