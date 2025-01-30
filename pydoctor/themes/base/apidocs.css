@@ -244,7 +244,15 @@ ul ul ul ul ul ul ul {
 
 .fieldTable tr:not(.fieldStart) td:first-child,
 .valueTable tr:not(.fieldStart) td:first-child{
-    padding: 3px 4px 3px 15px;
+    padding: 2px 4px 2px 15px;
+}
+
+tr.fieldStart{
+    padding-bottom: 2px;
+}
+
+.fieldTable tr td.fieldArgDesc > *:nth-child(1){
+    padding-top: 0; /* So it's actually aligned vertically */
 }
 
 .fieldTable tr td {
@@ -254,9 +262,13 @@ ul ul ul ul ul ul ul {
 
 /* Add border to separate parameter rows */
 .fieldTable tr:not(:last-of-type):has(.fieldArgContainer):has(+ tr:not(.fieldStart)) {
-    box-shadow: 25px 1px 0 #ddd;
-    border-bottom: 7px solid;
+    /* This is a way to add a margin in between table rows */
+    border-bottom: 4px solid;
     border-color: transparent;
+}
+
+.fieldTable tr:has(.fieldArgContainer):nth-child(odd) {
+    background-color: rgba(215, 215, 215, 0.18);
 }
 
 /* Argument name + type column table  */
