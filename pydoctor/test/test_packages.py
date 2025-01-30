@@ -200,9 +200,9 @@ def test_namespace_packages() -> None:
     assert system.allobjects['lvl1.lvl2.sub1'].kind == model.DocumentableKind.PACKAGE
     assert system.allobjects['lvl1.lvl2.sub2'].kind == model.DocumentableKind.PACKAGE
 
-    assert root.sourcesHrefs == ['https://github.com/some/repo/tree/master/project1/lvl1', 
+    assert root.source_hrefs == ['https://github.com/some/repo/tree/master/project1/lvl1', 
                                    'https://github.com/some/repo/tree/master/project2/lvl1']
-    assert nested.sourcesHrefs == ['https://github.com/some/repo/tree/master/project1/lvl1/lvl2', 
+    assert nested.source_hrefs == ['https://github.com/some/repo/tree/master/project1/lvl1/lvl2', 
                                    'https://github.com/some/repo/tree/master/project2/lvl1/lvl2']
 
 def test_namespace_packages_nested_under_regular_pack_ignored() -> None:

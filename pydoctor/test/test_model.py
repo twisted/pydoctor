@@ -39,7 +39,7 @@ class FakeDocumentable:
     """
     kind = None
     system: model.System
-    sourceHref = None
+    source_href = None
     filepath: str
 
 
@@ -63,7 +63,7 @@ def test_setSourceHrefOption(projectBaseDir: Path) -> None:
     mod.system = system
     system.setSourceHref(mod, projectBaseDir / "package" / "module.py")
 
-    assert mod.sourceHref == "http://example.org/trac/browser/trunk/package/module.py"
+    assert mod.source_href == "http://example.org/trac/browser/trunk/package/module.py"
 
 def test_htmlsourcetemplate_auto_detect() -> None:
     """
@@ -91,7 +91,7 @@ def test_htmlsourcetemplate_auto_detect() -> None:
         system = model.System(options)
 
         processPackage('basic', systemcls=lambda:system)
-        assert system.allobjects['basic.mod.C'].sourceHref == var_href
+        assert system.allobjects['basic.mod.C'].source_href == var_href
 
 def test_htmlsourcetemplate_custom() -> None:
     """
@@ -104,7 +104,7 @@ def test_htmlsourcetemplate_custom() -> None:
     system = model.System(options)
 
     processPackage('basic', systemcls=lambda:system)
-    assert system.allobjects['basic.mod.C'].sourceHref == "http://example.org/trac/browser/trunk/pydoctor/test/testpackages/basic/mod.py#n7"
+    assert system.allobjects['basic.mod.C'].source_href == "http://example.org/trac/browser/trunk/pydoctor/test/testpackages/basic/mod.py#n7"
 
 def test_initialization_default() -> None:
     """

@@ -128,7 +128,7 @@ class Documentable:
     parsed_type: Optional[ParsedDocstring] = None
     docstring_lineno = 0
     linenumber: LineFromAst | LineFromDocstringField | Literal[0] = 0
-    sourceHref: Optional[str] = None
+    source_href: Optional[str] = None
     kind: Optional[DocumentableKind] = None
 
     documentation_location = DocLocation.OWN_PAGE
@@ -197,12 +197,12 @@ class Documentable:
             if not isinstance(lineno, (LineFromAst, LineFromDocstringField)):
                 lineno = LineFromAst(lineno)
             self.linenumber = lineno
-            parentMod = self.parentMod
-            if parentMod is not None:
-                parentSourceHref = parentMod.sourceHref
-                if parentSourceHref:
-                    self.sourceHref = self.system.options.htmlsourcetemplate.format(
-                        mod_source_href=parentSourceHref,
+            parent = self.parentMod
+            if parent is not None:
+                module_source_href = parent.source_href
+                if module_source_href:
+                    self.source_href = self.system.options.htmlsourcetemplate.format(
+                        mod_source_href=module_source_href,
                         lineno=str(lineno)
                     )
 
@@ -549,25 +549,9 @@ class Package(Module):
     # Support for namespace packages: 
     def setup(self) -> None:
         super().setup()
-        self._source_paths = [self.source_path]
-        self.sourcesHrefs = []
-    
-    @property
-    def source_paths(self) -> Sequence[Path]:
-        """
-        Might contain more than one entry if this is a namespace package.
-        """
-        return self._source_paths
-    
-    def add_source_path(self, path: Path) -> None:
-        """
-        Add a source path to this namespace package.
-        
-        @note: Only call this function for L{NAMESPACE_PACKAGE} kind of objects.
-        """
-        if self.kind is not DocumentableKind.NAMESPACE_PACKAGE:
-            raise AssertionError('a regular package can only have a single source path')
-        self._source_paths.append(path)
+        self.source_paths = [self.source_path] if self.source_path else []
+        self.source_hrefs: list[str] = []
+
 
 # List of exceptions class names in the standard library, Python 3.8.10
 _STD_LIB_EXCEPTIONS = ('ArithmeticError', 'AssertionError', 'AttributeError', 
@@ -1270,13 +1254,13 @@ class System:
         # ./zope.interface/src/zope ./zope.component/src/zope
         
         if href:=self._formatSourceHref(source_path):
-            if mod.sourceHref is None:
-                mod.sourceHref = href
+            if mod.source_href is None:
+                mod.source_href = href
             # Support for namespace packages: their location can be split off
             # several distributions, needing several hrefs.
             if mod.kind is DocumentableKind.NAMESPACE_PACKAGE:
                 assert isinstance(mod, Package)
-                mod.sourcesHrefs.append(href)
+                mod.source_hrefs.append(href)
 
     @overload
     def _addPackageOrModule(self,
@@ -1320,7 +1304,7 @@ class System:
                     # simply add a new source path to it, calling setSourceHref() will
                     # append a new ref
                     assert isinstance(mod, Package)
-                    mod.add_source_path(modpath)
+                    mod.source_paths.append(modpath)
                     add_new_module = False
         
         if add_new_module:
