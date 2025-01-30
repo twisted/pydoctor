@@ -177,6 +177,18 @@ def test_reparenting_crash(modname: str) -> None:
     assert isinstance(mod.contents['reparented_func'], model.Function)
     assert isinstance(mod.contents[modname].contents['reparented_func'], model.Function)
 
+def test_just_py_modules(capsys: CapSys) -> None:
+    system = processPackage(['basic/mod.py', 'relativeimporttest/mod2.py'])
+    assert list(system.allobjects) == ['mod', 'mod2', 'mod.CONSTANT', 'mod.C', 
+                                       'mod.C.notreally', 'mod.C.S', 'mod.C.f', 
+                                       'mod.C.h', 'mod.C.cls_method', 
+                                       'mod.C.static_method', 'mod.D', 
+                                       'mod.D.T', 'mod.D.f', 'mod.D.g', 
+                                       'mod.D.cls_method2', 'mod.D.static_method2', 
+                                       'mod._private', 
+                                       
+                                       'mod2.B']
+
 def test_namespace_packages() -> None:
     systemcls = lambda: model.System(model.Options.from_args(
         ['--html-viewsource-base=https://github.com/some/repo/tree/master',
@@ -262,7 +274,6 @@ def test_collision_regular_package_with_nspack(capsys: CapSys) -> None:
     assert list(map(repr, filter(lambda o: isinstance(o, model.Module), system.allobjects.values()))) == ["Namespace Package 'basic'", 
                                                                                                           "Package 'basic.subpack'", 
                                                                                                           "Module 'basic.subpack.mod'",]
-
 
 def test_prepend_package_works_with_namespace_packages() -> None:
     systemcls = lambda: model.System(model.Options.from_args(

@@ -68,10 +68,14 @@ def test_is_old_school_namespace_package(subtests:Any) -> None:
         # False cases
         '''declare_namespace(__name__ + '._somethingelse')''': False,
         '''__path__ = extend_path(__path__, __name__ + '._somethingelse')''': False,
+        '''__path__ = extend_path(somethingelse, __name__)''': False,
         '''declare_namespace(__name__, somethingelse)''': False,
         '''__path__ = extend_path(__path__, __name__, somethingelse)''': False,
         'declare_namespace()': False,
+        'declare_namespace()(__name__)': False,
         '__path__ = extend_path(__name__)': False,
+        '__path__ = somethingelse': False,
+        '__path__ = somethingelse()()': False,
     }
 
     for src, expected in sources.items():
