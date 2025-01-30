@@ -417,7 +417,7 @@ class PackagePage(ModulePage):
         links = util.package_srclinks(self.ob)
         links_max_index = len(links) - 1
         if links_max_index == -1:
-            return
+            return None
         r: list[Flattenable] = []
         for i, href in enumerate(links):
             r.append(source_tag(href))

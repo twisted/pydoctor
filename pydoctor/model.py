@@ -1296,6 +1296,7 @@ class System:
         @raise ModuleNotAdded: If the module has been discarded because a module under the same 
             name already Exist.
         """
+        mod: Module | Package
         if is_namespace_package and isinstance(maybe_mod := self.allobjects.get(
             f'{parent.fullName()}.{modname}' if parent else modname), Package) and \
             maybe_mod.kind is DocumentableKind.NAMESPACE_PACKAGE:
