@@ -1266,15 +1266,16 @@ class System:
     def _addPackageOrModule(self,
             modpath: Path,
             modname: str,
-            parent_package: Optional[_PackageT],
-            is_package: Literal[False] = False
+            parent: Optional[_PackageT],
+            is_package: Literal[False],
+            is_namespace_package: Literal[False],
             ) -> _ModuleT: ...
 
     @overload
     def _addPackageOrModule(self,
             modpath: Path,
             modname: str,
-            parent_package: Optional[_PackageT],
+            parent: Optional[_PackageT],
             is_package: Literal[True], 
             is_namespace_package: bool, 
             ) -> _PackageT: ...
