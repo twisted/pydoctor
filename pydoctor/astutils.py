@@ -812,7 +812,7 @@ class _OldSchoolNamespacePackageVis(ast.NodeVisitor):
         finally:
             delattr(node, 'targets')
 
-class NamespacePackageUnsupported:
+class NamespacePackageUnsupported(Exception):
     ...
        
 def is_old_school_namespace_package(tree: ast.Module) -> bool:
