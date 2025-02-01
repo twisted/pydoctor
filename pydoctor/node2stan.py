@@ -11,6 +11,8 @@ from docutils.writers import html4css1
 from docutils import nodes, frontend, __version_info__ as docutils_version_info
 
 from twisted.web.template import Tag
+import attr
+
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable
     from pydoctor.epydoc.markup import DocstringLinker
@@ -58,7 +60,13 @@ def gettext(node: Union[nodes.Node, List[nodes.Node]]) -> List[str]:
             filtered.extend(gettext(child))
     return filtered
 
-def parse_reference(node:nodes.title_reference) -> Tuple[Union[str, Sequence[nodes.Node]], str]:
+@attr.s(auto_attribs=True)
+class Reference:
+    label: str | Sequence[nodes.Node]
+    target: str
+    rawtarget: str
+
+def parse_reference(node:nodes.title_reference) -> Reference:
     """
     Split a reference into (label, target).
     """
@@ -76,7 +84,7 @@ def parse_reference(node:nodes.title_reference) -> Tuple[Union[str, Sequence[nod
     # Support linking to functions and methods with () at the end
     if target.endswith('()'):
         target = target[:len(target)-2]
-    return label, target
+    return Reference(label, target, node.attributes.get('rawtarget', target))
 
 _TARGET_RE = re.compile(r'^(.*?)\s*<(?:URI:|URL:)?([^<>]+)>$')
 _VALID_IDENTIFIER_RE = re.compile('[^0-9a-zA-Z_]')
@@ -131,7 +139,9 @@ class HTMLTranslator(html4css1.HTMLTranslator):
         self._handle_reference(node, link_func=self._linker.link_to)
     
     def _handle_reference(self, node: nodes.title_reference, link_func: Callable[[str, "Flattenable"], "Flattenable"]) -> None:
-        node_label, target = parse_reference(node)
+        ref = parse_reference(node)
+        node_label = ref.label
+        target = ref.target
         label: "Flattenable"
         if not isinstance(node_label, str):
             label = node2stan(node_label, self._linker)

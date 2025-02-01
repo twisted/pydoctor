@@ -1269,7 +1269,8 @@ class _ReferenceTransform(Transform):
     def _transform(self, node:nodes.title_reference) -> None:
         ctx = self.ctx
         module = self.module
-        _, target = parse_reference(node)
+        ref = parse_reference(node)
+        target = ref.target
         # we're setting two attributes here: 'refuri' and 'rawtarget'. 
         # 'refuri' might already be created by the colorizer or docstring parser,
         # but 'rawtarget' is only created from within this transform, so we can
@@ -1301,7 +1302,7 @@ class _ReferenceTransform(Transform):
                 # If we're dealing with an annotation, give precedence to the module's 
                 # lookup (wrt PEP 563)
                 lookup_context = module
-                linker.warn_ambiguous_annotation(module, ctx, target)
+
             # save pre-resolved refuri
             attribs['refuri'] = '.'.join(chain(lookup_context.expandName(name).split('.'), rest))
     
