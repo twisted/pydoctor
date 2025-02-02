@@ -8,7 +8,6 @@ from pydoctor.test.epydoc import parse_docstring
 from pydoctor.test.test_epydoc2stan import docstring2html
 from pydoctor.test.test_astbuilder import fromText
 from pydoctor.stanutils import flatten
-from pydoctor.napoleon.docstring import TokenType
 from pydoctor.epydoc.markup._types import ParsedTypeDocstring
 import pydoctor.epydoc.markup
 from pydoctor import model
@@ -415,4 +414,22 @@ def test_process_types_with_consolidated_fields(capsys: CapSys) -> None:
     lines = [line for line in capsys.readouterr().out.splitlines() if 'Cannot find link target' not in line]
     assert not lines
     assert '<span class="rst-literal">int</span>' in html
-    
+
+def test_process_types_doesnt_mess_with_warning_linenumber(capsys: CapSys) -> None:
+    src = '''
+    __docformat__ = 'google'
+    class ConfigFileParser(object):
+        """doc"""
+
+        def parse(self, stream):
+            """Parses the keys and values from a config file.
+
+            Note: blablabla
+
+            Args:
+                stream (notfound): A config file input stream (such as an open file object).
+            """
+    '''
+    mod = fromText(src)
+    docstring2html(mod.contents['ConfigFileParser'].contents['parse'])
+    assert capsys.readouterr().out == '<test>:12: Cannot find link target for "notfound"\n'
