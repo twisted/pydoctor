@@ -1101,7 +1101,7 @@ def test_EpydocLinker_adds_intersphinx_link_css_class() -> None:
     sut = target.docstring_linker
     assert isinstance(sut, linker._EpydocLinker)
 
-    result1 = sut.link_xref('base.module.other', 'base.module.other', 0).children[0] # wrapped in a code tag
+    result1 = sut.link_xref('base.module.other', 'base.module.other', 0)
     result2 = sut.link_to('base.module.other', 'base.module.other')
     
     res = flatten(result2)

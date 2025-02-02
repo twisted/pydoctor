@@ -102,10 +102,20 @@ class HTMLTranslator(html4css1.HTMLTranslator):
         # h1 is reserved for the page nodes.title. 
         self.section_level += 1
 
+        # All documents should be created with pydoctor.epydoc.docutils.new_document() helper
+        # such that the source attribute will always be one of the supported values.
+        self._document_is_code = is_code = document.attributes.get('source') == 'code'
+        if is_code:
+            # Do not wrap links in <code> tags if we're renderring a code-like parsed element.
+            self._link_xref = self._linker.link_xref
+        else:
+            self._link_xref = lambda target, label, lineno: Tag('code')(self._linker.link_xref(target, label, lineno))
+
+
     # Handle interpreted text (crossreferences)
     def visit_title_reference(self, node: nodes.title_reference) -> None:
         lineno = get_lineno(node)
-        self._handle_reference(node, link_func=lambda target, label: self._linker.link_xref(target, label, lineno))
+        self._handle_reference(node, link_func=lambda target, label: self._link_xref(target, label, lineno))
     
     # Handle internal references
     def visit_obj_reference(self, node: obj_reference) -> None:
@@ -133,6 +143,8 @@ class HTMLTranslator(html4css1.HTMLTranslator):
 
     def should_be_compact_paragraph(self, node: nodes.Element) -> bool:
         if self.document.children == [node]:
+            return True
+        elif self._document_is_code:
             return True
         else:
             return super().should_be_compact_paragraph(node)  # type: ignore[no-any-return]

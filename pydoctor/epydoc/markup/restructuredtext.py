@@ -176,7 +176,7 @@ class _EpydocReader(StandaloneReader):
                 if t != frontmatter.DocInfo]
 
     def new_document(self) -> nodes.document:
-        document = new_document(self.source.source_path, self.settings)
+        document = new_document('docstring', self.settings)
         # Capture all warning messages.
         document.reporter.attach_observer(self.report)
         # Return the new document.

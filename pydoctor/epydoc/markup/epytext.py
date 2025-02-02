@@ -1379,7 +1379,7 @@ class ParsedEpytextDocstring(ParsedDocstring):
         if self._document is not None:
             return self._document
 
-        self._document = new_document('epytext')
+        self._document = new_document('docstring')
 
         if self._tree is not None:
             node, = self._to_node(self._tree)

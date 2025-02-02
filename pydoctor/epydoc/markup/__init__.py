@@ -150,7 +150,8 @@ class ParsedDocstring(abc.ABC):
         self._stan: Optional[Tag] = None
         self._summary: Optional['ParsedDocstring'] = None
 
-    @abc.abstractproperty
+    @property
+    @abc.abstractmethod
     def has_body(self) -> bool:
         """
         Does this docstring have a non-empty body?
@@ -168,7 +169,7 @@ class ParsedDocstring(abc.ABC):
         except NotImplementedError:
             return None
         contents = build_table_of_content(document, depth=depth)
-        docstring_toc = new_document('toc')
+        docstring_toc = new_document('docstring')
         if contents:
             docstring_toc.extend(contents)
             from pydoctor.epydoc.markup.restructuredtext import ParsedRstDocstring
@@ -439,7 +440,7 @@ class SummaryExtractor(nodes.NodeVisitor):
             self.other_docs = True
             raise nodes.StopTraversal()
 
-        summary_doc = new_document('summary')
+        summary_doc = new_document('docstring')
         summary_pieces: list[nodes.Node] = []
 
         # Extract the first sentences from the first paragraph until maximum number 

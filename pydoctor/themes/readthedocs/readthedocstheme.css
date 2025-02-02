@@ -92,12 +92,12 @@ code, .pre, #childList > div .functionHeader,
     font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
 }
 
-code, .literal {
+code, .literal, .rst-literal {
     border-radius:2px;
     font-size: 14px;
 }
 
-#main code, .literal {
+#main code, .literal, .rst-literal {
     border: 1px solid rgb(225, 228, 229);
     padding:1px 2px;
 }

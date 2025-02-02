@@ -62,7 +62,7 @@ class ParsedPlaintextDocstring(ParsedDocstring):
             return self._document
         else:
             # create document
-            _document = new_document('plaintext')
+            _document = new_document('docstring')
 
             # split text into paragraphs
             paragraphs = [set_node_attributes(nodes.paragraph('',''), children=[

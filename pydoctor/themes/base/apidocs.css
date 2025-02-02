@@ -264,7 +264,7 @@ ul ul ul ul ul ul ul {
 }
 
 /* parameters types (in parameters table) */
-.fieldTable tr td.fieldArgContainer > code {
+.fieldTable tr td.fieldArgContainer > code, .fieldTable tr td.fieldArgContainer > .rst-literal {
     /* we don't want word break for the types because we already add <wbr> tags inside the type HTML, and that should suffice. */
     word-break: normal;
     display: inline;
@@ -427,7 +427,7 @@ code, .rst-literal, .pre, #childList > div .functionHeader,
 #splitTables > table tr td:nth-child(2), .fieldArg {
     font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
 }
-code, #childList > div .functionHeader, .fieldArg {
+code, .rst-literal, #childList > div .functionHeader, .fieldArg {
     color: #222222;
 }
 
@@ -469,7 +469,8 @@ It also overwrite the default values inherited from bootstrap min
 code, .rst-literal {
     padding:2px 4px;
     background-color: #f4f4f4;
-    border-radius:4px
+    border-radius:4px;
+    font-size: 90%; /* <code> and class="rst-literal" are closely equivalent */
 }
 
 
