@@ -195,7 +195,6 @@ def test_lunr_index() -> None:
         to_stan_results = [
                     'pydoctor.epydoc.markup.ParsedDocstring.to_stan', 
                     'pydoctor.epydoc.markup.plaintext.ParsedPlaintextDocstring.to_stan',
-                    'pydoctor.epydoc.markup._types.ParsedTypeDocstring.to_stan',
                     'pydoctor.epydoc.markup._pyval_repr.ColorizedPyvalRepr.to_stan',
                     'pydoctor.epydoc2stan.ParsedStanOnly.to_stan',
                 ]
