@@ -11,6 +11,7 @@ from pydoctor.stanutils import flatten, flatten_text
 from pydoctor.epydoc.markup.epytext import ParsedEpytextDocstring
 from pydoctor.sphinx import SphinxInventory
 from pydoctor.test.test_astbuilder import fromText, unwrap
+from pydoctor.test.test_packages import processPackage
 from pydoctor.test import CapSys, NotFoundLinker
 from pydoctor.templatewriter.search import stem_identifier
 from pydoctor.templatewriter.pages import format_signature, format_class_signature
@@ -2195,3 +2196,16 @@ def test_does_not_loose_type_linenumber(capsys: CapSys) -> None:
     getHTMLOf(mod.contents['C'])
     assert capsys.readouterr().out == ('<test>:16: Existing docstring at line 10 is overriden\n'
                                        '<test>:10: Cannot find link target for "bool"\n')
+
+def test_numpydoc_warns_about_unknown_types_in_attribute_section_file(capsys: CapSys):
+    system = processPackage('numpy/_machar.py', 
+                            lambda: model.System(model.Options.from_args('-q')))
+   
+    for o in system.allobjects.values():
+        docstring2html(o)
+    # there are exactly 30 references that needs a --intersphinx ootion to be resolvable.
+    # all the other things are good. 
+    warnings = capsys.readouterr().out.strip().splitlines()
+    assert len(warnings) == 30
+    assert len(set(warnings)) == 30
+
