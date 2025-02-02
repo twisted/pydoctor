@@ -106,7 +106,7 @@ class ParsedTypeDocstring(TypeDocstring, ParsedDocstring):
             converted_token: nodes.Node | list[nodes.Node]
             
             if type_ is TokenType.ANY:
-                assert isinstance(token, nodes.Inline)
+                assert isinstance(token, nodes.Node)
                 converted_token = token
             else:
                 assert isinstance(token, str)

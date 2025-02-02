@@ -2197,7 +2197,7 @@ def test_does_not_loose_type_linenumber(capsys: CapSys) -> None:
     assert capsys.readouterr().out == ('<test>:16: Existing docstring at line 10 is overriden\n'
                                        '<test>:10: Cannot find link target for "bool"\n')
 
-def test_numpydoc_warns_about_unknown_types_in_attribute_section_file(capsys: CapSys):
+def test_numpydoc_warns_about_unknown_types_in_attribute_section_file(capsys: CapSys) -> None:
     system = processPackage('numpy/_machar.py', 
                             lambda: model.System(model.Options.from_args('-q')))
    
