@@ -84,7 +84,7 @@ class ParsedTypeDocstring(TypeDocstring, ParsedDocstring):
         document = new_document('code')
         warnings: List[ParseError] = []
 
-        converters: Dict[TokenType, Callable[[str], str | nodes.Node | list[nodes.Node]]] = {
+        converters: Dict[TokenType, Callable[[str], nodes.Node | list[nodes.Node]]] = {
                                                                                         # we're re-using the variable string css 
                                                                                         # class for the whole literal token, it's the
                                                                                         # best approximation we have for now. 
@@ -93,28 +93,27 @@ class ParsedTypeDocstring(TypeDocstring, ParsedDocstring):
             TokenType.REFERENCE:    lambda _token: parse_docstring(_token, warnings).to_node().children, 
             TokenType.UNKNOWN:      lambda _token: parse_docstring(_token, warnings).to_node().children, 
             TokenType.OBJ:          lambda _token: set_node_attributes(nodes.title_reference(_token, _token), lineno=self._lineno),
-            TokenType.DELIMITER:    lambda _token: _token,
-        
+            TokenType.DELIMITER:    lambda _token: nodes.Text(_token),
         }
 
         for w in warnings:
             self.warnings.append(w.descr())
 
-        elements = []
+        elements: list[nodes.Node] = []
 
         for token, type_ in self._tokens:
             assert token is not None
+            converted_token: nodes.Node | list[nodes.Node]
+            
             if type_ is TokenType.ANY:
                 assert isinstance(token, nodes.Inline)
                 converted_token = token
             else:
                 assert isinstance(token, str)
                 converted_token = converters[type_](token)
-            
+
             if isinstance(converted_token, list):
                 elements.extend((set_node_attributes(t, document=document) for t in converted_token))
-            elif isinstance(converted_token, str) and not isinstance(converted_token, nodes.Text):
-                elements.append(set_node_attributes(nodes.Text(converted_token), document=document))
             else:
                 elements.append(set_node_attributes(converted_token, document=document))
 
