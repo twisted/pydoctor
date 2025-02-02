@@ -28,7 +28,7 @@ numpy.ndarray: super-dooper attribute"""
 
         actual = flatten(parsed_doc.fields[-1].body().to_stan(NotFoundLinker()))
         
-        expected = """<code>numpy.ndarray</code>"""
+        expected = """<span class="rst-literal"><a>numpy.ndarray</a></span>"""
 
         self.assertEqual(expected, actual)
         self.assertEqual(errors, [])
@@ -65,7 +65,7 @@ numpy.ndarray: super-dooper attribute"""
 
         actual = flatten(parsed_doc.fields[-1].body().to_stan(NotFoundLinker()))
 
-        expected = """<code>numpy.ndarray</code>"""
+        expected = """<span class="rst-literal"><a>numpy.ndarray</a></span>"""
 
         self.assertEqual(expected, actual)
         self.assertEqual(errors, [])

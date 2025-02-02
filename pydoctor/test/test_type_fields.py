@@ -1,4 +1,4 @@
-from typing import List
+from typing import Any, List
 from textwrap import dedent
 from pydoctor.epydoc.markup import ParseError, get_parser_by_name
 from pydoctor.test.epydoc.test_restructuredtext import prettify
@@ -12,7 +12,6 @@ from pydoctor.napoleon.docstring import TokenType
 from pydoctor.epydoc.markup._types import ParsedTypeDocstring
 import pydoctor.epydoc.markup
 from pydoctor import model
-from twisted.web.template import Tag
 
 
 def doc2html(doc: str, markup: str, processtypes: bool = False) -> str:
@@ -40,23 +39,6 @@ def test_to_node_markup() -> None:
     for epystr, rststr in cases:
         assert doc2html(rststr, 'restructuredtext') == doc2html(epystr, 'epytext')
 
-def test_parsed_type_convert_obj_tokens_to_stan() -> None:
-    
-    convert_obj_tokens_cases = [
-                ([("list", TokenType.OBJ), ("(", TokenType.DELIMITER), ("int", TokenType.OBJ), (")", TokenType.DELIMITER)], 
-                [(Tag('code', children=['list', '(', 'int', ')']), TokenType.OBJ)]),    
-
-                ([("list", TokenType.OBJ), ("(", TokenType.DELIMITER), ("int", TokenType.OBJ), (")", TokenType.DELIMITER), (", ", TokenType.DELIMITER), ("optional", TokenType.CONTROL)], 
-                [(Tag('code', children=['list', '(', 'int', ')']), TokenType.OBJ), (", ", TokenType.DELIMITER), ("optional", TokenType.CONTROL)]),
-            ]
-
-    ann = ParsedTypeDocstring("")
-
-    for tokens_types, expected_token_types in convert_obj_tokens_cases:
-
-        assert str(ann._convert_obj_tokens_to_stan(tokens_types, NotFoundLinker()))==str(expected_token_types)
-
-
 def typespec2htmlvianode(s: str, markup: str) -> str:
     err: List[ParseError] = []
     parsed_doc = get_parser_by_name(markup)(s, err)
@@ -72,23 +54,23 @@ def typespec2htmlviastr(s: str) -> str:
     assert not ann.warnings
     return html
 
-def test_parsed_type() -> None:
+def test_parsed_type(subtests: Any) -> None:
     
     parsed_type_cases = [
         ('list of int or float or None', 
-        '<code>list</code> of <code>int</code> or <code>float</code> or <code>None</code>'),
+        '<span class="rst-literal"><a>list</a> of <a>int</a> or <a>float</a> or <a>None</a></span>'),
 
         ("{'F', 'C', 'N'}, default 'N'",
-        """<span class="literal">{'F', 'C', 'N'}</span>, <em>default</em> <span class="literal">'N'</span>"""),
+        """<span class="rst-literal"><span class="rst-variable-string">{'F', 'C', 'N'}</span>, <em>default</em> <span class="rst-variable-string">'N'</span></span>"""),
 
         ("DataFrame, optional",
-        "<code>DataFrame</code>, <em>optional</em>"),
+        """<span class="rst-literal"><a>DataFrame</a>, <em>optional</em></span>"""),
 
         ("List[str] or list(bytes), optional", 
-        "<code>List[str]</code> or <code>list(bytes)</code>, <em>optional</em>"),
+        """<span class="rst-literal"><a>List</a>[<a>str</a>] or <a>list</a>(<a>bytes</a>), <em>optional</em></span>"""),
 
         (('`complicated string` or `strIO <twisted.python.compat.NativeStringIO>`', 'L{complicated string} or L{strIO <twisted.python.compat.NativeStringIO>}'),
-        '<code>complicated string</code> or <code>strIO</code>'),
+        '<span class="rst-literal"><a>complicated string</a> or <a>strIO</a></span>'),
     ]
 
     for string, excepted_html in parsed_type_cases:
@@ -99,10 +81,12 @@ def test_parsed_type() -> None:
             rst_string, epy_string = string
         elif isinstance(string, str):
             rst_string = epy_string = string
+
+        with subtests.test('parse type', rst=rst_string, epy=epy_string):
         
-        assert typespec2htmlviastr(rst_string) == excepted_html
-        assert typespec2htmlvianode(rst_string, 'restructuredtext') == excepted_html            
-        assert typespec2htmlvianode(epy_string, 'epytext') == excepted_html
+            assert typespec2htmlviastr(rst_string) == excepted_html
+            assert typespec2htmlvianode(rst_string, 'restructuredtext') == excepted_html            
+            assert typespec2htmlvianode(epy_string, 'epytext') == excepted_html
 
 def test_processtypes(capsys: CapSys) -> None:
     """
@@ -137,7 +121,7 @@ def test_processtypes(capsys: CapSys) -> None:
             ), 
 
                 ("list of int or float or None", 
-                "<code>list</code> of <code>int</code> or <code>float</code> or <code>None</code>")
+                '<span class="rst-literal"><a>list</a> of <a>int</a> or <a>float</a> or <a>None</a></span>')
 
         ),
 
@@ -166,8 +150,8 @@ def test_processtypes(capsys: CapSys) -> None:
                 """,
             ), 
 
-                ("<code>complicated string</code> or <code>strIO</code>, optional", 
-                "<code>complicated string</code> or <code>strIO</code>, <em>optional</em>")
+                ("<code><a>complicated string</a></code> or <code><a>strIO</a></code>, optional", 
+                '<span class="rst-literal"><a>complicated string</a> or <a>strIO</a>, <em>optional</em></span>')
 
         ),
 
@@ -199,8 +183,8 @@ def test_processtypes_more() -> None:
                   Whether it's not working.
               """, 
               """<ul class="rst-simple">
-<li><strong>working</strong>: <code>bool</code> - Whether it's working.</li>
-<li><strong>not_working</strong>: <code>bool</code> - Whether it's not working.</li>
+<li><strong>working</strong>: <code><a>bool</a></code> - Whether it's working.</li>
+<li><strong>not_working</strong>: <code><a>bool</a></code> - Whether it's not working.</li>
 </ul>"""), 
 
               ("""
@@ -212,8 +196,8 @@ def test_processtypes_more() -> None:
                   the content description.
                """, 
                """<ul class="rst-simple">
-<li><strong>name</strong>: <code>str</code> - the name description.</li>
-<li><strong>content</strong>: <code>str</code> - the content description.</li>
+<li><strong>name</strong>: <code><a>str</a></code> - the name description.</li>
+<li><strong>content</strong>: <code><a>str</a></code> - the content description.</li>
 </ul>"""),
               ]
     
@@ -240,10 +224,10 @@ def test_processtypes_with_system(capsys: CapSys) -> None:
     captured = capsys.readouterr().out
     assert not captured
 
-    assert "<code>list</code> of <code>int</code> or <code>float</code> or <code>None</code>" == fmt
+    assert '<span class="rst-literal"><a>list</a> of <a>int</a> or <a>float</a> or <a>None</a></span>' == fmt
     
 
-def test_processtypes_corner_cases(capsys: CapSys) -> None:
+def test_processtypes_corner_cases(capsys: CapSys, subtests: Any) -> None:
     """
     The corner cases does not trigger any warnings because they are still valid types.
     
@@ -251,7 +235,7 @@ def test_processtypes_corner_cases(capsys: CapSys) -> None:
     we should be careful with triggering warnings because whether the type spec triggers warnings is used
     to check is a string is a valid type or not.  
     """
-    def process(typestr: str) -> str:
+    def _process(typestr: str) -> str:
         system = model.System()
         system.options.processtypes = True
         mod = fromText(f'''
@@ -265,32 +249,40 @@ def test_processtypes_corner_cases(capsys: CapSys) -> None:
 
         assert isinstance(a.parsed_type, ParsedTypeDocstring)
         fmt = flatten(a.parsed_type.to_stan(NotFoundLinker()))
+        assert fmt.startswith('<span class="rst-literal">')
+        assert fmt.endswith('</span>')
+        fmt = fmt[26:-7]
         
         captured = capsys.readouterr().out
         assert not captured
 
         return fmt
 
-    assert process('default[str]')                          == "<em>default</em>[<code>str]</code>"
-    assert process('[str]')                                 == "[<code>str]</code>"
-    assert process('[,]')                                   == "[, ]"
-    assert process('[[]]')                                  == "[[]]"
-    assert process(', [str]')                               == ", [<code>str]</code>"
-    assert process(' of [str]')                             == "of[<code>str]</code>"
-    assert process(' or [str]')                             == "or[<code>str]</code>"
-    assert process(': [str]')                               == ": [<code>str]</code>"
-    assert process("'hello'[str]")                          == "<span class=\"literal\">'hello'</span>[<code>str]</code>"
-    assert process('"hello"[str]')                          == "<span class=\"literal\">\"hello\"</span>[<code>str]</code>"
-    assert process('`hello`[str]')                          == "<code>hello</code>[<code>str]</code>"
-    assert process('`hello <https://github.com>`_[str]')    == """<a class="rst-external rst-reference" href="https://github.com" target="_top">hello</a>[<code>str]</code>"""
-    assert process('**hello**[str]')                        == "<strong>hello</strong>[<code>str]</code>"
-    assert process('["hello" or str, default: 2]')          == """[<span class="literal">"hello"</span> or <code>str</code>, <em>default</em>: <span class="literal">2</span>]"""
+    def process(input:str, expected:str) -> None:
+        with subtests.test(msg="processtypes", input=input):
+            actual = _process(input)
+            assert actual == expected
+
+    process('default[str]',                       "<em>default</em>[<a>str</a>]")
+    process('[str]',                              "[<a>str</a>]")
+    process('[,]',                                "[, ]")
+    process('[[]]',                               "[[]]")
+    process(', [str]',                            ", [<a>str</a>]")
+    process(' of [str]',                          "of[<a>str</a>]")
+    process(' or [str]',                          "or[<a>str</a>]")
+    process(': [str]',                            ': [<a>str</a>]')
+    process("'hello'[str]",                      "<span class=\"rst-variable-string\">'hello'</span>[<a>str</a>]")
+    process('"hello"[str]',                       "<span class=\"rst-variable-string\">\"hello\"</span>[<a>str</a>]")
+    process('`hello`[str]',                       "<a>hello</a>[<a>str</a>]")
+    process('`hello <https://github.com>`_[str]', """<a class="rst-external rst-reference" href="https://github.com" target="_top">hello</a>[<a>str</a>]""")
+    process('**hello**[str]',                     "<strong>hello</strong>[<a>str</a>]")
+    process('["hello" or str, default: 2]',       """[<span class="rst-variable-string">"hello"</span> or <a>str</a>, <em>default</em>: <span class="rst-variable-string">2</span>]""")
 
     # HTML ids for problematic elements changed in docutils 0.18.0, and again in 0.19.0, so we're not testing for the exact content anymore.
-    
-    problematic = process('Union[`hello <>`_[str]]')
-    assert "`hello &lt;&gt;`_" in problematic
-    assert "<code>str" in problematic
+    with subtests.test(msg="processtypes", input='Union[`hello <>`_[str]]'):
+        problematic = _process('Union[`hello <>`_[str]]')
+        assert "`hello &lt;&gt;`_" in problematic
+        assert "<a>str</a>" in problematic
  
 def test_processtypes_warning_unexpected_element(capsys: CapSys) -> None:
     
@@ -311,7 +303,7 @@ def test_processtypes_warning_unexpected_element(capsys: CapSys) -> None:
         >>> print('example')
     """
 
-    expected = """<code>complicated string</code> or <code>strIO</code>, <em>optional</em>"""
+    expected = """<span class="rst-literal"><a>complicated string</a> or <a>strIO</a>, <em>optional</em></span>"""
     
     # Test epytext
     epy_errors: List[ParseError] = []
@@ -422,5 +414,5 @@ def test_process_types_with_consolidated_fields(capsys: CapSys) -> None:
     # Filter docstring linker warnings
     lines = [line for line in capsys.readouterr().out.splitlines() if 'Cannot find link target' not in line]
     assert not lines
-    assert '<code>int</code>' in html
+    assert '<span class="rst-literal">int</span>' in html
     

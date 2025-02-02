@@ -148,6 +148,21 @@ class TypeDocstringTest(BaseDocstringTest):
         specs = (
             "str",
             "defaultdict",
+            
+            "defaultdict, defaultlist,defaultset or object",
+            "defaultdict, and x",
+            "defaultdict, or x",
+            "defaultdict of x",
+            "defaultdict of x to y",
+            "defaultdict, and ",
+            "defaultdict, or ",
+            "defaultdict of ",
+            "defaultdict of x to ",
+            "defaultdict, and",
+            "defaultdict, or",
+            "defaultdict of",
+            "defaultdict of x to",
+
             "int, float, or complex",
             "int or float or None, optional",
             '{"F", "C", "N"}',
@@ -164,6 +179,21 @@ class TypeDocstringTest(BaseDocstringTest):
         tokens = (
             ["str"],
             ["defaultdict"],
+
+            ['defaultdict', ', ', 'defaultlist', ', ', 'defaultset', ' or ', 'object'],
+            ['defaultdict', ', and ', 'x'],
+            ['defaultdict', ', or ', 'x'],
+            ['defaultdict', ' of ', 'x'],
+            ['defaultdict', ' of ', 'x', ' to ', 'y'],
+            ['defaultdict', ', and '],
+            ['defaultdict', ', or '],
+            ['defaultdict', ' of '],
+            ['defaultdict', ' of ', 'x', ' to '],
+            ['defaultdict', ', ', 'and'],
+            ['defaultdict', ', ', 'or'],
+            ['defaultdict of'],
+            ['defaultdict', ' of ', 'x to'],
+
             ["int", ", ", "float", ", or ", "complex"],
             ["int", " or ", "float", " or ", "None", ", ", "optional"],
             ["{", '"F"', ", ", '"C"', ", ", '"N"', "}"],
@@ -178,8 +208,9 @@ class TypeDocstringTest(BaseDocstringTest):
         )
 
         for spec, expected in zip(specs, tokens):
-            actual = TypeDocstring._tokenize_type_spec(spec)
-            self.assertEqual(expected, actual)
+            with self.subTest(f'tokenize type {spec!r}'):
+                actual = TypeDocstring._tokenize_type_spec(spec)
+                self.assertEqual(expected, actual)
 
     def test_recombine_set_tokens(self):
         tokens = (
@@ -277,6 +308,40 @@ class TypeDocstringTest(BaseDocstringTest):
         for spec, expected in zip(specs, converted):
             actual = str(TypeDocstring(spec))
             self.assertEqual(expected, actual)
+    
+    def test_natural_language_delimiters_parsed_tokens(self):
+        specs = [
+            "defaultdict, and x",
+            "defaultdict, or x",
+            "defaultdict of x",
+            "defaultdict of x to y",
+            "defaultdict, and ",
+            "defaultdict, or ",
+            "defaultdict of ",
+            "defaultdict of x to ",
+            "defaultdict, and",
+            "defaultdict, or",
+            "defaultdict of",
+            "defaultdict of x to",
+        ]
+        expected = [
+            [('defaultdict', TokenType.OBJ), (', and ', TokenType.DELIMITER), ('x', TokenType.OBJ)],
+            [('defaultdict', TokenType.OBJ), (', or ', TokenType.DELIMITER), ('x', TokenType.OBJ)],
+            [('defaultdict', TokenType.OBJ), (' of ', TokenType.DELIMITER), ('x', TokenType.OBJ)],
+            [('defaultdict', TokenType.OBJ), (' of ', TokenType.DELIMITER), ('x', TokenType.OBJ), (' to ', TokenType.DELIMITER), ('y', TokenType.OBJ)],
+            [('defaultdict', TokenType.OBJ), (', and ', TokenType.DELIMITER)],
+            [('defaultdict', TokenType.OBJ), (', or ', TokenType.DELIMITER)],
+            [('defaultdict', TokenType.OBJ), (' of ', TokenType.DELIMITER)],
+            [('defaultdict', TokenType.OBJ), (' of ', TokenType.DELIMITER), ('x', TokenType.OBJ), (' to ', TokenType.DELIMITER)],
+            [('defaultdict', TokenType.OBJ), (', ', TokenType.DELIMITER), ('and', TokenType.OBJ)],
+            [('defaultdict', TokenType.OBJ), (', ', TokenType.DELIMITER), ('or', TokenType.OBJ)],
+            [('defaultdict of', TokenType.UNKNOWN)],
+            [('defaultdict', TokenType.OBJ), (' of ', TokenType.DELIMITER), ('x to', TokenType.UNKNOWN)],
+        ]
+        for spec, expected in zip(specs, expected):
+            with self.subTest(f'parsed tokens: {spec!r}'):
+                actual = TypeDocstring(spec)._tokens
+                self.assertEqual(expected, actual)
 
     def test_token_type_invalid(self):
         tokens = (

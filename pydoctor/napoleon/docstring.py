@@ -184,13 +184,13 @@ class TypeDocstring:
 
     """
     _natural_language_delimiters_regex_str = (
-        r",\sor\s|\sor\s|\sof\s|:\s|\sto\s|,\sand\s|\sand\s"
+        r",\sor\s|\sor\s|\sof\s|:\s|\sto\s|,\sand\s|\sand\s|,\s|,"
     )
     _natural_language_delimiters_regex = re.compile(
         f"({_natural_language_delimiters_regex_str})"
     )
 
-    _ast_like_delimiters_regex_str = r",\s|,|[\[]|[\]]|[\(|\)]"
+    _ast_like_delimiters_regex_str = r"[\[]|[\]]|[\(|\)]"
     _ast_like_delimiters_regex = re.compile(f"({_ast_like_delimiters_regex_str})")
 
     _token_regex = re.compile(
@@ -407,7 +407,7 @@ class TypeDocstring:
 
         return type_
 
-    # add espaced space when necessary
+    # add escaped space when necessary
     def _convert_type_spec_to_rst(self) -> str:
         def _convert(
             _token: Tuple[str, TokenType],
