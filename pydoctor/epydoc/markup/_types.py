@@ -40,7 +40,7 @@ class ParsedTypeDocstring(TypeDocstring, ParsedDocstring):
         else:
             TypeDocstring.__init__(self, annotation, warns_on_unknown_tokens)
         
-        self._lineno = lineno + 1
+        self._lineno = lineno
         self._document = self._parse_tokens()
 
     @property
@@ -102,7 +102,7 @@ class ParsedTypeDocstring(TypeDocstring, ParsedDocstring):
         elements: list[nodes.Node] = []
 
         for token, type_ in self._tokens:
-
+            assert token is not None
             converted_token: nodes.Node | list[nodes.Node]
             
             if type_ is TokenType.ANY:
