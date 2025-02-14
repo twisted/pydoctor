@@ -36,7 +36,7 @@ extensions = [
     "sphinx_rtd_theme",
     "sphinx.ext.intersphinx",
     "pydoctor.sphinx_ext.build_apidocs",
-    # "sphinxcontrib.spelling",
+    "sphinxcontrib.spelling",
     "sphinxarg.ext",
 ]
 
