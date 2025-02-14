@@ -76,6 +76,33 @@ class ParsedTypeDocstring(TypeDocstring, ParsedDocstring):
         
         return tokens
 
+    _converters: Dict[TokenType, Callable[[str, list[ParseError], int], nodes.Node]] = {
+                                        # we're re-using the variable string css 
+                                        # class for the whole literal token, it's the
+                                        # best approximation we have for now. 
+            TokenType.LITERAL: lambda _token, _, __: \
+                nodes.inline(_token, _token, classes=[PyvalColorizer.STRING_TAG]),
+            
+            TokenType.CONTROL: lambda _token, _, __: \
+                nodes.emphasis(_token, _token),
+            
+            TokenType.REFERENCE: lambda _token, warnings, _: \
+                parse_docstring(_token, warnings).to_node(), 
+            
+            TokenType.UNKNOWN: lambda _token, warnings, _: \
+                parse_docstring(_token, warnings).to_node(), 
+            
+            TokenType.OBJ: lambda _token, _, lineno: \
+                set_node_attributes(nodes.title_reference(_token, _token), 
+                                    # the +1 here is coping with the fact that
+                                    # ParseErrors are 1-based but the doutils
+                                    # line we're getting form get_lineno() is zero-based.
+                                    lineno=lineno+1),
+            
+            TokenType.DELIMITER: lambda _token, _, __: \
+                nodes.Text(_token),
+        }
+
     def _parse_tokens(self) -> nodes.document:
         """
         Convert type to docutils document object.
@@ -83,39 +110,31 @@ class ParsedTypeDocstring(TypeDocstring, ParsedDocstring):
 
         document = new_document('code')
         warnings: List[ParseError] = []
-
-        converters: Dict[TokenType, Callable[[str], nodes.Node | list[nodes.Node]]] = {
-                                                                                        # we're re-using the variable string css 
-                                                                                        # class for the whole literal token, it's the
-                                                                                        # best approximation we have for now. 
-            TokenType.LITERAL:      lambda _token: nodes.inline(_token, _token, classes=[PyvalColorizer.STRING_TAG]),
-            TokenType.CONTROL:      lambda _token: nodes.emphasis(_token, _token),
-            TokenType.REFERENCE:    lambda _token: parse_docstring(_token, warnings).to_node().children, 
-            TokenType.UNKNOWN:      lambda _token: parse_docstring(_token, warnings).to_node().children, 
-            TokenType.OBJ:          lambda _token: set_node_attributes(nodes.title_reference(_token, _token), lineno=self._lineno),
-            TokenType.DELIMITER:    lambda _token: nodes.Text(_token),
-        }
-
-        for w in warnings:
-            self.warnings.append(w.descr())
+        converters = self._converters
+        lineno = self._lineno
 
         elements: list[nodes.Node] = []
 
         for token, type_ in self._tokens:
             assert token is not None
-            converted_token: nodes.Node | list[nodes.Node]
+            converted_token: nodes.Node
             
             if type_ is TokenType.ANY:
                 assert isinstance(token, nodes.Node)
                 converted_token = token
             else:
                 assert isinstance(token, str)
-                converted_token = converters[type_](token)
+                converted_token = converters[type_](token, warnings, lineno)
 
-            if isinstance(converted_token, list):
-                elements.extend((set_node_attributes(t, document=document) for t in converted_token))
+            if isinstance(converted_token, nodes.document):
+                elements.extend((set_node_attributes(t, document=document) 
+                                 for t in converted_token.children))
             else:
-                elements.append(set_node_attributes(converted_token, document=document))
+                elements.append(set_node_attributes(converted_token, 
+                                                    document=document))
+        # warnings should be appended once we have called all converters.
+        for w in warnings:
+            self.warnings.append(w.descr())
 
         return set_node_attributes(document, children=[
             set_node_attributes(nodes.inline('', '', classes=['literal']), 

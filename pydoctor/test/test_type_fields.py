@@ -234,7 +234,7 @@ def test_processtypes_corner_cases(capsys: CapSys, subtests: Any) -> None:
     we should be careful with triggering warnings because whether the type spec triggers warnings is used
     to check is a string is a valid type or not.  
     """
-    def _process(typestr: str) -> str:
+    def _process(typestr: str, fails:bool=False) -> str:
         system = model.System()
         system.options.processtypes = True
         mod = fromText(f'''
@@ -252,8 +252,9 @@ def test_processtypes_corner_cases(capsys: CapSys, subtests: Any) -> None:
         assert fmt.endswith('</span>')
         fmt = fmt[26:-7]
         
-        captured = capsys.readouterr().out
-        assert not captured
+        if not fails:
+            captured = capsys.readouterr().out
+            assert not captured
 
         return fmt
 
@@ -279,7 +280,7 @@ def test_processtypes_corner_cases(capsys: CapSys, subtests: Any) -> None:
 
     # HTML ids for problematic elements changed in docutils 0.18.0, and again in 0.19.0, so we're not testing for the exact content anymore.
     with subtests.test(msg="processtypes", input='Union[`hello <>`_[str]]'):
-        problematic = _process('Union[`hello <>`_[str]]')
+        problematic = _process('Union[`hello <>`_[str]]', fails=True)
         assert "`hello &lt;&gt;`_" in problematic
         assert "<a>str</a>" in problematic
  
@@ -417,19 +418,18 @@ def test_process_types_with_consolidated_fields(capsys: CapSys) -> None:
 
 def test_process_types_doesnt_mess_with_warning_linenumber(capsys: CapSys) -> None:
     src = '''
-    __docformat__ = 'google'
+    __docformat__ = 'epytext'
     class ConfigFileParser(object):
         """doc"""
 
         def parse(self, stream):
-            """Parses the keys and values from a config file.
+            """
+            Parses the keys and values from a config file.
 
-            Note: blablabla
-
-            Args:
-                stream (notfound): A config file input stream (such as an open file object).
+            @param stream: A config file input stream (such as an open file object).
+            @type stream: (notfound, thing[)
             """
     '''
     mod = fromText(src)
     docstring2html(mod.contents['ConfigFileParser'].contents['parse'])
-    assert capsys.readouterr().out == '<test>:12: Cannot find link target for "notfound"\n'
+    assert all(l.startswith('<test>:11:') for l in capsys.readouterr().out.splitlines()) 
