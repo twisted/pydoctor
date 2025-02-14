@@ -479,3 +479,21 @@ def test_process_types_doesnt_mess_with_warning_linenumber_rst(capsys: CapSys) -
         '<test>:13: Cannot find link target for "np.bytes_" (you can link to external docs with --intersphinx)', 
         '<test>:13: Cannot find link target for "np.str_" (you can link to external docs with --intersphinx)'
         ]
+
+def test_bug_attribute_type_not_found_reports_only_once(capsys:CapSys) -> None:
+    src = '''
+    __docformat__ = 'numpy'
+    class MachAr:
+        """
+        Diagnosing machine parameters.
+
+        Attributes
+        ----------
+        ibeta : int
+            Radix in which numbers are represented.
+        """
+    '''
+
+    mod = fromText(src)
+    [docstring2html(o) for o in mod.system.allobjects.values()]
+    assert capsys.readouterr().out.splitlines() == ['<test>:8: Cannot find link target for "int"']
