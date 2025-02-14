@@ -8,7 +8,6 @@ from __future__ import annotations
 from typing import Callable, Dict, List, Union, cast
 
 from pydoctor.epydoc.markup import ParseError, ParsedDocstring
-from pydoctor.epydoc.markup.restructuredtext import parse_docstring
 from pydoctor.epydoc.markup._pyval_repr import PyvalColorizer
 from pydoctor.napoleon.docstring import TokenType, TypeDocstring
 from pydoctor.epydoc.docutils import new_document, set_node_attributes

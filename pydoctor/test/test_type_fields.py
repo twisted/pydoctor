@@ -9,7 +9,6 @@ from pydoctor.test.test_epydoc2stan import docstring2html
 from pydoctor.test.test_astbuilder import fromText
 from pydoctor.stanutils import flatten
 from pydoctor.epydoc.markup._types import ParsedTypeDocstring
-from pydoctor.napoleon.docstring import TypeDocstring
 import pydoctor.epydoc.markup
 from pydoctor import model
 
