@@ -2209,3 +2209,37 @@ def test_numpydoc_warns_about_unknown_types_in_attribute_section_file(capsys: Ca
     assert len(warnings) == 30
     assert len(set(warnings)) == 30
 
+def test_numpydoc_warns_about_unknown_types_in_explicit_references_at_line(capsys: CapSys) -> None:
+    # we don't have a good knowledge of linenumber in numpy or google docstring
+    # because of https://github.com/twisted/pydoctor/issues/807
+    # But this regression test tries to ensure we're not making it worse.
+    # it might need to be adjusted when we fix #807.
+
+    src = '''
+    import numpy as np
+    __docformat__ = 'numpy'
+    def find(a, sub, start=0, end=None):
+        """
+        For each element, return the lowest index in the string where
+        substring ``sub`` is found, such that ``sub`` is contained in the
+        range [``start``, ``end``).
+
+        Parameters
+        ----------
+        a : array_like, with ``StringDType``, ``bytes_`` or ``str_`` dtype
+        sub : array_like, with `np.bytes_` or `np.str_` dtype
+            The substring to search for.
+        """
+    '''
+    system = model.System(model.Options.from_args(['-q']))
+    builder = system.systemBuilder(system)
+    builder.addModuleString('', modname='numpy', is_package=True)
+    builder.addModuleString('', modname='_core', is_package=True, parent_name='numpy')
+    builder.addModuleString(src, modname='strings.py', parent_name='numpy._core')
+    builder.buildModules()
+    for o in system.allobjects.values():
+        docstring2html(o)
+    assert capsys.readouterr().out == ('numpy._core.strings.py:11: Cannot find link target for "array_like"\n'
+        'numpy._core.strings.py:13: Cannot find link target for "array_like"\n'
+        'numpy._core.strings.py:13: Cannot find link target for "numpy.bytes_", resolved from "np.bytes_"\n'
+        'numpy._core.strings.py:13: Cannot find link target for "numpy.str_", resolved from "np.str_"\n')

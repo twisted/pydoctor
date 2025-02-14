@@ -9,6 +9,7 @@ from pydoctor.test.test_epydoc2stan import docstring2html
 from pydoctor.test.test_astbuilder import fromText
 from pydoctor.stanutils import flatten
 from pydoctor.epydoc.markup._types import ParsedTypeDocstring
+from pydoctor.napoleon.docstring import TypeDocstring
 import pydoctor.epydoc.markup
 from pydoctor import model
 
@@ -47,12 +48,6 @@ def typespec2htmlvianode(s: str, markup: str) -> str:
     assert not ann.warnings
     return html
 
-def typespec2htmlviastr(s: str) -> str:
-    ann = ParsedTypeDocstring(s, warns_on_unknown_tokens=True)
-    html = flatten(ann.to_stan(NotFoundLinker()))
-    assert not ann.warnings
-    return html
-
 def test_parsed_type(subtests: Any) -> None:
     
     parsed_type_cases = [
@@ -83,7 +78,6 @@ def test_parsed_type(subtests: Any) -> None:
 
         with subtests.test('parse type', rst=rst_string, epy=epy_string):
         
-            assert typespec2htmlviastr(rst_string) == excepted_html
             assert typespec2htmlvianode(rst_string, 'restructuredtext') == excepted_html            
             assert typespec2htmlvianode(epy_string, 'epytext') == excepted_html
 
@@ -234,13 +228,20 @@ def test_processtypes_corner_cases(capsys: CapSys, subtests: Any) -> None:
     we should be careful with triggering warnings because whether the type spec triggers warnings is used
     to check is a string is a valid type or not.  
     """
-    def _process(typestr: str, fails:bool=False) -> str:
+    def _process(typestr: str, fails:bool=False, docformat:str='both') -> str:
+        if docformat == 'both':
+            str1 = _process(typestr, fails, 'epytext')
+            str2 = _process(typestr, fails, 'restructuredtext')
+            assert str1 == str2
+            return str1
+        
         system = model.System()
         system.options.processtypes = True
         mod = fromText(f'''
+        __docformat__ = '{docformat}'
         a = None
         """
-        @type: {typestr}
+        {'@' if docformat == 'epytext' else ':'}type: {typestr}
         """
         ''', modname='test', system=system)
         a = mod.contents['a']
@@ -258,9 +259,10 @@ def test_processtypes_corner_cases(capsys: CapSys, subtests: Any) -> None:
 
         return fmt
 
-    def process(input:str, expected:str) -> None:
+    def process(input:str, expected:str, fails:bool=False, docformat:str='both') -> None:
+        # both is for epytext and restructuredtext
         with subtests.test(msg="processtypes", input=input):
-            actual = _process(input)
+            actual = _process(input, fails=fails, docformat=docformat)
             assert actual == expected
 
     process('default[str]',                       "<em>default</em>[<a>str</a>]")
@@ -268,19 +270,20 @@ def test_processtypes_corner_cases(capsys: CapSys, subtests: Any) -> None:
     process('[,]',                                "[, ]")
     process('[[]]',                               "[[]]")
     process(', [str]',                            ", [<a>str</a>]")
-    process(' of [str]',                          "of[<a>str</a>]")
-    process(' or [str]',                          "or[<a>str</a>]")
+    process(' of [str]',                          "of [<a>str</a>]")
+    process(' or [str]',                          "or [<a>str</a>]")
     process(': [str]',                            ': [<a>str</a>]')
     process("'hello'[str]",                      "<span class=\"rst-variable-string\">'hello'</span>[<a>str</a>]")
     process('"hello"[str]',                       "<span class=\"rst-variable-string\">\"hello\"</span>[<a>str</a>]")
-    process('`hello`[str]',                       "<a>hello</a>[<a>str</a>]")
-    process('`hello <https://github.com>`_[str]', """<a class="rst-external rst-reference" href="https://github.com" target="_top">hello</a>[<a>str</a>]""")
-    process('**hello**[str]',                     "<strong>hello</strong>[<a>str</a>]")
     process('["hello" or str, default: 2]',       """[<span class="rst-variable-string">"hello"</span> or <a>str</a>, <em>default</em>: <span class="rst-variable-string">2</span>]""")
-
+    
+    process('`hello`[str]',                       "`hello`[<a>str</a>]", fails=True, docformat='restructuredtext')
+    process('`hello <https://github.com>`_[str]', """`hello &lt;<a class="rst-external rst-reference" href="https://github.com" target="_top">https://github.com</a>&gt;`_[<a>str</a>]""", fails=True, docformat='restructuredtext')
+    process('**hello**[str]',                     "**hello**[<a>str</a>]", fails=True, docformat='restructuredtext')
+   
     # HTML ids for problematic elements changed in docutils 0.18.0, and again in 0.19.0, so we're not testing for the exact content anymore.
     with subtests.test(msg="processtypes", input='Union[`hello <>`_[str]]'):
-        problematic = _process('Union[`hello <>`_[str]]', fails=True)
+        problematic = _process('Union[`hello <>`_[str]]', fails=True, docformat='restructuredtext')
         assert "`hello &lt;&gt;`_" in problematic
         assert "<a>str</a>" in problematic
  
@@ -379,14 +382,14 @@ def test_napoleon_types_warnings(capsys: CapSys) -> None:
     # which includes much more lines because of the :type arg: fields. 
     assert '\n'.join(lines) == '''\
 warns:13: bad docstring: invalid type: 'docformatCan be one of'. Probably missing colon.
-warns:7: bad docstring: unbalanced parenthesis in type expression
-warns:9: bad docstring: unbalanced square braces in type expression
-warns:11: bad docstring: invalid value set (missing closing brace): {1
-warns:13: bad docstring: invalid value set (missing opening brace): 3}
-warns:15: bad docstring: malformed string literal (missing closing quote): '2
-warns:17: bad docstring: malformed string literal (missing opening quote): 2"
-warns:24: bad docstring: Unexpected element in type specification field: element 'doctest_block'. This value should only contain text or inline markup.
-warns:28: bad docstring: Unexpected element in type specification field: element 'paragraph'. This value should only contain text or inline markup.'''
+warns:6: bad docstring: unbalanced parenthesis in type expression
+warns:8: bad docstring: unbalanced square braces in type expression
+warns:10: bad docstring: invalid value set (missing closing brace): {1
+warns:12: bad docstring: invalid value set (missing opening brace): 3}
+warns:14: bad docstring: malformed string literal (missing closing quote): '2
+warns:16: bad docstring: malformed string literal (missing opening quote): 2"
+warns:23: bad docstring: Unexpected element in type specification field: element 'doctest_block'. This value should only contain text or inline markup.
+warns:27: bad docstring: Unexpected element in type specification field: element 'paragraph'. This value should only contain text or inline markup.'''
 
 def test_process_types_with_consolidated_fields(capsys: CapSys) -> None:
     """
@@ -422,14 +425,57 @@ def test_process_types_doesnt_mess_with_warning_linenumber(capsys: CapSys) -> No
     class ConfigFileParser(object):
         """doc"""
 
-        def parse(self, stream):
+        def parse(self, stream, stuff):
             """
             Parses the keys and values from a config file.
 
             @param stream: A config file input stream (such as an open file object).
             @type stream: (notfound, thing[)
+            @param stuff: Stuff
+            @type stuff: array_like, with L{np.bytes_} or L{np.str_} dtype
             """
     '''
-    mod = fromText(src)
+    system = model.System()
+    system.options.processtypes = True
+    mod = fromText(src, system=system)
     docstring2html(mod.contents['ConfigFileParser'].contents['parse'])
-    assert all(l.startswith('<test>:11:') for l in capsys.readouterr().out.splitlines()) 
+    # These linenumbers, are correct.
+    assert capsys.readouterr().out.splitlines() == [
+        '<test>:11: bad docstring: unbalanced square braces in type expression', 
+        '<test>:11: Cannot find link target for "notfound"', 
+        '<test>:11: Cannot find link target for "thing"', 
+        '<test>:13: Cannot find link target for "array_like"', 
+        '<test>:13: Cannot find link target for "np.bytes_" (you can link to external docs with --intersphinx)', 
+        '<test>:13: Cannot find link target for "np.str_" (you can link to external docs with --intersphinx)'
+        ]
+
+def test_process_types_doesnt_mess_with_warning_linenumber_rst(capsys: CapSys) -> None:
+    src = '''
+    __docformat__ = 'restructuredtext'
+    class ConfigFileParser(object):
+        """doc"""
+
+        def parse(self, stream, stuff):
+            """
+            Parses the keys and values from a config file.
+            
+            :param stream: A config file input stream (such as an open file object).
+            :type stream: (notfound, thing[)
+            :param stuff: Stuff
+            :type stuff: array_like, with `np.bytes_` or `np.str_` dtype
+            """
+    '''
+    system = model.System()
+    system.options.processtypes = True
+    mod = fromText(src, system=system)
+    html = docstring2html(mod.contents['ConfigFileParser'].contents['parse'])
+    assert 'np.bytes_' in html
+    # These linenumbers, are correct.
+    assert capsys.readouterr().out.splitlines() == [
+        '<test>:11: bad docstring: unbalanced square braces in type expression', 
+        '<test>:11: Cannot find link target for "notfound"', 
+        '<test>:11: Cannot find link target for "thing"', 
+        '<test>:13: Cannot find link target for "array_like"', 
+        '<test>:13: Cannot find link target for "np.bytes_" (you can link to external docs with --intersphinx)', 
+        '<test>:13: Cannot find link target for "np.str_" (you can link to external docs with --intersphinx)'
+        ]

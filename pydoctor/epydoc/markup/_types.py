@@ -27,18 +27,15 @@ class ParsedTypeDocstring(TypeDocstring, ParsedDocstring):
     #                                                   yes this overrides the superclass type!
     _tokens: list[tuple[str | nodes.Node, TokenType]] # type: ignore
 
-    def __init__(self, annotation: Union[nodes.document, str],
+    def __init__(self, annotation: nodes.document, 
                  warns_on_unknown_tokens: bool = False, lineno: int = 0) -> None:
         ParsedDocstring.__init__(self, ())
-        if isinstance(annotation, nodes.document):
-            TypeDocstring.__init__(self, '', warns_on_unknown_tokens)
+        TypeDocstring.__init__(self, '', warns_on_unknown_tokens)
 
-            _tokens = self._tokenize_node_type_spec(annotation)
-            self._tokens = cast('list[tuple[str | nodes.Node, TokenType]]', 
-                                self._build_tokens(_tokens))
-            self._trigger_warnings()
-        else:
-            TypeDocstring.__init__(self, annotation, warns_on_unknown_tokens)
+        _tokens = self._tokenize_node_type_spec(annotation)
+        self._tokens = cast('list[tuple[str | nodes.Node, TokenType]]', 
+                            self._build_tokens(_tokens))
+        self._trigger_warnings()
         
         self._lineno = lineno
         self._document = self._parse_tokens()
@@ -86,21 +83,10 @@ class ParsedTypeDocstring(TypeDocstring, ParsedDocstring):
             TokenType.CONTROL: lambda _token, _, __: \
                 nodes.emphasis(_token, _token),
             
-            TokenType.REFERENCE: lambda _token, warnings, _: \
-                parse_docstring(_token, warnings).to_node(), 
-            
-            TokenType.UNKNOWN: lambda _token, warnings, _: \
-                parse_docstring(_token, warnings).to_node(), 
             
             TokenType.OBJ: lambda _token, _, lineno: \
                 set_node_attributes(nodes.title_reference(_token, _token), 
-                                    # the +1 here is coping with the fact that
-                                    # ParseErrors are 1-based but the doutils
-                                    # line we're getting form get_lineno() is zero-based.
-                                    lineno=lineno+1),
-            
-            TokenType.DELIMITER: lambda _token, _, __: \
-                nodes.Text(_token),
+                                    lineno=lineno),
         }
 
     def _parse_tokens(self) -> nodes.document:
@@ -114,6 +100,7 @@ class ParsedTypeDocstring(TypeDocstring, ParsedDocstring):
         lineno = self._lineno
 
         elements: list[nodes.Node] = []
+        default = lambda _token, _, __: nodes.Text(_token)
 
         for token, type_ in self._tokens:
             assert token is not None
@@ -124,7 +111,7 @@ class ParsedTypeDocstring(TypeDocstring, ParsedDocstring):
                 converted_token = token
             else:
                 assert isinstance(token, str)
-                converted_token = converters[type_](token, warnings, lineno)
+                converted_token = converters.get(type_, default)(token, warnings, lineno)
 
             if isinstance(converted_token, nodes.document):
                 elements.extend((set_node_attributes(t, document=document) 
@@ -139,4 +126,7 @@ class ParsedTypeDocstring(TypeDocstring, ParsedDocstring):
         return set_node_attributes(document, children=[
             set_node_attributes(nodes.inline('', '', classes=['literal']), 
                                 children=elements, 
-                                lineno=self._lineno)])
+                                # the +1 here is coping with the fact that
+                                # ParseErrors are 1-based but the doutils
+                                # line we're getting form get_lineno() is zero-based.
+                                lineno=lineno+1)])

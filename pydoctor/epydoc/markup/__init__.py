@@ -87,7 +87,7 @@ def get_supported_docformats() -> Iterator[str]:
 
 def get_parser_by_name(docformat: str, objclass: ObjClass | None = None) -> ParserFunction:
     """
-    Get the C{parse_docstring(str, List[ParseError], bool) -> ParsedDocstring} function based on a parser name. 
+    Get the C{parse_docstring(str, List[ParseError]) -> ParsedDocstring} function based on a parser name. 
 
     @raises ImportError: If the parser could not be imported, probably meaning that your are missing a dependency
         or it could be that the docformat name do not match any know L{pydoctor.epydoc.markup} submodules.
@@ -112,7 +112,7 @@ def processtypes(parse:ParserFunction) -> ParserFunction:
         for field in doc.fields:
             if field.tag() in ParsedTypeDocstring.FIELDS:
                 body = ParsedTypeDocstring(field.body().to_node(), lineno=field.lineno)
-                append_warnings(body.warnings, errs, lineno=field.lineno+1)
+                append_warnings(body.warnings, errs, lineno=field.lineno)
                 field.replace_body(body)
     
     def parse_and_processtypes(doc:str, errs:List['ParseError']) -> 'ParsedDocstring':
