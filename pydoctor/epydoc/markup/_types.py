@@ -5,7 +5,7 @@ This module provides yet another L{ParsedDocstring} subclass.
 """
 from __future__ import annotations
 
-from typing import Callable, Dict, List, Union, cast
+from typing import Callable, Dict, List, Union
 
 from pydoctor.epydoc.markup import ParseError, ParsedDocstring
 from pydoctor.epydoc.markup._pyval_repr import PyvalColorizer
@@ -18,22 +18,22 @@ from docutils import nodes
 class ParsedTypeDocstring(TypeDocstring, ParsedDocstring):
     """
     Add L{ParsedDocstring} interface on top of L{TypeDocstring} and 
-    allow to parse types from L{nodes.Node} objects, providing the C{--process-types} option.
+    allow to parse types from L{nodes.Node} objects, 
+    providing the C{--process-types} option.
     """
 
     FIELDS = ('type', 'rtype', 'ytype', 'returntype', 'yieldtype')
     
-    #                                                   yes this overrides the superclass type!
-    _tokens: list[tuple[str | nodes.Node, TokenType]] # type: ignore
-
     def __init__(self, annotation: nodes.document, 
-                 warns_on_unknown_tokens: bool = False, lineno: int = 0) -> None:
+                 warns_on_unknown_tokens: bool = False, 
+                 lineno: int = 0) -> None:
         ParsedDocstring.__init__(self, ())
         TypeDocstring.__init__(self, '', warns_on_unknown_tokens)
 
         _tokens = self._tokenize_node_type_spec(annotation)
-        self._tokens = cast('list[tuple[str | nodes.Node, TokenType]]', 
-                            self._build_tokens(_tokens))
+        # yes this overrides the superclass type!
+        self._tokens: list[tuple[str | nodes.Node, TokenType]] \
+            = self._build_tokens(_tokens) # type: ignore
         self._trigger_warnings()
         
         self._lineno = lineno
@@ -46,10 +46,12 @@ class ParsedTypeDocstring(TypeDocstring, ParsedDocstring):
     def to_node(self) -> nodes.document:
         return self._document
 
-    def _tokenize_node_type_spec(self, spec: nodes.document) -> List[Union[str, nodes.Node]]:
+    def _tokenize_node_type_spec(self, spec: nodes.document
+                                 ) -> List[Union[str, nodes.Node]]:
         def _warn_not_supported(n:nodes.Node) -> None:
-            self.warnings.append(f"Unexpected element in type specification field: element '{n.__class__.__name__}'. "
-                                    "This value should only contain text or inline markup.")
+            self.warnings.append("Unexpected element in type specification field: "
+                                 f"element '{n.__class__.__name__}'. This value should "
+                                 "only contain text or inline markup.")
 
         tokens: List[Union[str, nodes.Node]] = []
         # Determine if the content is nested inside a paragraph
@@ -72,18 +74,15 @@ class ParsedTypeDocstring(TypeDocstring, ParsedDocstring):
         
         return tokens
 
-    _converters: Dict[TokenType, Callable[[str, list[ParseError], int], nodes.Node]] = {
+    _converters: Dict[TokenType, Callable[[str, int], nodes.Node]] = {
                                         # we're re-using the variable string css 
                                         # class for the whole literal token, it's the
                                         # best approximation we have for now. 
-            TokenType.LITERAL: lambda _token, _, __: \
+            TokenType.LITERAL: lambda _token, _: \
                 nodes.inline(_token, _token, classes=[PyvalColorizer.STRING_TAG]),
-            
-            TokenType.CONTROL: lambda _token, _, __: \
+            TokenType.CONTROL: lambda _token, _: \
                 nodes.emphasis(_token, _token),
-            
-            
-            TokenType.OBJ: lambda _token, _, lineno: \
+            TokenType.OBJ: lambda _token, lineno: \
                 set_node_attributes(nodes.title_reference(_token, _token), 
                                     lineno=lineno),
         }
@@ -94,12 +93,12 @@ class ParsedTypeDocstring(TypeDocstring, ParsedDocstring):
         """
 
         document = new_document('code')
-        warnings: List[ParseError] = []
+
         converters = self._converters
         lineno = self._lineno
 
         elements: list[nodes.Node] = []
-        default = lambda _token, _, __: nodes.Text(_token)
+        default = lambda _token, _: nodes.Text(_token)
 
         for token, type_ in self._tokens:
             assert token is not None
@@ -110,22 +109,17 @@ class ParsedTypeDocstring(TypeDocstring, ParsedDocstring):
                 converted_token = token
             else:
                 assert isinstance(token, str)
-                converted_token = converters.get(type_, default)(token, warnings, lineno)
+                converted_token = converters.get(type_, default)(token, lineno)
 
-            if isinstance(converted_token, nodes.document):
-                elements.extend((set_node_attributes(t, document=document) 
-                                 for t in converted_token.children))
-            else:
-                elements.append(set_node_attributes(converted_token, 
+            elements.append(set_node_attributes(converted_token, 
                                                     document=document))
-        # warnings should be appended once we have called all converters.
-        for w in warnings:
-            self.warnings.append(w.descr())
 
         return set_node_attributes(document, children=[
             set_node_attributes(nodes.inline('', '', classes=['literal']), 
                                 children=elements, 
-                                # the +1 here is coping with the fact that
-                                # ParseErrors are 1-based but the doutils
-                                # line we're getting form get_lineno() is zero-based.
+                                document=document, 
                                 lineno=lineno+1)])
+                                # the +1 here is coping with the fact that
+                                # Field.lineno are 0-based but the docutils tree 
+                                # is supposed to be 1-based
+
