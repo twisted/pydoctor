@@ -129,32 +129,28 @@ def get_lineno(node: nodes.Element) -> int:
         
         if _node.line:
             # This line points to the start of the containing node
-            line: int = _node.line
+            # Here we are removing 1 to the result because ParseError class is zero-based
+            # while docutils line attribute is 1-based.
+            line:int = _node.line-1
             # Let's figure out how many newlines we need to add to this number 
             # to get the right line number.
             parent_rawsource: Optional[str] = _node.rawsource or None
             node_rawsource: Optional[str] = node.rawsource or None
 
-            if parent_rawsource and node_rawsource and (
-                node_rawsource in parent_rawsource):
-                # Add the required number of newlines to the result
-                node_index = parent_rawsource.index(node_rawsource)
-                line += parent_rawsource[:node_index].count('\n')
+            if parent_rawsource is not None and \
+               node_rawsource is not None:
+                if node_rawsource in parent_rawsource:
+                    node_index = parent_rawsource.index(node_rawsource)
+                    # Add the required number of newlines to the result
+                    line += parent_rawsource[:node_index].count('\n')
         else:
             line = get_first_parent_lineno(_node.parent)
         return line
 
     if node.line:
-        # If the line is explicitely set, assume it's zero-based
         line = node.line
-
-        # If docutils suddenly starts populating the line attribute for
-        # title_reference node, all RST xref warnings will off by 1.
     else:
-        # We need to traverse the docutils tree, so the retreived 
-        # line unumber will be one-based, so adjust it
-        # because ParseError class is zero-based
-        line = get_first_parent_lineno(node.parent) - 1
+        line = get_first_parent_lineno(node.parent)
     
     return line
 
