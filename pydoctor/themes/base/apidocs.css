@@ -247,12 +247,14 @@ ul ul ul ul ul ul ul {
     padding: 2px 4px 2px 15px;
 }
 
-tr.fieldStart{
-    padding-bottom: 2px;
+/* Little bit of margin in between two fiel table */
+.fieldTable:has(+ .fieldTable){
+    margin-bottom: 10px;
 }
 
 .fieldTable tr td.fieldArgDesc > *:nth-child(1){
     padding-top: 0; /* So it's actually aligned vertically */
+    margin-top: 0;
 }
 
 .fieldTable tr td {
