@@ -955,8 +955,7 @@ class GoogleDocstring:
                 indent = self._get_indent(line)
                 if min_indent is None:
                     min_indent = indent
-                # mypy get error: Statement is unreachable  [unreachable]
-                elif indent < min_indent:  # type: ignore
+                elif indent < min_indent:
                     min_indent = indent
         return min_indent or 0
 
