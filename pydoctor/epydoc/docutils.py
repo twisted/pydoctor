@@ -148,7 +148,11 @@ def get_lineno(node: nodes.Element) -> int:
         return line
 
     if node.line:
+        # If the line is explicitely set, assume it's zero-based
         line = node.line
+        # If docutils suddenly starts populating the line attribute for
+        # title_reference node, all RST xref warnings will off by 1 :/
+
     else:
         line = get_first_parent_lineno(node.parent)
     
