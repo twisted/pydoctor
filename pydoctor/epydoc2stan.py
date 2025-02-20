@@ -1223,7 +1223,6 @@ def _colorize_signature_param(param: inspect.Parameter,
 
     if param.default is not _empty:
         if param.annotation is not _empty:
-            # TODO: should we keep these two different manners ?
             result.append(parsed_text(' = '))
         else:
             result.append(parsed_text('='))
