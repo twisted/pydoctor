@@ -420,19 +420,6 @@ class DocstringLinker(Protocol):
         in this case error will NOT be reported at all.
         """
 
-class NotFoundLinker(DocstringLinker):
-    """A DocstringLinker implementation that cannot find any links."""
-
-    def link_to(self, target: str, label: "Flattenable", *, is_annotation: bool = False) -> Tag:
-        return tags.transparent(label)
-
-    def link_xref(self, target: str, label: "Flattenable", lineno: int) -> Tag:
-        return tags.code(label)
-    
-    @contextlib.contextmanager
-    def switch_context(self, ob: Documentable | None) -> Iterator[None]:
-        yield
-        
 
 ##################################################
 ## ParseError exceptions
