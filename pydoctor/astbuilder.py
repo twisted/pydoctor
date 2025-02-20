@@ -18,10 +18,6 @@ from pydoctor.astutils import (is_none_literal, is_typing_annotation, is_using_a
                                is__name__equals__main__, unstring_annotation, upgrade_annotation, iterassign, extract_docstring_linenum, infer_type, get_parents,
                                get_docstring_node, get_assign_docstring_node, unparse, NodeVisitor, Parentage, Str)
 
-class InvalidSignatureParamName(str):
-    def isidentifier(self) -> bool:
-        return True
-
 def parseFile(path: Path) -> ast.Module:
     """Parse the contents of a Python source file."""
     with open(path, 'rb') as f:
@@ -1063,11 +1059,7 @@ class ModuleVistor(NodeVisitor):
             signature = Signature(parameters, return_annotation=return_annotation)
         except ValueError as ex:
             func.report(f'{func.fullName()} has invalid parameters: {ex}')
-            # Craft an invalid signature that does not look like a function with zero arguments.
-            signature = Signature(
-                [Parameter(InvalidSignatureParamName('...'), 
-                           kind=Parameter.POSITIONAL_OR_KEYWORD)])
-
+            signature = None
         func.annotations = annotations
 
         # Only set main function signature if it is a non-overload

@@ -107,12 +107,16 @@ def to_html(
         ) -> str:
     return flatten(parsed_docstring.to_stan(linker))
 
-def signature2str(func: model.Function | model.FunctionOverload) -> str:
+def signature2str(func: model.Function | model.FunctionOverload, 
+                  fails: bool = False) -> str:
     doc = get_parsed_signature(func)
-    assert doc
     fromhtml = flatten_text(format_signature(func))
-    fromdocutils = doc.to_text()
-    assert fromhtml == fromdocutils
+    if doc is not None:
+        fromdocutils = doc.to_text()
+        assert fromhtml == fromdocutils
+    else:
+        assert fails
+        assert func.signature is None
     return fromhtml
 
 @overload
@@ -279,7 +283,7 @@ def test_function_badsig(signature: str, systemcls: Type[model.System], capsys: 
     mod = fromText(f'def f{signature}: ...', systemcls=systemcls, modname='mod')
     docfunc, = mod.contents.values()
     assert isinstance(docfunc, model.Function)
-    assert signature2str(docfunc) == '(...)'
+    assert signature2str(docfunc, fails=True) == '(...)'
     captured = capsys.readouterr().out
     assert captured.startswith("mod:1: mod.f has invalid parameters: ")
 
