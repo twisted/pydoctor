@@ -752,7 +752,8 @@ input[type="search"] {
 }
 
 #childList a:target ~ .functionBody{
-    box-shadow: 7px 1px 0px 3px rgb(253 255 223), -36px 1px 0px 3px rgb(253 255 223);
+    background-color: transparent;
+    box-shadow: none;
 }
 
 @font-face {
