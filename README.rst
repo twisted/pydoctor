@@ -80,6 +80,11 @@ in development
   - Some limited support for legacy namespace packages is included as well (with ``declare_namespace(__name__)`` or ``__path__ = extend_path(__path__, __name__)``).
   - Better messages are now triggered when there is a module/package name collision (exit code will not change though).
 
+* Improve field tables so the correspondence with the description column is more legible.
+* Highlighting in readthedocs theme now cover the whole docstring content 
+  instead of just the signature.
+
+
 pydoctor 24.11.2
 ^^^^^^^^^^^^^^^^
 

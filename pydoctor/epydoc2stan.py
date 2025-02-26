@@ -126,7 +126,7 @@ class RaisesDesc(FieldDesc):
         yield tags.td(tags.code(self.type), class_="fieldArgContainer")
         yield tags.td(self.body or self._UNDOCUMENTED)
 
-def format_desc_list(label: str, descs: Sequence[FieldDesc]) -> Iterator[Tag]:
+def format_desc_list(label: str, descs: Sequence[FieldDesc]) -> list[Tag]:
     """
     Format list of L{FieldDesc}. Used for param, returns, raises, etc.
 
@@ -148,23 +148,27 @@ def format_desc_list(label: str, descs: Sequence[FieldDesc]) -> Iterator[Tag]:
 
     @arg label: Section "mini heading"
     @arg descs: L{FieldDesc}s
-    @returns: Each row as iterator or None if no C{descs} id provided.
+    @returns: A list containing a single table tag or an empty list if no C{descs} are provided.
     """
-    if not descs:
-        return
-    # <label>
-    row = tags.tr(class_="fieldStart")
-    row(tags.td(class_="fieldName", colspan="2")(label))
-    # yield the first row.
-    yield row
-    # yield descriptions.
-    for d in descs:
-        row = tags.tr()
-        # <name>: <type> |     <desc>
-        # or
-        # <desc ... >
-        row(d.format())
+    if not descs: 
+        return []
+    
+    def rows() -> Iterator[Tag]:
+        # <label>
+        row = tags.tr(class_="fieldStart")
+        row(tags.td(class_="fieldName", colspan="2")(label))
+        # yield the first row.
         yield row
+        # yield descriptions.
+        for d in descs:
+            row = tags.tr()
+            # <name>: <type> |     <desc>
+            # or
+            # <desc ... >
+            row(d.format())
+            yield row
+    
+    return [tags.table(class_='fieldTable')(*rows())]
 
 @attr.s(auto_attribs=True)
 class Field:
@@ -205,7 +209,7 @@ class Field:
         self.source.report(message, lineno_offset=self.lineno, section='docstring')
 
 
-def format_field_list(singular: str, plural: str, fields: Sequence[Field]) -> Iterator[Tag]:
+def format_field_list(singular: str, plural: str, fields: Sequence[Field]) -> list[Tag]:
     """
     Format list of L{Field} object. Used for notes, see also, authors, etc.
 
@@ -216,20 +220,23 @@ def format_field_list(singular: str, plural: str, fields: Sequence[Field]) -> It
         | <desc ... >                        |
         +------------------------------------+
 
-    @returns: Each row as iterator
+    @returns: A list containing a single table tag or an empty list if no C{fields} are provided.
     """
-    if not fields:
-        return
-
-    label = singular if len(fields) == 1 else plural
-    row = tags.tr(class_="fieldStart")
-    row(tags.td(class_="fieldName", colspan="2")(label))
-    yield row
-
-    for field in fields:
-        row = tags.tr()
-        row(tags.td(colspan="2")(field.format()))
+    if not fields: 
+        return []
+    
+    def rows() -> Iterator[Tag]:
+        label = singular if len(fields) == 1 else plural
+        row = tags.tr(class_="fieldStart")
+        row(tags.td(class_="fieldName", colspan="2")(label))
         yield row
+
+        for field in fields:
+            row = tags.tr()
+            row(tags.td(colspan="2")(field.format()))
+            yield row
+
+    return [tags.table(class_='fieldTable')(*rows())]
 
 class VariableArgument(str):
     """
@@ -558,10 +565,7 @@ class FieldHandler:
         for kind, fieldlist in self.unknowns.items():
             r += format_desc_list(f"Unknown Field: {kind}", fieldlist)
 
-        if any(r):
-            return tags.table(class_='fieldTable')(r)
-        else:
-            return tags.transparent
+        return tags.transparent(*r)
 
 def reportWarnings(obj: model.Documentable, warns: Sequence[str], **kwargs:Any) -> None:
     for message in warns:
