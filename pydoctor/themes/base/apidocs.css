@@ -228,6 +228,7 @@ ul ul ul ul ul ul ul {
 .fieldTable {
     width: 100%;
     border: 0;
+    overflow: hidden;
 }
 
 /* Arg name */
@@ -243,18 +244,43 @@ ul ul ul ul ul ul ul {
 
 .fieldTable tr:not(.fieldStart) td:first-child,
 .valueTable tr:not(.fieldStart) td:first-child{
-    padding: 3px 4px 3px 15px;
+    padding: 2px 4px 2px 15px;
+}
+
+/* Little bit of margin in between two field table */
+.fieldTable:has(+ .fieldTable){
+    margin-bottom: 10px;
+}
+
+.fieldTable tr td.fieldArgDesc > *:nth-child(1){
+    padding-top: 0; /* So it's actually aligned vertically */
+    margin-top: 0;
 }
 
 .fieldTable tr td {
     padding: 2px;
+    vertical-align: top;
 }
 
+/* Add border to separate parameter rows */
+.fieldTable tr:not(:last-of-type):has(.fieldArgContainer):has(+ tr:not(.fieldStart)) {
+    /* This is a way to add a margin in between table rows */
+    border-bottom: 5px solid;
+    border-color: transparent;
+}
+
+.fieldTable tr:has(.fieldArgContainer):nth-child(odd) {
+    background-color: rgba(215, 215, 215, 0.15);
+}
 
 /* Argument name + type column table  */
 .fieldTable tr td.fieldArgContainer {
-    width: 325px;
+    max-width: 400px;
     word-break: break-word;
+}
+
+.fieldTable tr td.fieldArgDesc {
+    max-width: 600px;
 }
 
 /* parameters names in parameters table */
@@ -306,6 +332,11 @@ ul ul ul ul ul ul ul {
         width: auto;
     }
 
+    /* Argument name + type column table  */
+    .fieldTable tr td.fieldArgContainer {
+        width: 33%;
+    }
+
 }
 
 @media only screen and (max-width: 820px) {
@@ -320,23 +351,12 @@ ul ul ul ul ul ul ul {
     #splitTables > table tr td:nth-child(2) {
         width: 160px;
     }
-    /* Argument name + type column table  */
-    .fieldTable tr td.fieldArgContainer {
-        width: 170px;
-    } 
-    .fieldTable {
-        table-layout: fixed;
-    }
 }
 
 @media only screen and (max-width: 450px) {
     /* Attr name column table  */
     #splitTables > table tr td:nth-child(2) {
         width: 100px;
-    }
-    /* Argument name + type column table  */
-    .fieldTable tr td.fieldArgContainer {
-        width: 125px;
     }
 }
 
@@ -1129,18 +1149,18 @@ pre.constant-value              { padding: .5em; }
 
 /* highlight the targeted item with "#" */
 #childList a:target ~ .functionHeader, #childList a:target ~ .functionBody{
-    background-color: rgb(253, 255, 223);
+    background-color: rgba(253, 255, 223, 0.9);
 }
 #childList a:target ~ .functionHeader{
-    box-shadow: 0px 0px 0px 10px rgb(253, 255, 223);
+    box-shadow: 0px 0px 0px 10px rgba(253, 255, 223, 0.9);
 }
 #childList a:target ~ .functionBody{
     box-shadow: -2px -8px 0px 13px rgb(253 255 223);
 }
 /* in class hierarchy */
 #summaryTree a:target ~ div {
-    background-color: rgb(253, 255, 223);
-    box-shadow: 0px 0px 0px 7px rgb(253, 255, 223);
+    background-color: rgba(253, 255, 223, 0.9);
+    box-shadow: 0px 0px 0px 7px rgba(253, 255, 223, 0.9);
 }
 #summaryTree div {
     display: inline-table;

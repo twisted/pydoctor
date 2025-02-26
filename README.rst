@@ -74,6 +74,9 @@ in development
 ^^^^^^^^^^^^^^
 
 * Drop support for Python 3.8.
+* Improve field tables so the correspondence with the description column is more legible.
+* Highlighting in readthedocs theme now cover the whole docstring content 
+  instead of just the signature.
 
 pydoctor 24.11.2
 ^^^^^^^^^^^^^^^^
