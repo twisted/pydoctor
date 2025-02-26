@@ -77,7 +77,9 @@ in development
 * Fix a bug in the MRO computing code that would result in an incorrect  
   ``Cannot compute linearization of the class inheritance hierarchy`` message 
   for valid types extending ``typing.Generic`` as well as other generic classes.
-
+* Improve field tables so the correspondence with the description column is more legible.
+* Highlighting in readthedocs theme now cover the whole docstring content 
+  instead of just the signature.
 
 pydoctor 24.11.2
 ^^^^^^^^^^^^^^^^
