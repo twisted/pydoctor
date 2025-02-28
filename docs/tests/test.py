@@ -196,7 +196,6 @@ def test_lunr_index() -> None:
                     'pydoctor.epydoc.markup.ParsedDocstring.to_stan', 
                     'pydoctor.epydoc.markup.plaintext.ParsedPlaintextDocstring.to_stan',
                     'pydoctor.epydoc.markup._pyval_repr.ColorizedPyvalRepr.to_stan',
-                    'pydoctor.epydoc2stan.ParsedStanOnly.to_stan',
                 ]
         test_search('to_stan*', to_stan_results, order_is_important=False)
         test_search('to_stan', to_stan_results, order_is_important=False)
@@ -207,7 +206,6 @@ def test_lunr_index() -> None:
                     'pydoctor.epydoc.markup._types.ParsedTypeDocstring.to_node',
                     'pydoctor.epydoc.markup.restructuredtext.ParsedRstDocstring.to_node',
                     'pydoctor.epydoc.markup.epytext.ParsedEpytextDocstring.to_node',
-                    'pydoctor.epydoc2stan.ParsedStanOnly.to_node',
                 ]
         test_search('to_node*', to_node_results, order_is_important=False)
         test_search('to_node', to_node_results, order_is_important=False)
@@ -249,8 +247,7 @@ def test_missing_subclasses():
     infos = ('pydoctor.epydoc.markup._types.ParsedTypeDocstring', 
         'pydoctor.epydoc.markup.epytext.ParsedEpytextDocstring', 
         'pydoctor.epydoc.markup.plaintext.ParsedPlaintextDocstring', 
-        'pydoctor.epydoc.markup.restructuredtext.ParsedRstDocstring', 
-        'pydoctor.epydoc2stan.ParsedStanOnly', )
+        'pydoctor.epydoc.markup.restructuredtext.ParsedRstDocstring', )
 
     with open(BASE_DIR / 'api' / 'pydoctor.epydoc.markup.ParsedDocstring.html', 'r', encoding='utf-8') as stream:
         page = stream.read()

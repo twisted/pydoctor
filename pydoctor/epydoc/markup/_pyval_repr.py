@@ -198,7 +198,9 @@ class ColorizedPyvalRepr(ParsedRstDocstring):
     def to_stan(self, docstring_linker: DocstringLinker) -> Tag:
         return Tag('code')(super().to_stan(docstring_linker))
 
-def colorize_pyval(pyval: Any, linelen:Optional[int], maxlines:int, linebreakok:bool=True, refmap:Optional[Dict[str, str]]=None) -> ColorizedPyvalRepr:
+def colorize_pyval(pyval: Any, linelen:Optional[int], maxlines:int, 
+                   linebreakok:bool=True, refmap:Optional[Dict[str, str]]=None, 
+                   is_annotation: bool = False) -> ColorizedPyvalRepr:
     """
     Get a L{ColorizedPyvalRepr} instance for this piece of ast. 
 
@@ -208,14 +210,15 @@ def colorize_pyval(pyval: Any, linelen:Optional[int], maxlines:int, linebreakok:
         This can be used for cases the where the linker might be wrong, obviously this is just a workaround.
     @return: A L{ColorizedPyvalRepr} describing the given pyval.
     """
-    return PyvalColorizer(linelen=linelen, maxlines=maxlines, linebreakok=linebreakok, refmap=refmap).colorize(pyval)
+    return PyvalColorizer(linelen=linelen, maxlines=maxlines, linebreakok=linebreakok, 
+                          refmap=refmap, is_annotation=is_annotation).colorize(pyval)
 
-def colorize_inline_pyval(pyval: Any, refmap:Optional[Dict[str, str]]=None) -> ColorizedPyvalRepr:
+def colorize_inline_pyval(pyval: Any, refmap:Optional[Dict[str, str]]=None, is_annotation: bool = False) -> ColorizedPyvalRepr:
     """
     Used to colorize type annotations and parameters default values.
     @returns: C{L{colorize_pyval}(pyval, linelen=None, linebreakok=False)}
     """
-    return colorize_pyval(pyval, linelen=None, maxlines=1, linebreakok=False, refmap=refmap)
+    return colorize_pyval(pyval, linelen=None, maxlines=1, linebreakok=False, refmap=refmap, is_annotation=is_annotation)
 
 def _get_str_func(pyval:  AnyStr) -> Callable[[str], AnyStr]:
     func = cast(Callable[[str], AnyStr], str if isinstance(pyval, str) else \
@@ -260,14 +263,17 @@ def _bytes_escape(b: bytes) -> str:
 
 class PyvalColorizer:
     """
-    Syntax highlighter for Python values.
+    Syntax highlighter for Python AST (and some builtins types).
     """
 
-    def __init__(self, linelen:Optional[int], maxlines:int, linebreakok:bool=True, refmap:Optional[Dict[str, str]]=None):
+    def __init__(self, linelen:Optional[int], maxlines:int, linebreakok:bool=True, 
+                 refmap:Optional[Dict[str, str]]=None, is_annotation: bool = False):
         self.linelen: Optional[int] = linelen if linelen!=0 else None
         self.maxlines: Union[int, float] = maxlines if maxlines!=0 else float('inf')
         self.linebreakok = linebreakok
         self.refmap = refmap if refmap is not None else {}
+        self.is_annotation = is_annotation
+
         # some edge cases require to compute the precedence ahead of time and can't be 
         # easily done with access only to the parent node of some operators.
         self.explicit_precedence:Dict[ast.AST, int] = {}
@@ -283,7 +289,7 @@ class PyvalColorizer:
     NUMBER_TAG = None                # ints, floats, etc
     QUOTE_TAG = 'variable-quote'     # Quotes around strings.
     STRING_TAG = 'variable-string'   # Body of string literals
-    LINK_TAG = 'variable-link'       # Links to other documentables, extracted from AST names and attributes.
+    LINK_TAG = None       # Links, we don't use an explicit class here, but in node2stan.
     ELLIPSIS_TAG = 'variable-ellipsis'
     LINEWRAP_TAG = 'variable-linewrap'
     UNKNOWN_TAG = 'variable-unknown'
@@ -986,16 +992,21 @@ class PyvalColorizer:
             if (self.linelen is None or 
                 state.charpos + segment_len <= self.linelen 
                 or link is True 
-                or css_class in ('variable-quote',)):
+                or css_class in (self.QUOTE_TAG,)):
 
                 state.charpos += segment_len
 
                 if link is True:
                     # Here, we bypass the linker if refmap contains the segment we're linking to. 
-                    # The linker can be problematic because it has some design blind spots when the same name is declared in the imports and in the module body.
+                    # The linker can be problematic because it has some design blind spots when 
+                    # the same name is declared in the imports and in the module body.
                     
                     # Note that the argument name is 'refuri', not 'refuid. 
-                    element = obj_reference('', segment, refuri=self.refmap.get(segment, segment))
+                    element = obj_reference('', segment, 
+                                            refuri=self.refmap.get(segment, segment))
+                    if self.is_annotation:
+                        # Don't set the attribute if it's not True.
+                        element.attributes['is_annotation'] = True
                 elif css_class is not None:
                     element = nodes.inline('', segment, classes=[css_class])
                 else:

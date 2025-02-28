@@ -568,11 +568,13 @@ def test_format_decorators() -> None:
     def func():
         ...
     ''')
-    stan = stanutils.flatten(list(pages.format_decorators(cast(model.Function, mod.contents['func']))))
-    assert stan == ("""@string_decorator(<wbr></wbr>set(<wbr></wbr><span class="rst-variable-quote">'</span>"""
+    stan = stanutils.flatten(pages.format_decorators(cast(model.Function, mod.contents['func'])))
+    assert stan == ("""<div><span class="decorator">"""
+                    """@string_decorator(<wbr></wbr>set(<wbr></wbr><span class="rst-variable-quote">'</span>"""
                     r"""<span class="rst-variable-string">\\/:*?"&lt;&gt;|\f\v\t\r\n</span>"""
-                    """<span class="rst-variable-quote">'</span>))<br />@simple_decorator"""
-                    """(<wbr></wbr>max_examples=700, <wbr></wbr>deadline=None, <wbr></wbr>option=range(<wbr></wbr>10))<br />""")
+                    """<span class="rst-variable-quote">'</span>))<br /></span><span class="decorator">@simple_decorator"""
+                    """(<wbr></wbr>max_examples=700, <wbr></wbr>deadline=None, <wbr></wbr>option=range(<wbr></wbr>10))<br />"""
+                    """</span></div>""")
 
 
 def test_compact_module_summary() -> None:

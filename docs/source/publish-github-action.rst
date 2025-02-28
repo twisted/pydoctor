@@ -16,10 +16,15 @@ with the appropriate information.
     on:
       push:
         branches: [main]
+      pull_request:
+        branches: [main]
 
     jobs:
       deploy:
         runs-on: ubuntu-latest
+
+        permissions:
+              contents: write
 
         steps:
         - uses: actions/checkout@master
@@ -47,8 +52,9 @@ with the appropriate information.
                 --intersphinx=https://docs.python.org/3/objects.inv \
                 ./(packagedirectory)
 
-        - name: Push API documentation to Github Pages
-          uses: peaceiris/actions-gh-pages@v3
+        - name: Push API documentation to Github Pages (if on main branch)
+          if: github.ref == 'refs/heads/main'
+          uses: peaceiris/actions-gh-pages@v4
           with:
             github_token: ${{ secrets.GITHUB_TOKEN }}
             publish_dir: ./apidocs

@@ -10,10 +10,9 @@ import pytest
 from pydoctor.epydoc.markup._pyval_repr import PyvalColorizer, colorize_inline_pyval
 from pydoctor.test import NotFoundLinker
 from pydoctor.stanutils import flatten, flatten_text, html2stan
-from pydoctor.node2stan import gettext
 
-def color(v: Any, linebreakok:bool=True, maxlines:int=5, linelen:int=40) -> str:
-    colorizer = PyvalColorizer(linelen=linelen, linebreakok=linebreakok, maxlines=maxlines)
+def color(v: Any, linebreakok:bool=True, maxlines:int=5, linelen:int=40, is_annotation: bool = False) -> str:
+    colorizer = PyvalColorizer(linelen=linelen, linebreakok=linebreakok, maxlines=maxlines, is_annotation=is_annotation)
     parsed_doc = colorizer.colorize(v)
     return parsed_doc.to_node().pformat()
 
@@ -1160,7 +1159,7 @@ def color_re(s: Union[bytes, str],
     val = colorizer.colorize(extract_expr(ast.parse(f"re.compile({repr(s)})")))
 
     if check_roundtrip:
-        raw_text = ''.join(gettext(val.to_node()))
+        raw_text = val.to_text()
         re_begin = _RE_BEGIN
         re_end = -2
         raw_string = True
@@ -1431,7 +1430,7 @@ def color2(v: Any, linelen:int=50) -> str:
     """
     colorizer = PyvalColorizer(linelen=linelen, maxlines=5)
     colorized = colorizer.colorize(v)
-    text1 = ''.join(gettext(colorized.to_node()))
+    text1 = colorized.to_text()
     text2 = flatten_text(html2stan(flatten(colorized.to_stan(NotFoundLinker()))))
     assert text1 == text2
     return text2
@@ -1476,7 +1475,7 @@ def test_summary() -> None:
     """
     summarizer = PyvalColorizer(linelen=60, maxlines=1, linebreakok=False)
     def summarize(v:Any) -> str:
-        return(''.join(gettext(summarizer.colorize(v).to_node())))
+        return summarizer.colorize(v).to_text()
 
     assert summarize(list(range(100))) == "[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16..."
     assert summarize('hello\nworld') == r"'hello\nworld'"
@@ -1569,3 +1568,21 @@ def test_expressions_parens(subtests:Any) -> None:
     check_src("{**({} == {})}")
     check_src("{**{'y': 2}, 'x': 1, None: True}")
     check_src("{**{'y': 2}, **{'x': 1}}")
+
+
+def test_is_annotation_flag() -> None:
+    # the is_annotation attribute is added to all links when is_annotation=True is passed.
+    assert color(extract_expr(ast.parse('list[dict] + set()')), is_annotation=True) == '''<document source="pyval_repr">
+    <obj_reference is_annotation="True" refuri="list">
+        list
+    [
+    <wbr>
+    <obj_reference is_annotation="True" refuri="dict">
+        dict
+    ]
+     + 
+    <obj_reference is_annotation="True" refuri="set">
+        set
+    (
+    )
+'''
