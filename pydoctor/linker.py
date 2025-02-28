@@ -249,7 +249,7 @@ class NotFoundLinker(DocstringLinker):
     It will always output link tag with no C{href} attribute.
     """
 
-    def link_to(self, target: str, label: "Flattenable") -> Tag:
+    def link_to(self, target: str, label: "Flattenable", is_annotation: bool = False) -> Tag:
         return tags.a(label)
 
     def link_xref(self, target: str, label: "Flattenable", lineno: int) -> Tag:

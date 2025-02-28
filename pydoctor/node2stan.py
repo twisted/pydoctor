@@ -116,7 +116,7 @@ class HTMLTranslator(html4css1.HTMLTranslator):
     # Handle interpreted text (crossreferences)
     def visit_title_reference(self, node: nodes.title_reference) -> None:
         lineno = get_lineno(node)
-        self._handle_reference(node, link_func=partial(self._linker.link_xref, lineno=lineno))
+        self._handle_reference(node, link_func=partial(self._link_xref, lineno=lineno))
     
     # Handle internal references
     def visit_obj_reference(self, node: obj_reference) -> None:
