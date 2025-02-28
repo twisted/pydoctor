@@ -870,7 +870,7 @@ class FunctionOverload:
     @note: This is not an actual documentable type. 
     """
     primary: Function
-    signature: Signature
+    signature: Signature | None 
     decorators: Sequence[ast.expr]
     parsed_signature: ParsedDocstring | None = None # set in get_parsed_signature()
 
