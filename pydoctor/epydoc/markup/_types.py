@@ -10,7 +10,7 @@ from typing import Callable, Dict, List, Union
 from pydoctor.epydoc.markup import ParsedDocstring
 from pydoctor.epydoc.markup._pyval_repr import PyvalColorizer
 from pydoctor.napoleon.docstring import TokenType, TypeDocstring
-from pydoctor.epydoc.docutils import new_document, set_node_attributes
+from pydoctor.epydoc.docutils import new_document, set_node_attributes, code
 
 from docutils import nodes
 
@@ -115,7 +115,7 @@ class ParsedTypeDocstring(TypeDocstring, ParsedDocstring):
                                                     document=document))
 
         return set_node_attributes(document, children=[
-            set_node_attributes(nodes.inline('', '', classes=['literal']), 
+            set_node_attributes(code('', ''), 
                                 children=elements, 
                                 document=document, 
                                 lineno=lineno+1)])

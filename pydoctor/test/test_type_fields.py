@@ -51,19 +51,19 @@ def test_parsed_type(subtests: Any) -> None:
     
     parsed_type_cases = [
         ('list of int or float or None', 
-        '<span class="rst-literal"><a>list</a> of <a>int</a> or <a>float</a> or <a>None</a></span>'),
+        '<code><a>list</a> of <a>int</a> or <a>float</a> or <a>None</a></code>'),
 
         ("{'F', 'C', 'N'}, default 'N'",
-        """<span class="rst-literal"><span class="rst-variable-string">{'F', 'C', 'N'}</span>, <em>default</em> <span class="rst-variable-string">'N'</span></span>"""),
+        """<code><span class="rst-variable-string">{'F', 'C', 'N'}</span>, <em>default</em> <span class="rst-variable-string">'N'</span></code>"""),
 
         ("DataFrame, optional",
-        """<span class="rst-literal"><a>DataFrame</a>, <em>optional</em></span>"""),
+        """<code><a>DataFrame</a>, <em>optional</em></code>"""),
 
         ("List[str] or list(bytes), optional", 
-        """<span class="rst-literal"><a>List</a>[<a>str</a>] or <a>list</a>(<a>bytes</a>), <em>optional</em></span>"""),
+        """<code><a>List</a>[<a>str</a>] or <a>list</a>(<a>bytes</a>), <em>optional</em></code>"""),
 
         (('`complicated string` or `strIO <twisted.python.compat.NativeStringIO>`', 'L{complicated string} or L{strIO <twisted.python.compat.NativeStringIO>}'),
-        '<span class="rst-literal"><a>complicated string</a> or <a>strIO</a></span>'),
+        '<code><a>complicated string</a> or <a>strIO</a></code>'),
     ]
 
     for string, excepted_html in parsed_type_cases:
@@ -113,7 +113,7 @@ def test_processtypes(capsys: CapSys) -> None:
             ), 
 
                 ("list of int or float or None", 
-                '<span class="rst-literal"><a>list</a> of <a>int</a> or <a>float</a> or <a>None</a></span>')
+                '<code><a>list</a> of <a>int</a> or <a>float</a> or <a>None</a></code>')
 
         ),
 
@@ -143,7 +143,7 @@ def test_processtypes(capsys: CapSys) -> None:
             ), 
 
                 ("<code><a>complicated string</a></code> or <code><a>strIO</a></code>, optional", 
-                '<span class="rst-literal"><a>complicated string</a> or <a>strIO</a>, <em>optional</em></span>')
+                '<code><a>complicated string</a> or <a>strIO</a>, <em>optional</em></code>')
 
         ),
 
@@ -216,7 +216,7 @@ def test_processtypes_with_system(capsys: CapSys) -> None:
     captured = capsys.readouterr().out
     assert not captured
 
-    assert '<span class="rst-literal"><a>list</a> of <a>int</a> or <a>float</a> or <a>None</a></span>' == fmt
+    assert '<code><a>list</a> of <a>int</a> or <a>float</a> or <a>None</a></code>' == fmt
     
 
 def test_processtypes_corner_cases(capsys: CapSys, subtests: Any) -> None:
@@ -248,9 +248,9 @@ def test_processtypes_corner_cases(capsys: CapSys, subtests: Any) -> None:
 
         assert isinstance(a.parsed_type, ParsedTypeDocstring)
         fmt = flatten(a.parsed_type.to_stan(NotFoundLinker()))
-        assert fmt.startswith('<span class="rst-literal">')
-        assert fmt.endswith('</span>')
-        fmt = fmt[26:-7]
+        assert fmt.startswith(b:='<code>')
+        assert fmt.endswith(e:='</code>')
+        fmt = fmt[len(b):-(len(e))]
         
         if not fails:
             captured = capsys.readouterr().out
@@ -305,7 +305,7 @@ def test_processtypes_warning_unexpected_element(capsys: CapSys) -> None:
         >>> print('example')
     """
 
-    expected = """<span class="rst-literal"><a>complicated string</a> or <a>strIO</a>, <em>optional</em></span>"""
+    expected = """<code><a>complicated string</a> or <a>strIO</a>, <em>optional</em></code>"""
     
     # Test epytext
     epy_errors: List[ParseError] = []
@@ -416,7 +416,7 @@ def test_process_types_with_consolidated_fields(capsys: CapSys) -> None:
     # Filter docstring linker warnings
     lines = [line for line in capsys.readouterr().out.splitlines() if 'Cannot find link target' not in line]
     assert not lines
-    assert '<span class="rst-literal">int</span>' in html
+    assert '<code>int</code>' in html
 
 def test_process_types_doesnt_mess_with_warning_linenumber(capsys: CapSys) -> None:
     src = '''
