@@ -191,7 +191,7 @@ ul ul ul ul ul ul ul {
     white-space: pre;
 }
 
-.undocumented {
+.undocumented, .rst-undocumented {
     font-style: italic;
     color: #9e9e9e;
 }
@@ -290,7 +290,7 @@ ul ul ul ul ul ul ul {
 }
 
 /* parameters types (in parameters table) */
-.fieldTable tr td.fieldArgContainer > code {
+.fieldTable tr td.fieldArgContainer > code, .fieldTable tr td.fieldArgContainer > .rst-literal {
     /* we don't want word break for the types because we already add <wbr> tags inside the type HTML, and that should suffice. */
     word-break: normal;
     display: inline;
@@ -422,7 +422,7 @@ table .private {
     margin-top: 3px;
 }
 
-.functionBody > .undocumented {
+.functionBody > .undocumented, .functionBody > .rst-undocumented {
 
     margin-top: 6px;
     margin-bottom: 6px;
@@ -433,8 +433,28 @@ table .private {
     word-spacing: -5px;
 }
 
-.function-signature code {
-    padding: 2px 1px;
+.rst-sig-param .rst-undocumented {
+    /* self or cls params */
+    font-size: 93%;
+}
+
+/* When focuse, present each parameter onto a new line */
+#childList a:target ~ .functionHeader .function-signature.long-signature .rst-sig-param, 
+#childList a:target ~ .functionHeader .function-signature.long-signature .rst-sig-symbol {
+    display: block;
+    margin-left: 1.5em;
+    padding-left: 1.5em;
+    text-indent: -1.5em;
+}
+/* Except the 'self' or 'cls' params, which are rendered on the same line as the function def */
+#childList a:target ~ .functionHeader .function-signature.long-signature .rst-sig-param:has(.rst-undocumented) {
+    display: initial;
+    margin-left: 0;
+    padding-left: 0;
+}
+
+#childList > div .functionHeader {
+    word-break: break-word;
 }
 
 /*
@@ -447,7 +467,7 @@ code, .rst-literal, .pre, #childList > div .functionHeader,
 #splitTables > table tr td:nth-child(2), .fieldArg {
     font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
 }
-code, #childList > div .functionHeader, .fieldArg {
+code, .rst-literal, #childList > div .functionHeader, .fieldArg {
     color: #222222;
 }
 
@@ -485,11 +505,13 @@ blockquote {
 /*
 This defines the code style, it's black on light gray.
 It also overwrite the default values inherited from bootstrap min
+<code> and class="rst-literal" are closely equivalent
 */
 code, .rst-literal {
     padding:2px 4px;
     background-color: #f4f4f4;
-    border-radius:4px
+    border-radius:4px;
+    font-size: 90%;
 }
 
 

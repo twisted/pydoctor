@@ -151,6 +151,17 @@ def get_lineno(node: nodes.Element) -> int:
     
     return line
 
+def text_node(text: str, klass: str | None = None) -> nodes.inline:
+    """
+    Create an inline node with the given text and class.
+    """
+    return set_node_attributes(
+        nodes.inline('', '', classes=[klass] if klass else []), 
+        children=[nodes.Text(text)],
+    )
+
+# additional docutils nodes: 
+
 class wbr(nodes.inline):
     """
     Word break opportunity.
@@ -161,4 +172,9 @@ class wbr(nodes.inline):
 class obj_reference(nodes.title_reference):
     """
     A reference to a documentable object.
+    """
+
+class code(nodes.inline):
+    """
+    Like a inline[class='literal'], but more elegant.
     """
