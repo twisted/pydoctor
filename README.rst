@@ -77,6 +77,9 @@ in development
 * Fix a bug in the MRO computing code that would result in an incorrect  
   ``Cannot compute linearization of the class inheritance hierarchy`` message 
   for valid types extending ``typing.Generic`` as well as other generic classes.
+* Signatures of function definitions are now wrapped onto several lines when the function has the focus. 
+* The first parameter of classmethods and methods (``cls`` or ``self``) is colored in gray so it's clear that these are not part of the API.
+* When pydoctor encounters an invalid signature, it shows (…) as the signature instead of the misleading zero argument signature.
 * Improve field tables so the correspondence with the description column is more legible.
 * Highlighting in readthedocs theme now cover the whole docstring content 
   instead of just the signature.

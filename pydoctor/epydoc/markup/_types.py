@@ -48,8 +48,9 @@ class ParsedTypeDocstring(TypeDocstring, ParsedDocstring):
 
     def to_node(self) -> nodes.document:
         """
-        Not implemented.
+        Not implemented at this time :/
         """
+        #TODO: Fix this soon - PR https://github.com/twisted/pydoctor/pull/874
         raise NotImplementedError()
 
     def to_stan(self, docstring_linker: DocstringLinker) -> Tag:

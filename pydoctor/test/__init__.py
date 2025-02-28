@@ -2,6 +2,7 @@
 
 from logging import LogRecord
 from typing import Iterable, TYPE_CHECKING, Sequence
+
 from pathlib import Path
 
 from pydoctor import epydoc2stan, model
@@ -77,4 +78,3 @@ class InMemoryWriter(IWriter):
 
         for o in ob.contents.values():
             self._writeDocsFor(o)
-        

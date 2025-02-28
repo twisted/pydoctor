@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Optional, Tuple, Type, List, overload, cast
 import ast
 
@@ -5,9 +7,10 @@ from pydoctor import astbuilder, astutils, model
 from pydoctor import epydoc2stan
 from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring
 from pydoctor.options import Options
-from pydoctor.stanutils import flatten, html2stan, flatten_text
+from pydoctor.stanutils import flatten, flatten_text
 from pydoctor.epydoc.markup.epytext import Element, ParsedEpytextDocstring
-from pydoctor.epydoc2stan import _get_docformat, format_summary, get_parsed_type
+from pydoctor.epydoc2stan import _get_docformat, format_summary, get_parsed_signature, get_parsed_type
+from pydoctor.templatewriter.pages import format_signature
 from pydoctor.test.test_packages import processPackage
 from pydoctor.utils import partialclass
 
@@ -103,6 +106,18 @@ def to_html(
         linker: DocstringLinker = NotFoundLinker()
         ) -> str:
     return flatten(parsed_docstring.to_stan(linker))
+
+def signature2str(func: model.Function | model.FunctionOverload, 
+                  fails: bool = False) -> str:
+    doc = get_parsed_signature(func)
+    fromhtml = flatten_text(format_signature(func))
+    if doc is not None:
+        fromdocutils = doc.to_text()
+        assert fromhtml == fromdocutils
+    else:
+        assert fails
+        assert func.signature is None
+    return fromhtml
 
 @overload
 def type2str(type_expr: None) -> None: ...
@@ -217,6 +232,9 @@ def test_function_async(systemcls: Type[model.System]) -> None:
     '(a, b=3, *c, **kw)',
     '(f=True)',
     '(x=0.1, y=-2)',
+    '(x, *v)',
+    '(x, *, v)',
+    '(x, *, v=1)',
     r"(s='theory', t='con\'text')",
     ))
 @systemcls_param
@@ -224,14 +242,12 @@ def test_function_signature(signature: str, systemcls: Type[model.System]) -> No
     """
     A round trip from source to inspect.Signature and back produces
     the original text.
-
-    @note: Our inspect.Signature Paramters objects are now tweaked such that they might produce HTML tags, handled by the L{PyvalColorizer}.
     """
     mod = fromText(f'def f{signature}: ...', systemcls=systemcls)
     docfunc, = mod.contents.values()
     assert isinstance(docfunc, model.Function)
     # This little trick makes it possible to back reproduce the original signature from the genrated HTML.
-    text = flatten_text(html2stan(str(docfunc.signature)))
+    text = signature2str(docfunc)
     assert text == signature
 
 @pytest.mark.parametrize('signature', (
@@ -241,6 +257,9 @@ def test_function_signature(signature: str, systemcls: Type[model.System]) -> No
     '(x, y, /, z, w=42)',
     '(x, y, /, z=0, w=0)',
     '(x, y=3, /, z=5, w=7)',
+    '(x, /, *v)',
+    '(x, /, *, v)',
+    '(x, /, *, v=1)',
     '(x, /, *v, a=1, b=2)',
     '(x, /, *, a=1, b=2, **kwargs)',
     ))
@@ -264,7 +283,7 @@ def test_function_badsig(signature: str, systemcls: Type[model.System], capsys: 
     mod = fromText(f'def f{signature}: ...', systemcls=systemcls, modname='mod')
     docfunc, = mod.contents.values()
     assert isinstance(docfunc, model.Function)
-    assert str(docfunc.signature) == '()'
+    assert signature2str(docfunc, fails=True) == '(...)'
     captured = capsys.readouterr().out
     assert captured.startswith("mod:1: mod.f has invalid parameters: ")
 
@@ -1663,14 +1682,13 @@ def test_overload(systemcls: Type[model.System], capsys: CapSys) -> None:
         """, systemcls=systemcls)
     func = mod.contents['parse']
     assert isinstance(func, model.Function)
-    # Work around different space arrangements in Signature.__str__ between python versions
-    assert flatten_text(html2stan(str(func.signature).replace(' ', ''))) == '(s:Union[str,bytes])->Union[str,bytes]'
+    assert signature2str(func) == '(s: Union[str, bytes]) -> Union[str, bytes]'
     assert [astbuilder.node2dottedname(d) for d in (func.decorators or ())] == []
     assert len(func.overloads) == 2
     assert [astbuilder.node2dottedname(d) for d in func.overloads[0].decorators] == [['dec'], ['overload']]
     assert [astbuilder.node2dottedname(d) for d in func.overloads[1].decorators] == [['overload']]
-    assert flatten_text(html2stan(str(func.overloads[0].signature).replace(' ', ''))) == '(s:str)->str'
-    assert flatten_text(html2stan(str(func.overloads[1].signature).replace(' ', ''))) == '(s:bytes)->bytes'
+    assert signature2str(func.overloads[0]) == '(s: str) -> str'
+    assert signature2str(func.overloads[1]) == '(s: bytes) -> bytes'
     assert capsys.readouterr().out.splitlines() == [
         '<test>:11: <test>.parse overload has docstring, unsupported',
         '<test>:15: <test>.parse overload appeared after primary function',
