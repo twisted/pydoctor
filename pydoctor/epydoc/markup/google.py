@@ -10,7 +10,6 @@ from pydoctor.epydoc.markup import ObjClass, ParserFunction
 from pydoctor.epydoc.markup._napoleon import NapoelonDocstringParser
 
 
-
 def get_parser(objclass: ObjClass | None) -> ParserFunction:
     """
     Returns the parser function. Behaviour will depend on the documentable type and system options.

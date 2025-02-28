@@ -9,7 +9,6 @@ from pydoctor.epydoc.markup import restructuredtext
 from pydoctor.napoleon.docstring import GoogleDocstring, NumpyDocstring
 
 
-
 class NapoelonDocstringParser:
     """
     Parse google-style or numpy-style docstrings.
@@ -62,6 +61,7 @@ class NapoelonDocstringParser:
         errors: list[ParseError],
         docstring_cls: type[GoogleDocstring],
     ) -> ParsedDocstring:
+        
         docstring_obj = docstring_cls(
             docstring, 
             what=self.objclass,

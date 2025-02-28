@@ -78,4 +78,3 @@ class InMemoryWriter(IWriter):
 
         for o in ob.contents.values():
             self._writeDocsFor(o)
-

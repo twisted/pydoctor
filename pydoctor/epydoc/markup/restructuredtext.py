@@ -60,7 +60,6 @@ from pydoctor.epydoc.markup import Field, ObjClass, ParseError, ParsedDocstring,
 from pydoctor.epydoc.markup.plaintext import ParsedPlaintextDocstring
 from pydoctor.epydoc.docutils import new_document
 
-
 #: A dictionary whose keys are the "consolidated fields" that are
 #: recognized by epydoc; and whose values are the corresponding epydoc
 #: field names that should be used for the individual fields.

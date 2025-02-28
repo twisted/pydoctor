@@ -1294,7 +1294,7 @@ def _colorize_signature(sig: inspect.Signature,
     return ParsedRstDocstring(set_node_attributes(
         new_document('code'), children=result), ())
 
-def get_parsed_signature(func: Union[model.Function, model.FunctionOverload]) -> ParsedDocstring | None:
+def get_parsed_signature(func: model.Function | model.FunctionOverload) -> ParsedDocstring | None:
     if (psig:=func.parsed_signature) is not None:
         return psig
     
