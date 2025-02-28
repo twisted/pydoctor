@@ -228,7 +228,7 @@ class ParsedDocstring(abc.ABC):
 
 def parsed_text(text: str, 
                 klass: str | None = None, 
-                source: str = 'docstring') -> ParsedDocstring:
+                source: Literal['docstring', 'code'] = 'docstring') -> ParsedDocstring:
     """
     Create a parsed representation of a simple text 
     with a given class (or no class at all).
