@@ -33,19 +33,18 @@ each error.
 from __future__ import annotations
 __docformat__ = 'epytext en'
 
-import contextlib
-from itertools import chain
-from typing import Callable, ContextManager, Iterable, List, Optional, Sequence, Iterator, TYPE_CHECKING
+from typing import Callable, ContextManager, List, Optional, Sequence, Iterator, TYPE_CHECKING
 import abc
 import re
 from importlib import import_module
 from inspect import getmodulename
 
 from docutils import nodes
-from twisted.web.template import Tag, tags
+from twisted.web.template import Tag
 
 from pydoctor import node2stan
-from pydoctor.epydoc.docutils import set_node_attributes, build_table_of_content, new_document
+from pydoctor.epydoc.docutils import (set_node_attributes, build_table_of_content, 
+                                      new_document, text_node)
 
 
 # In newer Python versions, use importlib.resources from the standard library.
@@ -213,24 +212,7 @@ class ParsedDocstring(abc.ABC):
         """
         doc = self.to_node()
         return ''.join(node2stan.gettext(doc))
-
-    def with_tag(self, tag: Tag) -> ParsedDocstring:
-        """
-        Wraps the L{to_stan()} result inside the given tag. 
-        
-        This is useful because some code strips the main tag to keep only it's content. 
-        With this trick, the main tag is preserved. It can also be used to add
-        a custom CSS class on top of an existing parsed docstring.
-        """
-        return _ParsedDocstringWithTag(self, tag)
-    
-    @classmethod
-    def combine(cls, elements: Sequence[ParsedDocstring]) -> ParsedDocstring:
-        """
-        Combine the contents of several parsed docstrings into one. 
-        """
-        return _ParsedDocstringTree(elements)
-    
+ 
     def get_summary(self) -> 'ParsedDocstring':
         """
         Returns the summary of this docstring.
@@ -240,81 +222,22 @@ class ParsedDocstring(abc.ABC):
             visitor = SummaryExtractor(_document)
             _document.walk(visitor)
         except Exception: 
-            return parsed_text_with_css('Broken summary', 'undocumented')
+            return parsed_text('Broken summary', 'undocumented')
         
-        return visitor.summary or parsed_text_with_css('No summary', 'undocumented')
+        return visitor.summary or parsed_text('No summary', 'undocumented')
 
-
-class _ParsedDocstringTree(ParsedDocstring):
+def parsed_text(text: str, 
+                klass: str | None = None, 
+                source: str = 'docstring') -> ParsedDocstring:
     """
-    Several parsed docstrings into a single one.
-    """
-
-    def __init__(self, elements: Sequence[ParsedDocstring]):
-        super().__init__(tuple(chain.from_iterable(e.fields for e in elements)))
-        self._elements = elements
-        self._doc: nodes.document | None = None
+    Create a parsed representation of a simple text 
+    with a given class (or no class at all).
     
-    @property
-    def has_body(self) -> bool: 
-        return any(e.has_body for e in self._elements)
-
-    @classmethod
-    def _generate_document(cls, elements: Iterable[ParsedDocstring]) -> nodes.document:
-        doc = new_document('composite')
-        for e in elements:
-            # TODO: Some parsed doctrings simply do not implement to_node().
-            # It should be really time to fix this...
-            subdoc = e.to_node()
-            # TODO: here all childrens might not have the same document property.
-            # this should not be a problem, but docutils is likely not meant to be used like that.
-            doc.children.extend(subdoc.children)
-        return doc
-
-    def to_node(self) -> nodes.document:
-        if not self._doc:
-            self._doc = self._generate_document(self._elements)
-        return self._doc
-
-    def to_stan(self, linker: DocstringLinker) -> Tag: 
-        stan = tags.transparent()
-        for e in self._elements:
-            stan(e.to_stan(linker).children)
-        return stan
-
-class _ParsedDocstringWithTag(ParsedDocstring):
+    The C{source} is used for L{new_document} call.
     """
-    Wraps a parsed docstring to wrap the result of the 
-    the to_stan() method inside a custom Tag.
-    """
-    def __init__(self, 
-                 other: ParsedDocstring, 
-                 tag: Tag):
-        super().__init__(other.fields)
-        self.wrapped = other
-        """
-        The wrapped parsed docstring.
-        """
-        self._tag = tag
-        self._stan: Tag | None = None
-
-    # We double wrap it with a transparent tag so the added tags survives ParsedDocstring.combine 
-    # wich combines the content of the main div of the stan, not the div itself.
-    def to_stan(self, linker: DocstringLinker) -> Tag:
-        # Since the stan is cached inside _stan attribute we can't simply use
-        # "lambda this, linker: tags.transparent(self._tag(this.to_stan(linker)))" as the new to_stan method. 
-        # this would not behave correctly because each time to_stan will be called, the content would be duplicated.
-        if (stan:=self._stan) is not None:
-            return stan
-        self._stan = stan = Tag('')(self._tag(self.wrapped.to_stan(linker)))
-        return stan
-    
-    # Boring
-    def to_node(self) -> nodes.document:
-        return self.wrapped.to_node()
-    @property
-    def has_body(self) -> bool: 
-        return self.wrapped.has_body
+    return ParsedRstDocstring(set_node_attributes(new_document(source), 
+            children=[text_node(text, klass) 
+                      if klass else nodes.Text(text)]), ())
 
       
 ##################################################
@@ -580,4 +503,4 @@ class SummaryExtractor(nodes.NodeVisitor):
         '''Ignore all unknown nodes'''
 
 
-from pydoctor.epydoc.markup.restructuredtext import ParsedRstDocstring, parsed_text_with_css
+from pydoctor.epydoc.markup.restructuredtext import ParsedRstDocstring

@@ -15,7 +15,7 @@ from twisted.web.template import Tag
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable
     from pydoctor.epydoc.markup import DocstringLinker
-    from pydoctor.epydoc.docutils import obj_reference
+    from pydoctor.epydoc.docutils import obj_reference, code, wbr
 
 from pydoctor.epydoc.docutils import get_lineno
 from pydoctor.epydoc.doctest import colorize_codeblock, colorize_doctest
@@ -134,6 +134,12 @@ class HTMLTranslator(html4css1.HTMLTranslator):
 
         self.body.append(flatten(link_func(target, label)))
         raise nodes.SkipNode()
+
+    def visit_code(self, node: code) -> None:
+        self.body.append(self.starttag(node, 'code', suffix=''))
+    
+    def depart_code(self, node: code) -> None:
+        self.body.append('</code>')
 
     def should_be_compact_paragraph(self, node: nodes.Element) -> bool:
         if self.document.children == [node]:
@@ -283,7 +289,7 @@ class HTMLTranslator(html4css1.HTMLTranslator):
     def depart_tip(self, node: nodes.Element) -> None:
         self.depart_admonition(node)
 
-    def visit_wbr(self, node: nodes.Node) -> None:
+    def visit_wbr(self, node: wbr) -> None:
         self.body.append('<wbr></wbr>')
     
     def depart_wbr(self, node: nodes.Node) -> None:

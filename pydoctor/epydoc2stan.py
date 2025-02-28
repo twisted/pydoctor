@@ -18,12 +18,13 @@ from docutils import nodes
 
 from pydoctor import model, linker
 from pydoctor.astutils import is_none_literal
-from pydoctor.epydoc.docutils import new_document, set_node_attributes
-from pydoctor.epydoc.markup import Field as EpydocField, ParseError, get_parser_by_name, processtypes
+from pydoctor.epydoc.docutils import new_document, set_node_attributes, text_node, code
+from pydoctor.epydoc.markup import (Field as EpydocField, ParseError, get_parser_by_name, 
+                                    processtypes, parsed_text)
 from twisted.web.template import Tag, tags
 from pydoctor.epydoc.markup import ParsedDocstring, DocstringLinker, ObjClass
 import pydoctor.epydoc.markup.plaintext
-from pydoctor.epydoc.markup.restructuredtext import ParsedRstDocstring, parsed_text, parsed_text_with_css
+from pydoctor.epydoc.markup.restructuredtext import ParsedRstDocstring
 from pydoctor.epydoc.markup._pyval_repr import colorize_pyval, colorize_inline_pyval
 
 if TYPE_CHECKING:
@@ -697,7 +698,7 @@ def _get_parsed_summary(obj: model.Documentable) -> Tuple[Optional[model.Documen
         return (source, obj.parsed_summary)
 
     if source is None:
-        summary_parsed_doc: ParsedDocstring = parsed_text_with_css(
+        summary_parsed_doc = parsed_text(
             format_undocumented_summary(obj), 'undocumented')
     else:
         # Tell mypy that if we found a docstring, we also have its source.
@@ -805,7 +806,7 @@ def format_docstring(obj: model.Documentable) -> Tag:
 
 def format_summary_fallback(errs: List[ParseError], parsed_doc:ParsedDocstring, ctx:model.Documentable) -> Tag:
     # override parsed_summary instance variable to remember this one is broken.
-    ctx.parsed_summary = parsed_text_with_css(BROKEN_TEXT, 'undocumented')
+    ctx.parsed_summary = parsed_text(BROKEN_TEXT, 'undocumented')
     return BROKEN
 
 def format_summary(obj: model.Documentable) -> Tag:
@@ -1171,15 +1172,11 @@ _VAR_KEYWORD = inspect.Parameter.VAR_KEYWORD
 _VAR_POSITIONAL = inspect.Parameter.VAR_POSITIONAL
 _KEYWORD_ONLY = inspect.Parameter.KEYWORD_ONLY
 
-def _colorize_signature_annotation(annotation: object, 
-                                   ctx: model.Documentable) -> ParsedDocstring:
+def _colorize_signature_annotation(annotation: object) -> list[nodes.Node]:
     """
-    Returns L{ParsedDocstring} with extra context to make
-    sure we resolve tha annotation correctly.
+    Returns this annotation as a list of nodes
     """
-    return colorize_inline_pyval(annotation, is_annotation=True, 
-                # Make sure the generated <code> tags are not stripped by ParsedDocstring.combine.
-                ).with_tag(tags.transparent)
+    return colorize_inline_pyval(annotation, is_annotation=True).to_node().children
 
 _METHOD = model.DocumentableKind.METHOD
 _CLASS_METHOD = model.DocumentableKind.CLASS_METHOD
@@ -1201,52 +1198,53 @@ def _is_less_important_param(param: inspect.Parameter, ctx: model.Documentable) 
 def _colorize_signature_param(param: inspect.Parameter, 
                               ctx: model.Documentable, 
                               has_next: bool, 
-                              is_first: bool, ) -> ParsedDocstring:
+                              is_first: bool, ) -> nodes.inline:
     """
-    Convert a single parameter to a parsed docstring representation.
+    Convert a single parameter to a docutils inline element.
     """
     kind = param.kind
-    result: list[ParsedDocstring] = []
+    result: list[nodes.Node] = []
     if kind == _VAR_POSITIONAL:
-        result.append(parsed_text(f'*{param.name}'))
+        result.append(nodes.Text(f'*{param.name}'))
     elif kind == _VAR_KEYWORD:
-        result.append(parsed_text(f'**{param.name}'))
+        result.append(nodes.Text(f'**{param.name}'))
     elif is_first and _is_less_important_param(param, ctx):
-        result.append(parsed_text_with_css(param.name, css_class='undocumented'))
+        result.append(text_node(param.name, 'undocumented'))
     else:
-        result.append(parsed_text(param.name))
+        result.append(nodes.Text(param.name))
     
     # Add annotation and default value
     if param.annotation is not _empty:
-        result.append(parsed_text(': '))
-        result.append(_colorize_signature_annotation(param.annotation, ctx))
+        result.append(nodes.Text(': '))
+        result.append(set_node_attributes(code('', ''), 
+                        children=_colorize_signature_annotation(param.annotation)))
 
     if param.default is not _empty:
         if param.annotation is not _empty:
-            result.append(parsed_text(' = '))
+            result.append(nodes.Text(' = '))
         else:
-            result.append(parsed_text('='))
+            result.append(nodes.Text('='))
         
-        result.append(colorize_inline_pyval(param.default))
+        result.extend(colorize_inline_pyval(param.default).to_node())
 
     if has_next:
-        result.append(parsed_text(', '))
+        result.append(nodes.Text(', '))
     
-    # use the same css class as Sphinx
-    return ParsedDocstring.combine(result).with_tag(
-        tags.span(class_='sig-param'))
-
+    # use the same css class as Sphinx, but rst- prefix will be added.
+    return set_node_attributes(nodes.inline('', '', classes=['sig-param']),
+                children=result)
 
 # From inspect.Signature.format() (Python 3.13)
-def _colorize_signature(sig: inspect.Signature, ctx: model.Documentable) -> ParsedDocstring:
+def _colorize_signature(sig: inspect.Signature, 
+                        ctx: model.Documentable) -> ParsedDocstring:
     """
     Colorize this signature into a ParsedDocstring.
     """
-    result: list[ParsedDocstring] = []
+    result: list[nodes.Node] = []
     render_pos_only_separator = False
     render_kw_only_separator = True
     param_number = len(sig.parameters)
-    result.append(parsed_text('('))
+    result.append(nodes.Text('('))
 
     for i, param in enumerate(sig.parameters.values()):
         kind = param.kind
@@ -1257,7 +1255,7 @@ def _colorize_signature(sig: inspect.Signature, ctx: model.Documentable) -> Pars
         elif render_pos_only_separator:
             # It's not a positional-only parameter, and the flag
             # is set to 'True' (there were pos-only params before.)
-            result.append(parsed_text_with_css('/, ', css_class='sig-symbol'))
+            result.append(text_node('/, ', 'sig-symbol'))
             render_pos_only_separator = False
 
         if kind == _VAR_POSITIONAL:
@@ -1268,7 +1266,7 @@ def _colorize_signature(sig: inspect.Signature, ctx: model.Documentable) -> Pars
             # We have a keyword-only parameter to render and we haven't
             # rendered an '*args'-like parameter before, so add a '*'
             # separator to the parameters list ("foo(arg1, *, arg2)" case)
-            result.append(parsed_text_with_css('*, ', css_class='sig-symbol'))
+            result.append(text_node('*, ', 'sig-symbol'))
             # This condition should be only triggered once, so
             # reset the flag
             render_kw_only_separator = False
@@ -1280,15 +1278,17 @@ def _colorize_signature(sig: inspect.Signature, ctx: model.Documentable) -> Pars
     if render_pos_only_separator:
         # There were only positional-only parameters, hence the
         # flag was not reset to 'False'
-        result.append(parsed_text_with_css('/', css_class='sig-symbol'))
+        result.append(text_node('/', 'sig-symbol'))
      
-    result.append(parsed_text(')'))
+    result.append(nodes.Text(')'))
 
     if sig.return_annotation is not _empty:
-        result.append(parsed_text(' -> '))
-        result.append(_colorize_signature_annotation(sig.return_annotation, ctx))
+        result.append(nodes.Text(' -> '))
+        result.append(set_node_attributes(code('', ''), 
+                        children=_colorize_signature_annotation(sig.return_annotation)))
 
-    return ParsedDocstring.combine(result)
+    return ParsedRstDocstring(set_node_attributes(
+        new_document('code'), children=result), ())
 
 def get_parsed_signature(func: Union[model.Function, model.FunctionOverload]) -> ParsedDocstring | None:
     if (psig:=func.parsed_signature) is not None:
@@ -1298,8 +1298,7 @@ def get_parsed_signature(func: Union[model.Function, model.FunctionOverload]) ->
         return None
 
     ctx = func.primary if isinstance(func, model.FunctionOverload) else func
-    psig = _colorize_signature(signature, ctx)
-    func.parsed_signature = psig
+    func.parsed_signature = psig = _colorize_signature(signature, ctx)
     return psig
 
 def function_signature_len(func: model.Function | model.FunctionOverload) -> int:

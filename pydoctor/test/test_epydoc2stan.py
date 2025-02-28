@@ -1954,10 +1954,10 @@ def test_class_level_type_alias() -> None:
 
     assert isinstance(f, model.Function)
     assert f.signature
-    assert "href" in flatten(epydoc2stan._colorize_signature_annotation(
-        f.signature.parameters['x'].annotation, f).to_stan(f.docstring_linker))
-    assert "href" in flatten(epydoc2stan._colorize_signature_annotation(
-        f.signature.return_annotation, f).to_stan(f.docstring_linker))
+    assert "href" in flatten(epydoc2stan.colorize_inline_pyval(
+        f.signature.parameters['x'].annotation, is_annotation=True).to_stan(f.docstring_linker))
+    assert "href" in flatten(epydoc2stan.colorize_inline_pyval(
+        f.signature.return_annotation, is_annotation=True).to_stan(f.docstring_linker))
 
     assert isinstance(var, model.Attribute)
     assert "href" in flatten(epydoc2stan.type2stan(var) or '')
@@ -1984,11 +1984,11 @@ def test_top_level_type_alias_wins_over_class_level(capsys:CapSys) -> None:
 
     assert isinstance(f, model.Function)
     assert f.signature
-    assert 'href="index.html#typ"' in flatten(epydoc2stan._colorize_signature_annotation(
-        f.signature.parameters['x'].annotation, f).to_stan(f.docstring_linker))
+    assert 'href="index.html#typ"' in flatten(epydoc2stan.colorize_inline_pyval(
+        f.signature.parameters['x'].annotation, is_annotation=True).to_stan(f.docstring_linker))
 
-    assert 'href="index.html#typ"' in flatten(epydoc2stan._colorize_signature_annotation(
-        f.signature.return_annotation, f).to_stan(f.docstring_linker))
+    assert 'href="index.html#typ"' in flatten(epydoc2stan.colorize_inline_pyval(
+        f.signature.return_annotation, is_annotation=True).to_stan(f.docstring_linker))
 
     assert isinstance(var, model.Attribute)
     assert 'href="index.html#typ"' in flatten(epydoc2stan.type2stan(var) or '')
@@ -2173,3 +2173,42 @@ def test_does_not_loose_type_linenumber(capsys: CapSys) -> None:
     getHTMLOf(mod.contents['C'])
     assert capsys.readouterr().out == ('<test>:16: Existing docstring at line 10 is overriden\n'
                                        '<test>:10: Cannot find link target for "bool"\n')
+
+@pytest.mark.parametrize('signature,expected', (
+    ('(*, a: bytes, b=None)', 
+     ('(<span class="rst-sig-symbol">*, </span>'
+      '<span class="rst-sig-param">a: <code>bytes</code>, </span>'
+      '<span class="rst-sig-param">b=None</span>)')),
+    
+    ('(*, a=(), b) -> list[str]', 
+     ('(<span class="rst-sig-symbol">*, </span>'
+      '<span class="rst-sig-param">a=(), </span>'
+      '<span class="rst-sig-param">b</span>) -&gt; '
+      '<code>list[<wbr></wbr>str]</code>')),
+    
+    ('(a, b=3, *c, **kw) -> None', 
+     ('(<span class="rst-sig-param">a, </span>'
+      '<span class="rst-sig-param">b=3, </span>'
+      '<span class="rst-sig-param">*c, </span>'
+      '<span class="rst-sig-param">**kw</span>)')),
+    
+    ('(x, *v) -> ...', (
+        '(<span class="rst-sig-param">x, </span>'
+        '<span class="rst-sig-param">*v</span>) -&gt; <code>'
+        '<span class="rst-variable-ellipsis">...</span></code>')),
+    
+    ('(x: self, *, v=1)', 
+     ('(<span class="rst-sig-param">x: <code>self</code>, </span>'
+      '<span class="rst-sig-symbol">*, </span>'
+      '<span class="rst-sig-param">v=1</span>)')),
+    ))
+def test_function_signature_html(signature: str, expected: str) -> None:
+    """
+    Check the html of signatures, with annotations. 
+    """
+    mod = fromText(f'def f{signature}: ...')
+    docfunc, = mod.contents.values()
+    assert isinstance(docfunc, model.Function)
+    # This little trick makes it possible to back reproduce the original signature from the genrated HTML.
+    html = flatten(format_signature(docfunc))
+    assert html == expected
