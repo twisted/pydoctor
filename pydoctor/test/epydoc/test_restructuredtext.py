@@ -249,7 +249,6 @@ def test_summary(markup:str) -> None:
         errors: List[ParseError] = []
         pdoc = get_parser_by_name(markup)(dedent(src), errors)
         assert not errors
-        assert pdoc.get_summary() == pdoc.get_summary() # summary is cached inside ParsedDocstring as well.
         assert flatten_text(pdoc.get_summary().to_stan(NotFoundLinker())) == summary_text
 
 

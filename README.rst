@@ -80,6 +80,9 @@ in development
   - Some limited support for legacy namespace packages is included as well (with ``declare_namespace(__name__)`` or ``__path__ = extend_path(__path__, __name__)``).
   - Better messages are now triggered when there is a module/package name collision (exit code will not change though).
 
+* Signatures of function definitions are now wrapped onto several lines when the function has the focus. 
+* The first parameter of classmethods and methods (``cls`` or ``self``) is colored in gray so it's clear that these are not part of the API.
+* When pydoctor encounters an invalid signature, it shows (…) as the signature instead of the misleading zero argument signature.
 * Improve field tables so the correspondence with the description column is more legible.
 * Highlighting in readthedocs theme now cover the whole docstring content 
   instead of just the signature.

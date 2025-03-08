@@ -3,6 +3,7 @@ Helper function to convert L{docutils} nodes to Stan tree.
 """
 from __future__ import annotations
 
+from functools import partial
 from itertools import chain
 import re
 import optparse
@@ -14,7 +15,7 @@ from twisted.web.template import Tag
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable
     from pydoctor.epydoc.markup import DocstringLinker
-    from pydoctor.epydoc.docutils import obj_reference
+    from pydoctor.epydoc.docutils import obj_reference, code, wbr
 
 from pydoctor.epydoc.docutils import get_lineno
 from pydoctor.epydoc.doctest import colorize_codeblock, colorize_doctest
@@ -99,17 +100,20 @@ class HTMLTranslator(html4css1.HTMLTranslator):
         super().__init__(document)
 
         # don't allow <h1> tags, start at <h2>
-        # h1 is reserved for the page nodes.title. 
+        # h1 is reserved for the page title. 
         self.section_level += 1
 
     # Handle interpreted text (crossreferences)
     def visit_title_reference(self, node: nodes.title_reference) -> None:
         lineno = get_lineno(node)
-        self._handle_reference(node, link_func=lambda target, label: self._linker.link_xref(target, label, lineno))
+        self._handle_reference(node, link_func=partial(self._linker.link_xref, lineno=lineno))
     
     # Handle internal references
     def visit_obj_reference(self, node: obj_reference) -> None:
-        self._handle_reference(node, link_func=self._linker.link_to)
+        if node.attributes.get('is_annotation'):
+            self._handle_reference(node, link_func=partial(self._linker.link_to, is_annotation=True))
+        else:
+            self._handle_reference(node, link_func=self._linker.link_to)
     
     def _handle_reference(self, node: nodes.title_reference, link_func: Callable[[str, "Flattenable"], "Flattenable"]) -> None:
         label: "Flattenable"
@@ -130,6 +134,12 @@ class HTMLTranslator(html4css1.HTMLTranslator):
 
         self.body.append(flatten(link_func(target, label)))
         raise nodes.SkipNode()
+
+    def visit_code(self, node: code) -> None:
+        self.body.append(self.starttag(node, 'code', suffix=''))
+    
+    def depart_code(self, node: code) -> None:
+        self.body.append('</code>')
 
     def should_be_compact_paragraph(self, node: nodes.Element) -> bool:
         if self.document.children == [node]:
@@ -279,7 +289,7 @@ class HTMLTranslator(html4css1.HTMLTranslator):
     def depart_tip(self, node: nodes.Element) -> None:
         self.depart_admonition(node)
 
-    def visit_wbr(self, node: nodes.Node) -> None:
+    def visit_wbr(self, node: wbr) -> None:
         self.body.append('<wbr></wbr>')
     
     def depart_wbr(self, node: nodes.Node) -> None:

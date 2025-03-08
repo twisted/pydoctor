@@ -54,7 +54,7 @@ class FunctionChild(TemplateElement):
 
     @renderer
     def decorator(self, request: object, tag: Tag) -> "Flattenable":
-        return list(format_decorators(self.ob))
+        return format_decorators(self.ob)
 
     @renderer
     def functionDef(self, request: object, tag: Tag) -> "Flattenable":
