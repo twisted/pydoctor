@@ -112,6 +112,9 @@ class TypeDocstringTest(BaseDocstringTest):
         self.assertTrue(is_google_typed_arg("Random words are not a type spec (list of int or float or None, default: None)"))
         self.assertTrue(is_google_typed_arg("Random words are not a type spec (`complicated string` or `strIO <twisted.python.compat.NativeStringIO>`, optional)"))
 
+
+        self.assertTrue(is_google_typed_arg('param2 (str, {"html", "json", "xml"}, optional)'))
+
     def test_token_type(self):
         tokens = (
         ("1", TokenType.LITERAL),
