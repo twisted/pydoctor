@@ -1284,26 +1284,42 @@ class ASTBuilder:
         vis.walkabout(mod_ast)
 
 class SyntaxTreeParser:
+    """
+    Responsible to read files and cache their parsed tree.
+    """
+
+    class _Error:
+        """
+        Errors are cached as instances of this class instead of base exceoptions
+        in order to avoid cycles with the locals. 
+        """
+
+        def __init__(self, exception: type[Exception], args: tuple[Any, ...]):
+            self._exce = exception
+            self._args = args
+        
+        def exception(self) -> Exception:
+            return self._exce(*self._args)
 
     def __init__(self) -> None:
-        self.ast_cache: Dict[Path, ast.Module | Exception] = {}
+        self.ast_cache: Dict[Path, ast.Module | SyntaxTreeParser._Error] = {}
 
     def parseFile(self, path: Path) -> ast.Module:
         try:
             r = self.ast_cache[path]
         except KeyError:
-            tree: ast.Module | Exception
+            tree: ast.Module | SyntaxTreeParser._Error
             try:
                 tree = parseFile(path)
                 return tree
             except Exception as e:
-                tree = e
+                tree = SyntaxTreeParser._Error(type(e), e.args)
                 raise
             finally:
                 self.ast_cache[path] = tree
         else:
-            if isinstance(r, Exception):
-                raise r
+            if isinstance(r, SyntaxTreeParser._Error):
+                raise r.exception()
             return r
     
     def parseString(self, string:str) -> ast.Module:
