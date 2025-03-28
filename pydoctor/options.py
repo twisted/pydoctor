@@ -46,7 +46,7 @@ PydoctorConfigParser = CompositeConfigParser(
 def get_parser() -> ArgumentParser:
     parser = ArgumentParser(
         prog='pydoctor',
-        description="API doc generator.",
+        description="Pydoctor is an API documentation generator that works primarily by static analysis.",
         usage="pydoctor [options] SOURCEPATH...", 
         default_config_files=DEFAULT_CONFIG_FILES,
         config_file_parser_class=PydoctorConfigParser)
