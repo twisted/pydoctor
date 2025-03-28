@@ -941,3 +941,48 @@ def test_canonical_links_two_root_modules() -> None:
 
     assert '<link rel="canonical" href="https://example.org/t/docs/t2.html"' in html3
     assert '<link rel="canonical" href="https://example.org/t/docs/t2.Cls.html"' in html4
+
+def test_namespace_package_doesnt_show_as_undocumented() -> None:
+    systemcls = lambda: model.System(model.Options.from_args(
+        ['--html-viewsource-base=https://github.com/some/repo/tree/master',
+         f'--project-base-dir={testpackages / "namespaces"}']))
+
+    system = processPackage(['namespaces/project1/lvl1', 
+                             'namespaces/project2/lvl1'], systemcls)
+
+    assert isinstance(root:=system.allobjects['lvl1'], model.Package)
+    assert root.kind is model.DocumentableKind.NAMESPACE_PACKAGE
+
+    assert isinstance(nested:=root.contents['lvl2'], model.Package)
+    assert nested.kind is model.DocumentableKind.NAMESPACE_PACKAGE
+
+    html1 = getHTMLOf(root)
+
+    assert 'Undocumented' not in html1
+    assert 'Contains 1 known namespace package.' in html1
+
+    html2 = getHTMLOf(nested)
+    assert 'Contains 2 known packages.' in html2
+
+def test_namespace_package_source_links() -> None:
+    systemcls = lambda: model.System(model.Options.from_args(
+        ['--html-viewsource-base=https://github.com/some/repo/tree/master',
+         f'--project-base-dir={testpackages / "namespaces"}']))
+
+    system = processPackage(['namespaces/project1/lvl1', 
+                             'namespaces/project2/lvl1'], systemcls)
+
+    assert isinstance(root:=system.allobjects['lvl1'], model.Package)
+    assert root.kind is model.DocumentableKind.NAMESPACE_PACKAGE
+
+    assert isinstance(nested:=root.contents['lvl2'], model.Package)
+    assert nested.kind is model.DocumentableKind.NAMESPACE_PACKAGE
+
+    html1 = getHTMLOf(root)
+    html2 = getHTMLOf(nested)
+
+    assert ('<a href="https://github.com/some/repo/tree/master/project1/lvl1" class="sourceLink">(source)</a>, '
+        '<a href="https://github.com/some/repo/tree/master/project2/lvl1" class="sourceLink">(source)</a>') in html1
+    
+    assert ('<a href="https://github.com/some/repo/tree/master/project1/lvl1/lvl2" class="sourceLink">(source)</a>, '
+        '<a href="https://github.com/some/repo/tree/master/project2/lvl1/lvl2" class="sourceLink">(source)</a>') in html2

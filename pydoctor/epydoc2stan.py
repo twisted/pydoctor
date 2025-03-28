@@ -948,6 +948,7 @@ def format_kind(kind: model.DocumentableKind, plural: bool = False) -> str:
     Transform a `model.DocumentableKind` Enum value to string.
     """
     names = {
+        model.DocumentableKind.NAMESPACE_PACKAGE : 'Namespace Package',
         model.DocumentableKind.PACKAGE         : 'Package',
         model.DocumentableKind.MODULE          : 'Module',
         model.DocumentableKind.INTERFACE       : 'Interface',
@@ -1168,6 +1169,30 @@ def get_constructors_extra(cls:model.Class) -> ParsedDocstring | None:
     
     set_node_attributes(document, children=elements)
     return ParsedRstDocstring(document, ())
+
+def get_namespace_docstring(ns: model.Package) -> str:
+    """
+    Get a useful description about this namespace package.
+    """
+    # Something like: 
+    # Contains 1 known namespace packages, 3 known packages, 2 known modules
+    # Empty
+    if not ns.contents:
+        text = 'Empty'
+    else:
+        sub_objects_total_count: DefaultDict[model.DocumentableKind, int]  = defaultdict(int)
+        for sub_ob in ns.contents.values():
+            kind = sub_ob.kind
+            if kind is not None:
+                sub_objects_total_count[kind] += 1
+        
+        text = 'Contains ' + ', '.join(
+                f"{sub_objects_total_count[kind]} known "
+                f"{format_kind(kind, plural=sub_objects_total_count[kind]>=2).lower()}"
+                for kind in sorted(sub_objects_total_count, key=(lambda x:x.value))
+                ) + '.'
+
+    return text
 
 _empty = inspect.Parameter.empty
 _POSITIONAL_ONLY = inspect.Parameter.POSITIONAL_ONLY

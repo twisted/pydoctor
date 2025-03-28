@@ -360,7 +360,7 @@ ul ul ul ul ul ul ul {
     }
 }
 
-table .package {
+table .package, table .namespacepackage {
     background-color: #fff3e0;
 }
 

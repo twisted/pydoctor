@@ -1163,7 +1163,21 @@ class ASTBuilder:
         self.currentMod: Optional[model.Module] = None # current module, set when visiting ast.Module.
         
         self._stack: List[model.Documentable] = []
-        self.ast_cache: Dict[Path, Optional[ast.Module]] = {}
+
+    
+    def parseFile(self, path: Path, ctx: model.Module) -> Optional[ast.Module]:
+        try:
+            return self.system._ast_parser.parseFile(path)
+        except Exception as e:
+            ctx.report(f"cannot parse file, {e}")
+            return None
+    
+    def parseString(self, string:str, ctx: model.Module) -> Optional[ast.Module]:
+        try:
+            return self.system._ast_parser.parseString(string)
+        except Exception:
+            ctx.report("cannot parse string")
+            return None
 
     def _push(self, 
               cls: Type[DocumentableT], 
@@ -1269,28 +1283,55 @@ class ASTBuilder:
         vis.extensions.attach_visitor(vis)
         vis.walkabout(mod_ast)
 
-    def parseFile(self, path: Path, ctx: model.Module) -> Optional[ast.Module]:
-        try:
-            return self.ast_cache[path]
-        except KeyError:
-            mod: Optional[ast.Module] = None
-            try:
-                mod = parseFile(path)
-            except (SyntaxError, ValueError) as e:
-                ctx.report(f"cannot parse file, {e}")
+class SyntaxTreeParser:
+    """
+    Responsible to read files and cache their parsed tree.
+    """
 
-            self.ast_cache[path] = mod
-            return mod
+    class _Error:
+        """
+        Errors are cached as instances of this class instead of base exceoptions
+        in order to avoid cycles with the locals. 
+        """
+
+        def __init__(self, exception: type[Exception], args: tuple[Any, ...]):
+            self._exce = exception
+            self._args = args
+        
+        def exception(self) -> Exception:
+            return self._exce(*self._args)
+
+    def __init__(self) -> None:
+        self.ast_cache: Dict[Path, ast.Module | SyntaxTreeParser._Error] = {}
+
+    def parseFile(self, path: Path) -> ast.Module:
+        try:
+            r = self.ast_cache[path]
+        except KeyError:
+            tree: ast.Module | SyntaxTreeParser._Error
+            try:
+                tree = parseFile(path)
+                return tree
+            except Exception as e:
+                tree = SyntaxTreeParser._Error(type(e), e.args)
+                raise
+            finally:
+                self.ast_cache[path] = tree
+        else:
+            if isinstance(r, SyntaxTreeParser._Error):
+                raise r.exception()
+            return r
     
-    def parseString(self, py_string:str, ctx: model.Module) -> Optional[ast.Module]:
+    def parseString(self, string:str) -> ast.Module:
         mod = None
         try:
-            mod = _parse(py_string)
-        except (SyntaxError, ValueError):
-            ctx.report("cannot parse string")
+            mod = _parse(string)
+        except (SyntaxError, ValueError) as e:
+            raise SyntaxError("cannot parse string") from e
         return mod
 
 model.System.defaultBuilder = ASTBuilder
+model.System.syntaxTreeParser = SyntaxTreeParser
 
 def findModuleLevelAssign(mod_ast: ast.Module) -> Iterator[Tuple[str, ast.Assign]]:
     """
