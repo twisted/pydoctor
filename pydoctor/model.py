@@ -34,7 +34,7 @@ from pydoctor.sphinx import CacheT, SphinxInventory
 
 if TYPE_CHECKING:
     from typing_extensions import Literal, Protocol
-    from pydoctor.astbuilder import ASTBuilder, DocumentableT
+    from pydoctor.astbuilder import ASTBuilder, DocumentableT, SyntaxTreeParser
 else:
     Literal = {True: bool, False: bool}
     ASTBuilder = Protocol = object
@@ -93,6 +93,7 @@ class DocumentableKind(Enum):
 
     @note: Presentation order is derived from the enum values
     """
+    NAMESPACE_PACKAGE   = 1001
     PACKAGE             = 1000
     MODULE              = 900
     CLASS               = 800
@@ -127,7 +128,7 @@ class Documentable:
     parsed_type: Optional[ParsedDocstring] = None
     docstring_lineno = 0
     linenumber: LineFromAst | LineFromDocstringField | Literal[0] = 0
-    sourceHref: Optional[str] = None
+    source_href: Optional[str] = None
     kind: Optional[DocumentableKind] = None
 
     documentation_location = DocLocation.OWN_PAGE
@@ -196,12 +197,12 @@ class Documentable:
             if not isinstance(lineno, (LineFromAst, LineFromDocstringField)):
                 lineno = LineFromAst(lineno)
             self.linenumber = lineno
-            parentMod = self.parentMod
-            if parentMod is not None:
-                parentSourceHref = parentMod.sourceHref
-                if parentSourceHref:
-                    self.sourceHref = self.system.options.htmlsourcetemplate.format(
-                        mod_source_href=parentSourceHref,
+            parent = self.parentMod
+            if parent is not None:
+                module_source_href = parent.source_href
+                if module_source_href:
+                    self.source_href = self.system.options.htmlsourcetemplate.format(
+                        mod_source_href=module_source_href,
                         lineno=str(lineno)
                     )
 
@@ -541,6 +542,16 @@ class Module(CanContainImportsDocumentable):
 
 class Package(Module):
     kind = DocumentableKind.PACKAGE
+
+    def __repr__(self) -> str:
+        return f"{self.kind.name.replace('_', ' ').title()} {self.fullName()!r}"
+
+    # Support for namespace packages: 
+    def setup(self) -> None:
+        super().setup()
+        self.source_paths = [self.source_path] if self.source_path else []
+        self.source_hrefs: list[str] = []
+
 
 # List of exceptions class names in the standard library, Python 3.8.10
 _STD_LIB_EXCEPTIONS = ('ArithmeticError', 'AssertionError', 'AttributeError', 
@@ -916,6 +927,9 @@ if hasattr(types, "ClassMethodDescriptorType"):
 else:
     func_types += (type(dict.__dict__["fromkeys"]), )
 
+class ModuleNotAdded(Exception):
+    ...
+
 _default_extensions = object()
 class System:
     """A collection of related documentable objects.
@@ -924,11 +938,12 @@ class System:
     package.
     """
 
+    systemBuilder: Type[ISystemBuilder]
+
     # Not assigned here for circularity reasons:
-    #defaultBuilder = astbuilder.ASTBuilder
     defaultBuilder: Type[ASTBuilder]
-    systemBuilder: Type['ISystemBuilder']
-    options: 'Options'
+    syntaxTreeParser: Type[SyntaxTreeParser]
+
     extensions: List[str] = cast('List[str]', _default_extensions)
     """
     List of extensions.
@@ -961,7 +976,7 @@ class System:
         """
 
         if options:
-            self.options = options
+            self.options: Options = options
         else:
             self.options = Options.defaults()
             self.options.verbosity = 3
@@ -986,6 +1001,7 @@ class System:
         self.processing_modules: List[str] = []
         self.buildtime = datetime.datetime.now()
         self.intersphinx = SphinxInventory(logger=self.msg)
+        self._ast_parser = self.syntaxTreeParser()
 
         # Since privacy handling now uses fnmatch, we cache results so we don't re-run matches all the time.
         # We use the fullName of the objets as the dict key in order to bind a full name to a privacy, not an object to a privacy.
@@ -1215,93 +1231,149 @@ class System:
     #  http://divmod.org/trac/browser/trunk
     #                          ~/src/Divmod/Nevow/nevow/flat/ten.py
 
-    def setSourceHref(self, mod: _ModuleT, source_path: Path) -> None:
+    def _formatSourceHref(self, source_path: Path) -> str | None:
         if self.sourcebase is None:
-            mod.sourceHref = None
-        else:
-            # pydoctor supports generating documentation covering more than one package, 
-            # in which case it is not certain that all of the source is even viewable below a single URL.
-            # We ignore this limitation by not assigning sourceHref for now, but it would be good to add support for it.
-            projBaseDir = mod.system.options.projectbasedirectory
-            assert projBaseDir is not None
-            try:
-                relative = source_path.relative_to(projBaseDir).as_posix()
-            except ValueError:
-                # The links cannot be computed because the source path lies outside base directory.
-                pass
-            else:
-                mod.sourceHref = f'{self.sourcebase}/{relative}'
+            return None
+        projBaseDir = self.options.projectbasedirectory
+        assert projBaseDir is not None
+        try:
+            relative = source_path.relative_to(projBaseDir).as_posix()
+        except ValueError:
+            # The links cannot be computed because the source path lies outside base directory.
+            return None
+        
+        return f'{self.sourcebase}/{relative}'
+
+    def setSourceHref(self, mod: _ModuleT, source_path: Path) -> None:
+        # Note: this is used only for module, for other objects
+        # it's done in setLineNumber().
+
+        # pydoctor supports generating documentation covering more than one package, 
+        # in which case it is not certain that all of the source is even viewable below a single URL.
+        # We ignore this limitation by not assigning sourceHref for now, but it would be good to add support for it.
+        # a way to do it would be to match package names to different source bases and project base directories. 
+        # --html-viewsource-base=zope.interface:https://github.com/zopefoundation/zope.interface/tree/master
+        # --html-viewsource-base=zope.component:https://github.com/zopefoundation/zope.component/tree/master
+        # --project-base-dir=zope.interface:./zope.interface/
+        # --project-base-dir=zope.component:./zope.component/
+        # ./zope.interface/src/zope ./zope.component/src/zope
+        
+        if href:=self._formatSourceHref(source_path):
+            if mod.source_href is None:
+                mod.source_href = href
+            # Support for namespace packages: their location can be split off
+            # several distributions, needing several hrefs.
+            if mod.kind is DocumentableKind.NAMESPACE_PACKAGE:
+                assert isinstance(mod, Package)
+                mod.source_hrefs.append(href)
 
     @overload
-    def analyzeModule(self,
+    def _addPackageOrModule(self,
             modpath: Path,
             modname: str,
-            parentPackage: Optional[_PackageT],
-            is_package: Literal[False] = False
+            parent: Optional[_PackageT],
+            is_package: Literal[False] = False,
+            is_namespace_package: Literal[False] = False,
             ) -> _ModuleT: ...
 
     @overload
-    def analyzeModule(self,
+    def _addPackageOrModule(self,
             modpath: Path,
             modname: str,
-            parentPackage: Optional[_PackageT],
-            is_package: Literal[True]
+            parent: Optional[_PackageT],
+            is_package: Literal[True], 
+            is_namespace_package: bool = False, 
             ) -> _PackageT: ...
 
-    def analyzeModule(self,
+    def _addPackageOrModule(self,
             modpath: Path,
             modname: str,
-            parentPackage: Optional[_PackageT] = None,
-            is_package: bool = False
+            parent: Optional[_PackageT] = None,
+            is_package: bool = False, 
+            is_namespace_package: bool = False,
             ) -> _ModuleT:
-        factory = self.Package if is_package else self.Module
-        mod = factory(self, modname, parentPackage, modpath)
-        self._addUnprocessedModule(mod)
+        
+        """
+        Add a single package or module from path.
+
+        @returns: The added module or package. In the case of namespace packages, 
+            the existing package will be returned if it's found.
+        @raise ModuleNotAdded: If the module has been discarded because a module under the same 
+            name already Exist.
+        """
+        mod: Module | Package
+        if is_namespace_package and isinstance(maybe_mod := self.allobjects.get(
+            f'{parent.fullName()}.{modname}' if parent else modname), Package) and \
+            maybe_mod.kind is DocumentableKind.NAMESPACE_PACKAGE:
+            # A namespace package already exist for this package name, then
+            # simply add a new source path to it, calling setSourceHref() will
+            # append a new ref
+            mod = maybe_mod
+            mod.source_paths.append(modpath)
+
+        else:
+            cls = self.Package if is_package else self.Module
+            # Create the new module
+            mod = cls(self, modname, parent, modpath)
+            if is_namespace_package:
+                mod.kind = DocumentableKind.NAMESPACE_PACKAGE
+            if not self._addUnprocessedModule(mod):
+                raise ModuleNotAdded
+        
         self.setSourceHref(mod, modpath)
         return mod
 
-    def _addUnprocessedModule(self, mod: _ModuleT) -> None:
+    def _addUnprocessedModule(self, mod: _ModuleT) -> bool:
         """
         First add the new module into the unprocessed_modules list. 
         Handle eventual duplication of module names, and finally add the 
         module to the system.
+
+        @returns: Whether the module has been sucessfully added.
         """
         assert mod.state is ProcessingState.UNPROCESSED
         first = self.allobjects.get(mod.fullName())
         if first is not None:
             # At this step of processing only modules exists
             assert isinstance(first, Module)
-            self._handleDuplicateModule(first, mod)
-        else:
-            self.unprocessed_modules.append(mod)
-            self.addObject(mod)
-            self.progress(
-                "analyzeModule", len(self.allobjects),
-                None, "modules and packages discovered")        
-            self.module_count += 1
+            return self._handleDuplicateModule(first, mod)
 
-    def _handleDuplicateModule(self, first: _ModuleT, dup: _ModuleT) -> None:
+        self.unprocessed_modules.append(mod)
+        self.addObject(mod)
+        self.progress(
+            "analyzeModule", len(self.allobjects),
+            None, "modules and packages discovered")        
+        self.module_count += 1
+        return True
+
+    def _handleDuplicateModule(self, first: _ModuleT, dup: _ModuleT) -> bool:
         """
         This is called when two modules have the same name. 
 
         Current rules are the following: 
             - C-modules wins over regular python modules
             - Packages wins over modules
+            - Namespace Packages wins over regular packages
             - Else, the last added module wins
         """
-        dup.report(f"duplicate {str(first)}", thresh=1)
-
         if first._is_c_module and not isinstance(dup, Package):
             # C-modules wins
-            return
+            dup.report(f"discarding duplicate {str(dup)} because existing C extension has the same name", thresh=0)
+            return False
         elif isinstance(first, Package) and not isinstance(dup, Package):
-            # Packages wins
-            return
-        else:
-            # Else, the last added module wins
-            self._remove(first)
-            self.unprocessed_modules.remove(first)
-            self._addUnprocessedModule(dup)
+            # Packages wins over module
+            dup.report(f"discarding duplicate {str(dup)} because existing package has the same name", thresh=0)
+            return False
+        elif first.kind is DocumentableKind.NAMESPACE_PACKAGE and dup.kind is not DocumentableKind.NAMESPACE_PACKAGE:
+            # Namespace packages wins over regular package
+            dup.report(f"discarding duplicate {str(dup)} because existing namespace package has the same name", thresh=0)
+            return False
+
+        # Else, the last added module wins
+        dup.report(f"discarding existing {str(first)} because {str(dup)} overrides it", thresh=0)
+        self._remove(first)
+        self.unprocessed_modules.remove(first)
+        return self._addUnprocessedModule(dup)
 
     def _introspectThing(self, thing: object, parent: CanContainImportsDocumentable, parentMod: _ModuleT) -> None:
         for k, v in thing.__dict__.items():
@@ -1361,19 +1433,39 @@ class System:
         
         self._addUnprocessedModule(module)
         return module
+    
+    def addPackage(self, package_path: Path, parent: Optional[_PackageT] = None, 
+                   is_namespace_package: bool = False) -> None:
 
-    def addPackage(self, package_path: Path, parentPackage: Optional[_PackageT] = None) -> None:
-        package = self.analyzeModule(
-            package_path / '__init__.py', package_path.name, parentPackage, is_package=True)
-
+        if not is_namespace_package:
+            pkg_source_path = package_path / '__init__.py'
+        else:
+            pkg_source_path = package_path
+        
+        try:
+            package = self._addPackageOrModule(pkg_source_path, package_path.name, 
+                                        parent, is_package=True, 
+                                        is_namespace_package=is_namespace_package)
+        except ModuleNotAdded:
+            # a message is logged in case of clashing modules.
+            return 
+        
         for path in sorted(package_path.iterdir()):
             if path.is_dir():
-                if (path / '__init__.py').exists():
+                if is_namespace_package:
+                    # A namespace package should only be nested under other nspackages
+                    # if it's nested under a regular package, then we ignore it since 
+                    # the chances are this is not part of the API. 
+                    # What if we have an empty namespace package? Then nohting special happens
+                    self.addPackage(path, package, (self._is_pep420_namespace_package(path) or 
+                                                    self._is_oldschool_namespace_package(path)))
+                elif not self._is_pep420_namespace_package(path):
                     self.addPackage(path, package)
-            elif path.name != '__init__.py' and not path.name.startswith('.'):
-                self.addModuleFromPath(path, package)
 
-    def addModuleFromPath(self, path: Path, package: Optional[_PackageT]) -> None:
+            elif path.name != '__init__.py' and not path.name.startswith('.'):
+                self.addModule(path, package)
+
+    def addModule(self, path: Path, parent: Optional[_PackageT]) -> None:
         name = path.name
         for suffix in importlib.machinery.all_suffixes():
             if not name.endswith(suffix):
@@ -1381,10 +1473,25 @@ class System:
             module_name = name[:-len(suffix)]
             if suffix in importlib.machinery.EXTENSION_SUFFIXES:
                 if self.options.introspect_c_modules:
-                    self.introspectModule(path, module_name, package)
+                    self.introspectModule(path, module_name, parent)
             elif suffix in importlib.machinery.SOURCE_SUFFIXES:
-                self.analyzeModule(path, module_name, package)
+                try:
+                    self._addPackageOrModule(path, module_name, parent)
+                except ModuleNotAdded: 
+                    pass
             break
+
+    def _is_pep420_namespace_package(self, path: Path) -> bool:
+        return not path.joinpath('__init__.py').is_file()
+    
+    def _is_oldschool_namespace_package(self, path: Path) -> bool:
+        try:
+            tree = self._ast_parser.parseFile(
+                path.joinpath('__init__.py'))
+        except Exception:
+            return False
+        return astutils.is_old_school_namespace_package(tree)
+
     
     def _remove(self, o: Documentable) -> None:
         del self.allobjects[o.fullName()]
@@ -1452,9 +1559,11 @@ class System:
             assert head == mod.fullName()
         else:
             builder = self.defaultBuilder(self)
+            ast = None
             if mod._py_string is not None:
                 ast = builder.parseString(mod._py_string, mod)
-            else:
+            elif mod.kind is not DocumentableKind.NAMESPACE_PACKAGE:
+                # There is no AST for namespace packages.
                 assert mod.source_path is not None
                 ast = builder.parseFile(mod.source_path, mod)
             if ast:
@@ -1514,6 +1623,15 @@ def defaultPostProcess(system:'System') -> None:
     for attrib in system.objectsOfType(Attribute):
        _inherits_instance_variable_kind(attrib)
 
+    from pydoctor import epydoc2stan
+    for ns in system.objectsOfType(Package):
+        if ns.kind is not DocumentableKind.NAMESPACE_PACKAGE:
+            continue
+        # This overrides the namespace package docstring, 
+        # but since they are not supposed to include
+        # any documentation this will not be an issue.
+        ns.docstring = epydoc2stan.get_namespace_docstring(ns)
+
 def _inherits_instance_variable_kind(attr: Attribute) -> None:
     """
     If any of the inherited members of a class variable is an instance variable,
@@ -1548,6 +1666,7 @@ def get_docstring(
             # Treat empty docstring as undocumented.
             return None, source
     return None, None
+
 
 class SystemBuildingError(Exception):
     """
@@ -1607,6 +1726,7 @@ class SystemBuilder(ISystemBuilder):
                     # We now support building documentation when the source path is outside of the build directory.
                     # We simply leave a warning and skip the sourceHref attribute.
                     # https://github.com/twisted/pydoctor/issues/658
+                    # https://github.com/twisted/pydoctor/issues/870
                     _warn_msg = f"No source links can be generated for module {path}: source path lies outside base directory {projBaseDir}"
                     self.system.msg('addPackage', _warn_msg, once=True)
         parent: Optional[Package] = None
@@ -1616,12 +1736,12 @@ class SystemBuilder(ISystemBuilder):
             parent = _p
         if path.is_dir():
             self.system.msg('addPackage', f"adding directory {path}")
-            if not (path / '__init__.py').is_file():
-                raise SystemBuildingError(f"Source directory lacks __init__.py: {path}")
-            self.system.addPackage(path, parent)
+            self.system.addPackage(path, parent, 
+                                   self.system._is_pep420_namespace_package(path) or 
+                                   self.system._is_oldschool_namespace_package(path))
         elif path.is_file():
-            self.system.msg('addModuleFromPath', f"adding module {path}")
-            self.system.addModuleFromPath(path, parent)
+            self.system.msg('addModule', f"adding module {path}")
+            self.system.addModule(path, parent)
         elif path.exists():
             raise SystemBuildingError(f"Source path is neither file nor directory: {path}")
         else:

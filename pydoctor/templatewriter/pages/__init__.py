@@ -312,18 +312,7 @@ class CommonPage(Page):
             ob = ob.parent
         parts.reverse()
         return parts
-    @renderer
-    def deprecated(self, request: object, tag: Tag) -> "Flattenable":
-        import warnings
-        warnings.warn("Renderer 'CommonPage.deprecated' is deprecated, the twisted's deprecation system is now supported by default.")
-        return ''
-    @renderer
-    def source(self, request: object, tag: Tag) -> "Flattenable":
-        sourceHref = util.srclink(self.ob)
-        if not sourceHref:
-            return ()
-        return tag(href=sourceHref)
-
+    
     @renderer
     def inhierarchy(self, request: object, tag: Tag) -> "Flattenable":
         return ()
@@ -417,22 +406,28 @@ class CommonPage(Page):
         )
         return slot_map
 
+def source_tag(href: str) -> Tag: 
+    return tags.a("(source)", href=href, class_="sourceLink")
 
 class ModulePage(CommonPage):
     ob: model.Module
 
+    def source_links(self) -> Flattenable | None:
+        if sourceHref:=util.srclink(self.ob):
+            return source_tag(sourceHref)
+        return None
+
     def extras(self) -> List["Flattenable"]:
         r: List["Flattenable"] = []
-
-        sourceHref = util.srclink(self.ob)
-        if sourceHref:
-            r.append(tags.a("(source)", href=sourceHref, class_="sourceLink"))
-
+        if links:=self.source_links():
+            r.append(links)
         r.extend(super().extras())
         return r
 
 
 class PackagePage(ModulePage):
+    ob: model.Package
+
     def children(self) -> Sequence[model.Documentable]:
         return sorted(self.ob.submodules(), key=self._order)
 
@@ -449,6 +444,20 @@ class PackagePage(ModulePage):
                 ]
         else:
             return ()
+    
+    def source_links(self) -> Flattenable | None:
+        # supports multiple source links, since there could be multiple source paths
+        # for namespace packages
+        links = util.package_srclinks(self.ob)
+        links_max_index = len(links) - 1
+        if links_max_index == -1:
+            return None
+        r: list[Flattenable] = []
+        for i, href in enumerate(links):
+            r.append(source_tag(href))
+            if 0 <= i < links_max_index:
+                r.append(', ')
+        return tags.transparent(*r)
 
     def methods(self) -> Sequence[model.Documentable]:
         return sorted([o for o in self.ob.contents.values()
