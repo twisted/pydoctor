@@ -21,7 +21,7 @@ def new_document(source: Literal['docstring', 'code'], settings: Optional[optpar
     """
     Create a new L{nodes.document} using the provided settings or cached default settings.
 
-    @returns: L{nodes.document} which a C{source} attribute that matches the provided source.
+    @returns: L{nodes.document} with a C{source} attribute that matches the provided source.
     """
     global _DEFAULT_DOCUTILS_SETTINGS
     # If we have docutils >= 0.19 we use get_default_settings to calculate and cache
