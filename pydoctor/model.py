@@ -593,7 +593,7 @@ def topsort(graph: Mapping[Any, Sequence[T]]) -> Iterable[T]:
     Given a mapping where each key-value pair correspond to a node and it's
     predecessors, return the topological order of the nodes.
 
-    This is a simpple wrapper for L{graphlib.TopologicalSorter.static_order}.
+    This is a simple wrapper for L{graphlib.TopologicalSorter.static_order}.
     """
     return TopologicalSorter(graph).static_order()
 
