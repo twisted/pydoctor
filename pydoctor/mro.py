@@ -29,6 +29,8 @@ from collections import deque
 from itertools import islice
 from typing import List, Tuple, Optional, TypeVar
 
+class LinearizationError(ValueError): pass
+
 T = TypeVar('T')
 
 class Dependency(deque):
@@ -104,6 +106,11 @@ class DependencyList:
 
 
 def c3_merge(*lists) -> list:
+    """
+    The merge operation of the C3 superclass linearization algorithm.
+    
+    @see: U{https://en.m.wikipedia.org/wiki/C3_linearization}
+    """
     result: List[Optional[T]] = []
     linearizations = DependencyList(*lists)
 
@@ -121,5 +128,5 @@ def c3_merge(*lists) -> list:
                 break
         else:
             # Loop never broke, no linearization could possibly be found
-            raise ValueError('Cannot compute linearization of the class inheritance hierarchy')
+            raise LinearizationError('Cannot compute linearization of the class inheritance hierarchy')
 

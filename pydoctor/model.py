@@ -614,7 +614,7 @@ class ClassHierarchyFinalizer:
             path = []
         if o in path:
             cycle_str = " -> ".join([c.fullName() for c in path[path.index(o):] + [o]])
-            raise ValueError(f"Cycle found while computing inheritance hierarchy: {cycle_str}")
+            raise mro.LinearizationError(f"Cycle found while computing inheritance hierarchy: {cycle_str}")
         path.append(o)
         if o._finalbaseobjects is not None:
             # we already computed these, so skip.
@@ -668,7 +668,7 @@ class ClassHierarchyFinalizer:
         for cls in classes:
             try:
                 self._init_finalbaseobjects(cls)
-            except ValueError as e:
+            except mro.LinearizationError as e:
                 # Set the MRO right away in case of cycles. 
                 # They should not be in the graph though!
                 cls.report(str(e), 'mro')
@@ -720,7 +720,7 @@ class ClassHierarchyFinalizer:
         try:
             return result + mro.c3_merge(*bases_mros, bases)
         
-        except ValueError as e:
+        except mro.LinearizationError as e:
             cls.report(f'{e} of {cls.fullName()!r}', 'mro')
             return list(cls.allbases(True))
     
