@@ -656,6 +656,9 @@ class ClassHierarchyFinalizer:
                 yield s
     
     def __init__(self, classes: Iterable[Class]) -> None:
+        """
+        @param classes: All classes of the system.
+        """
         # this calls _init_finalbaseobjects for every class and 
         # create the graph object for the ones that did not raised
         # a cycle-error.
@@ -695,8 +698,7 @@ class ClassHierarchyFinalizer:
         This assumes that the MRO of the bases of the class 
         have already been computed and stored in C{self.computed_mros}.
         """
-        if cls not in self.graph:
-            raise ValueError
+        assert cls in self.graph, f"{cls} is not known"
         
         result: list[ClassOrStr] = [cls]
 
