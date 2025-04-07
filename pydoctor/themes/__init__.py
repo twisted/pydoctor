@@ -8,7 +8,7 @@ Usage example:
 >>> template_lookup.get_template('index.html').version >= 3
 True
 
-@see : L{TemplateLookup}, L{Template} and L{TemplateElement}. 
+@see: L{TemplateLookup}, L{Template} and L{TemplateElement}. 
 """
 from typing import Iterator
 
