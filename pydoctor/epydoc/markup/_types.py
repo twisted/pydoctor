@@ -90,12 +90,6 @@ class ParsedTypeDocstring(TypeDocstring, ParsedDocstring):
         """
         Convert L{TokenType.OBJ} and PEP 484 like L{TokenType.DELIMITER} type to stan, merge them together. Leave the rest untouched. 
 
-        Exemple:
-
-        >>> tokens = [("list", TokenType.OBJ), ("(", TokenType.DELIMITER), ("int", TokenType.OBJ), (")", TokenType.DELIMITER)]
-        >>> ann._convert_obj_tokens_to_stan(tokens, NotFoundLinker())
-        ... [(Tag('code', children=['list', '(', 'int', ')']), TokenType.OBJ)]
-        
         @param tokens: List of tuples: C{(token, type)}
         """
 
