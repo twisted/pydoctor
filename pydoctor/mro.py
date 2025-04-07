@@ -108,6 +108,23 @@ class DependencyList:
 def c3_merge(*lists) -> list:
     """
     The merge operation of the C3 superclass linearization algorithm.
+
+    Example of a naive usage:
+
+    >>> def mro(cls: T, getbases: Callable[[T], List[T]]) -> List[T]:
+    ...     result = [cls]
+    ...     if not (bases:=getbases(cls)):
+    ...         return result
+    ...     else:
+    ...         return result + c3_merge(*[mro(kls, getbases) for kls in bases], bases)
+    >>> class B:...
+    >>> class A(B):...
+    >>> class B(B):...
+    >>> class C(A,B):...
+    >>> C.__mro__
+    (<class 'pydoctor.mro.C'>, <class 'pydoctor.mro.A'>, <class 'pydoctor.mro.B'>, <class 'pydoctor.mro.B'>, <class 'object'>)
+    >>> mro(C, lambda cls: cls.__bases__)
+    [<class 'pydoctor.mro.C'>, <class 'pydoctor.mro.A'>, <class 'pydoctor.mro.B'>, <class 'pydoctor.mro.B'>, <class 'object'>]
     
     @see: U{https://en.m.wikipedia.org/wiki/C3_linearization}
     """
