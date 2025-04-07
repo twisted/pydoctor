@@ -258,8 +258,8 @@ class TypeDocstring:
         Example
         -------
         >>> tokens = ["{", "1", ", ", "2", "}"]
-        >>> ann._recombine_set_tokens(tokens)
-        ... ["{1, 2}"]
+        >>> TypeDocstring._recombine_set_tokens(tokens)
+        ['{1, 2}']
         """
         token_queue = collections.deque(tokens)
         keywords = ("optional", "default")
@@ -479,42 +479,40 @@ class GoogleDocstring:
     Example
     -------
 
-    .. python::
-        >>> from pydoctor.napoleon import GoogleDocstring
-        >>> docstring = '''One line summary.
-        ...
-        ... Extended description.
-        ...
-        ... Args:
-        ...   arg1(int): Description of `arg1`
-        ...   arg2(str): Description of `arg2`
-        ... Returns:
-        ...   str: Description of return value.
-        ... '''
-        >>> print(GoogleDocstring(docstring))
-        One line summary.
-
-        Extended description.
-
-        :param arg1: Description of `arg1`
-        :type arg1: int
-        :param arg2: Description of `arg2`
-        :type arg2: str
-
-        :returns: Description of return value.
-        :returntype: str
-        >>> print(GoogleDocstring(docstring, process_type_fields=True))
-        One line summary.
-
-        Extended description.
-
-        :param arg1: Description of `arg1`
-        :type arg1: `int`
-        :param arg2: Description of `arg2`
-        :type arg2: `str`
-
-        :returns: Description of return value.
-        :returntype: `str`
+    >>> docstring = '''One line summary.
+    ...
+    ... Extended description.
+    ...
+    ... Args:
+    ...   arg1(int): Description of `arg1`
+    ...   arg2(str): Description of `arg2`
+    ... Returns:
+    ...   str: Description of return value.
+    ... '''
+    >>> print(GoogleDocstring(docstring))
+    One line summary.
+    <BLANKLINE>
+    Extended description.
+    <BLANKLINE>
+    :param arg1: Description of `arg1`
+    :type arg1: int
+    :param arg2: Description of `arg2`
+    :type arg2: str
+    <BLANKLINE>
+    :returns: Description of return value.
+    :returntype: str
+    >>> print(GoogleDocstring(docstring, process_type_fields=True))
+    One line summary.
+    <BLANKLINE>
+    Extended description.
+    <BLANKLINE>
+    :param arg1: Description of `arg1`
+    :type arg1: `int`
+    :param arg2: Description of `arg2`
+    :type arg2: `str`
+    <BLANKLINE>
+    :returns: Description of return value.
+    :returntype: `str`
 
     """
 
@@ -1343,48 +1341,46 @@ class NumpyDocstring(GoogleDocstring):
 
     Example
     -------
-    
-    .. python::
-        >>> from pydoctor.napoleon import NumpyDocstring
-        >>> docstring = '''One line summary.
-        ...
-        ... Extended description.
-        ...
-        ... Parameters
-        ... ----------
-        ... arg1 : int
-        ...     Description of `arg1`
-        ... arg2 : str
-        ...     Description of `arg2`
-        ... Returns
-        ... -------
-        ... str
-        ...     Description of return value.
-        ... '''
-        >>> print(NumpyDocstring(docstring))
-        One line summary.
 
-        Extended description.
-
-        :param arg1: Description of `arg1`
-        :type arg1: int
-        :param arg2: Description of `arg2`
-        :type arg2: str
-
-        :returns: Description of return value.
-        :returntype: str
-        >>> print(NumpyDocstring(docstring, process_type_fields=True))
-        One line summary.
-
-        Extended description.
-
-        :param arg1: Description of `arg1`
-        :type arg1: `int`
-        :param arg2: Description of `arg2`
-        :type arg2: `str`
-
-        :returns: Description of return value.
-        :returntype: `str`
+    >>> docstring = '''One line summary.
+    ...
+    ... Extended description.
+    ...
+    ... Parameters
+    ... ----------
+    ... arg1 : int
+    ...     Description of `arg1`
+    ... arg2 : str
+    ...     Description of `arg2`
+    ... Returns
+    ... -------
+    ... str
+    ...     Description of return value.
+    ... '''
+    >>> print(NumpyDocstring(docstring))
+    One line summary.
+    <BLANKLINE>
+    Extended description.
+    <BLANKLINE>
+    :param arg1: Description of `arg1`
+    :type arg1: int
+    :param arg2: Description of `arg2`
+    :type arg2: str
+    <BLANKLINE>
+    :returns: Description of return value.
+    :returntype: str
+    >>> print(NumpyDocstring(docstring, process_type_fields=True))
+    One line summary.
+    <BLANKLINE>
+    Extended description.
+    <BLANKLINE>
+    :param arg1: Description of `arg1`
+    :type arg1: `int`
+    :param arg2: Description of `arg2`
+    :type arg2: `str`
+    <BLANKLINE>
+    :returns: Description of return value.
+    :returntype: `str`
 
     """
 

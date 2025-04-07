@@ -164,7 +164,7 @@ def slugify(string:str) -> str:
     A generic slugifier utility (currently only for Latin-based scripts).
     Example:
         >>> slugify("Héllo Wörld")
-        "hello-world"
+        'hello-world'
     """
     return re.sub(r'[-\s]+', '-', 
                 re.sub(rb'[^\w\s-]', b'',

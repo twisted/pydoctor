@@ -66,15 +66,15 @@ def iterassign(node:_AssingT) -> Iterator[Optional[List[str]]]:
     """
     Utility function to iterate assignments targets. 
 
-    Useful for all the following AST assignments:
+    Useful for all the following AST assignments::
 
-    >>> var:int=2
-    >>> self.var = target = node.astext()
-    >>> lol = ['extensions']
+        var:int=2
+        self.var = target = node.astext()
+        ol = ['extensions']
 
-    NOT Useful for the following AST assignments:
+    NOT Useful for the following AST assignments::
 
-    >>> x, y = [1,2]
+        x, y = [1,2]
 
     Example:
 
@@ -82,7 +82,7 @@ def iterassign(node:_AssingT) -> Iterator[Optional[List[str]]]:
     >>> from ast import parse
     >>> node = parse('self.var = target = thing[0] = node.astext()').body[0]
     >>> list(iterassign(node))
-    
+    [['self', 'var'], ['target'], None]
     """
     for target in node.targets if isinstance(node, ast.Assign) else [node.target]:
         dottedname = node2dottedname(target) 

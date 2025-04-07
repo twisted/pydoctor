@@ -20,9 +20,10 @@ from enum import Enum
 from inspect import signature, Signature
 from pathlib import Path
 from typing import (
-    TYPE_CHECKING, Any, Collection, Dict, Iterator, List, Mapping, Callable, 
+    TYPE_CHECKING, Any, Collection, Dict, Iterable, Iterator, List, Mapping, Callable, 
     Optional, Sequence, Set, Tuple, Type, TypeVar, Union, cast, overload
 )
+from graphlib import TopologicalSorter
 from urllib.parse import quote
 
 import attr
@@ -33,12 +34,13 @@ from pydoctor.epydoc.markup import ParsedDocstring
 from pydoctor.sphinx import CacheT, SphinxInventory
 
 if TYPE_CHECKING:
-    from typing_extensions import Literal, Protocol
+    from typing import Literal, Protocol, TypeAlias
     from pydoctor.astbuilder import ASTBuilder, DocumentableT, SyntaxTreeParser
 else:
     Literal = {True: bool, False: bool}
     ASTBuilder = Protocol = object
 
+T = TypeVar('T')
 
 # originally when I started to write pydoctor I had this idea of a big
 # tree of Documentables arranged in an almost arbitrary tree.
@@ -586,21 +588,36 @@ def is_exception(cls: 'Class') -> bool:
             return True
     return False
 
-def compute_mro(cls:'Class') -> Sequence[Union['Class', str]]:
+def topsort(graph: Mapping[Any, Sequence[T]]) -> Iterable[T]:
     """
-    Compute the method resolution order for this class.
-    This function will also set the 
-    C{_finalbaseobjects} and C{_finalbases} attributes on 
-    this class and all it's superclasses.
+    Given a mapping where each key-value pair correspond to a node and it's
+    predecessors, return the topological order of the nodes.
+
+    This is a simple wrapper for L{graphlib.TopologicalSorter.static_order}.
     """
-    def init_finalbaseobjects(o: 'Class', path:Optional[List['Class']]=None) -> None:
+    return TopologicalSorter(graph).static_order()
+
+ClassOrStr: TypeAlias = 'Class | str'
+
+class ClassHierarchyFinalizer:
+    """
+    Encapsulate code related to class hierarchies post-processing.
+    """
+
+    @classmethod
+    def _init_finalbaseobjects(cls, o: Class, path:list[Class] | None = None) -> None:
+        """
+        The base objects are computed in two passes, first the ast visitor sets C{_initialbaseobjects}, 
+        then we set C{_finalbaseobjects} from this function which should be called during post-processing.
+        """
         if not path:
             path = []
         if o in path:
-            cycle_str = " -> ".join([o.fullName() for o in path[path.index(cls):] + [cls]])
-            raise ValueError(f"Cycle found while computing inheritance hierarchy: {cycle_str}")
+            cycle_str = " -> ".join([c.fullName() for c in path[path.index(o):] + [o]])
+            raise mro.LinearizationError(f"Cycle found while computing inheritance hierarchy: {cycle_str}")
         path.append(o)
         if o._finalbaseobjects is not None:
+            # we already computed these, so skip.
             return
         if o.rawbases:
             finalbaseobjects: List[Optional[Class]] = []
@@ -622,27 +639,91 @@ def compute_mro(cls:'Class') -> Sequence[Union['Class', str]]:
                         finalbases.append(o._initialbases[i])
                 if base:
                     # Recurse on super classes
-                    init_finalbaseobjects(base, path.copy())
+                    cls._init_finalbaseobjects(base, path.copy())
             o._finalbaseobjects = finalbaseobjects
             o._finalbases = finalbases
-    
-    def localbases(o:'Class') -> Iterator[Union['Class', str]]:
+
+    @staticmethod
+    def _getbases(o: Class) -> Iterator[ClassOrStr]:
         """
-        Like L{Class.baseobjects} but fallback to the expanded name if the base is not resolved to a L{Class} object.
+        Like L{Class.baseobjects} but fallback to the expanded 
+        name if the base is not resolved to a L{Class} object.
         """
         for s,b in zip(o.bases, o.baseobjects):
             if isinstance(b, Class):
                 yield b
             else:
                 yield s
+    
+    def __init__(self, classes: Iterable[Class]) -> None:
+        """
+        @param classes: All classes of the system.
+        """
+        # this calls _init_finalbaseobjects for every class and 
+        # create the graph object for the ones that did not raised
+        # a cycle-error.
+        self.graph: dict[Class, list[ClassOrStr]]  = {}
+        self.computed_mros: dict[ClassOrStr, list[ClassOrStr]] = {}
+        
+        for cls in classes:
+            try:
+                self._init_finalbaseobjects(cls)
+            except mro.LinearizationError as e:
+                # Set the MRO right away in case of cycles. 
+                # They should not be in the graph though!
+                cls.report(str(e), 'mro')
+                self.computed_mros[cls] = cls._mro = list(cls.allbases(True))
+            else:
+                self.graph[cls] = bases = []
+                for b in self._getbases(cls):
+                    bases.append(b)
+                    # strings are not part of the graph
+                    # because they always have the same MRO: empty list.
+                    
+    def compute_mros(self) -> None:
+        
+        # If this raises a CycleError, our code is boggus since we already
+        # checked for cycles ourself.
+        static_order = topsort(self.graph)
+        
+        for cls in static_order:
+            if cls in self.computed_mros or isinstance(cls, str):
+                # If it's already computed, it means it's bogus
+                continue
+            self.computed_mros[cls] = cls._mro = self._compute_mro(cls)
 
-    def getbases(o:Union['Class', str]) -> List[Union['Class', str]]:
-        if isinstance(o, str):
-            return []
-        return list(localbases(o))
+    def _compute_mro(self, cls: Class) -> list[ClassOrStr]:
+        """
+        Compute the method resolution order for this class.
+        This assumes that the MRO of the bases of the class 
+        have already been computed and stored in C{self.computed_mros}.
+        """
+        assert cls in self.graph, f"{cls} is not known"
+        
+        result: list[ClassOrStr] = [cls]
 
-    init_finalbaseobjects(cls)
-    return mro.mro(cls, getbases)
+        if not (bases:=self.graph[cls]):
+            return result
+        
+        # since we compute all MRO in topological order, we can safely assume
+        # that self.computed_mros contains all the MROs of the bases of this class.
+        bases_mros = [self.computed_mros.get(kls, []) for kls in bases]
+
+        # handle multiple typing.Generic case, 
+        # see https://github.com/twisted/pydoctor/issues/846.
+        # support documenting typing.py module by using allobject.get.
+        generic = cls.system.allobjects.get(_d:='typing.Generic', _d)
+        if generic in bases and any(generic in _mro for _mro in bases_mros):
+            # this is safe since we checked 'generic in bases'.
+            bases.remove(generic) # type: ignore[arg-type]
+        
+        try:
+            return result + mro.c3_merge(*bases_mros, bases)
+        
+        except mro.LinearizationError as e:
+            cls.report(f'{e} of {cls.fullName()!r}', 'mro')
+            return list(cls.allbases(True))
+    
 
 def _find_dunder_constructor(cls:'Class') -> Optional['Function']:
     """
@@ -702,7 +783,7 @@ class Class(CanContainImportsDocumentable):
     # set in post-processing:
     _finalbaseobjects: Optional[List[Optional['Class']]] = None 
     _finalbases: Optional[List[str]] = None
-    _mro: Optional[Sequence[Union['Class', str]]] = None
+    _mro: Optional[Sequence[Class | str]] = None
 
     def setup(self) -> None:
         super().setup()
@@ -712,21 +793,11 @@ class Class(CanContainImportsDocumentable):
         self._initialbases: List[str] = []
         self._initialbaseobjects: List[Optional['Class']] = []
     
-    def _init_mro(self) -> None:
-        """
-        Compute the correct value of the method resolution order returned by L{mro()}.
-        """
-        try:
-            self._mro = compute_mro(self)
-        except ValueError as e:
-            self.report(str(e), 'mro')
-            self._mro = list(self.allbases(True))
-    
     @overload
-    def mro(self, include_external:'Literal[True]', include_self:bool=True) -> Sequence[Union['Class', str]]:...
+    def mro(self, include_external:'Literal[True]', include_self:bool=True) -> Sequence[Class | str]:...
     @overload
     def mro(self, include_external:'Literal[False]'=False, include_self:bool=True) -> Sequence['Class']:...
-    def mro(self, include_external:bool=False, include_self:bool=True) -> Sequence[Union['Class', str]]:
+    def mro(self, include_external:bool=False, include_self:bool=True) -> Sequence[Class | str]:
         """
         Get the method resution order of this class. 
 
@@ -899,8 +970,6 @@ class Attribute(Inheritable):
 # Work around the attributes of the same name within the System class.
 _ModuleT = Module
 _PackageT = Package
-
-T = TypeVar('T')
 
 def import_mod_from_file_location(module_full_name:str, path: Path) -> types.ModuleType:
     spec = importlib.util.spec_from_file_location(module_full_name, path)
@@ -1607,10 +1676,15 @@ class System:
             self.intersphinx.update(cache, url)
 
 def defaultPostProcess(system:'System') -> None:
-    for cls in system.objectsOfType(Class):
-        # Initiate the MROs
-        cls._init_mro()
 
+    # Init class graph and final bases.
+    class_finalizer = ClassHierarchyFinalizer(
+        system.objectsOfType(Class))
+    
+    # Compute MROs
+    class_finalizer.compute_mros()
+
+    for cls in system.objectsOfType(Class):
         # Compute subclasses
         for b in cls.baseobjects:
             if b is not None:
