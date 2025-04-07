@@ -70,8 +70,8 @@ You can select a different format using the ``--docformat`` option or the ``__do
 What's New?
 ~~~~~~~~~~~
 
-in development
-^^^^^^^^^^^^^^
+pydoctor 25.4.0
+^^^^^^^^^^^^^^^
 
 * Drop support for Python 3.8.
 * Add support for `Namespace Packages <https://packaging.python.org/en/latest/guides/packaging-namespace-packages>`_: 
