@@ -154,8 +154,6 @@ class HTMLTranslator(html4css1.HTMLTranslator):
     def should_be_compact_paragraph(self, node: nodes.Element) -> bool:
         if self.document.children == [node]:
             return True
-        elif self._document_is_code:
-            return True
         else:
             return super().should_be_compact_paragraph(node)  # type: ignore[no-any-return]
 
