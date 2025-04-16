@@ -11,7 +11,7 @@ from textwrap import dedent
 
 from pydoctor.napoleon.docstring import (GoogleDocstring as _GoogleDocstring, 
         NumpyDocstring as _NumpyDocstring, 
-        TokenType, TypeDocstring, is_type, is_google_typed_arg)
+        TokenType, TypeDocstring, is_type, is_google_typed_arg, Tokenizer, Token)
 from pydoctor.utils import partialclass
 
 import sphinx.ext.napoleon as sphinx_napoleon
@@ -142,9 +142,8 @@ class TypeDocstringTest(BaseDocstringTest):
         ("just a string",  TokenType.UNKNOWN),
         (len("not a string"),  TokenType.ANY),
         )
-        type_spec = TypeDocstring('', 0)
         for token, _type in tokens:
-            actual = type_spec._token_type(token)
+            actual = Tokenizer._token_type(token, [], False)
             self.assertEqual(_type, actual)
 
     def test_tokenize_type_spec(self):
@@ -212,7 +211,7 @@ class TypeDocstringTest(BaseDocstringTest):
 
         for spec, expected in zip(specs, tokens):
             with self.subTest(f'tokenize type {spec!r}'):
-                actual = TypeDocstring._tokenize_type_spec(spec)
+                actual = Tokenizer.tokenize_str(spec)
                 self.assertEqual(expected, actual)
 
     def test_recombine_set_tokens(self):
@@ -231,7 +230,7 @@ class TypeDocstringTest(BaseDocstringTest):
         )
 
         for tokens_, expected in zip(tokens, combined_tokens):
-            actual = TypeDocstring._recombine_set_tokens(tokens_)
+            actual = Tokenizer.recombine_sets(tokens_)
             self.assertEqual(expected, actual)
 
     def test_recombine_set_tokens_invalid(self):
@@ -247,7 +246,7 @@ class TypeDocstringTest(BaseDocstringTest):
         )
 
         for tokens_, expected in zip(tokens, combined_tokens):
-            actual = TypeDocstring._recombine_set_tokens(tokens_)
+            actual = Tokenizer.recombine_sets(tokens_)
             self.assertEqual(expected, actual)
 
     def test_convert_numpy_type_spec(self):
@@ -344,7 +343,7 @@ class TypeDocstringTest(BaseDocstringTest):
         for spec, expected in zip(specs, expected):
             with self.subTest(f'parsed tokens: {spec!r}'):
                 actual = TypeDocstring(spec)._tokens
-                self.assertEqual(expected, actual)
+                self.assertEqual([Token(*v) for v in expected], actual)
 
     def test_token_type_invalid(self):
         tokens = (
@@ -364,11 +363,11 @@ class TypeDocstringTest(BaseDocstringTest):
             r"malformed string literal \(missing opening quote\):",
         )
         for token, error in zip(tokens, errors):
-            type_spec = TypeDocstring('')
-            type_spec._token_type(token)
+            warnings = []
+            Tokenizer._token_type(token, warnings, False)
             match_re = re.compile(error)
-            assert len(type_spec.warnings) == 1, type_spec.warnings
-            assert match_re.match(str(type_spec.warnings.pop()))
+            assert len(warnings) == 1, warnings
+            assert match_re.match(str(warnings.pop()))
 
     def test_unbalanced_parenthesis(self):
         strings = (

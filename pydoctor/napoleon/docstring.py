@@ -15,7 +15,7 @@ from enum import Enum, auto
 import re
 
 from functools import partial
-from typing import Any, Callable, Deque, Dict, Iterator, List, Literal, Optional, Tuple, Union
+from typing import Any, Callable, Deque, Dict, Generic, Iterator, List, Literal, NamedTuple, Optional, Protocol, Sequence, Tuple, TypeVar, Union
 
 import attr
 
@@ -147,13 +147,248 @@ class TokenType(Enum):
     UNKNOWN     = auto()
     ANY         = auto()
 
-@attr.s(auto_attribs=True)
-class FreeFormException(Exception):
+_T = TypeVar('_T', covariant=True)
+
+@attr.s(auto_attribs=True, frozen=True)
+class Token:
     """
-    Exception to encapsulate the converted lines when numpy-style fields get treated as free form.
+    A token in a type specification.
+    """
+    
+    value: object
+    type: TokenType
+
+    def astext(self) -> str:
+        """
+        The token as text. 
+
+        Common interface with `docutils.nodes.Node`.
+        """
+        return str(self.value)
+
+class ITokenizer(Protocol[_T]):
+    """
+    A tokenizer for annotations.
+
+    Tokens and warnings should be set during the initialization phase, 
+    then retreivable with the coresponding method. Instance of this clas should be
+    considered frozen.
     """
 
-    lines: List[str]
+    warnings: Sequence[str]
+    """
+    The warnings trigered during the tokenization.
+    """
+    
+    tokens: Sequence[Token]
+    """
+    The tokens.
+    """
+    
+    def __init__(self, annotation: _T, *, 
+                 warns_on_unknown_tokens: bool) -> None: ...
+
+class Tokenizer(ITokenizer[str]):
+    """
+    A tokenizer for string annotations.
+    """
+
+    def __init__(self, annotation: str, *, 
+                 warns_on_unknown_tokens: bool) -> None:
+        # build tokens and warnings
+        self.warnings = warnings = [] # type: list[str]
+        raw_tokens = self.recombine_sets(self.tokenize_str(annotation))
+        self.tokens = self.build(raw_tokens, warnings, warns_on_unknown_tokens)
+
+    @staticmethod
+    def _additional_warnings(tokens: list[Token], warnings: list[str]) -> None:
+        """
+        Some more warnings.
+        """
+        open_parenthesis = 0
+        open_square_braces = 0
+
+        for tok in tokens:
+            _token, _type = tok.value, tok.type
+            if _type is TokenType.DELIMITER and _token in {'[', ']', '(', ')'}: 
+                if _token == "[": open_square_braces += 1
+                elif _token == "(": open_parenthesis += 1
+                elif _token == "]": open_square_braces -= 1
+                elif _token == ")": open_parenthesis -= 1
+        
+        if open_parenthesis != 0:
+            warnings.append("unbalanced parenthesis in type expression")
+        if open_square_braces != 0:
+            warnings.append("unbalanced square braces in type expression")
+
+    @classmethod
+    def build(cls, raw_tokens: list[object], warnings: list[str], 
+              warns_on_unknown_tokens: bool) -> list[Token]:
+        tokens: list[Token] = [
+            Token(token, cls._token_type(token, warnings, warns_on_unknown_tokens)
+                  ) for token in raw_tokens
+        ]
+        cls._additional_warnings(tokens, warnings)
+        return tokens
+
+    @staticmethod
+    def recombine_sets(tokens: List[Any]) -> List[object]:
+        """
+        Merge the special literal choices tokens together.
+
+        Example
+        -------
+        >>> tokens = ["{", "1", ", ", "2", "}"]
+        >>> Tokenizer.recombine_sets(tokens)
+        ['{1, 2}']
+        """
+        token_queue = collections.deque(tokens)
+        keywords = ("optional", "default")
+
+        def takewhile_set(tokens: Deque[object]) -> Iterator[object]:
+            open_obj_delim = 0
+            previous_token = None
+            while True:
+                try:
+                    token = tokens.popleft()
+                except IndexError:
+                    break
+
+                if token == ", ":
+                    previous_token = token
+                    continue
+
+                if not str(token).strip():
+                    continue
+
+                if token in keywords:
+                    tokens.appendleft(token)
+                    if previous_token is not None:
+                        tokens.appendleft(previous_token)
+                    break
+
+                if previous_token is not None:
+                    yield previous_token
+                    previous_token = None
+
+                if token == "{":
+                    open_obj_delim += 1
+                elif token == "}":
+                    open_obj_delim -= 1
+
+                yield token
+
+                if open_obj_delim == 0:
+                    break
+
+        def combine_set(tokens: Deque[object]) -> Iterator[object]:
+            while True:
+                try:
+                    token = tokens.popleft()
+                except IndexError:
+                    break
+
+                if token == "{":
+                    tokens.appendleft("{")
+                    yield "".join(map(str, takewhile_set(tokens)))
+                else:
+                    yield token
+
+        return list(combine_set(token_queue))
+
+    @staticmethod
+    def tokenize_str(spec: str) -> List[str]:
+        """
+        Split the string in tokens for further processing.
+        """
+
+        def postprocess(item: str) -> List[str]:
+            if TypeDocstring._default_regex.match(item):
+                default = item[:7]
+                # the default value can't be separated by anything other than a single space
+                other = item[8:]
+                return [default, " ", other]
+            elif item == ",":  # Add space after comma if not there
+                return [", "]
+            else:
+                return [item]
+
+        tokens = list(
+            item
+            for raw_token in TypeDocstring._token_regex.split(spec)
+            for item in postprocess(raw_token)
+            if item
+        )
+        return tokens
+
+    @staticmethod
+    def _token_type(token: object, warnings:list[str], 
+                    warns_on_unknown_tokens: bool) -> TokenType:
+        """
+        Find the type of a token. Types are defined in `TokenType` enum.
+        """
+
+        def is_numeric(token: str) -> bool:
+            try:
+                # use complex to make sure every numeric value is detected as literal
+                complex(token)
+            except ValueError:
+                return False
+            else:
+                return True
+
+        # If the token is not a string, it's tagged as 'any', 
+        # in practice this is used when a docutils.nodes.Element is passed as a token.
+        if not isinstance(token, str):
+            type_ = TokenType.ANY
+        elif (
+            TypeDocstring._natural_language_delimiters_regex.match(token)
+            or not token.strip()
+            or TypeDocstring._ast_like_delimiters_regex.match(token)
+        ):
+            type_ = TokenType.DELIMITER
+        elif (
+            is_numeric(token)
+            or (token.startswith("{") and token.endswith("}"))
+            or (token.startswith('"') and token.endswith('"'))
+            or (token.startswith("'") and token.endswith("'"))
+        ):
+            type_ = TokenType.LITERAL
+        elif token.startswith("{"):
+            warnings.append(f"invalid value set (missing closing brace): {token}")
+            type_ = TokenType.LITERAL
+        elif token.endswith("}"):
+            warnings.append(f"invalid value set (missing opening brace): {token}")
+            type_ = TokenType.LITERAL
+        elif token.startswith("'") or token.startswith('"'):
+            warnings.append(
+                f"malformed string literal (missing closing quote): {token}"
+            )
+            type_ = TokenType.LITERAL
+        elif token.endswith("'") or token.endswith('"'):
+            warnings.append(
+                f"malformed string literal (missing opening quote): {token}"
+            )
+            type_ = TokenType.LITERAL
+        # keyword supported by the reference implementation (numpydoc)
+        elif token in (
+            "optional",
+            "default",
+        ):
+            type_ = TokenType.CONTROL
+        elif _xref_regex.match(token):
+            type_ = TokenType.REFERENCE
+        elif is_obj_identifier(token):
+            type_ = TokenType.OBJ
+        else:
+            # sphinx.ext.napoleon would consider the type as "obj" even if the string is not a
+            # identifier, leading into generating failures when tying to resolve links.
+            type_ = TokenType.UNKNOWN
+
+        if type_ is TokenType.UNKNOWN and warns_on_unknown_tokens:
+            warnings.append(f"unknown expresssion in type: {token}")
+
+        return type_
 
 
 class TypeDocstring:
@@ -204,24 +439,10 @@ class TypeDocstring:
     )
 
     def __init__(self, annotation: str, warns_on_unknown_tokens: bool = False) -> None:
-        self.warnings: List[str] = []
-        self._annotation = annotation
-        self._warns_on_unknown_tokens = warns_on_unknown_tokens
-
-        _tokens: List[str] = self._tokenize_type_spec(annotation)
-        self._tokens: List[Tuple[str, TokenType]] = self._build_tokens(_tokens)
-
-        self._trigger_warnings()
-
-    def _build_tokens(self, _tokens: List[Union[str, Any]]) -> List[Tuple[str, TokenType]]:
-        _combined_tokens = self._recombine_set_tokens(_tokens)
-
-        # Save tokens in the form : [("list", TokenType.OBJ), ("(", TokenType.DELIMITER), ("int", TokenType.OBJ), (")", TokenType.DELIMITER)]
-        _tokens_with_type_information: List[Tuple[str, TokenType]] = [
-            (token, self._token_type(token)) for token in _combined_tokens
-        ]
-
-        return _tokens_with_type_information
+        tokenizer = Tokenizer(annotation, 
+                              warns_on_unknown_tokens=warns_on_unknown_tokens)
+        self._tokens = tokenizer.tokens
+        self.warnings = tokenizer.warnings
 
     def __str__(self) -> str:
         """
@@ -229,210 +450,35 @@ class TypeDocstring:
         -------
         The parsed type in reStructuredText format.
         """
-        return self._convert_type_spec_to_rst()
-    
-    def _trigger_warnings(self) -> None:
-        """
-        Append some warnings.
-        """
-        open_parenthesis = 0
-        open_square_braces = 0
-
-        for _token, _type in self._tokens:
-            if _type is TokenType.DELIMITER and _token in '[]()': 
-                if _token == "[": open_square_braces += 1
-                elif _token == "(": open_parenthesis += 1
-                elif _token == "]": open_square_braces -= 1
-                elif _token == ")": open_parenthesis -= 1
-        
-        if open_parenthesis != 0:
-            self.warnings.append("unbalanced parenthesis in type expression")
-        if open_square_braces != 0:
-            self.warnings.append("unbalanced square braces in type expression")
-
-    @staticmethod
-    def _recombine_set_tokens(tokens: List[str]) -> List[str]:
-        """
-        Merge the special literal choices tokens together.
-
-        Example
-        -------
-        >>> tokens = ["{", "1", ", ", "2", "}"]
-        >>> TypeDocstring._recombine_set_tokens(tokens)
-        ['{1, 2}']
-        """
-        token_queue = collections.deque(tokens)
-        keywords = ("optional", "default")
-
-        def takewhile_set(tokens: Deque[str]) -> Iterator[str]:
-            open_obj_delim = 0
-            previous_token = None
-            while True:
-                try:
-                    token = tokens.popleft()
-                except IndexError:
-                    break
-
-                if token == ", ":
-                    previous_token = token
-                    continue
-
-                if not token.strip():
-                    continue
-
-                if token in keywords:
-                    tokens.appendleft(token)
-                    if previous_token is not None:
-                        tokens.appendleft(previous_token)
-                    break
-
-                if previous_token is not None:
-                    yield previous_token
-                    previous_token = None
-
-                if token == "{":
-                    open_obj_delim += 1
-                elif token == "}":
-                    open_obj_delim -= 1
-
-                yield token
-
-                if open_obj_delim == 0:
-                    break
-
-        def combine_set(tokens: Deque[str]) -> Iterator[str]:
-            while True:
-                try:
-                    token = tokens.popleft()
-                except IndexError:
-                    break
-
-                if token == "{":
-                    tokens.appendleft("{")
-                    yield "".join(takewhile_set(tokens))
-                else:
-                    yield token
-
-        return list(combine_set(token_queue))
-
-    @classmethod
-    def _tokenize_type_spec(cls, spec: str) -> List[str]:
-        """
-        Split the string in tokens for further processing.
-        """
-
-        def postprocess(item: str) -> List[str]:
-            if cls._default_regex.match(item):
-                default = item[:7]
-                # the default value can't be separated by anything other than a single space
-                other = item[8:]
-                return [default, " ", other]
-            elif item == ",":  # Add space after comma if not there
-                return [", "]
-            else:
-                return [item]
-
-        tokens = list(
-            item
-            for raw_token in cls._token_regex.split(spec)
-            for item in postprocess(raw_token)
-            if item
-        )
-        return tokens
-
-    def _token_type(self, token: Union[str, Any]) -> TokenType:
-        """
-        Find the type of a token. Types are defined in C{TokenType} enum.
-        """
-
-        def is_numeric(token: str) -> bool:
-            try:
-                # use complex to make sure every numeric value is detected as literal
-                complex(token)
-            except ValueError:
-                return False
-            else:
-                return True
-
-        # If the token is not a string, it's tagged as 'any', 
-        # in practice this is used when a docutils.nodes.Element is passed as a token.
-        if not isinstance(token, str):
-            type_ = TokenType.ANY
-        elif (
-            self._natural_language_delimiters_regex.match(token)
-            or not token.strip()
-            or self._ast_like_delimiters_regex.match(token)
-        ):
-            type_ = TokenType.DELIMITER
-        elif (
-            is_numeric(token)
-            or (token.startswith("{") and token.endswith("}"))
-            or (token.startswith('"') and token.endswith('"'))
-            or (token.startswith("'") and token.endswith("'"))
-        ):
-            type_ = TokenType.LITERAL
-        elif token.startswith("{"):
-            self.warnings.append(f"invalid value set (missing closing brace): {token}")
-            type_ = TokenType.LITERAL
-        elif token.endswith("}"):
-            self.warnings.append(f"invalid value set (missing opening brace): {token}")
-            type_ = TokenType.LITERAL
-        elif token.startswith("'") or token.startswith('"'):
-            self.warnings.append(
-                f"malformed string literal (missing closing quote): {token}"
-            )
-            type_ = TokenType.LITERAL
-        elif token.endswith("'") or token.endswith('"'):
-            self.warnings.append(
-                f"malformed string literal (missing opening quote): {token}"
-            )
-            type_ = TokenType.LITERAL
-        # keyword supported by the reference implementation (numpydoc)
-        elif token in (
-            "optional",
-            "default",
-        ):
-            type_ = TokenType.CONTROL
-        elif _xref_regex.match(token):
-            type_ = TokenType.REFERENCE
-        elif is_obj_identifier(token):
-            type_ = TokenType.OBJ
-        else:
-            # sphinx.ext.napoleon would consider the type as "obj" even if the string is not a
-            # identifier, leading into generating failures when tying to resolve links.
-            type_ = TokenType.UNKNOWN
-
-        if type_ is TokenType.UNKNOWN and self._warns_on_unknown_tokens:
-            self.warnings.append(f"unknown expresssion in type: {token}")
-
-        return type_
+        return self._convert_type_spec_to_rst(self._tokens)
 
     # add escaped space when necessary
-    def _convert_type_spec_to_rst(self) -> str:
+    @staticmethod
+    def _convert_type_spec_to_rst(tokens: list[Token]) -> str:
         def _convert(
-            _token: Tuple[str, TokenType],
-            _last_token: Tuple[str, TokenType],
-            _next_token: Tuple[str, TokenType],
+            _token: Token,
+            _last_token: Token,
+            _next_token: Token, # might be sentinel object
             _translation: Optional[str] = None,
         ) -> str:
             translation = _translation or "%s"
-            if _xref_regex.match(_token[0]) is None:
-                converted_token = translation % _token[0]
+            if _xref_regex.match(_token.astext()) is None:
+                converted_token = translation % _token.astext()
             else:
-                converted_token = _token[0]
+                converted_token = _token.astext()
             need_escaped_space = False
 
-            if _last_token[1] in token_type_using_rest_markup:
+            if _last_token.type in token_type_using_rest_markup:
                 # the last token has reST markup:
                 # we might have to escape
 
                 if not converted_token.startswith(" ") and \
                     not converted_token.endswith(" "):
                     if _next_token != iter_types.sentinel:
-                        if _next_token[1] in token_type_using_rest_markup:
+                        if _next_token.type in token_type_using_rest_markup:
                             need_escaped_space = True
 
-                if _token[1] in token_type_using_rest_markup:
+                if _token.type in token_type_using_rest_markup:
                     need_escaped_space = True
 
             if need_escaped_space:
@@ -440,7 +486,7 @@ class TypeDocstring:
             return converted_token
 
         converters: Dict[
-            TokenType, Callable[[Tuple[str, TokenType], Tuple[str, TokenType], Tuple[str, TokenType]], Union[str, Any]]
+            TokenType, Callable[[Token, Token, Token], str]
         ] = {
             TokenType.LITERAL: lambda _token, _last_token, _next_token: _convert(_token, _last_token, _next_token, "``%s``"),
             TokenType.CONTROL: lambda _token, _last_token, _next_token: _convert(_token, _last_token, _next_token, "*%s*"),
@@ -448,29 +494,39 @@ class TypeDocstring:
             TokenType.REFERENCE: lambda _token, _last_token, _next_token: _convert(_token, _last_token, _next_token),
             TokenType.UNKNOWN: lambda _token, _last_token, _next_token: _convert(_token, _last_token, _next_token),
             TokenType.OBJ: lambda _token, _last_token, _next_token: _convert(_token, _last_token, _next_token, "`%s`"),
-            TokenType.ANY: lambda _token, _, __: _token,
+            TokenType.ANY: lambda _token, _, __: _token.astext(),
         }
 
         # "unknown" could have markup we just don't know!
-        token_type_using_rest_markup = [
+        token_type_using_rest_markup = {
             TokenType.LITERAL,
             TokenType.OBJ,
             TokenType.CONTROL,
             TokenType.REFERENCE,
             TokenType.UNKNOWN,
-        ]
+        }
 
         converted = ""
-        last_token: Tuple[Union[str, Any], TokenType] = ("", TokenType.ANY)
+        last_token = Token("", TokenType.ANY)
 
-        iter_types: peek_iter[Tuple[str, TokenType]] = peek_iter(self._tokens)
-        for token, type_ in iter_types:
+        iter_types = peek_iter(tokens)
+        for _tok in iter_types:
+            token, type_ = _tok.value, _tok.type
             next_token = iter_types.peek()
-            converted_token = converters[type_]((token, type_), last_token, next_token)
+            converted_token = converters[type_](_tok, last_token, next_token)
             converted += converted_token
-            last_token = (converted_token, type_)
+            last_token = Token(converted_token, type_)
 
         return converted
+
+
+@attr.s(auto_attribs=True)
+class FreeFormException(Exception):
+    """
+    Exception to encapsulate the converted lines when numpy-style fields get treated as free form.
+    """
+
+    lines: List[str]
 
 
 class GoogleDocstring:
