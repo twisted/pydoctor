@@ -15,7 +15,7 @@ from enum import Enum, auto
 import re
 
 from functools import partial
-from typing import Any, Callable, Deque, Dict, Generic, Iterator, List, Literal, NamedTuple, Optional, Protocol, Sequence, Tuple, TypeVar, Union
+from typing import Any, Callable, Deque, Dict, Iterator, List, Literal, Optional, Protocol, Sequence, Tuple, TypeVar, Union
 
 import attr
 
@@ -511,7 +511,7 @@ class TypeDocstring:
 
         iter_types = peek_iter(tokens)
         for _tok in iter_types:
-            token, type_ = _tok.value, _tok.type
+            _, type_ = _tok.value, _tok.type
             next_token = iter_types.peek()
             converted_token = converters[type_](_tok, last_token, next_token)
             converted += converted_token
