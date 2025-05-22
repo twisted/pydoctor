@@ -73,6 +73,9 @@ What's New?
 in development
 ^^^^^^^^^^^^^^
 
+* Fix bug that would result in duplicated "Cannot find link target" warnings when the 
+  types under a docstring *Attributes* section failed to resolved.
+
 pydoctor 25.4.0
 ^^^^^^^^^^^^^^^
 
@@ -92,8 +95,6 @@ pydoctor 25.4.0
 * Fix a bug in the MRO computing code that would result in an incorrect  
   ``Cannot compute linearization of the class inheritance hierarchy`` message 
   for valid types extending ``typing.Generic`` as well as other generic classes.
-* Fix bug that would result in duplicated "Cannot find link target" warnings when the 
-  types under an docstring *Attributes* section failed to resolved.
 
 pydoctor 24.11.2
 ^^^^^^^^^^^^^^^^
