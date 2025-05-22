@@ -53,7 +53,6 @@ jobs:
             --repo pydoctor_to_test \
             --new $GITHUB_SHA --old base_commit \
             --debug \
-            --project-date 2025-04-10T00:00 \
             --output concise \
             -j 8 \
             | tee diff.txt
