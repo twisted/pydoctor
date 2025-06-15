@@ -20,13 +20,8 @@ jobs:
     strategy:
       matrix:
         python-version: ['pypy-3.9', 'pypy-3.10', 'pypy-3.11',
-                         '3.9', '3.10', '3.11', '3.12', '3.13']
+                         '3.9', '3.10', '3.11', '3.12', '3.13', '3.14-dev']
         os: [ubuntu-latest, windows-latest, macos-latest]
-        include:
-          - python-version: "3.14-dev"
-            os: "ubuntu-latest"
-          - python-version: "3.14-dev"
-            os: "macos-latest"
 
     steps:
     - uses: actions/checkout@v4
