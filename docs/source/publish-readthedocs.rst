@@ -31,21 +31,21 @@ with the appropriate information.
 
     version: 2
     build:
-    os: "ubuntu-22.04"
-    tools:
-        python: "3.10"
-    commands:
+      os: "ubuntu-22.04"
+      tools:
+        python: "3.13"
+      commands:
         - pip install pydoctor
-        - | 
-        pydoctor \
-        --project-name=(projectname) \
-        --project-version=${READTHEDOCS_GIT_IDENTIFIER} \
-        --project-url=${READTHEDOCS_GIT_CLONE_URL%*.git} \
-        --html-viewsource-base=${READTHEDOCS_GIT_CLONE_URL%*.git}/tree/${READTHEDOCS_GIT_COMMIT_HASH} \
-        --html-base-url=${READTHEDOCS_CANONICAL_URL} \
-        --html-output $READTHEDOCS_OUTPUT/html/ \
-        --docformat=restructuredtext \
-        --intersphinx=https://docs.python.org/3/objects.inv \
-        ./(packagedirectory)
+        - |
+          pydoctor \
+          --project-name=(projectname) \
+          --project-version=${READTHEDOCS_GIT_IDENTIFIER} \
+          --project-url=${READTHEDOCS_GIT_CLONE_URL%*.git} \
+          --html-viewsource-base=${READTHEDOCS_GIT_CLONE_URL%*.git}/tree/${READTHEDOCS_GIT_COMMIT_HASH} \
+          --html-base-url=${READTHEDOCS_CANONICAL_URL} \
+          --html-output $READTHEDOCS_OUTPUT/html/ \
+          --docformat=restructuredtext \
+          --intersphinx=https://docs.python.org/3/objects.inv \
+          ./(packagedirectory)
 
 `More on ReadTheDocs build customizations <https://docs.readthedocs.io/en/stable/build-customization.html>`_.
