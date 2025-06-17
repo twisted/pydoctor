@@ -722,7 +722,7 @@ def test_dataclass_no_constructor(systemcls: Type[model.System]) -> None:
     '''
     mod = fromText(src, systemcls=systemcls)
     C = mod.contents['C']
-    assert 'def __init__' not in C.source_code
+    assert '__init__' not in C.contents
 
 # Test case for dataclass with single inheritance:
 @attrs_systemcls_param
