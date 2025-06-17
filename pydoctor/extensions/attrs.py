@@ -71,10 +71,10 @@ class AlOptions(TypedDict):
     init: NotRequired[bool|None]
     auto_detect: NotRequired[bool]
 
-class AttrsLikeClass( model.Class):
+class AttrsLikeClass(ClassMixin, model.Class):
     def setup(self) -> None:
         super().setup()
-        self._al_class_type: AlClassType = AlClassType.NOT_ATTRS_LIKE_CLASS
+        self._al_class_type: ClassType = ClassType.REGULAR
         self._al_options = AlOptions()
 
         # these two attributes helps us infer the signature of the __init__ function
@@ -103,69 +103,82 @@ class AttrsLikeClass( model.Class):
     #         attr.kind = model.DocumentableKind.INSTANCE_VARIABLE
     #     """
 
-class AlClassType(enum.Enum):
+class ClassType(enum.Enum):
 
-    NOT_ATTRS_LIKE_CLASS = 0
+    REGULAR = 0
     """
     This class is just a regular class.
     """
     
     ATTRS_CLASSIC = 1
     """
-    L{attr.s} like.
+    L{attr.s} like::
+        @attr.s(auto_attribs=True)
+        class S:
+            c: int
     """
 
     ATTRS_NEW = 2
     """
-    L{attrs.define} like.
+    L{attrs.define} like::
+        @attr.frozen
+        class S:
+            c: int
     """
 
     DATACLASS = 3
     """
-    L{dataclasses.dataclass} like.
+    L{dataclasses.dataclass} like::
+        @dataclass
+        class S:
+            c: int
     """
 
     NAMEDTUPLE = 3
     """
-    L{typing.NamedTuple} like.
+    L{typing.NamedTuple} like::
+        class S(NamedTuple):
+            c: int
+
     """
 
     PYDANTIC_MODEL = 4
     """
-    L{pydantic.BaseModel} like.
+    L{pydantic.BaseModel} like::
+        class S(BaseModel):
+            c: int
     """
 
-def get_attrs_like_type(cls: ast.ClassDef, module: model.Module) -> AlClassType:
-    
+def get_class_type(cls: ast.ClassDef, klass: model.Class) -> ClassType:
     types = []
-    for dottedname, _ in astutils.iter_decorators(cls, module):
+    
+    for dottedname, _ in astutils.iter_decorators(cls, klass.parent):
         if dottedname in (
             'attr.s', 'attr.attrs', 'attr.attributes'):
-            types.append(AlClassType.ATTRS_CLASSIC)
+            types.append(ClassType.ATTRS_CLASSIC)
         elif dottedname in (
             'attr.mutable', 'attr.frozen', 'attr.define', 
             'attrs.mutable', 'attrs.frozen', 'attrs.define',
         ):
-            types.append(AlClassType.ATTRS_NEW)
+            types.append(ClassType.ATTRS_NEW)
         elif dottedname in ('dataclasses.dataclass',):
-            types.append(AlClassType.DATACLASS)
+            types.append(ClassType.DATACLASS)
 
-    for basenode in cls.bases:
-        base_fullname = astutils.node2fullname(basenode, module)
-        if base_fullname in ('pydantic.BaseModel',):
-            types.append(AlClassType.PYDANTIC_MODEL)
-        elif base_fullname in ('typing.NamedTuple', 
-                               'typing_extensions.NamedTuple'):
-            types.append(AlClassType.NAMEDTUPLE)
+    for basenode in klass.mro(include_external=True, include_self=False):
+        # base_fullname = astutils.node2fullname(basenode, klass.parent)
+        if basenode == klass.system.allobjects.get(_d:='pydantic.BaseModel', _d):
+            types.append(ClassType.PYDANTIC_MODEL)
+        elif basenode in (klass.system.allobjects.get(_d:='typing.NamedTuple', _d),
+                          klass.system.allobjects.get(_d:='typing_extensions.NamedTuple', _d)):
+            types.append(ClassType.NAMEDTUPLE)
     
     if len(types)==1:
         return types[0]
     elif len(types)==0:
-        return AlClassType.NOT_ATTRS_LIKE_CLASS
+        return ClassType.REGULAR
     
-    # TODO: warns because this class is detected as being of several distinct attrs like types :/
+    # TODO: warns because this class is detected as being of several distinct types :/
     return types[0]
-
 
 def is_attrib(expr: Optional[ast.expr], ctx: model.Documentable) -> bool:
     """Does this expression return an C{attr.ib}?"""
@@ -336,7 +349,7 @@ class ModuleVisitor(ModuleVisitorExt):
                 if not isinstance(current, model.Class):
                     continue
                 assert isinstance(current, AttrsLikeClass)
-                if current._al_class_type == AlClassType.NOT_ATTRS_LIKE_CLASS:
+                if current._al_class_type == ClassType.REGULAR:
                     continue
                 target, = dottedname
                 attr: Optional[model.Documentable] = current.contents.get(target)
@@ -361,14 +374,14 @@ class ModuleVisitor(ModuleVisitorExt):
         cls._al_class_type = al_type
         cls._al_options = al_options
         
-        if al_type == AlClassType.NOT_ATTRS_LIKE_CLASS:
+        if al_type == ClassType.REGULAR:
             # not an attrs like class
             return
         
         mod = cls.module
         try:
             attrs_deco = next(decnode for decnode in node.decorator_list 
-                              if get_attrs_like_type(decnode, mod))
+                              if get_class_type(decnode, mod))
         except StopIteration:
             return
         
@@ -389,7 +402,7 @@ class ModuleVisitor(ModuleVisitorExt):
                     'kw_only': (False, bool),
                     'auto_detect': (False, bool), }
         
-        if al_type == AlClassType.ATTRS_NEW:
+        if al_type == ClassType.ATTRS_NEW:
             attrs_param_spec['auto_attribs'] = (None, (bool, type(None)))
             attrs_param_spec['auto_detect'] = (True, bool)
         
@@ -401,7 +414,7 @@ class ModuleVisitor(ModuleVisitorExt):
                                 ) for name, (default, typecheck) in 
                                 attrs_param_spec.items()})
 
-        if al_type is AlClassType.ATTRS_NEW and cls._al_options['auto_attribs'] is None:
+        if al_type is ClassType.ATTRS_NEW and cls._al_options['auto_attribs'] is None:
             fields = collect_fields(node, cls)
             # auto detect auto_attrib value
             cls._al_options['auto_attribs'] = len(fields)>0 and \
@@ -482,11 +495,11 @@ class ModuleVisitor(ModuleVisitorExt):
                     annotation=astbuilder._AnnotationValueFormatter(constructor_annotation, cls) 
                         if constructor_annotation else inspect.Parameter.empty))
     
-    def get_al_type_and_options(self, cls:ast.ClassDef, mod:model.Module) -> Tuple[AlClassType, AlOptions]:
+    def get_al_type_and_options(self, cls:ast.ClassDef, mod:model.Module) -> Tuple[ClassType, AlOptions]:
 
         try:
             attrs_deco = next(decnode for decnode in cls.decorator_list 
-                              if get_attrs_like_type(decnode, mod))
+                              if get_class_type(decnode, mod))
         except StopIteration:
             return
 
@@ -554,7 +567,7 @@ def postProcess(system:model.System) -> None:
 
     for cls in list(system.objectsOfType(AttrsLikeClass)):
         # by default attr.s() overrides any defined __init__ mehtod, whereas dataclasses.
-        if cls._al_class_type != AlClassType.NOT_ATTRS_LIKE_CLASS:
+        if cls._al_class_type != ClassType.REGULAR:
             
             if cls._al_options.get('init') is False or \
                 cls._al_options.get('init', _nothing) is None and \
