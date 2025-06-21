@@ -67,7 +67,12 @@ def on_build_finished(app: Sphinx, exception: Exception) -> None:
 
         temp_path = output_path.with_suffix('.pydoctor_temp')
         shutil.rmtree(sphinx_files, ignore_errors=True)
-        output_path.rename(sphinx_files)
+        try:
+            output_path.rename(sphinx_files)
+        except FileNotFoundError as e:
+            msg = str(e)
+            msg += '\nMake sur the pydoctor option --html-output is correctly configured.'
+            raise FileNotFoundError(msg) from e
         temp_path.rename(output_path)
 
 
@@ -117,11 +122,11 @@ def on_builder_inited(app: Sphinx) -> None:
 
         # Build the API docs in temporary path.
         shutil.rmtree(temp_path, ignore_errors=True)
-        _run_pydoctor(key,  arguments)
+        _run_pydoctor(key,  arguments, app.warningiserror)
         output_path.rename(temp_path)
 
 
-def _run_pydoctor(name: str, arguments: Sequence[str]) -> None:
+def _run_pydoctor(name: str, arguments: Sequence[str], warningiserror:bool) -> None:
     """
     Call pydoctor with arguments.
 
@@ -135,8 +140,12 @@ def _run_pydoctor(name: str, arguments: Sequence[str]) -> None:
         with redirect_stdout(stream):
             main(args=arguments)
 
+        has_warnings = False
         for line in stream.getvalue().splitlines():
-            logger.warning(line)
+            has_warnings = True
+            logger.info(line)
+        if has_warnings and warningiserror:
+            logger.warning('Pydocor build is not clean and sphinx option -W (turn warnings into errors) is enabled.')
 
 
 def _get_arguments(arguments: Sequence[str], placeholders: Mapping[str, str]) -> Sequence[str]:
