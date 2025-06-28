@@ -313,8 +313,7 @@ class CommonPage(Page):
         parts.reverse()
         return parts
     
-    @renderer
-    def inhierarchy(self, request: object, tag: Tag) -> "Flattenable":
+    def inhierarchy(self) -> "Flattenable":
         return ()
 
     def extras(self) -> List["Flattenable"]:
