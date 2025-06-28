@@ -21,7 +21,7 @@ attrs_systemcls_param = pytest.mark.parametrize(
 def assert_constructor(cls:model.Documentable, sig:str, 
                        shortsig:Optional[str]=None) -> None:
     assert isinstance(cls, attrs.AttrsLikeClass)
-    assert cls._al_class_type == attrs.ModuleVisitor.DATACLASS_LIKE_KIND
+    assert cls._cls_type != attrs.ClassType.REGULAR
     constructor = cls.contents['__init__']
     assert isinstance(constructor, model.Function)
     assert flatten_text(pages.format_signature(constructor)).replace(' ','') == sig.replace(' ','')
@@ -106,7 +106,7 @@ def test_attrs_auto_instance(systemcls: Type[model.System]) -> None:
     ''', modname='test', systemcls=systemcls)
     C = mod.contents['C']
     assert isinstance(C, attrs.AttrsLikeClass)
-    assert C._al_options['auto_attribs'] == True
+    assert C._cls_options['auto_attribs'] == True
     assert C.contents['a'].kind is model.DocumentableKind.INSTANCE_VARIABLE
     assert C.contents['b'].kind is model.DocumentableKind.INSTANCE_VARIABLE
     assert C.contents['c'].kind is model.DocumentableKind.CLASS_VARIABLE
@@ -161,10 +161,10 @@ def test_attrs_constructor_method_infer_arg_types(systemcls: Type[model.System],
     assert capsys.readouterr().out == ''
     C = mod.contents['C']
     assert isinstance(C, attrs.AttrsLikeClass)
-    assert C._al_options['init'] is None
+    assert C._cls_options['init'] is None
     D = mod.contents['D']
     assert isinstance(D, attrs.AttrsLikeClass)
-    assert D._al_options['init'] is False
+    assert D._cls_options['init'] is False
 
     assert_constructor(C, '(self, c: int = 100, x: int = 1, b: int = 23)', 'C(c, x, b)')
 
@@ -194,8 +194,8 @@ def test_attrs_constructor_kw_only(systemcls: Type[model.System]) -> None:
     mod = fromText(src, systemcls=systemcls)
     C = mod.contents['C']
     assert isinstance(C, attrs.AttrsLikeClass)
-    assert C._al_options['kw_only'] is True
-    assert C._al_options['init'] is None
+    assert C._cls_options['kw_only'] is True
+    assert C._cls_options['init'] is None
     assert_constructor(C, '(self, *, a, b: str)')
 
 # Test case for default factory
@@ -499,27 +499,27 @@ def test_attrs_new_APIs_autodetect_auto_attribs_is_True(systemcls:Type[model.Sys
         b: str = attr.field(default=attr.Factory(str))
     '''
     mod = fromText(src, systemcls=systemcls)
-    assert mod.contents['MyClass'].attrs_options['auto_attribs']==True #type:ignore
+    assert mod.contents['MyClass']._cls_options['auto_attribs']==True #type:ignore
     assert_constructor(mod.contents['MyClass'], '(self, a: int, b: str = str())')
 
     mod = fromText(src.replace('@attr.define(auto_attribs=None)', '@attr.define'), systemcls=systemcls)
-    assert mod.contents['MyClass'].attrs_options['auto_attribs']==True #type:ignore
+    assert mod.contents['MyClass']._cls_options['auto_attribs']==True #type:ignore
     assert_constructor(mod.contents['MyClass'], '(self, a: int, b: str = str())')
 
     mod = fromText(src.replace('@attr.define(auto_attribs=None)', '@attr.mutable'), systemcls=systemcls)
-    assert mod.contents['MyClass'].attrs_options['auto_attribs']==True #type:ignore
+    assert mod.contents['MyClass']._cls_options['auto_attribs']==True #type:ignore
     assert_constructor(mod.contents['MyClass'], '(self, a: int, b: str = str())')
 
     mod = fromText(src.replace('@attr.define', '@attr.mutable'), systemcls=systemcls)
-    assert mod.contents['MyClass'].attrs_options['auto_attribs']==True #type:ignore
+    assert mod.contents['MyClass']._cls_options['auto_attribs']==True #type:ignore
     assert_constructor(mod.contents['MyClass'], '(self, a: int, b: str = str())')
 
     mod = fromText(src.replace('@attr.define(auto_attribs=None)', '@attr.frozen'), systemcls=systemcls)
-    assert mod.contents['MyClass'].attrs_options['auto_attribs']==True #type:ignore
+    assert mod.contents['MyClass']._cls_options['auto_attribs']==True #type:ignore
     assert_constructor(mod.contents['MyClass'], '(self, a: int, b: str = str())')
 
     mod = fromText(src.replace('@attr.define', '@attr.frozen'), systemcls=systemcls)
-    assert mod.contents['MyClass'].attrs_options['auto_attribs']==True #type:ignore
+    assert mod.contents['MyClass']._cls_options['auto_attribs']==True #type:ignore
     assert_constructor(mod.contents['MyClass'], '(self, a: int, b: str = str())')
 
     # older namespace
@@ -554,7 +554,7 @@ def test_attrs_new_APIs_autodetect_auto_attribs_is_False(systemcls:Type[model.Sy
         c = 42
     '''
     mod = fromText(src, systemcls=systemcls)
-    assert mod.contents['MyClass'].attrs_options['auto_attribs']==False #type:ignore
+    assert mod.contents['MyClass']._cls_options['auto_attribs']==False #type:ignore
     assert_constructor(mod.contents['MyClass'], '(self, b: set = set())')
 
 @attrs_systemcls_param
@@ -827,14 +827,16 @@ def test_dataclass_constructor_attribute_kw_only_reorder(systemcls: Type[model.S
 def test_dataclass_constructor_kw_only_reordering_with_inheritence(systemcls: Type[model.System], capsys:CapSys) -> None:
     # see https://docs.python.org/3/library/dataclasses.html#re-ordering-of-keyword-only-parameters-in-init
     src = '''\
-    @dataclass
+    import dataclasses
+
+    @dataclasses.dataclass
     class Base:
         x: Any = 15.0
         y: int = field(kw_only=True, default=0)
         w: int = field(kw_only=True, default=1)
 
-    @dataclass
-    class D(Base):
+    @dataclasses.dataclass
+    class MyClass(Base):
         z: int = 10
         t: int = field(kw_only=True, default=0)
     '''

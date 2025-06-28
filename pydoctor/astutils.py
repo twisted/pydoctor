@@ -91,15 +91,13 @@ def iterassign(node:_AssingT) -> Iterator[Optional[List[str]]]:
         dottedname = node2dottedname(target) 
         yield dottedname
 
-class _HasDecoratorList(Protocol):
-    decorator_list:List[ast.expr]
-
-def iter_decorators(node:_HasDecoratorList, ctx: 'model.Documentable') -> Iterator[Tuple[Optional[str], ast.AST]]:
+def iter_decorators(decorator_list:List[ast.expr], 
+                    ctx: model.Documentable) -> Iterator[tuple[str|None, ast.AST]]:
     """
     Utility function to iterate decorators.
     """
 
-    for decnode in node.decorator_list:
+    for decnode in decorator_list:
         namenode = decnode
         if isinstance(namenode, ast.Call):
             namenode = namenode.func
