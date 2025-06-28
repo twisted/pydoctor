@@ -3,17 +3,17 @@ from __future__ import annotations
 
 from typing import (
     TYPE_CHECKING, Dict, Iterator, List, Optional, Mapping, Sequence,
-    Tuple, Type, Union
+    Type, Union
 )
 import ast
 import abc
+from urllib.parse import urljoin
 
 from twisted.web.iweb import IRenderable, ITemplateLoader, IRequest
-from twisted.web.template import Element, Tag, renderer, tags
+from twisted.web.template import Element, Tag, renderer, tags, CharRef
 from pydoctor.extensions import zopeinterface
 
-from pydoctor.stanutils import html2stan
-from pydoctor import epydoc2stan, model, linker, __version__
+from pydoctor import epydoc2stan, model, __version__
 from pydoctor.astbuilder import node2fullname
 from pydoctor.templatewriter import util, TemplateLookup, TemplateElement
 from pydoctor.templatewriter.pages.table import ChildTable
@@ -27,26 +27,7 @@ if TYPE_CHECKING:
     from pydoctor.templatewriter.pages.functionchild import FunctionChild
 
 
-def objects_order(o: model.Documentable) -> Tuple[int, int, str]: 
-    """
-    Function to use as the value of standard library's L{sorted} function C{key} argument
-    such that the objects are sorted by: Privacy, Kind and Name.
-
-    Example::
-
-        children = sorted((o for o in ob.contents.values() if o.isVisible),
-                      key=objects_order)
-    """
-
-    def map_kind(kind: model.DocumentableKind) -> model.DocumentableKind:
-        if kind == model.DocumentableKind.PACKAGE:
-            # packages and modules should be listed together
-            return model.DocumentableKind.MODULE
-        return kind
-
-    return (-o.privacyClass.value, -map_kind(o.kind).value if o.kind else 0, o.fullName().lower())
-
-def format_decorators(obj: Union[model.Function, model.Attribute, model.FunctionOverload]) -> Iterator["Flattenable"]:
+def _format_decorators(obj: Union[model.Function, model.Attribute, model.FunctionOverload]) -> Iterator["Flattenable"]:
     # Since we use this function to colorize the FunctionOverload decorators and it's not an actual Documentable subclass, we use the overload's 
     # primary function for parts that requires an interface to Documentable methods or attributes
     documentable_obj = obj if not isinstance(obj, model.FunctionOverload) else obj.primary
@@ -56,6 +37,7 @@ def format_decorators(obj: Union[model.Function, model.Attribute, model.Function
             fn = node2fullname(dec.func, documentable_obj)
             # We don't want to show the deprecated decorator;
             # it shows up as an infobox.
+            # TODO: move this somewhere it can be customized.
             if fn in ("twisted.python.deprecate.deprecated",
                       "twisted.python.deprecate.deprecatedProperty"):
                 break
@@ -68,21 +50,31 @@ def format_decorators(obj: Union[model.Function, model.Attribute, model.Function
         
         # Report eventual warnings. It warns when we can't colorize the expression for some reason.
         epydoc2stan.reportWarnings(documentable_obj, doc.warnings, section='colorize decorator')
-        yield '@', stan.children, tags.br()
+        
+        yield tags.span('@', stan.children, tags.br(), class_='decorator')
+
+def format_decorators(obj: Union[model.Function, model.Attribute, model.FunctionOverload]) -> Tag:
+    if decs:=list(_format_decorators(obj)):
+        return tags.div(decs)
+    return tags.transparent
 
 def format_signature(func: Union[model.Function, model.FunctionOverload]) -> "Flattenable":
     """
     Return a stan representation of a nicely-formatted source-like function signature for the given L{Function}.
     Arguments default values are linked to the appropriate objects when possible.
     """
-    broken = "(...)"
-    try:
-        return html2stan(str(func.signature)) if func.signature else broken
-    except Exception as e:
-        # We can't use safe_to_stan() here because we're using Signature.__str__ to generate the signature HTML.
-        epydoc2stan.reportErrors(func.primary if isinstance(func, model.FunctionOverload) else func, 
-            [epydoc2stan.get_to_stan_error(e)], section='signature')
-        return broken
+
+    parsed_sig = epydoc2stan.get_parsed_signature(func)
+    if parsed_sig is None:
+        return "(...)"
+    ctx = func.primary if isinstance(func, model.FunctionOverload) else func
+    return epydoc2stan.safe_to_stan(
+        parsed_sig, 
+        ctx.docstring_linker, 
+        ctx, 
+        fallback=lambda _, doc, ___: tags.transparent(doc.to_text()),
+        section='signature'
+    )
 
 def format_class_signature(cls: model.Class) -> "Flattenable":
     """
@@ -93,7 +85,7 @@ def format_class_signature(cls: model.Class) -> "Flattenable":
     # the linker will only be used to resolve the generic arguments of the base classes, 
     # it won't actually resolve the base classes (see comment few lines below).
     # this is why we're using the annotation linker.
-    _linker = linker._AnnotationLinker(cls)
+    _linker = cls.docstring_linker
     if cls.rawbases:
         r.append('(')
         
@@ -113,7 +105,8 @@ def format_class_signature(cls: model.Class) -> "Flattenable":
                 
             # link to external class, using the colorizer here
             # to link to classes with generics (subscripts and other AST expr).
-            stan = epydoc2stan.safe_to_stan(colorize_inline_pyval(base_node, refmap=refmap), _linker, cls, 
+            # we use is_annotation=True because bases are unstringed, they can contain annotations. 
+            stan = epydoc2stan.safe_to_stan(colorize_inline_pyval(base_node, refmap=refmap, is_annotation=True), _linker, cls, 
                 fallback=epydoc2stan.colorized_pyval_fallback, 
                 section='rendering of class signature')
             r.extend(stan.children)
@@ -121,32 +114,55 @@ def format_class_signature(cls: model.Class) -> "Flattenable":
         r.append(')')
     return r
 
+LONG_SIGNATURE = 88 # this doesn't acount for the 'def ' and the ending ':'
+"""
+Maximum size of a function definition to be rendered on a single line. 
+The multiline formatting is only applied at the CSS level to stay customizable. 
+We add a css class to the signature HTML to signify the signature could possibly
+be better formatted on several lines.
+"""
 def format_overloads(func: model.Function) -> Iterator["Flattenable"]:
     """
     Format a function overloads definitions as nice HTML signatures.
     """
-    for overload in func.overloads:
-        yield from format_decorators(overload)
-        yield tags.div(format_function_def(func.name, func.is_async, overload))
 
+    for overload in func.overloads:
+        yield tags.div(format_decorators(overload), 
+            tags.div(format_function_def(func.name, func.is_async, overload)),   
+            class_='function-overload')
+
+_nbsp = CharRef(160) # non-breaking space.
 def format_function_def(func_name: str, is_async: bool, 
                         func: Union[model.Function, model.FunctionOverload]) -> List["Flattenable"]:
     """
     Format a function definition as nice HTML signature. 
     
-    If the function is overloaded, it will return an empty list. We use L{format_overloads} for these.
+    If the function is overloaded, it will return an empty list. 
+    We use L{format_overloads} for these.
     """
     r:List["Flattenable"] = []
-    # If this is a function with overloads, we do not render the principal signature because the overloaded signatures will be shown instead.
+    # If this is a function with overloads, we do not render the principal 
+    # signature because the overloaded signatures will be shown instead.
     if isinstance(func, model.Function) and func.overloads:
         return r
-    def_stmt = 'async def' if is_async else 'def'
+    def_stmt = ['async', _nbsp, 'def'] if is_async else ['def']
     if func_name.endswith('.setter') or func_name.endswith('.deleter'):
         func_name = func_name[:func_name.rindex('.')]
+    
+    func_signature_css_class = 'function-signature'
+    
+    # We never mark the overloaded functions as long since this could make the output of pydoctor
+    # worst that before when there are many overloads to be wrapped. It allows to
+    # to scroll less to get to the actual main documentation of the function.
+    if not isinstance(func, model.FunctionOverload) and \
+        epydoc2stan.function_signature_len(func) > LONG_SIGNATURE:
+        func_signature_css_class += ' long-signature'
+    
     r.extend([
-        tags.span(def_stmt, class_='py-keyword'), ' ',
+        tags.span(def_stmt, class_='py-keyword'), _nbsp,
         tags.span(func_name, class_='py-defname'), 
-        tags.span(format_signature(func), class_='function-signature'), ':',
+        tags.span(format_signature(func), ':', 
+                  class_=func_signature_css_class),
     ])
     return r
     
@@ -165,9 +181,19 @@ class Head(TemplateElement):
 
     filename = 'head.html'
 
-    def __init__(self, title: str, loader: ITemplateLoader) -> None:
+    def __init__(self, title: str, baseurl: str | None, pageurl: str, 
+                 loader: ITemplateLoader) -> None:
         super().__init__(loader)
         self._title = title
+        self._baseurl = baseurl
+        self._pageurl = pageurl
+    
+    @renderer
+    def canonicalurl(self, request: IRequest, tag: Tag) -> Flattenable:
+        if not self._baseurl:
+            return ''
+        canonical_link = urljoin(self._baseurl, self._pageurl)
+        return tags.link(rel='canonical', href=canonical_link)
 
     @renderer
     def title(self, request: IRequest, tag: Tag) -> str:
@@ -190,6 +216,14 @@ class Page(TemplateElement):
         if not loader:
             loader = self.lookup_loader(template_lookup)
         super().__init__(loader)
+    
+    @property
+    def page_url(self) -> str:
+        # This MUST be overriden in CommonPage
+        """
+        The relative page url
+        """
+        return self.filename
 
     def render(self, request: Optional[IRequest]) -> Tag:
         return tags.transparent(super().render(request)).fillSlots(**self.slot_map)
@@ -216,7 +250,8 @@ class Page(TemplateElement):
 
     @renderer
     def head(self, request: IRequest, tag: Tag) -> IRenderable:
-        return Head(self.title(), Head.lookup_loader(self.template_lookup))
+        return Head(self.title(), self.system.options.htmlbaseurl, self.page_url, 
+                    loader=Head.lookup_loader(self.template_lookup))
 
     @renderer
     def nav(self, request: IRequest, tag: Tag) -> IRenderable:
@@ -246,6 +281,7 @@ class CommonPage(Page):
         if docgetter is None:
             docgetter = util.DocGetter()
         self.docgetter = docgetter
+        self._order = ob.system.membersOrder(ob)
 
     @property
     def page_url(self) -> str:
@@ -276,18 +312,7 @@ class CommonPage(Page):
             ob = ob.parent
         parts.reverse()
         return parts
-    @renderer
-    def deprecated(self, request: object, tag: Tag) -> "Flattenable":
-        import warnings
-        warnings.warn("Renderer 'CommonPage.deprecated' is deprecated, the twisted's deprecation system is now supported by default.")
-        return ''
-    @renderer
-    def source(self, request: object, tag: Tag) -> "Flattenable":
-        sourceHref = util.srclink(self.ob)
-        if not sourceHref:
-            return ()
-        return tag(href=sourceHref)
-
+    
     @renderer
     def inhierarchy(self, request: object, tag: Tag) -> "Flattenable":
         return ()
@@ -301,7 +326,7 @@ class CommonPage(Page):
     def children(self) -> Sequence[model.Documentable]:
         return sorted(
             (o for o in self.ob.contents.values() if o.isVisible),
-            key=util.objects_order)
+            key=self._order)
 
     def packageInitTable(self) -> "Flattenable":
         return ()
@@ -321,7 +346,7 @@ class CommonPage(Page):
     def methods(self) -> Sequence[model.Documentable]:
         return sorted((o for o in self.ob.contents.values()
                        if o.documentation_location is model.DocLocation.PARENT_PAGE and o.isVisible), 
-                      key=util.objects_order)
+                      key=self._order)
 
     def childlist(self) -> List[Union["AttributeChild", "FunctionChild"]]:
         from pydoctor.templatewriter.pages.attributechild import AttributeChild
@@ -381,30 +406,36 @@ class CommonPage(Page):
         )
         return slot_map
 
+def source_tag(href: str) -> Tag: 
+    return tags.a("(source)", href=href, class_="sourceLink")
 
 class ModulePage(CommonPage):
     ob: model.Module
 
+    def source_links(self) -> Flattenable | None:
+        if sourceHref:=util.srclink(self.ob):
+            return source_tag(sourceHref)
+        return None
+
     def extras(self) -> List["Flattenable"]:
         r: List["Flattenable"] = []
-
-        sourceHref = util.srclink(self.ob)
-        if sourceHref:
-            r.append(tags.a("(source)", href=sourceHref, class_="sourceLink"))
-
+        if links:=self.source_links():
+            r.append(links)
         r.extend(super().extras())
         return r
 
 
 class PackagePage(ModulePage):
+    ob: model.Package
+
     def children(self) -> Sequence[model.Documentable]:
-        return sorted(self.ob.submodules(), key=objects_order)
+        return sorted(self.ob.submodules(), key=self._order)
 
     def packageInitTable(self) -> "Flattenable":
         children = sorted(
             (o for o in self.ob.contents.values()
              if not isinstance(o, model.Module) and o.isVisible),
-            key=util.objects_order)
+            key=self._order)
         if children:
             loader = ChildTable.lookup_loader(self.template_lookup)
             return [
@@ -413,11 +444,25 @@ class PackagePage(ModulePage):
                 ]
         else:
             return ()
+    
+    def source_links(self) -> Flattenable | None:
+        # supports multiple source links, since there could be multiple source paths
+        # for namespace packages
+        links = util.package_srclinks(self.ob)
+        links_max_index = len(links) - 1
+        if links_max_index == -1:
+            return None
+        r: list[Flattenable] = []
+        for i, href in enumerate(links):
+            r.append(source_tag(href))
+            if 0 <= i < links_max_index:
+                r.append(', ')
+        return tags.transparent(*r)
 
     def methods(self) -> Sequence[model.Documentable]:
-        return [o for o in self.ob.contents.values()
+        return sorted([o for o in self.ob.contents.values()
                 if o.documentation_location is model.DocLocation.PARENT_PAGE
-                and o.isVisible]
+                and o.isVisible], key=self._order)
 
 def assembleList(
         system: model.System,
@@ -480,7 +525,7 @@ class ClassPage(CommonPage):
             self.classSignature(), ":", source
             ), class_='class-signature'))
 
-        subclasses = sorted(self.ob.subclasses, key=util.objects_order)
+        subclasses = sorted(self.ob.subclasses, key=util.alphabetical_order_func)
         if subclasses:
             p = assembleList(self.ob.system, "Known subclasses: ",
                             [o.fullName() for o in subclasses], self.page_url)
@@ -491,7 +536,7 @@ class ClassPage(CommonPage):
         if constructor:
             r.append(epydoc2stan.unwrap_docstring_stan(
                 epydoc2stan.safe_to_stan(constructor, self.ob.docstring_linker, self.ob,
-                fallback = lambda _,__,___:epydoc2stan.BROKEN, section='extra')))
+                fallback = lambda _,__,___:epydoc2stan.BROKEN, section='constructor extra')))
 
         r.extend(super().extras())
         return r
@@ -514,7 +559,7 @@ class ClassPage(CommonPage):
         return [item.clone().fillSlots(
                           baseName=self.baseName(b),
                           baseTable=ChildTable(self.docgetter, self.ob,
-                                               sorted(attrs, key=util.objects_order),
+                                               sorted(attrs, key=self._order),
                                                loader))
                 for b, attrs in baselists]
 
@@ -548,7 +593,7 @@ def get_override_info(cls:model.Class, member_name:str, page_url:Optional[str]=N
             'overrides ', tags.code(epydoc2stan.taglink(overridden, page_url)))
         break
     
-    ocs = sorted(util.overriding_subclasses(cls, member_name), key=util.objects_order)
+    ocs = sorted(util.overriding_subclasses(cls, member_name), key=util.alphabetical_order_func)
     if ocs:
         l = assembleList(cls.system, 'overridden in ',
                             [o.fullName() for o in ocs], page_url)
@@ -563,7 +608,7 @@ class ZopeInterfaceClassPage(ClassPage):
         r = super().extras()
         if self.ob.isinterface:
             namelist = [o.fullName() for o in 
-                        sorted(self.ob.implementedby_directly, key=util.objects_order)]
+                        sorted(self.ob.implementedby_directly, key=util.alphabetical_order_func)]
             label = 'Known implementations: '
         else:
             namelist = sorted(self.ob.implements_directly, key=lambda x:x.lower())

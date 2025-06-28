@@ -9,11 +9,10 @@ from __future__ import annotations
 
 import abc
 import ast
-import attr
+from itertools import chain
 from collections import defaultdict
 import datetime
 import importlib
-import platform
 import sys
 import textwrap
 import types
@@ -21,10 +20,13 @@ from enum import Enum
 from inspect import signature, Signature
 from pathlib import Path
 from typing import (
-    TYPE_CHECKING, Any, Collection, Dict, Iterator, List, Mapping,
+    TYPE_CHECKING, Any, Collection, Dict, Iterable, Iterator, List, Mapping, Callable, 
     Optional, Sequence, Set, Tuple, Type, TypeVar, Union, cast, overload
 )
+from graphlib import TopologicalSorter
 from urllib.parse import quote
+
+import attr
 
 from pydoctor.options import Options
 from pydoctor import factory, qnmatch, utils, linker, astutils, mro
@@ -32,12 +34,13 @@ from pydoctor.epydoc.markup import ParsedDocstring
 from pydoctor.sphinx import CacheT, SphinxInventory
 
 if TYPE_CHECKING:
-    from typing_extensions import Literal, Protocol
-    from pydoctor.astbuilder import ASTBuilder, DocumentableT
+    from typing import Literal, Protocol, TypeAlias
+    from pydoctor.astbuilder import ASTBuilder, DocumentableT, SyntaxTreeParser
 else:
     Literal = {True: bool, False: bool}
     ASTBuilder = Protocol = object
 
+T = TypeVar('T')
 
 # originally when I started to write pydoctor I had this idea of a big
 # tree of Documentables arranged in an almost arbitrary tree.
@@ -53,12 +56,11 @@ else:
 #   Functions can't contain anything.
 
 
-_string_lineno_is_end = sys.version_info < (3,8) \
-                    and platform.python_implementation() != 'PyPy'
-"""True iff the 'lineno' attribute of an AST string node points to the last
-line in the string, rather than the first line.
-"""
+class LineFromAst(int):
+    "Simple L{int} wrapper for linenumbers coming from ast analysis."
 
+class LineFromDocstringField(int):
+    "Simple L{int} wrapper for linenumbers coming from docstrings."
 
 class DocLocation(Enum):
     OWN_PAGE = 1
@@ -93,6 +95,7 @@ class DocumentableKind(Enum):
 
     @note: Presentation order is derived from the enum values
     """
+    NAMESPACE_PACKAGE   = 1001
     PACKAGE             = 1000
     MODULE              = 900
     CLASS               = 800
@@ -126,8 +129,8 @@ class Documentable:
     parsed_summary: Optional[ParsedDocstring] = None
     parsed_type: Optional[ParsedDocstring] = None
     docstring_lineno = 0
-    linenumber = 0
-    sourceHref: Optional[str] = None
+    linenumber: LineFromAst | LineFromDocstringField | Literal[0] = 0
+    source_href: Optional[str] = None
     kind: Optional[DocumentableKind] = None
 
     documentation_location = DocLocation.OWN_PAGE
@@ -161,18 +164,47 @@ class Documentable:
 
     def setDocstring(self, node: astutils.Str) -> None:
         lineno, doc = astutils.extract_docstring(node)
+        self._setDocstringValue(doc, lineno)
+
+    def _setDocstringValue(self, doc:str, lineno:int) -> None:
+        if self.docstring or self.parsed_docstring: # some object have a parsed docstring only like the ones coming from ivar fields
+            msg = 'Existing docstring'
+            if self.docstring_lineno:
+                msg += f' at line {self.docstring_lineno}'
+            msg += ' is overriden'
+            self.report(msg, 'docstring', lineno_offset=lineno-self.docstring_lineno)
         self.docstring = doc
         self.docstring_lineno = lineno
+        # Due to the current process for parsing doc strings, some objects might already have a parsed_docstring populated at this moment. 
+        # This is an unfortunate behaviour but it’s too big of a refactor for now (see https://github.com/twisted/pydoctor/issues/798).
+        if self.parsed_docstring:
+            self.parsed_docstring = None
 
-    def setLineNumber(self, lineno: int) -> None:
-        if not self.linenumber:
+    def setLineNumber(self, lineno: LineFromDocstringField | LineFromAst | int) -> None:
+        """
+        Save the linenumber of this object.
+
+        If the linenumber is already set from a ast analysis, this is an no-op.
+        If the linenumber is already set from docstring fields and the new linenumber
+        if not from docstring fields as well, the old docstring based linumber will be replaced
+        with the one from ast analysis since this takes precedence.
+
+        @param lineno: The linenumber. 
+            If the given linenumber is simply an L{int} we'll assume it's coming from the ast builder 
+            and it will be converted to an L{LineFromAst} instance.
+        """
+        if not self.linenumber or (
+            isinstance(self.linenumber, LineFromDocstringField) 
+                and not isinstance(lineno, LineFromDocstringField)):
+            if not isinstance(lineno, (LineFromAst, LineFromDocstringField)):
+                lineno = LineFromAst(lineno)
             self.linenumber = lineno
-            parentMod = self.parentMod
-            if parentMod is not None:
-                parentSourceHref = parentMod.sourceHref
-                if parentSourceHref:
-                    self.sourceHref = self.system.options.htmlsourcetemplate.format(
-                        mod_source_href=parentSourceHref,
+            parent = self.parentMod
+            if parent is not None:
+                module_source_href = parent.source_href
+                if module_source_href:
+                    self.source_href = self.system.options.htmlsourcetemplate.format(
+                        mod_source_href=module_source_href,
                         lineno=str(lineno)
                     )
 
@@ -325,6 +357,17 @@ class Documentable:
             obj = nxt
         return '.'.join([full_name] + parts[i + 1:])
 
+    def expandAnnotationName(self, name: str) -> str:
+        """
+        Like L{expandName} but gives precedence to the module scope when a 
+        name is defined both in the current scope and the module scope.
+        """
+        if self.module.isNameDefined(name):
+            return self.module.expandName(name)
+        elif self.isNameDefined(name):
+            return self.expandName(name)
+        return self.module.expandName(name)
+
     def resolveName(self, name: str) -> Optional['Documentable']:
         """Return the object named by "name" (using Python's lookup rules) in
         this context, if any is known to pydoctor."""
@@ -423,6 +466,9 @@ class CanContainImportsDocumentable(Documentable):
         else:
             return False
     
+    def localNames(self) -> Iterator[str]:
+        return chain(self.contents.keys(),
+                     self._localNameToFullName_map.keys())
 
 class Module(CanContainImportsDocumentable):
     kind = DocumentableKind.MODULE
@@ -499,6 +545,16 @@ class Module(CanContainImportsDocumentable):
 class Package(Module):
     kind = DocumentableKind.PACKAGE
 
+    def __repr__(self) -> str:
+        return f"{self.kind.name.replace('_', ' ').title()} {self.fullName()!r}"
+
+    # Support for namespace packages: 
+    def setup(self) -> None:
+        super().setup()
+        self.source_paths = [self.source_path] if self.source_path else []
+        self.source_hrefs: list[str] = []
+
+
 # List of exceptions class names in the standard library, Python 3.8.10
 _STD_LIB_EXCEPTIONS = ('ArithmeticError', 'AssertionError', 'AttributeError', 
     'BaseException', 'BlockingIOError', 'BrokenPipeError', 
@@ -532,21 +588,36 @@ def is_exception(cls: 'Class') -> bool:
             return True
     return False
 
-def compute_mro(cls:'Class') -> Sequence[Union['Class', str]]:
+def topsort(graph: Mapping[Any, Sequence[T]]) -> Iterable[T]:
     """
-    Compute the method resolution order for this class.
-    This function will also set the 
-    C{_finalbaseobjects} and C{_finalbases} attributes on 
-    this class and all it's superclasses.
+    Given a mapping where each key-value pair correspond to a node and it's
+    predecessors, return the topological order of the nodes.
+
+    This is a simple wrapper for L{graphlib.TopologicalSorter.static_order}.
     """
-    def init_finalbaseobjects(o: 'Class', path:Optional[List['Class']]=None) -> None:
+    return TopologicalSorter(graph).static_order()
+
+ClassOrStr: TypeAlias = 'Class | str'
+
+class ClassHierarchyFinalizer:
+    """
+    Encapsulate code related to class hierarchies post-processing.
+    """
+
+    @classmethod
+    def _init_finalbaseobjects(cls, o: Class, path:list[Class] | None = None) -> None:
+        """
+        The base objects are computed in two passes, first the ast visitor sets C{_initialbaseobjects}, 
+        then we set C{_finalbaseobjects} from this function which should be called during post-processing.
+        """
         if not path:
             path = []
         if o in path:
-            cycle_str = " -> ".join([o.fullName() for o in path[path.index(cls):] + [cls]])
-            raise ValueError(f"Cycle found while computing inheritance hierarchy: {cycle_str}")
+            cycle_str = " -> ".join([c.fullName() for c in path[path.index(o):] + [o]])
+            raise mro.LinearizationError(f"Cycle found while computing inheritance hierarchy: {cycle_str}")
         path.append(o)
         if o._finalbaseobjects is not None:
+            # we already computed these, so skip.
             return
         if o.rawbases:
             finalbaseobjects: List[Optional[Class]] = []
@@ -568,27 +639,91 @@ def compute_mro(cls:'Class') -> Sequence[Union['Class', str]]:
                         finalbases.append(o._initialbases[i])
                 if base:
                     # Recurse on super classes
-                    init_finalbaseobjects(base, path.copy())
+                    cls._init_finalbaseobjects(base, path.copy())
             o._finalbaseobjects = finalbaseobjects
             o._finalbases = finalbases
-    
-    def localbases(o:'Class') -> Iterator[Union['Class', str]]:
+
+    @staticmethod
+    def _getbases(o: Class) -> Iterator[ClassOrStr]:
         """
-        Like L{Class.baseobjects} but fallback to the expanded name if the base is not resolved to a L{Class} object.
+        Like L{Class.baseobjects} but fallback to the expanded 
+        name if the base is not resolved to a L{Class} object.
         """
         for s,b in zip(o.bases, o.baseobjects):
             if isinstance(b, Class):
                 yield b
             else:
                 yield s
+    
+    def __init__(self, classes: Iterable[Class]) -> None:
+        """
+        @param classes: All classes of the system.
+        """
+        # this calls _init_finalbaseobjects for every class and 
+        # create the graph object for the ones that did not raised
+        # a cycle-error.
+        self.graph: dict[Class, list[ClassOrStr]]  = {}
+        self.computed_mros: dict[ClassOrStr, list[ClassOrStr]] = {}
+        
+        for cls in classes:
+            try:
+                self._init_finalbaseobjects(cls)
+            except mro.LinearizationError as e:
+                # Set the MRO right away in case of cycles. 
+                # They should not be in the graph though!
+                cls.report(str(e), 'mro')
+                self.computed_mros[cls] = cls._mro = list(cls.allbases(True))
+            else:
+                self.graph[cls] = bases = []
+                for b in self._getbases(cls):
+                    bases.append(b)
+                    # strings are not part of the graph
+                    # because they always have the same MRO: empty list.
+                    
+    def compute_mros(self) -> None:
+        
+        # If this raises a CycleError, our code is boggus since we already
+        # checked for cycles ourself.
+        static_order = topsort(self.graph)
+        
+        for cls in static_order:
+            if cls in self.computed_mros or isinstance(cls, str):
+                # If it's already computed, it means it's bogus
+                continue
+            self.computed_mros[cls] = cls._mro = self._compute_mro(cls)
 
-    def getbases(o:Union['Class', str]) -> List[Union['Class', str]]:
-        if isinstance(o, str):
-            return []
-        return list(localbases(o))
+    def _compute_mro(self, cls: Class) -> list[ClassOrStr]:
+        """
+        Compute the method resolution order for this class.
+        This assumes that the MRO of the bases of the class 
+        have already been computed and stored in C{self.computed_mros}.
+        """
+        assert cls in self.graph, f"{cls} is not known"
+        
+        result: list[ClassOrStr] = [cls]
 
-    init_finalbaseobjects(cls)
-    return mro.mro(cls, getbases)
+        if not (bases:=self.graph[cls]):
+            return result
+        
+        # since we compute all MRO in topological order, we can safely assume
+        # that self.computed_mros contains all the MROs of the bases of this class.
+        bases_mros = [self.computed_mros.get(kls, []) for kls in bases]
+
+        # handle multiple typing.Generic case, 
+        # see https://github.com/twisted/pydoctor/issues/846.
+        # support documenting typing.py module by using allobject.get.
+        generic = cls.system.allobjects.get(_d:='typing.Generic', _d)
+        if generic in bases and any(generic in _mro for _mro in bases_mros):
+            # this is safe since we checked 'generic in bases'.
+            bases.remove(generic) # type: ignore[arg-type]
+        
+        try:
+            return result + mro.c3_merge(*bases_mros, bases)
+        
+        except mro.LinearizationError as e:
+            cls.report(f'{e} of {cls.fullName()!r}', 'mro')
+            return list(cls.allbases(True))
+    
 
 def _find_dunder_constructor(cls:'Class') -> Optional['Function']:
     """
@@ -607,10 +742,9 @@ def _find_dunder_constructor(cls:'Class') -> Optional['Function']:
             return _init
     return None
 
-def get_constructors(cls:'Class') -> Iterator['Function']:
+def get_constructors(cls:Class) -> Iterator[Function]:
     """
     Look for python language powered constructors or classmethod constructors.
-
     A constructor MUST be a method accessible in the locals of the class.
     """
     # Look for python language powered constructors.
@@ -632,10 +766,10 @@ def get_constructors(cls:'Class') -> Iterator['Function']:
         if not 'return' in fun.annotations:
             # we currently only support constructor detection trought explicit annotations.
             continue 
-        
+
         # annotation should be resolved at the module scope
         return_ann = astutils.node2fullname(fun.annotations['return'], cls.module)
-        
+
         # pydoctor understand explicit annotation as well as the Self-Type.
         if return_ann == cls.fullName() or \
             return_ann in ('typing.Self', 'typing_extensions.Self'):
@@ -650,38 +784,21 @@ class Class(CanContainImportsDocumentable):
     # set in post-processing:
     _finalbaseobjects: Optional[List[Optional['Class']]] = None 
     _finalbases: Optional[List[str]] = None
-    _mro: Optional[Sequence[Union['Class', str]]] = None
+    _mro: Optional[Sequence[Class | str]] = None
 
     def setup(self) -> None:
         super().setup()
         self.rawbases: Sequence[Tuple[str, ast.expr]] = []
         self.raw_decorators: Sequence[ast.expr] = []
         self.subclasses: List[Class] = []
-        """
-        List of constructors.
-
-        Makes the assumption that the constructor name is available in the locals of the class
-        it's supposed to create. Typically with C{__init__} and C{__new__} it's always the case. 
-        It means that no regular function can be interpreted as a constructor for a given class.
-        """
         self._initialbases: List[str] = []
         self._initialbaseobjects: List[Optional['Class']] = []
     
-    def _init_mro(self) -> None:
-        """
-        Compute the correct value of the method resolution order returned by L{mro()}.
-        """
-        try:
-            self._mro = compute_mro(self)
-        except ValueError as e:
-            self.report(str(e), 'mro')
-            self._mro = list(self.allbases(True))
-    
     @overload
-    def mro(self, include_external:'Literal[True]', include_self:bool=True) -> Sequence[Union['Class', str]]:...
+    def mro(self, include_external:'Literal[True]', include_self:bool=True) -> Sequence[Class | str]:...
     @overload
     def mro(self, include_external:'Literal[False]'=False, include_self:bool=True) -> Sequence['Class']:...
-    def mro(self, include_external:bool=False, include_self:bool=True) -> Sequence[Union['Class', str]]:
+    def mro(self, include_external:bool=False, include_self:bool=True) -> Sequence[Class | str]:
         """
         Get the method resution order of this class. 
 
@@ -724,7 +841,7 @@ class Class(CanContainImportsDocumentable):
     @property
     def public_constructors(self) -> Sequence['Function']:
         """
-        Yields public constructors for this class.
+        The public constructors of this class.
         A public constructor must not be hidden and have
         arguments or have a docstring.
         """
@@ -816,11 +933,12 @@ class Inheritable(Documentable):
 class Function(Inheritable):
     kind = DocumentableKind.FUNCTION
     is_async: bool
-    annotations: Mapping[str, Optional[ast.expr]]
-    decorators: Optional[Sequence[ast.expr]]
-    signature: Optional[Signature]
-    parent: CanContainImportsDocumentable
-    overloads: List['FunctionOverload']
+    annotations: Mapping[str, ast.expr | None]
+    decorators: Sequence[ast.expr] | None
+    signature: Signature | None
+    overloads: List[FunctionOverload]
+
+    parsed_signature: ParsedDocstring | None = None # set in get_parsed_signature()
 
     def setup(self) -> None:
         super().setup()
@@ -835,8 +953,9 @@ class FunctionOverload:
     @note: This is not an actual documentable type. 
     """
     primary: Function
-    signature: Signature
+    signature: Signature | None 
     decorators: Sequence[ast.expr]
+    parsed_signature: ParsedDocstring | None = None # set in get_parsed_signature()
 
 class Attribute(Inheritable):
     kind: Optional[DocumentableKind] = DocumentableKind.ATTRIBUTE
@@ -852,8 +971,6 @@ class Attribute(Inheritable):
 # Work around the attributes of the same name within the System class.
 _ModuleT = Module
 _PackageT = Package
-
-T = TypeVar('T')
 
 def import_mod_from_file_location(module_full_name:str, path: Path) -> types.ModuleType:
     spec = importlib.util.spec_from_file_location(module_full_name, path)
@@ -880,6 +997,9 @@ if hasattr(types, "ClassMethodDescriptorType"):
 else:
     func_types += (type(dict.__dict__["fromkeys"]), )
 
+class ModuleNotAdded(Exception):
+    ...
+
 _default_extensions = object()
 class System:
     """A collection of related documentable objects.
@@ -888,11 +1008,12 @@ class System:
     package.
     """
 
+    systemBuilder: Type[ISystemBuilder]
+
     # Not assigned here for circularity reasons:
-    #defaultBuilder = astbuilder.ASTBuilder
     defaultBuilder: Type[ASTBuilder]
-    systemBuilder: Type['ISystemBuilder']
-    options: 'Options'
+    syntaxTreeParser: Type[SyntaxTreeParser]
+
     extensions: List[str] = cast('List[str]', _default_extensions)
     """
     List of extensions.
@@ -925,7 +1046,7 @@ class System:
         """
 
         if options:
-            self.options = options
+            self.options: Options = options
         else:
             self.options = Options.defaults()
             self.options.verbosity = 3
@@ -950,6 +1071,7 @@ class System:
         self.processing_modules: List[str] = []
         self.buildtime = datetime.datetime.now()
         self.intersphinx = SphinxInventory(logger=self.msg)
+        self._ast_parser = self.syntaxTreeParser()
 
         # Since privacy handling now uses fnmatch, we cache results so we don't re-run matches all the time.
         # We use the fullName of the objets as the dict key in order to bind a full name to a privacy, not an object to a privacy.
@@ -1132,6 +1254,20 @@ class System:
         self._privacyClassCache[ob_fullName] = privacy
         return privacy
 
+    def membersOrder(self, ob: Documentable) -> Callable[[Documentable], Tuple[Any, ...]]:
+        """
+        Returns a callable suitable to be used with L{sorted} function. 
+        Used to sort the given object's members for presentation.
+
+        Users can customize class and module members order independently, or can override this method
+        with a custom system class for further tweaks.
+        """
+        from pydoctor.templatewriter.util import objects_order
+        if isinstance(ob, Class):
+            return objects_order(self.options.cls_member_order)
+        else:
+            return objects_order(self.options.mod_member_order)
+           
     def addObject(self, obj: Documentable) -> None:
         """Add C{object} to the system."""
 
@@ -1165,93 +1301,149 @@ class System:
     #  http://divmod.org/trac/browser/trunk
     #                          ~/src/Divmod/Nevow/nevow/flat/ten.py
 
-    def setSourceHref(self, mod: _ModuleT, source_path: Path) -> None:
+    def _formatSourceHref(self, source_path: Path) -> str | None:
         if self.sourcebase is None:
-            mod.sourceHref = None
-        else:
-            # pydoctor supports generating documentation covering more than one package, 
-            # in which case it is not certain that all of the source is even viewable below a single URL.
-            # We ignore this limitation by not assigning sourceHref for now, but it would be good to add support for it.
-            projBaseDir = mod.system.options.projectbasedirectory
-            assert projBaseDir is not None
-            try:
-                relative = source_path.relative_to(projBaseDir).as_posix()
-            except ValueError:
-                # The links cannot be computed because the source path lies outside base directory.
-                pass
-            else:
-                mod.sourceHref = f'{self.sourcebase}/{relative}'
+            return None
+        projBaseDir = self.options.projectbasedirectory
+        assert projBaseDir is not None
+        try:
+            relative = source_path.relative_to(projBaseDir).as_posix()
+        except ValueError:
+            # The links cannot be computed because the source path lies outside base directory.
+            return None
+        
+        return f'{self.sourcebase}/{relative}'
+
+    def setSourceHref(self, mod: _ModuleT, source_path: Path) -> None:
+        # Note: this is used only for module, for other objects
+        # it's done in setLineNumber().
+
+        # pydoctor supports generating documentation covering more than one package, 
+        # in which case it is not certain that all of the source is even viewable below a single URL.
+        # We ignore this limitation by not assigning sourceHref for now, but it would be good to add support for it.
+        # a way to do it would be to match package names to different source bases and project base directories. 
+        # --html-viewsource-base=zope.interface:https://github.com/zopefoundation/zope.interface/tree/master
+        # --html-viewsource-base=zope.component:https://github.com/zopefoundation/zope.component/tree/master
+        # --project-base-dir=zope.interface:./zope.interface/
+        # --project-base-dir=zope.component:./zope.component/
+        # ./zope.interface/src/zope ./zope.component/src/zope
+        
+        if href:=self._formatSourceHref(source_path):
+            if mod.source_href is None:
+                mod.source_href = href
+            # Support for namespace packages: their location can be split off
+            # several distributions, needing several hrefs.
+            if mod.kind is DocumentableKind.NAMESPACE_PACKAGE:
+                assert isinstance(mod, Package)
+                mod.source_hrefs.append(href)
 
     @overload
-    def analyzeModule(self,
+    def _addPackageOrModule(self,
             modpath: Path,
             modname: str,
-            parentPackage: Optional[_PackageT],
-            is_package: Literal[False] = False
+            parent: Optional[_PackageT],
+            is_package: Literal[False] = False,
+            is_namespace_package: Literal[False] = False,
             ) -> _ModuleT: ...
 
     @overload
-    def analyzeModule(self,
+    def _addPackageOrModule(self,
             modpath: Path,
             modname: str,
-            parentPackage: Optional[_PackageT],
-            is_package: Literal[True]
+            parent: Optional[_PackageT],
+            is_package: Literal[True], 
+            is_namespace_package: bool = False, 
             ) -> _PackageT: ...
 
-    def analyzeModule(self,
+    def _addPackageOrModule(self,
             modpath: Path,
             modname: str,
-            parentPackage: Optional[_PackageT] = None,
-            is_package: bool = False
+            parent: Optional[_PackageT] = None,
+            is_package: bool = False, 
+            is_namespace_package: bool = False,
             ) -> _ModuleT:
-        factory = self.Package if is_package else self.Module
-        mod = factory(self, modname, parentPackage, modpath)
-        self._addUnprocessedModule(mod)
+        
+        """
+        Add a single package or module from path.
+
+        @returns: The added module or package. In the case of namespace packages, 
+            the existing package will be returned if it's found.
+        @raise ModuleNotAdded: If the module has been discarded because a module under the same 
+            name already Exist.
+        """
+        mod: Module | Package
+        if is_namespace_package and isinstance(maybe_mod := self.allobjects.get(
+            f'{parent.fullName()}.{modname}' if parent else modname), Package) and \
+            maybe_mod.kind is DocumentableKind.NAMESPACE_PACKAGE:
+            # A namespace package already exist for this package name, then
+            # simply add a new source path to it, calling setSourceHref() will
+            # append a new ref
+            mod = maybe_mod
+            mod.source_paths.append(modpath)
+
+        else:
+            cls = self.Package if is_package else self.Module
+            # Create the new module
+            mod = cls(self, modname, parent, modpath)
+            if is_namespace_package:
+                mod.kind = DocumentableKind.NAMESPACE_PACKAGE
+            if not self._addUnprocessedModule(mod):
+                raise ModuleNotAdded
+        
         self.setSourceHref(mod, modpath)
         return mod
 
-    def _addUnprocessedModule(self, mod: _ModuleT) -> None:
+    def _addUnprocessedModule(self, mod: _ModuleT) -> bool:
         """
         First add the new module into the unprocessed_modules list. 
         Handle eventual duplication of module names, and finally add the 
         module to the system.
+
+        @returns: Whether the module has been sucessfully added.
         """
         assert mod.state is ProcessingState.UNPROCESSED
         first = self.allobjects.get(mod.fullName())
         if first is not None:
             # At this step of processing only modules exists
             assert isinstance(first, Module)
-            self._handleDuplicateModule(first, mod)
-        else:
-            self.unprocessed_modules.append(mod)
-            self.addObject(mod)
-            self.progress(
-                "analyzeModule", len(self.allobjects),
-                None, "modules and packages discovered")        
-            self.module_count += 1
+            return self._handleDuplicateModule(first, mod)
 
-    def _handleDuplicateModule(self, first: _ModuleT, dup: _ModuleT) -> None:
+        self.unprocessed_modules.append(mod)
+        self.addObject(mod)
+        self.progress(
+            "analyzeModule", len(self.allobjects),
+            None, "modules and packages discovered")        
+        self.module_count += 1
+        return True
+
+    def _handleDuplicateModule(self, first: _ModuleT, dup: _ModuleT) -> bool:
         """
         This is called when two modules have the same name. 
 
         Current rules are the following: 
             - C-modules wins over regular python modules
             - Packages wins over modules
+            - Namespace Packages wins over regular packages
             - Else, the last added module wins
         """
-        dup.report(f"duplicate {str(first)}", thresh=1)
-
         if first._is_c_module and not isinstance(dup, Package):
             # C-modules wins
-            return
+            dup.report(f"discarding duplicate {str(dup)} because existing C extension has the same name", thresh=0)
+            return False
         elif isinstance(first, Package) and not isinstance(dup, Package):
-            # Packages wins
-            return
-        else:
-            # Else, the last added module wins
-            self._remove(first)
-            self.unprocessed_modules.remove(first)
-            self._addUnprocessedModule(dup)
+            # Packages wins over module
+            dup.report(f"discarding duplicate {str(dup)} because existing package has the same name", thresh=0)
+            return False
+        elif first.kind is DocumentableKind.NAMESPACE_PACKAGE and dup.kind is not DocumentableKind.NAMESPACE_PACKAGE:
+            # Namespace packages wins over regular package
+            dup.report(f"discarding duplicate {str(dup)} because existing namespace package has the same name", thresh=0)
+            return False
+
+        # Else, the last added module wins
+        dup.report(f"discarding existing {str(first)} because {str(dup)} overrides it", thresh=0)
+        self._remove(first)
+        self.unprocessed_modules.remove(first)
+        return self._addUnprocessedModule(dup)
 
     def _introspectThing(self, thing: object, parent: CanContainImportsDocumentable, parentMod: _ModuleT) -> None:
         for k, v in thing.__dict__.items():
@@ -1311,19 +1503,39 @@ class System:
         
         self._addUnprocessedModule(module)
         return module
+    
+    def addPackage(self, package_path: Path, parent: Optional[_PackageT] = None, 
+                   is_namespace_package: bool = False) -> None:
 
-    def addPackage(self, package_path: Path, parentPackage: Optional[_PackageT] = None) -> None:
-        package = self.analyzeModule(
-            package_path / '__init__.py', package_path.name, parentPackage, is_package=True)
-
+        if not is_namespace_package:
+            pkg_source_path = package_path / '__init__.py'
+        else:
+            pkg_source_path = package_path
+        
+        try:
+            package = self._addPackageOrModule(pkg_source_path, package_path.name, 
+                                        parent, is_package=True, 
+                                        is_namespace_package=is_namespace_package)
+        except ModuleNotAdded:
+            # a message is logged in case of clashing modules.
+            return 
+        
         for path in sorted(package_path.iterdir()):
             if path.is_dir():
-                if (path / '__init__.py').exists():
+                if is_namespace_package:
+                    # A namespace package should only be nested under other nspackages
+                    # if it's nested under a regular package, then we ignore it since 
+                    # the chances are this is not part of the API. 
+                    # What if we have an empty namespace package? Then nohting special happens
+                    self.addPackage(path, package, (self._is_pep420_namespace_package(path) or 
+                                                    self._is_oldschool_namespace_package(path)))
+                elif not self._is_pep420_namespace_package(path):
                     self.addPackage(path, package)
-            elif path.name != '__init__.py' and not path.name.startswith('.'):
-                self.addModuleFromPath(path, package)
 
-    def addModuleFromPath(self, path: Path, package: Optional[_PackageT]) -> None:
+            elif path.name != '__init__.py' and not path.name.startswith('.'):
+                self.addModule(path, package)
+
+    def addModule(self, path: Path, parent: Optional[_PackageT]) -> None:
         name = path.name
         for suffix in importlib.machinery.all_suffixes():
             if not name.endswith(suffix):
@@ -1331,10 +1543,25 @@ class System:
             module_name = name[:-len(suffix)]
             if suffix in importlib.machinery.EXTENSION_SUFFIXES:
                 if self.options.introspect_c_modules:
-                    self.introspectModule(path, module_name, package)
+                    self.introspectModule(path, module_name, parent)
             elif suffix in importlib.machinery.SOURCE_SUFFIXES:
-                self.analyzeModule(path, module_name, package)
+                try:
+                    self._addPackageOrModule(path, module_name, parent)
+                except ModuleNotAdded: 
+                    pass
             break
+
+    def _is_pep420_namespace_package(self, path: Path) -> bool:
+        return not path.joinpath('__init__.py').is_file()
+    
+    def _is_oldschool_namespace_package(self, path: Path) -> bool:
+        try:
+            tree = self._ast_parser.parseFile(
+                path.joinpath('__init__.py'))
+        except Exception:
+            return False
+        return astutils.is_old_school_namespace_package(tree)
+
     
     def _remove(self, o: Documentable) -> None:
         del self.allobjects[o.fullName()]
@@ -1402,9 +1629,11 @@ class System:
             assert head == mod.fullName()
         else:
             builder = self.defaultBuilder(self)
+            ast = None
             if mod._py_string is not None:
                 ast = builder.parseString(mod._py_string, mod)
-            else:
+            elif mod.kind is not DocumentableKind.NAMESPACE_PACKAGE:
+                # There is no AST for namespace packages.
                 assert mod.source_path is not None
                 ast = builder.parseFile(mod.source_path, mod)
             if ast:
@@ -1446,12 +1675,21 @@ class System:
         """
         for url in self.options.intersphinx:
             self.intersphinx.update(cache, url)
+        
+        for path, base_url in self.options.intersphinx_file:
+            self.intersphinx.update_file(path, base_url)
+
 
 def defaultPostProcess(system:'System') -> None:
-    for cls in system.objectsOfType(Class):
-        # Initiate the MROs
-        cls._init_mro()
 
+    # Init class graph and final bases.
+    class_finalizer = ClassHierarchyFinalizer(
+        system.objectsOfType(Class))
+    
+    # Compute MROs
+    class_finalizer.compute_mros()
+
+    for cls in system.objectsOfType(Class):
         # Compute subclasses
         for b in cls.baseobjects:
             if b is not None:
@@ -1463,6 +1701,15 @@ def defaultPostProcess(system:'System') -> None:
             
     for attrib in system.objectsOfType(Attribute):
        _inherits_instance_variable_kind(attrib)
+
+    from pydoctor import epydoc2stan
+    for ns in system.objectsOfType(Package):
+        if ns.kind is not DocumentableKind.NAMESPACE_PACKAGE:
+            continue
+        # This overrides the namespace package docstring, 
+        # but since they are not supposed to include
+        # any documentation this will not be an issue.
+        ns.docstring = epydoc2stan.get_namespace_docstring(ns)
 
 def _inherits_instance_variable_kind(attr: Attribute) -> None:
     """
@@ -1498,6 +1745,7 @@ def get_docstring(
             # Treat empty docstring as undocumented.
             return None, source
     return None, None
+
 
 class SystemBuildingError(Exception):
     """
@@ -1557,6 +1805,7 @@ class SystemBuilder(ISystemBuilder):
                     # We now support building documentation when the source path is outside of the build directory.
                     # We simply leave a warning and skip the sourceHref attribute.
                     # https://github.com/twisted/pydoctor/issues/658
+                    # https://github.com/twisted/pydoctor/issues/870
                     _warn_msg = f"No source links can be generated for module {path}: source path lies outside base directory {projBaseDir}"
                     self.system.msg('addPackage', _warn_msg, once=True)
         parent: Optional[Package] = None
@@ -1566,12 +1815,12 @@ class SystemBuilder(ISystemBuilder):
             parent = _p
         if path.is_dir():
             self.system.msg('addPackage', f"adding directory {path}")
-            if not (path / '__init__.py').is_file():
-                raise SystemBuildingError(f"Source directory lacks __init__.py: {path}")
-            self.system.addPackage(path, parent)
+            self.system.addPackage(path, parent, 
+                                   self.system._is_pep420_namespace_package(path) or 
+                                   self.system._is_oldschool_namespace_package(path))
         elif path.is_file():
-            self.system.msg('addModuleFromPath', f"adding module {path}")
-            self.system.addModuleFromPath(path, parent)
+            self.system.msg('addModule', f"adding module {path}")
+            self.system.addModule(path, parent)
         elif path.exists():
             raise SystemBuildingError(f"Source path is neither file nor directory: {path}")
         else:

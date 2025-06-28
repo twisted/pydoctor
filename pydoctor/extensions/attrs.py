@@ -12,7 +12,11 @@ import inspect
 import copy
 import dataclasses
 
+from itertools import chain
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Type, Union, TYPE_CHECKING
+
+from pydoctor.epydoc.docutils import new_document, set_node_attributes
+from pydoctor.epydoc.markup.restructuredtext import ParsedRstDocstring
 if TYPE_CHECKING:
     from typing import NotRequired
     from typing_extensions import TypedDict
@@ -491,9 +495,9 @@ class ModuleVisitor(ModuleVisitorExt):
             cls._cls_constructor_parameters.append(
                 inspect.Parameter(
                     init_param_name, kind=kind, 
-                    default=astbuilder._ValueFormatter(attrs_default, cls) 
+                    default=attrs_default
                         if attrs_default else inspect.Parameter.empty, 
-                    annotation=astbuilder._AnnotationValueFormatter(constructor_annotation, cls) 
+                    annotation=constructor_annotation 
                         if constructor_annotation else inspect.Parameter.empty))
     
 
@@ -544,7 +548,12 @@ def attrs_constructor_docstring(cls:AttrsLikeClass, constructor_signature:inspec
                 field_doc = ParsedPlaintextDocstring('')
             epydoc2stan.ensure_parsed_docstring(attr)
             if attr.parsed_docstring:
-                field_doc = field_doc.concat(attr.parsed_docstring)
+                field_doc = ParsedRstDocstring(set_node_attributes(
+                    new_document('code'), 
+                    # concatenate two parsed docstrings.
+                    children=chain(field_doc.to_node().children, 
+                                   attr.parsed_docstring.to_node().children)), ())
+                
             if field_doc.has_body:
                 fields.append(Field('param', param.name, field_doc, lineno=cls.linenumber))
     

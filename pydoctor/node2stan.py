@@ -3,6 +3,8 @@ Helper function to convert L{docutils} nodes to Stan tree.
 """
 from __future__ import annotations
 
+from functools import partial
+from itertools import chain
 import re
 import optparse
 from typing import Any, Callable, ClassVar, Iterable, List, Optional, Union, TYPE_CHECKING
@@ -13,6 +15,7 @@ from twisted.web.template import Tag
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable
     from pydoctor.epydoc.markup import DocstringLinker
+    from pydoctor.epydoc.docutils import obj_reference, code, wbr
 
 from pydoctor.epydoc.docutils import get_lineno
 from pydoctor.epydoc.doctest import colorize_codeblock, colorize_doctest
@@ -22,7 +25,9 @@ def node2html(node: nodes.Node, docstring_linker: 'DocstringLinker') -> List[str
     """
     Convert a L{docutils.nodes.Node} object to HTML strings.
     """
-    visitor = HTMLTranslator(node.document, docstring_linker)
+    if (doc:=node.document) is None:
+        raise AssertionError(f'missing document attribute on {node}')
+    visitor = HTMLTranslator(doc, docstring_linker)
     node.walkabout(visitor)
     return visitor.body
 
@@ -80,33 +85,47 @@ class HTMLTranslator(html4css1.HTMLTranslator):
         if self.settings is None:
             if docutils_version_info >= (0,19):
                 # Direct access to OptionParser is deprecated from Docutils 0.19
-                # FIXME: https://github.com/twisted/pydoctor/issues/504
-                # Stubs are not up to date because we use pinned version of types-docutils
-                settings = frontend.get_default_settings(html4css1.Writer()) # type:ignore[attr-defined]
+                settings = frontend.get_default_settings(html4css1.Writer())
             else:
-                settings = frontend.OptionParser([html4css1.Writer()]).get_default_values()
+                settings = frontend.OptionParser([html4css1.Writer()]).get_default_values() # type: ignore
             
             # Save default settings as class attribute not to re-compute it all the times
             self.__class__.settings = settings
+        else:
+            #                        yes "optparse.Values" and "docutils.frontend.Values" are compatible.
+            settings = self.settings # type: ignore
         
-        document.settings = self.settings
+        document.settings = settings
 
         super().__init__(document)
 
         # don't allow <h1> tags, start at <h2>
-        # h1 is reserved for the page nodes.title. 
+        # h1 is reserved for the page title. 
         self.section_level += 1
 
+        # All documents should be created with pydoctor.epydoc.docutils.new_document() helper
+        # such that the source attribute will always be one of the supported values.
+        self._document_is_code = is_code = document.attributes.get('source') == 'code'
+        if is_code:
+            # Do not wrap links in <code> tags if we're renderring a code-like parsed element.
+            self._link_xref = self._linker.link_xref
+        else:
+            self._link_xref = lambda target, label, lineno: Tag('code')(self._linker.link_xref(target, label, lineno))
+
+
     # Handle interpreted text (crossreferences)
-    def visit_title_reference(self, node: nodes.Node) -> None:
+    def visit_title_reference(self, node: nodes.title_reference) -> None:
         lineno = get_lineno(node)
-        self._handle_reference(node, link_func=lambda target, label: self._linker.link_xref(target, label, lineno))
+        self._handle_reference(node, link_func=partial(self._link_xref, lineno=lineno))
     
     # Handle internal references
-    def visit_obj_reference(self, node: nodes.Node) -> None:
-        self._handle_reference(node, link_func=self._linker.link_to)
+    def visit_obj_reference(self, node: obj_reference) -> None:
+        if node.attributes.get('is_annotation'):
+            self._handle_reference(node, link_func=partial(self._linker.link_to, is_annotation=True))
+        else:
+            self._handle_reference(node, link_func=self._linker.link_to)
     
-    def _handle_reference(self, node: nodes.Node, link_func: Callable[[str, "Flattenable"], "Flattenable"]) -> None:
+    def _handle_reference(self, node: nodes.title_reference, link_func: Callable[[str, "Flattenable"], "Flattenable"]) -> None:
         label: "Flattenable"
         if 'refuri' in node.attributes:
             # Epytext parsed or manually constructed nodes.
@@ -126,16 +145,22 @@ class HTMLTranslator(html4css1.HTMLTranslator):
         self.body.append(flatten(link_func(target, label)))
         raise nodes.SkipNode()
 
-    def should_be_compact_paragraph(self, node: nodes.Node) -> bool:
+    def visit_code(self, node: code) -> None:
+        self.body.append(self.starttag(node, 'code', suffix=''))
+    
+    def depart_code(self, node: code) -> None:
+        self.body.append('</code>')
+
+    def should_be_compact_paragraph(self, node: nodes.Element) -> bool:
         if self.document.children == [node]:
             return True
         else:
             return super().should_be_compact_paragraph(node)  # type: ignore[no-any-return]
 
-    def visit_document(self, node: nodes.Node) -> None:
+    def visit_document(self, node: nodes.document) -> None:
         pass
 
-    def depart_document(self, node: nodes.Node) -> None:
+    def depart_document(self, node: nodes.document) -> None:
         pass
 
     def starttag(self, node: nodes.Node, tagname: str, suffix: str = '\n', **attributes: Any) -> str:
@@ -148,9 +173,14 @@ class HTMLTranslator(html4css1.HTMLTranslator):
           - hrefs not starting with C{'#'} are given target='_top'
           - all headings (C{<hM{n}>}) are given the css class C{'heading'}
         """
+
+        to_list_names = {'name':'names', 
+                         'id':'ids', 
+                         'class':'classes'}
+
         # Get the list of all attribute dictionaries we need to munge.
         attr_dicts = [attributes]
-        if isinstance(node, nodes.Node):
+        if isinstance(node, nodes.Element):
             attr_dicts.append(node.attributes)
         if isinstance(node, dict):
             attr_dicts.append(node)
@@ -158,15 +188,21 @@ class HTMLTranslator(html4css1.HTMLTranslator):
         # iterate through attributes one at a time because some
         # versions of docutils don't case-normalize attributes.
         for attr_dict in attr_dicts:
-            for key, val in tuple(attr_dict.items()):
-                # Prefix all CSS classes with "rst-"; and prefix all
+            # Prefix all CSS classes with "rst-"; and prefix all
                 # names with "rst-" to avoid conflicts.
+            done = set()
+            for key, val in tuple(attr_dict.items()):
                 if key.lower() in ('class', 'id', 'name'):
-                    if not val.startswith('rst-'):
-                        attr_dict[key] = f'rst-{val}'
-                elif key.lower() in ('classes', 'ids', 'names'):
+                    list_key = to_list_names[key.lower()]
+                    attr_dict[list_key] = [f'rst-{cls}' if not cls.startswith('rst-') 
+                                      else cls for cls in sorted(chain(val.split(), 
+                                        attr_dict.get(list_key, ())))]
+                    del attr_dict[key]
+                    done.add(list_key)
+            for key, val in tuple(attr_dict.items()):
+                if key.lower() in ('classes', 'ids', 'names') and key.lower() not in done:
                     attr_dict[key] = [f'rst-{cls}' if not cls.startswith('rst-') 
-                                      else cls for cls in val]
+                                      else cls for cls in sorted(val)]
                 elif key.lower() == 'href':
                     if attr_dict[key][:1]=='#':
                         href = attr_dict[key][1:]
@@ -185,7 +221,7 @@ class HTMLTranslator(html4css1.HTMLTranslator):
 
         return super().starttag(node, tagname, suffix, **attributes)  # type: ignore[no-any-return]
 
-    def visit_doctest_block(self, node: nodes.Node) -> None:
+    def visit_doctest_block(self, node: nodes.doctest_block) -> None:
         pysrc = node[0].astext()
         if node.get('codeblock'):
             self.body.append(flatten(colorize_codeblock(pysrc)))
@@ -203,79 +239,79 @@ class HTMLTranslator(html4css1.HTMLTranslator):
 
     # this part of the HTMLTranslator is based on sphinx's HTMLTranslator:
     # https://github.com/sphinx-doc/sphinx/blob/3.x/sphinx/writers/html.py#L271
-    def _visit_admonition(self, node: nodes.Node, name: str) -> None:
+    def _visit_admonition(self, node: nodes.Element, name: str) -> None:
         self.body.append(self.starttag(
             node, 'div', CLASS=('admonition ' + _valid_identifier(name))))
         node.insert(0, nodes.title(name, name.title()))
         self.set_first_last(node)
 
-    def visit_note(self, node: nodes.Node) -> None:
+    def visit_note(self, node: nodes.Element) -> None:
         self._visit_admonition(node, 'note')
 
-    def depart_note(self, node: nodes.Node) -> None:
+    def depart_note(self, node: nodes.Element) -> None:
         self.depart_admonition(node)
 
-    def visit_warning(self, node: nodes.Node) -> None:
+    def visit_warning(self, node: nodes.Element) -> None:
         self._visit_admonition(node, 'warning')
 
-    def depart_warning(self, node: nodes.Node) -> None:
+    def depart_warning(self, node: nodes.Element) -> None:
         self.depart_admonition(node)
 
-    def visit_attention(self, node: nodes.Node) -> None:
+    def visit_attention(self, node: nodes.Element) -> None:
         self._visit_admonition(node, 'attention')
 
-    def depart_attention(self, node: nodes.Node) -> None:
+    def depart_attention(self, node: nodes.Element) -> None:
         self.depart_admonition(node)
 
-    def visit_caution(self, node: nodes.Node) -> None:
+    def visit_caution(self, node: nodes.Element) -> None:
         self._visit_admonition(node, 'caution')
 
-    def depart_caution(self, node: nodes.Node) -> None:
+    def depart_caution(self, node: nodes.Element) -> None:
         self.depart_admonition(node)
 
-    def visit_danger(self, node: nodes.Node) -> None:
+    def visit_danger(self, node: nodes.Element) -> None:
         self._visit_admonition(node, 'danger')
 
-    def depart_danger(self, node: nodes.Node) -> None:
+    def depart_danger(self, node: nodes.Element) -> None:
         self.depart_admonition(node)
 
-    def visit_error(self, node: nodes.Node) -> None:
+    def visit_error(self, node: nodes.Element) -> None:
         self._visit_admonition(node, 'error')
 
-    def depart_error(self, node: nodes.Node) -> None:
+    def depart_error(self, node: nodes.Element) -> None:
         self.depart_admonition(node)
 
-    def visit_hint(self, node: nodes.Node) -> None:
+    def visit_hint(self, node: nodes.Element) -> None:
         self._visit_admonition(node, 'hint')
 
-    def depart_hint(self, node: nodes.Node) -> None:
+    def depart_hint(self, node: nodes.Element) -> None:
         self.depart_admonition(node)
 
-    def visit_important(self, node: nodes.Node) -> None:
+    def visit_important(self, node: nodes.Element) -> None:
         self._visit_admonition(node, 'important')
 
-    def depart_important(self, node: nodes.Node) -> None:
+    def depart_important(self, node: nodes.Element) -> None:
         self.depart_admonition(node)
 
-    def visit_tip(self, node: nodes.Node) -> None:
+    def visit_tip(self, node: nodes.Element) -> None:
         self._visit_admonition(node, 'tip')
 
-    def depart_tip(self, node: nodes.Node) -> None:
+    def depart_tip(self, node: nodes.Element) -> None:
         self.depart_admonition(node)
 
-    def visit_wbr(self, node: nodes.Node) -> None:
+    def visit_wbr(self, node: wbr) -> None:
         self.body.append('<wbr></wbr>')
     
     def depart_wbr(self, node: nodes.Node) -> None:
         pass
 
-    def visit_seealso(self, node: nodes.Node) -> None:
+    def visit_seealso(self, node: nodes.Element) -> None:
         self._visit_admonition(node, 'see also')
 
-    def depart_seealso(self, node: nodes.Node) -> None:
+    def depart_seealso(self, node: nodes.Element) -> None:
         self.depart_admonition(node)
 
-    def visit_versionmodified(self, node: nodes.Node) -> None:
+    def visit_versionmodified(self, node: nodes.Element) -> None:
         self.body.append(self.starttag(node, 'div', CLASS=node['type']))
 
     def depart_versionmodified(self, node: nodes.Node) -> None:

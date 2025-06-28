@@ -1,0 +1,3 @@
+
+def setup_pydoctor_extension(r) -> None:
+    ...

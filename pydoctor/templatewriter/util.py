@@ -2,11 +2,14 @@
 from __future__ import annotations
 
 import warnings
-from typing import (Any, Dict, Generic, Iterable, Iterator, List, Mapping, 
-                    Optional, MutableMapping, Tuple, TypeVar, Union, Sequence)
+from typing import (Any, Callable, Dict, Generic, Iterable, Iterator, List, Mapping, 
+                    Optional, MutableMapping, Tuple, TypeVar, Union, Sequence, TYPE_CHECKING)
 from pydoctor import epydoc2stan
 import collections.abc
 from pydoctor import model
+
+if TYPE_CHECKING:
+    from typing import Literal
 
 from twisted.web.template import Tag
 
@@ -26,7 +29,13 @@ def srclink(o: model.Documentable) -> Optional[str]:
     """
     Get object source code URL, i.e. hosted on github. 
     """
-    return o.sourceHref
+    return o.source_href
+
+def package_srclinks(o: model.Package) -> list[str]:
+    """
+    Get (namespace) package source code URLs, i.e. hosted on github. 
+    """
+    return o.source_hrefs
 
 def css_class(o: model.Documentable) -> str:
     """
@@ -84,17 +93,50 @@ def unmasked_attrs(baselist: Sequence[model.Class]) -> Sequence[model.Documentab
     return [o for o in baselist[0].contents.values()
             if o.isVisible and o.name not in maybe_masking]
 
-def objects_order(o: model.Documentable) -> Tuple[int, int, str]: 
+def alphabetical_order_func(o: model.Documentable) -> Tuple[Any, ...]:
     """
-    Function to use as the value of standard library's L{sorted} function C{key} argument
-    such that the objects are sorted by: Privacy, Kind and Name.
+    Sort by privacy, kind and fullname.
+    Callable to use as the value of standard library's L{sorted} function C{key} argument.
+    """
+    return (-o.privacyClass.value, -_map_kind(o.kind).value if o.kind else 0, o.fullName().lower())
+
+def source_order_func(o: model.Documentable) -> Tuple[Any, ...]:
+    """
+    Sort by privacy, kind and linenumber.
+    Callable to use as the value of standard library's L{sorted} function C{key} argument.
+    """
+    if isinstance(o, model.Module):
+        # Still sort modules by name since they all have the same linenumber.
+        return (-o.privacyClass.value, -_map_kind(o.kind).value if o.kind else 0, o.fullName().lower()) 
+    else:
+        return (-o.privacyClass.value, -_map_kind(o.kind).value if o.kind else 0, o.linenumber) 
+        # last implicit orderring is the order of insertion.
+
+def _map_kind(kind: model.DocumentableKind) -> model.DocumentableKind:
+    if kind in (model.DocumentableKind.PACKAGE, 
+                model.DocumentableKind.NAMESPACE_PACKAGE):
+        # packages and modules should be listed together
+        return model.DocumentableKind.MODULE
+    return kind
+
+def objects_order(order: 'Literal["alphabetical", "source"]') -> Callable[[model.Documentable], Tuple[Any, ...]]: 
+    """
+    Function to craft a callable to use as the value of standard library's L{sorted} function C{key} argument
+    such that the objects are sorted by: Privacy, Kind first, then by Name or Linenumber depending on
+    C{order} argument.
 
     Example::
 
         children = sorted((o for o in ob.contents.values() if o.isVisible),
-                      key=objects_order)
+                      key=objects_order("alphabetical"))
     """
-    return (-o.privacyClass.value, -o.kind.value if o.kind else 0, o.fullName().lower())
+
+    if order == "alphabetical":
+        return alphabetical_order_func
+    elif order == "source":
+        return source_order_func
+    else:
+        assert False
 
 def class_members(cls: model.Class) -> List[Tuple[Tuple[model.Class, ...], Sequence[model.Documentable]]]:
     """

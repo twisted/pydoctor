@@ -1,9 +1,8 @@
 from io import BytesIO
 import re
-from typing import Callable, Union, Any, cast, Type, TYPE_CHECKING
+from typing import Callable, Union, cast, Type, TYPE_CHECKING
 import pytest
 import warnings
-import sys
 import tempfile
 import os
 from pathlib import Path, PurePath
@@ -24,19 +23,12 @@ from pydoctor.themes import get_themes
 
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable
-
     # Newer APIs from importlib_resources should arrive to stdlib importlib.resources in Python 3.9.
-    if sys.version_info >= (3, 9):
-        from importlib.abc import Traversable
-    else:
-        Traversable = Any
+    from importlib.abc import Traversable
 else:
     Traversable = object
 
-if sys.version_info < (3, 9):
-    import importlib_resources
-else:
-    import importlib.resources as importlib_resources
+import importlib.resources as importlib_resources
 
 template_dir = importlib_resources.files("pydoctor.themes") / "base"
 
@@ -139,6 +131,7 @@ def test_basic_package(tmp_path: Path) -> None:
     root, = system.rootobjects
     w._writeDocsFor(root)
     w.writeSummaryPages(system)
+    w.writeLinks(system)
     for ob in system.allobjects.values():
         url = ob.url
         if '#' in url:
@@ -575,11 +568,13 @@ def test_format_decorators() -> None:
     def func():
         ...
     ''')
-    stan = stanutils.flatten(list(pages.format_decorators(cast(model.Function, mod.contents['func']))))
-    assert stan == ("""@string_decorator(<wbr></wbr>set(<wbr></wbr><span class="rst-variable-quote">'</span>"""
+    stan = stanutils.flatten(pages.format_decorators(cast(model.Function, mod.contents['func'])))
+    assert stan == ("""<div><span class="decorator">"""
+                    """@string_decorator(<wbr></wbr>set(<wbr></wbr><span class="rst-variable-quote">'</span>"""
                     r"""<span class="rst-variable-string">\\/:*?"&lt;&gt;|\f\v\t\r\n</span>"""
-                    """<span class="rst-variable-quote">'</span>))<br />@simple_decorator"""
-                    """(<wbr></wbr>max_examples=700, <wbr></wbr>deadline=None, <wbr></wbr>option=range(<wbr></wbr>10))<br />""")
+                    """<span class="rst-variable-quote">'</span>))<br /></span><span class="decorator">@simple_decorator"""
+                    """(<wbr></wbr>max_examples=700, <wbr></wbr>deadline=None, <wbr></wbr>option=range(<wbr></wbr>10))<br />"""
+                    """</span></div>""")
 
 
 def test_compact_module_summary() -> None:
@@ -644,7 +639,8 @@ def test_index_contains_infos(tmp_path: Path) -> None:
         for i in infos:
             assert i in page, page
 
-def test_objects_order_mixed_modules_and_packages() -> None:
+@pytest.mark.parametrize('_order', ["alphabetical", "source"])
+def test_objects_order_mixed_modules_and_packages(_order:str) -> None:
     """
     Packages and modules are mixed when sorting with objects_order.
     """
@@ -655,10 +651,103 @@ def test_objects_order_mixed_modules_and_packages() -> None:
     fromText('', parent_name='top', modname='bbb', system=system)
     fromText('', parent_name='top', modname='aba', system=system, is_package=True)
     
-    _sorted = sorted(top.contents.values(), key=pages.objects_order)
+    _sorted = sorted(top.contents.values(), key=util.objects_order(_order)) # type:ignore
     names = [s.name for s in _sorted]
 
     assert names == ['aaa', 'aba', 'bbb']
+
+def test_change_member_order() -> None:
+    """
+    Default behaviour is to sort everything by privacy, kind and then by name.
+    But we allow to customize the class and modules members independendly, 
+    the reason for this is to permit to match rustdoc behaviour, 
+    that is to sort class members by source, the rest by name.
+    """
+    system = model.System()
+    assert system.options.cls_member_order == system.options.mod_member_order == "alphabetical"
+    
+    mod = fromText('''\
+    class Foo:
+        def start():...
+        def process_link():...
+        def process_emphasis():...
+        def process_blockquote():...
+        def process_table():...
+        def end():...
+    
+    class Bar:...
+
+    b,a = 1,2
+    ''', system=system)
+
+    _sorted = sorted(mod.contents.values(), key=system.membersOrder(mod))
+    assert [s.name for s in _sorted] == ['Bar', 'Foo', 'a', 'b'] # default ordering is alphabetical
+
+    system.options.mod_member_order = 'source'
+    _sorted = sorted(mod.contents.values(), key=system.membersOrder(mod))
+    assert [s.name for s in _sorted] == ['Foo', 'Bar', 'b', 'a']
+    
+    Foo = mod.contents['Foo']
+
+    _sorted = sorted(Foo.contents.values(), key=system.membersOrder(Foo))
+    names = [s.name for s in _sorted]
+    
+    assert names ==['end',
+                    'process_blockquote',
+                    'process_emphasis',
+                    'process_link',
+                    'process_table',
+                    'start',]
+
+    system.options.cls_member_order = "source"
+    _sorted = sorted(Foo.contents.values(), key=system.membersOrder(Foo))
+    names = [s.name for s in _sorted]
+    
+    assert names == ['start', 
+                     'process_link', 
+                     'process_emphasis', 
+                     'process_blockquote', 
+                     'process_table', 
+                     'end']
+
+def test_ivar_field_order_precedence(capsys: CapSys) -> None:
+    """
+    We special case the linen umber coming from docstring fields such that they can get overriden
+    by AST linenumber.
+    """
+    system = model.System(model.Options.from_args(['--cls-member-order=source']))
+    mod = fromText('''
+    import attr
+    __docformat__ = 'restructuredtext'
+    @attr.s
+    class Foo:
+        """
+        :ivar a: `broken1 <>`_ Thing.
+        :ivar b: `broken2 <>`_ Stuff.
+        """
+
+        b = attr.ib()
+        a = attr.ib()
+    ''', system=system)
+    
+    Foo = mod.contents['Foo']
+    getHTMLOf(Foo)
+    assert Foo.docstring_lineno == 7
+    
+    assert Foo.parsed_docstring.fields[0].lineno == 0 # type:ignore
+    assert Foo.parsed_docstring.fields[1].lineno == 1 # type:ignore
+
+    assert Foo.contents['a'].linenumber == 12
+    assert Foo.contents['b'].linenumber == 11
+
+    assert Foo.contents['a'].docstring_lineno == 7
+    assert Foo.contents['b'].docstring_lineno == 8
+
+    _sorted = sorted(Foo.contents.values(), key=system.membersOrder(Foo))
+    names = [s.name for s in _sorted]
+                     # auto-generated __init__
+    assert names == ['__init__', 'b', 'a'] # should be 'b', 'a'.
+
 
 src_crash_xml_entities = '''\
 """
@@ -717,7 +806,7 @@ def test_crash_xmlstring_entities(capsys:CapSys, processtypes:bool) -> None:
         epydoc2stan.ensure_parsed_docstring(o)
     getHTMLOf(mod)
     getHTMLOf(mod.contents['C'])
-    out = capsys.readouterr().out
+
     warnings = '''\
 test:2: bad docstring: SAXParseException: <unknown>.+ undefined entity
 test:25: bad signature: SAXParseException: <unknown>.+ undefined entity
@@ -727,15 +816,12 @@ test:30: bad docstring: SAXParseException: <unknown>.+ undefined entity
 test:8: bad annotation: SAXParseException: <unknown>:.+ undefined entity
 test:10: bad rendering of constant: SAXParseException: <unknown>.+ undefined entity
 test:14: bad docstring: SAXParseException: <unknown>.+ undefined entity
-test:36: bad rendering of class signature: SAXParseException: <unknown>.+ undefined entity
-'''.splitlines()
+test:36: bad rendering of class signature: SAXParseException: <unknown>.+ undefined entity'''.splitlines()
     
-    # Some how the type processing get rid of the non breaking spaces, but it's more an implementation
-    # detail rather than a fix for the bug.
-    if processtypes is True:
-        warnings.remove('test:30: bad docstring: SAXParseException: <unknown>.+ undefined entity')
-    
-    assert re.match('\n'.join(warnings), out)
+    actual = [a for a in capsys.readouterr().out.splitlines() if a]
+    assert len(warnings) == len(actual)
+    for a,e in zip(actual, warnings):
+        assert re.match(e, a), (f'{a!r} doesn not match {e}')
 
 @pytest.mark.parametrize('processtypes', [True, False])
 def test_crash_xmlstring_entities_rst(capsys:CapSys, processtypes:bool) -> None:
@@ -749,8 +835,8 @@ def test_crash_xmlstring_entities_rst(capsys:CapSys, processtypes:bool) -> None:
         epydoc2stan.ensure_parsed_docstring(o)
     getHTMLOf(mod)
     getHTMLOf(mod.contents['C'])
-    out = capsys.readouterr().out
-    warn_str = '''\
+
+    warnings = '''\
 test:2: bad docstring: SAXParseException: <unknown>.+ undefined entity
 test:25: bad signature: SAXParseException: <unknown>.+ undefined entity
 test:17: bad rendering of decorators: SAXParseException: <unknown>.+ undefined entity
@@ -759,14 +845,12 @@ test:30: bad docstring: SAXParseException: <unknown>.+ undefined entity
 test:8: bad annotation: SAXParseException: <unknown>.+ undefined entity
 test:10: bad rendering of constant: SAXParseException: <unknown>.+ undefined entity
 test:14: bad docstring: SAXParseException: <unknown>.+ undefined entity
-test:36: bad rendering of class signature: SAXParseException: <unknown>.+ undefined entity
-'''
-    warnings = warn_str.splitlines()
+test:36: bad rendering of class signature: SAXParseException: <unknown>.+ undefined entity'''.splitlines()
 
-    if processtypes is True:
-        warnings.remove('test:30: bad docstring: SAXParseException: <unknown>.+ undefined entity')
-    
-    assert re.match('\n'.join(warnings), out)
+    actual = [a for a in capsys.readouterr().out.splitlines() if a]
+    assert len(warnings) == len(actual)
+    for a,e in zip(actual, warnings):
+        assert re.match(e, a), (f'{a!r} doesn not match {e}')
 
 def test_constructor_renders(capsys:CapSys) -> None:
     src = '''\
@@ -816,3 +900,84 @@ def test_class_hierarchy_links_top_level_names() -> None:
     index = flatten(ClassIndexPage(mod.system, TemplateLookup(template_dir)))
     assert 'href="https://docs.python.org/3/library/socket.html#socket.socket"' in index
 
+def test_canonical_links() -> None:
+    src = '''
+    var = True
+    class Cls:
+        foo = False
+    '''
+    mod = fromText(src, modname='t', system=model.System(model.Options.from_args(
+        ['--html-base-url=https://example.org/t/docs']
+    )))
+    html1 = getHTMLOf(mod)
+    html2 = getHTMLOf(mod.contents['Cls'])
+
+    assert '<link rel="canonical" href="https://example.org/t/docs/index.html"' in html1
+    assert '<link rel="canonical" href="https://example.org/t/docs/t.Cls.html"' in html2
+
+def test_canonical_links_two_root_modules() -> None:
+    src = '''
+    var = True
+    class Cls:
+        foo = False
+    '''
+    mod = fromText(src, modname='t', system=model.System(model.Options.from_args(
+        ['--html-base-url=https://example.org/t/docs']
+    )))
+    mod2 = fromText(src, modname='t2', system=mod.system)
+    html1 = getHTMLOf(mod)
+    html2 = getHTMLOf(mod.contents['Cls'])
+
+    assert '<link rel="canonical" href="https://example.org/t/docs/t.html"' in html1
+    assert '<link rel="canonical" href="https://example.org/t/docs/t.Cls.html"' in html2
+
+    html3 = getHTMLOf(mod2)
+    html4 = getHTMLOf(mod2.contents['Cls'])
+
+    assert '<link rel="canonical" href="https://example.org/t/docs/t2.html"' in html3
+    assert '<link rel="canonical" href="https://example.org/t/docs/t2.Cls.html"' in html4
+
+def test_namespace_package_doesnt_show_as_undocumented() -> None:
+    systemcls = lambda: model.System(model.Options.from_args(
+        ['--html-viewsource-base=https://github.com/some/repo/tree/master',
+         f'--project-base-dir={testpackages / "namespaces"}']))
+
+    system = processPackage(['namespaces/project1/lvl1', 
+                             'namespaces/project2/lvl1'], systemcls)
+
+    assert isinstance(root:=system.allobjects['lvl1'], model.Package)
+    assert root.kind is model.DocumentableKind.NAMESPACE_PACKAGE
+
+    assert isinstance(nested:=root.contents['lvl2'], model.Package)
+    assert nested.kind is model.DocumentableKind.NAMESPACE_PACKAGE
+
+    html1 = getHTMLOf(root)
+
+    assert 'Undocumented' not in html1
+    assert 'Contains 1 known namespace package.' in html1
+
+    html2 = getHTMLOf(nested)
+    assert 'Contains 2 known packages.' in html2
+
+def test_namespace_package_source_links() -> None:
+    systemcls = lambda: model.System(model.Options.from_args(
+        ['--html-viewsource-base=https://github.com/some/repo/tree/master',
+         f'--project-base-dir={testpackages / "namespaces"}']))
+
+    system = processPackage(['namespaces/project1/lvl1', 
+                             'namespaces/project2/lvl1'], systemcls)
+
+    assert isinstance(root:=system.allobjects['lvl1'], model.Package)
+    assert root.kind is model.DocumentableKind.NAMESPACE_PACKAGE
+
+    assert isinstance(nested:=root.contents['lvl2'], model.Package)
+    assert nested.kind is model.DocumentableKind.NAMESPACE_PACKAGE
+
+    html1 = getHTMLOf(root)
+    html2 = getHTMLOf(nested)
+
+    assert ('<a href="https://github.com/some/repo/tree/master/project1/lvl1" class="sourceLink">(source)</a>, '
+        '<a href="https://github.com/some/repo/tree/master/project2/lvl1" class="sourceLink">(source)</a>') in html1
+    
+    assert ('<a href="https://github.com/some/repo/tree/master/project1/lvl1/lvl2" class="sourceLink">(source)</a>, '
+        '<a href="https://github.com/some/repo/tree/master/project2/lvl1/lvl2" class="sourceLink">(source)</a>') in html2

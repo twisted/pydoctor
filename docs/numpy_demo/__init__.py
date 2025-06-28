@@ -73,7 +73,7 @@ def function_with_types_in_docstring(param1, param2):
     ----------
     param1 : int
         The first parameter.
-    param2 : str
+    param2 : str : {"html", "json", "xml"}, optional
         The second parameter.
 
     Returns

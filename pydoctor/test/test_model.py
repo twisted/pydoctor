@@ -12,7 +12,7 @@ import pytest
 
 from twisted.web.template import Tag
 
-from pydoctor.options import Options
+from pydoctor.options import IntersphinxFile, Options
 from pydoctor import model, stanutils, extensions
 from pydoctor.templatewriter import pages
 from pydoctor.utils import parse_privacy_tuple
@@ -37,8 +37,9 @@ class FakeDocumentable:
     A fake of pydoctor.model.Documentable that provides a system and
     sourceHref attribute.
     """
+    kind = None
     system: model.System
-    sourceHref = None
+    source_href = None
     filepath: str
 
 
@@ -62,7 +63,7 @@ def test_setSourceHrefOption(projectBaseDir: Path) -> None:
     mod.system = system
     system.setSourceHref(mod, projectBaseDir / "package" / "module.py")
 
-    assert mod.sourceHref == "http://example.org/trac/browser/trunk/package/module.py"
+    assert mod.source_href == "http://example.org/trac/browser/trunk/package/module.py"
 
 def test_htmlsourcetemplate_auto_detect() -> None:
     """
@@ -90,7 +91,7 @@ def test_htmlsourcetemplate_auto_detect() -> None:
         system = model.System(options)
 
         processPackage('basic', systemcls=lambda:system)
-        assert system.allobjects['basic.mod.C'].sourceHref == var_href
+        assert system.allobjects['basic.mod.C'].source_href == var_href
 
 def test_htmlsourcetemplate_custom() -> None:
     """
@@ -103,7 +104,7 @@ def test_htmlsourcetemplate_custom() -> None:
     system = model.System(options)
 
     processPackage('basic', systemcls=lambda:system)
-    assert system.allobjects['basic.mod.C'].sourceHref == "http://example.org/trac/browser/trunk/pydoctor/test/testpackages/basic/mod.py#n7"
+    assert system.allobjects['basic.mod.C'].source_href == "http://example.org/trac/browser/trunk/pydoctor/test/testpackages/basic/mod.py#n7"
 
 def test_initialization_default() -> None:
     """
@@ -183,6 +184,77 @@ def test_fetchIntersphinxInventories_content() -> None:
         'file:///twisted/tm.html' ==
         sut.intersphinx.getLink('twisted.package')
         )
+
+
+def test_fetchIntersphinxInventories_content_file_with_base_url(tmp_path: Path) -> None:
+    """
+    Read and parse intersphinx inventories from file for each configured
+    intersphix.
+    """
+    path = tmp_path / 'objects.inv'
+    with open(path, 'wb') as f:
+        f.write(zlib.compress(b'twisted.package py:module -1 tm.html -'))
+    
+    with open(tmp_path / 'tm.html', "w") as _:
+        pass
+
+    options = Options.defaults()
+    options.intersphinx_file = [IntersphinxFile(path, "http://sphinx")]
+
+    sut = model.System(options=options)
+    log = []
+    def log_msg(part: str, msg: str) -> None:
+        log.append((part, msg))
+    sut.msg = log_msg # type: ignore[assignment]
+
+    class Cache(CacheT):
+        """Avoid touching the network."""
+        def get(self, url: str) -> bytes:
+            return b''
+        def close(self) -> None:
+            return None
+        
+
+    sut.fetchIntersphinxInventories(Cache())
+
+    assert [] == log
+    assert ('http://sphinx/tm.html' == 
+            sut.intersphinx.getLink('twisted.package'))
+
+
+def test_fetchIntersphinxInventories_content_file(tmp_path: Path) -> None:
+    """
+    Read and parse intersphinx inventories from file for each configured
+    intersphix.
+    """
+    path = tmp_path / 'objects.inv'
+    with open(path, 'wb') as f:
+        f.write(zlib.compress(b'twisted.package py:module -1 tm.html -'))
+    
+    with open(tmp_path / 'tm.html', "w") as _:
+        pass
+        
+    options = Options.defaults()
+    options.intersphinx_file = [IntersphinxFile(path, None)]
+
+    sut = model.System(options=options)
+    log = []
+    def log_msg(part: str, msg: str) -> None:
+        log.append((part, msg))
+    sut.msg = log_msg # type: ignore[assignment]
+
+    class Cache(CacheT):
+        """Avoid touching the network."""
+        def get(self, url: str) -> bytes:
+            return b''
+        def close(self) -> None:
+            return None
+        
+
+    sut.fetchIntersphinxInventories(Cache())
+
+    assert [] == log
+    assert ((tmp_path / 'tm.html').samefile(sut.intersphinx.getLink('twisted.package'))) # type: ignore
 
 
 def test_docsources_class_attribute() -> None:
@@ -340,7 +412,7 @@ def test_introspection_extension() -> None:
 
 testpackages = Path(__file__).parent / 'testpackages'
 
-@pytest.mark.skipif("platform.python_implementation() == 'PyPy'")
+@pytest.mark.skipif("platform.python_implementation() == 'PyPy' or platform.system() == 'Windows'")
 def test_c_module_text_signature(capsys:CapSys) -> None:
     
     c_module_invalid_text_signature = testpackages / 'c_module_invalid_text_signature'
@@ -379,7 +451,7 @@ def test_c_module_text_signature(capsys:CapSys) -> None:
         # cleanup
         subprocess.getoutput(f'rm -f {package_path}/*.so')
 
-@pytest.mark.skipif("platform.python_implementation() == 'PyPy'")
+@pytest.mark.skipif("platform.python_implementation() == 'PyPy' or platform.system() == 'Windows'")
 def test_c_module_python_module_name_clash(capsys:CapSys) -> None:
     c_module_python_module_name_clash = testpackages / 'c_module_python_module_name_clash'
     package_path = c_module_python_module_name_clash / 'mymod'

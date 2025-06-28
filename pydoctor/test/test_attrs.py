@@ -843,3 +843,24 @@ def test_dataclass_constructor_kw_only_reordering_with_inheritence(systemcls: Ty
     mod = fromText(src, systemcls=systemcls)
     assert not capsys.readouterr().out
     assert_constructor(mod.contents['MyClass'], '(self, x: Any = 15.0, z: int = 10, *, y: int = 0, w: int = 1, t: int = 0)')
+
+@attrs_systemcls_param
+def test_attrs_class_else_branch(systemcls: Type[model.System]) -> None:
+    
+    mod = fromText('''
+    import attr
+    foo = bar = lambda:False
+    
+    if foo():
+        pass
+    else:
+        @attr.s
+        class C:
+            if bar():
+                pass
+            else:
+                var = attr.ib()
+    ''', systemcls=systemcls)
+
+    var = mod.contents['C'].contents['var']
+    assert var.kind is model.DocumentableKind.INSTANCE_VARIABLE

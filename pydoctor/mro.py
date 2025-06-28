@@ -27,7 +27,9 @@ from __future__ import annotations
 
 from collections import deque
 from itertools import islice
-from typing import Callable, List, Tuple, Optional, TypeVar
+from typing import List, Tuple, Optional, TypeVar
+
+class LinearizationError(ValueError): pass
 
 T = TypeVar('T')
 
@@ -103,7 +105,29 @@ class DependencyList:
                 i.popleft()
 
 
-def _merge(*lists) -> list:
+def c3_merge(*lists) -> list:
+    """
+    The merge operation of the C3 superclass linearization algorithm.
+
+    Example of a naive usage:
+
+    >>> def mro(cls: T, getbases: Callable[[T], List[T]]) -> List[T]:
+    ...     result = [cls]
+    ...     if not (bases:=getbases(cls)):
+    ...         return result
+    ...     else:
+    ...         return result + c3_merge(*[mro(kls, getbases) for kls in bases], bases)
+    >>> class B:...
+    >>> class A(B):...
+    >>> class B(B):...
+    >>> class C(A,B):...
+    >>> C.__mro__
+    (<class 'pydoctor.mro.C'>, <class 'pydoctor.mro.A'>, <class 'pydoctor.mro.B'>, <class 'pydoctor.mro.B'>, <class 'object'>)
+    >>> mro(C, lambda cls: cls.__bases__)
+    [<class 'pydoctor.mro.C'>, <class 'pydoctor.mro.A'>, <class 'pydoctor.mro.B'>, <class 'pydoctor.mro.B'>, <class 'object'>]
+    
+    @see: U{https://en.m.wikipedia.org/wiki/C3_linearization}
+    """
     result: List[Optional[T]] = []
     linearizations = DependencyList(*lists)
 
@@ -121,16 +145,5 @@ def _merge(*lists) -> list:
                 break
         else:
             # Loop never broke, no linearization could possibly be found
-            raise ValueError('Cannot compute linearization of the class inheritance hierarchy')
+            raise LinearizationError('Cannot compute linearization of the class inheritance hierarchy')
 
-
-def mro(cls: T, getbases: Callable[[T], List[T]]) -> List[T]:
-    """
-    Return a list of classes in order corresponding to Python's MRO.
-    """
-    result = [cls]
-
-    if not getbases(cls):
-        return result
-    else:
-        return result + _merge(*[mro(kls, getbases) for kls in getbases(cls)], getbases(cls))
