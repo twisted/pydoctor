@@ -1332,8 +1332,7 @@ class System:
                 mod.source_href = href
             # Support for namespace packages: their location can be split off
             # several distributions, needing several hrefs.
-            if mod.kind is DocumentableKind.NAMESPACE_PACKAGE:
-                assert isinstance(mod, Package)
+            if isinstance(mod, Package):
                 mod.source_hrefs.append(href)
 
     @overload
