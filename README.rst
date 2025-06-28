@@ -73,6 +73,7 @@ What's New?
 in development
 ^^^^^^^^^^^^^^
 
+* Fix a regression that prevented the source link on package' page to be rendered.
 * Fix bug that would result in duplicated "Cannot find link target" warnings when the 
   types under a docstring *Attributes* section failed to resolved.
 * Introduce --intersphinx-file option: Use local Sphinx objects inventory file to generate 
