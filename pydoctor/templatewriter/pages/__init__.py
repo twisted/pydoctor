@@ -539,14 +539,15 @@ class ClassPage(CommonPage):
                 fallback = lambda _,__,___:epydoc2stan.BROKEN, section='constructor extra')))
 
         r.extend(super().extras())
+        r.append(self.inhierarchy())
         return r
 
     def classSignature(self) -> "Flattenable":
         return format_class_signature(self.ob)
 
-    @renderer
-    def inhierarchy(self, request: object, tag: Tag) -> Tag:
-        return tag(href="classIndex.html#"+self.ob.fullName())
+    def inhierarchy(self) -> Tag:
+        return tags.p(tags.a('View In Hierarchy', 
+            href=f"classIndex.html#{self.ob.fullName()}"))
 
     @renderer
     def baseTables(self, request: object, item: Tag) -> "Flattenable":
