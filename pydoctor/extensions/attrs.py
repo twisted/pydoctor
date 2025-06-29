@@ -165,6 +165,12 @@ _class_type_2_field_signature = {
     ClassType.DATACLASS: inspect.signature(_dataclass_field_sig_helperd), 
 }
 
+_class_type_2_link = {
+    ClassType.DATACLASS: 'U{dataclass <https://docs.python.org/3/library/dataclasses.html>}', 
+    ClassType.ATTRS_CLASSIC: 'U{attrs <https://www.attrs.org>}', 
+    ClassType.ATTRS_NEW: 'U{attrs <https://www.attrs.org>}', 
+}
+
 _fallback_call = ast.Call(func=ast.Name(id='define', ctx=ast.Load()),
                                 args=[], keywords=[], lineno=0,)
 
@@ -593,7 +599,7 @@ def generated_constructor_docstring(cls:AttrsLikeClass, constructor_signature:in
             if field_doc.has_body:
                 fields.append(Field('param', param.name, field_doc, lineno=cls.linenumber))
     
-    doc = parse_docstring(cls, 'U{attrs <https://www.attrs.org>} generated method', 
+    doc = parse_docstring(cls, f'{_class_type_2_link[cls._cls_type]} generated method', 
                           cls, markup='epytext', section='attrs')
     doc.fields = fields
     return doc

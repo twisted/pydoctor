@@ -640,6 +640,24 @@ def test_docstring_generated(systemcls: Type[model.System]) -> None:
     )
 
 @attrs_systemcls_param
+def test_docstring_generated_dataclass(systemcls: Type[model.System]) -> None:
+    src = '''\
+    from dataclasses import dataclass
+
+    @dataclass
+    class SomeClass:
+        a: int
+        b: str
+    '''
+
+    mod = fromText(src, systemcls=systemcls)
+    
+    __init__ = mod.contents['SomeClass'].contents['__init__']
+    assert re.match(
+        r'''dataclass generated method''', 
+        ''.join(gettext(__init__.parsed_docstring.to_node()))) # type:ignore
+
+@attrs_systemcls_param
 def test_define_type_comment_not_auto_attribs(systemcls: Type[model.System]) -> None:
     # this should be interpreted as using auto_attribs=False
     src='''\
