@@ -587,12 +587,23 @@ def test_type_comment_wins_over_factory_annotation(systemcls: Type[model.System]
         a_number = attr.ib(default=42)
         """One number."""
 
-        list_of_numbers = attr.ib(factory=list)  # type: List[int]
+        list_of_numbers = attr.ib(factory=list)  # type: list[int]
         """Multiple numbers."""    
     '''
 
     mod = fromText(src, systemcls=systemcls)
-    assert_constructor(mod.contents['SomeClass'], '(self, a_number: int = 42, list_of_numbers: List[int] = list())')
+    assert_constructor(mod.contents['SomeClass'], '(self, a_number: int = 42, list_of_numbers: list[int] = list())')
+
+@attrs_systemcls_param
+def test_attrs_alias_param(systemcls: type[model.System]) -> None:
+    src = '''\
+    from attrs import define, field
+    @define
+    class C:
+        _x: int = field(alias="_x")
+    '''
+    mod = fromText(src, systemcls=systemcls)
+    assert_constructor(mod.contents['C'], '(self, _x: int)')
 
 @attrs_systemcls_param
 def test_docstring_generated(systemcls: Type[model.System]) -> None:
@@ -616,7 +627,7 @@ def test_docstring_generated(systemcls: Type[model.System]) -> None:
     '''
 
     mod = fromText(src, systemcls=systemcls)
-    assert_constructor(mod.contents['SomeClass'], '(self, *, a: int, a_number: int = 42, list_of_numbers: List[int] = list(), converted_paths: List[str] = list())')
+    assert_constructor(mod.contents['SomeClass'], '(self, *, a: int, a_number: int = 42, list_of_numbers: list[int] = list(), converted_paths: list[str] = list())')
     
     __init__ = mod.contents['SomeClass'].contents['__init__']
     assert re.match(
@@ -679,7 +690,8 @@ def test_dataclass_kw_only(systemcls: Type[model.System]) -> None:
         total_pages: int = 0
     '''
     mod = fromText(src, systemcls=systemcls)
-    assert_constructor(mod.contents['C'], '(self, *, title: str, author: str, year: int, price: float, total_pages: int = 0)')
+    klass = mod.contents['C']
+    assert_constructor(klass, '(self, *, title: str, author: str, year: int, price: float, total_pages: int = 0)')
 
 @attrs_systemcls_param
 def test_dataclass_kw_only_flag(systemcls: Type[model.System]) -> None:
@@ -688,7 +700,7 @@ def test_dataclass_kw_only_flag(systemcls: Type[model.System]) -> None:
 
     @dataclasses.dataclass
     class C:
-        _: dataclasses.KY_ONLY
+        _: dataclasses.KW_ONLY
         title: str
         author: str
         year: int
@@ -755,7 +767,7 @@ def test_dataclass_constructor_multiple_inheritance(systemcls: Type[model.System
         c: float
     '''
     mod = fromText(src, systemcls=systemcls)
-    assert_constructor(mod.contents['Derived'], '(self, a: int, b: str, c: float)', 'Derived(a, b, c)')
+    assert_constructor(mod.contents['Derived'], '(self, b: str, a: int, c: float)', 'Derived(b, a, c)')
 
 # Test case for dataclass with overridden attributes:
 @attrs_systemcls_param
@@ -832,13 +844,13 @@ def test_dataclass_constructor_kw_only_reordering_with_inheritence(systemcls: Ty
     @dataclasses.dataclass
     class Base:
         x: Any = 15.0
-        y: int = field(kw_only=True, default=0)
-        w: int = field(kw_only=True, default=1)
+        y: int = dataclasses.field(kw_only=True, default=0)
+        w: int = dataclasses.field(kw_only=True, default=1)
 
     @dataclasses.dataclass
     class MyClass(Base):
         z: int = 10
-        t: int = field(kw_only=True, default=0)
+        t: int = dataclasses.field(kw_only=True, default=0)
     '''
     mod = fromText(src, systemcls=systemcls)
     assert not capsys.readouterr().out

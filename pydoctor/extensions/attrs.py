@@ -130,16 +130,39 @@ class ClassType(enum.Enum):
             c: int
     """
 
+def _attrs_class_sig_helper(
+    maybe_cls=None, these=None, repr_ns=None, repr=None, cmp=None,
+    hash=None, init=None, slots=False, frozen=False, weakref_slot=True,
+    str=False, auto_attribs=False, kw_only=False, cache_hash=False,
+    auto_exc=False, eq=None, order=None, auto_detect=False, collect_by_mro=False,
+    getstate_setstate=None, on_setattr=None, field_transformer=None, match_args=True,
+    unsafe_hash=None,
+): ...
+
+def _define_class_sig_helper(
+    maybe_cls=None, *, these=None, repr=None, unsafe_hash=None, hash=None,
+    init=None, slots=True, frozen=False, weakref_slot=True, str=False, auto_attribs=None,
+    kw_only=False, cache_hash=False, auto_exc=True, eq=None, order=False, auto_detect=True,
+    getstate_setstate=None, on_setattr=None, field_transformer=None, match_args=True,
+): ...
+
+def _dataclass_class_sig_helper(cls=None, /, *, init=True, repr=True, eq=True, order=False,
+              unsafe_hash=False, frozen=False, match_args=True,
+              kw_only=False, slots=False, weakref_slot=False): ...
+
+def _dataclass_field_sig_helperd(*, default=..., default_factory=..., init=True, repr=True,
+          hash=None, compare=True, metadata=None, kw_only=...):...
+
 _class_type_2_decorator_signature = {
-    ClassType.ATTRS_CLASSIC: inspect.signature(_attr.s),
-    ClassType.ATTRS_NEW: inspect.signature(_attrs.define),
-    ClassType.DATACLASS: inspect.signature(dataclasses.dataclass), 
+    ClassType.ATTRS_CLASSIC: inspect.signature(_attrs_class_sig_helper),
+    ClassType.ATTRS_NEW: inspect.signature(_define_class_sig_helper),
+    ClassType.DATACLASS: inspect.signature(_dataclass_class_sig_helper), 
 }
 
 _class_type_2_field_signature = {
     ClassType.ATTRS_CLASSIC: inspect.signature(_attr.ib),
     ClassType.ATTRS_NEW: inspect.signature(_attrs.field),
-    ClassType.DATACLASS: inspect.signature(dataclasses.field), 
+    ClassType.DATACLASS: inspect.signature(_dataclass_field_sig_helperd), 
 }
 
 _fallback_call = ast.Call(func=ast.Name(id='define', ctx=ast.Load()),
@@ -213,7 +236,7 @@ def get_cls_decorator_options(cls_type: ClassType,
                 for name, (default, typecheck) in 
                 _get_decorator_param_spec(cls_type).items()}
 
-    if cls_type is ClassType.ATTRS_NEW and options['auto_attribs'] is None:
+    if cls_type == ClassType.ATTRS_NEW and options['auto_attribs'] is None:
         fields = collect_fields(classdef, ctx)
         # auto detect auto_attrib value for newer APIs of attrs.
         options['auto_attribs'] = len(fields) > 0 and \
@@ -230,7 +253,10 @@ def is_attrs_field(expr: Optional[ast.expr], ctx: model.Documentable) -> bool:
 
 def is_dataclass_field(expr: Optional[ast.expr], ctx: model.Documentable) -> bool:
     return isinstance(expr, ast.Call) and \
-        astutils.node2fullname(expr.func, ctx) == 'dataclass.field'
+        astutils.node2fullname(expr.func, ctx) == 'dataclasses.field'
+
+def is_field(expr: Optional[ast.expr], ctx: model.Documentable) -> bool:
+    return is_attrs_field(expr, ctx) or is_dataclass_field(expr, ctx)
     
 def get_factory(expr: Optional[ast.expr], ctx: model.Documentable) -> Optional[ast.expr]:
     """
@@ -364,7 +390,8 @@ def default_from_attrib(args:inspect.BoundArguments, ctx: model.Documentable) ->
     else:
         return None
 
-def collect_fields(node:ast.ClassDef, ctx:model.Documentable) -> Sequence[Union[ast.Assign, ast.AnnAssign]]:
+def collect_fields(node: ast.ClassDef, ctx: model.Documentable) -> Sequence[Union[ast.Assign, ast.AnnAssign]]:
+    # CAN only find attrs fields, not dataclass.
     # used for the auto detection of auto_attribs value in newer APIs.
     def _f(assign:Union[ast.Assign, ast.AnnAssign]) -> bool:
         if isinstance(assign, ast.AnnAssign) and \
@@ -404,9 +431,8 @@ class ModuleVisitor(ModuleVisitorExt):
         Called when a class definition is visited.
         """
         cls = self.visitor.builder._stack[-1].contents.get(node.name)
-        if not isinstance(cls, model.Class):
+        if not isinstance(cls, AttrsLikeClass):
             return
-        assert isinstance(cls, AttrsLikeClass)
         
         cls_type, deco = get_cls_type_decorator(node.decorator_list, ctx=cls.parent)
         if cls_type == ClassType.REGULAR:
@@ -426,10 +452,9 @@ class ModuleVisitor(ModuleVisitorExt):
                           annotation:Optional[ast.expr],
                           value:Optional[ast.expr]) -> None:
         # MUST only be called for non-REGULAR classes.
-        is_field_call = is_attrs_field(value, ctx=cls) if cls._cls_type!= ClassType.DATACLASS \
-            else is_dataclass_field(value, ctx=cls)
-        is_implicit_field = cls._cls_options.get('auto_attribs') and \
-            not is_field_call and annotation is not None
+        is_field_call = is_field(value, ctx=cls)
+        is_implicit_field = not is_field_call and (
+            cls._cls_options.get('auto_attribs') and annotation is not None)
         
         if not (is_field_call or is_implicit_field):
             return
@@ -451,17 +476,18 @@ class ModuleVisitor(ModuleVisitorExt):
                                         typecheck, attr.linenumber, cls.module
                                         ) for name, default, typecheck in 
                                         (('init', True, bool),
-                                        ('kw_only', False, bool),)}
+                                        ('kw_only', False, bool),
+                                        ('alias', None, (str, type(None))))}
     
         # Handle the auto-creation of the __init__ method.
         if cls._cls_options.get('init', _nothing) in (True, None) and \
             is_implicit_field or attrib_args_value.get('init', True):
 
-            kind:inspect._ParameterKind = inspect.Parameter.POSITIONAL_OR_KEYWORD
+            kind: inspect._ParameterKind = inspect.Parameter.POSITIONAL_OR_KEYWORD
             if cls._cls_options.get('kw_only') or attrib_args_value.get('kw_only'):
                 kind = inspect.Parameter.KEYWORD_ONLY
 
-            attrs_default:Optional[ast.expr] = ast.Constant(value=..., lineno=attr.linenumber)
+            attrs_default: ast.expr | None = ast.Constant(value=..., lineno=attr.linenumber)
             
             if is_implicit_field:
                 factory = get_factory(value, cls)
@@ -481,7 +507,17 @@ class ModuleVisitor(ModuleVisitorExt):
             # attrs strips the leading underscores from the parameter names,
             # since there is not such thing as a private parameter.
             # This is not true for dataclasses and others!
-            init_param_name = attr.name.lstrip('_')
+            if attr.name == '_':
+                # A dataclass flag
+                if astutils.node2fullname(annotation, cls) == 'dataclasses.KW_ONLY':
+                    cls._cls_options['kw_only'] = True
+                return
+
+            if cls._cls_type!= ClassType.DATACLASS:
+                if not (init_param_name:=attrib_args_value.get('alias')):
+                    init_param_name = attr.name.lstrip('_')
+            else:
+                init_param_name = attr.name
 
             if attrib_args:
                 constructor_annotation = annotation_from_attrib(
@@ -532,9 +568,9 @@ def collect_inherited_constructor_params(cls:AttrsLikeClass) -> Tuple[List[inspe
 
     return filtered, base_annotations
 
-def attrs_constructor_docstring(cls:AttrsLikeClass, constructor_signature:inspect.Signature) -> ParsedDocstring:
+def generated_constructor_docstring(cls:AttrsLikeClass, constructor_signature:inspect.Signature) -> ParsedDocstring:
     """
-    Get a docstring for the attrs generated constructor method
+    Get a docstring for the attrs or dataclass generated constructor method.
     """
     fields = []
     for param in constructor_signature.parameters.values():
@@ -542,14 +578,14 @@ def attrs_constructor_docstring(cls:AttrsLikeClass, constructor_signature:inspec
             continue
         attr = cls.find(param.name)
         if isinstance(attr, model.Attribute):
-            if is_attrs_field(attr.value, cls):
+            if is_field(attr.value, cls):
                 field_doc: ParsedDocstring = colorize_inline_pyval(attr.value)
             else:
                 field_doc = ParsedPlaintextDocstring('')
             epydoc2stan.ensure_parsed_docstring(attr)
             if attr.parsed_docstring:
                 field_doc = ParsedRstDocstring(set_node_attributes(
-                    new_document('code'), 
+                    new_document('docstring'), 
                     # concatenate two parsed docstrings.
                     children=chain(field_doc.to_node().children, 
                                    attr.parsed_docstring.to_node().children)), ())
@@ -609,11 +645,11 @@ def postProcess(system:model.System) -> None:
             try:
                 func.signature = inspect.Signature(parameters)
             except Exception as e:
-                func.report(f'could not deduce attrs class __init__ signature: {e}')
+                func.report(f'could not deduce class __init__ signature: {e}')
                 func.signature = inspect.Signature()
                 func.annotations = {}
             else:
-                func.parsed_docstring = attrs_constructor_docstring(cls, func.signature)
+                func.parsed_docstring = generated_constructor_docstring(cls, func.signature)
             
 def setup_pydoctor_extension(r:extensions.ExtRegistrar) -> None:
     r.register_astbuilder_visitor(ModuleVisitor)
