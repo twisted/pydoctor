@@ -566,7 +566,7 @@ def extract_docstring(node: Str) -> Tuple[int, str]:
     lineno = extract_docstring_linenum(node)
     return lineno, inspect.cleandoc(value)
 
-def safe_bind_args(sig:Signature, call: ast.AST, ctx: 'model.Module') -> Optional[inspect.BoundArguments]:
+def safe_bind_args(sig:Signature, call: ast.AST, ctx: model.Documentable) -> Optional[inspect.BoundArguments]:
     """
     Binds the arguments of a function call to that function's signature.
 
@@ -580,7 +580,7 @@ def safe_bind_args(sig:Signature, call: ast.AST, ctx: 'model.Module') -> Optiona
         message = str(ex).replace("'", '"')
         call_dottedname = node2dottedname(call.func)
         callable_name = f"{'.'.join(call_dottedname)}()" if call_dottedname else 'callable'
-        ctx.report(
+        ctx.module.report(
             f"Invalid arguments for {callable_name}: {message}",
             lineno_offset=call.lineno
             )
@@ -620,7 +620,7 @@ def _get_literal_arg(args:BoundArguments, name:str,
 
 def get_literal_arg(args:BoundArguments, name:str, default:_T, 
                           typecheck: Union[Type[_T], Tuple[Type[_T],...]], 
-                          lineno:int, module: 'model.Module') -> _T:
+                          lineno:int, ctx: model.Documentable) -> _T:
     """
     Retreive the literal value of an argument from the L{BoundArguments}. 
     Only works with purely literal values (no C{Name} or C{Attribute}).
@@ -638,7 +638,7 @@ def get_literal_arg(args:BoundArguments, name:str, default:_T,
     try:
         value = _get_literal_arg(args, name, typecheck)
     except ValueError as e:
-        module.report(str(e), lineno_offset=lineno)
+        ctx.module.report(str(e), lineno_offset=lineno)
         return default
     if value is _V.NoValue:
         # default value

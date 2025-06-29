@@ -238,17 +238,6 @@ def parsed_text(text: str,
     return ParsedRstDocstring(set_node_attributes(new_document(source), 
             children=[text_node(text, klass) 
                       if klass else nodes.Text(text)]), ())
-
-    def concat(self, other:'ParsedDocstring') -> 'ParsedDocstring':
-        """
-        Returns a new docstring with the content of the given docstring appended.
-        """
-        from pydoctor.epydoc.markup.restructuredtext import ParsedRstDocstring
-        other_node = other.to_node()
-        self_node = self.to_node()
-        doc = new_document('docstring')
-        set_node_attributes(doc, children=[*self_node.children, *other_node.children])
-        return ParsedRstDocstring(doc, self.fields)
       
 ##################################################
 ## Fields

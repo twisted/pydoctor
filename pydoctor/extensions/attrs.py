@@ -71,7 +71,7 @@ class AttrsLikeClass(ClassMixin, model.Class):
     def setup(self) -> None:
         super().setup()
         self._cls_type: ClassType = ClassType.REGULAR
-        self._cls_options = {}
+        self._cls_options: ClassOptions = {}
 
         # these two attributes helps us infer the signature of the __init__ function
         self._cls_constructor_parameters: List[inspect.Parameter] = []
@@ -137,21 +137,21 @@ def _attrs_class_sig_helper(
     auto_exc=False, eq=None, order=None, auto_detect=False, collect_by_mro=False,
     getstate_setstate=None, on_setattr=None, field_transformer=None, match_args=True,
     unsafe_hash=None,
-): ...
+): ... # type: ignore
 
 def _define_class_sig_helper(
     maybe_cls=None, *, these=None, repr=None, unsafe_hash=None, hash=None,
     init=None, slots=True, frozen=False, weakref_slot=True, str=False, auto_attribs=None,
     kw_only=False, cache_hash=False, auto_exc=True, eq=None, order=False, auto_detect=True,
     getstate_setstate=None, on_setattr=None, field_transformer=None, match_args=True,
-): ...
+): ... # type: ignore
 
 def _dataclass_class_sig_helper(cls=None, /, *, init=True, repr=True, eq=True, order=False,
               unsafe_hash=False, frozen=False, match_args=True,
-              kw_only=False, slots=False, weakref_slot=False): ...
+              kw_only=False, slots=False, weakref_slot=False): ... # type: ignore
 
 def _dataclass_field_sig_helperd(*, default=..., default_factory=..., init=True, repr=True,
-          hash=None, compare=True, metadata=None, kw_only=...):...
+          hash=None, compare=True, metadata=None, kw_only=...):... # type: ignore
 
 _class_type_2_decorator_signature = {
     ClassType.ATTRS_CLASSIC: inspect.signature(_attrs_class_sig_helper),
@@ -175,8 +175,8 @@ _fallback_call = ast.Call(func=ast.Name(id='define', ctx=ast.Load()),
                                 args=[], keywords=[], lineno=0,)
 
 def get_cls_type_decorator(decorators: list[ast.expr], ctx: model.Documentable
-                           ) -> tuple[ClassType, ast.expr | None]:
-    types: list[tuple[ClassType, ast.expr]] = []
+                           ) -> tuple[ClassType, ast.AST | None]:
+    types: list[tuple[ClassType, ast.AST]] = []
     
     for dottedname, decnode in astutils.iter_decorators(decorators, ctx):
         if dottedname in (
@@ -233,7 +233,7 @@ def get_cls_decorator_options(cls_type: ClassType,
     if not attrs_args:
         attrs_args = astutils.bind_args(sig, _fallback_call)
 
-    options = {name: astutils.get_literal_arg(attrs_args, 
+    options: ClassOptions = {name: astutils.get_literal_arg(attrs_args, 
                                               name,
                                               default, 
                                               typecheck, 
@@ -444,6 +444,7 @@ class ModuleVisitor(ModuleVisitorExt):
         if cls_type == ClassType.REGULAR:
             # not an attrs like class
             return
+        assert deco is not None
         cls._cls_type = cls_type
         cls._cls_options = get_cls_decorator_options(cls_type, deco, 
                                                                classdef=node,
@@ -519,6 +520,7 @@ class ModuleVisitor(ModuleVisitorExt):
                     cls._cls_options['kw_only'] = True
                 return
 
+            init_param_name: str
             if cls._cls_type!= ClassType.DATACLASS:
                 if not (init_param_name:=attrib_args_value.get('alias')):
                     init_param_name = attr.name.lstrip('_')

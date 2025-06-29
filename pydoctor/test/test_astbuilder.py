@@ -2815,9 +2815,9 @@ def test_astutils_collect_assigns() -> None:
     # two assignments in F
     assert [n.lineno for n in astutils.collect_assigns(F)] == [8,9]
     # two names in F (it does not recurse on nested scopes)
-    assert [n.lineno for n in astutils._collect_nodes(F, ast.Name)] == [8,9]
+    assert [n.lineno for n in astutils._collect_nodes(F, ast.Name)] == [8,9] # type: ignore
     # two comprehensions
-    assert [n.lineno for n in astutils._collect_nodes(F, (ast.ListComp, ast.DictComp))] == [6,7]
+    assert [n.lineno for n in astutils._collect_nodes(F, (ast.ListComp, ast.DictComp))] == [6,7] # type: ignore
 
 @systemcls_param
 def test_class_var_override(systemcls: Type[model.System]) -> None:
