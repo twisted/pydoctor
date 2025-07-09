@@ -73,6 +73,7 @@ What's New?
 in development
 ^^^^^^^^^^^^^^
 
+* Fix bug, ``ivar`` field and fiends are not ignored anymore in introspected C-modules.
 * Fix bug that would result in duplicated "Cannot find link target" warnings when the 
   types under a docstring *Attributes* section failed to resolved.
 * Introduce --intersphinx-file option: Use local Sphinx objects inventory file to generate 
