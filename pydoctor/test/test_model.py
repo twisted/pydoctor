@@ -396,17 +396,17 @@ def test_introspection_pure_python_class_ivar() -> None:
 
     obj = system.objForFullName(__name__ + '.Dummy2.thing')
     assert isinstance(obj, model.Attribute)
-    assert obj.parsed_docstring.to_text() == "My list of thing"
-    assert obj.parsed_type.to_text() == "list[str]"
+    assert obj.parsed_docstring.to_text() == "My list of thing" # type: ignore
+    assert obj.parsed_type.to_text() == "list[str]" # type: ignore
 
     obj2 = system.objForFullName(__name__ + '.test_introspection_pure_python_class_ivar')
     assert isinstance(obj2, model.Function)
-    assert obj2.parsed_docstring.to_text().startswith('Test docstring')
+    assert obj2.parsed_docstring.to_text().startswith('Test docstring') # type: ignore
 
     obj3 =  system.objForFullName(__name__ + '.something_else_issue_903')
     assert isinstance(obj3, model.Attribute)
-    assert obj3.parsed_docstring.to_text() == 'Docstring for issue 903.'
-    assert obj3.parsed_type.to_text() == 'set[bytes]'
+    assert obj3.parsed_docstring.to_text() == 'Docstring for issue 903.' # type: ignore
+    assert obj3.parsed_type.to_text() == 'set[bytes]' # type: ignore
 
 def test_introspection_extension() -> None:
     """Find docstrings from this test using introspection of an extension."""
