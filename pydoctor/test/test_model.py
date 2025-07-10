@@ -408,6 +408,37 @@ def test_introspection_pure_python_class_ivar() -> None:
     assert obj3.parsed_docstring.to_text() == 'Docstring for issue 903.' # type: ignore
     assert obj3.parsed_type.to_text() == 'set[bytes]' # type: ignore
 
+class Dummy3:
+    @property
+    def thing(self): pass
+    @property
+    def documented_thing(self): 
+        """Docs"""
+    @property
+    def settable_thing(self): pass
+    @settable_thing.setter
+    def settable_thing(self, v):
+        """Ignored"""
+
+def test_introspection_pure_python_class_property() -> None:
+    # Test for issue https://github.com/twisted/pydoctor/issues/907
+    
+    system = model.System()
+    system.introspectModule(Path(__file__), __name__, None)
+    system.process()
+
+    assert list(system.objForFullName(__name__ + '.Dummy3').contents) == ['thing', 'documented_thing', 'settable_thing']
+
+    obj = system.objForFullName(__name__ + '.Dummy3.thing')
+    assert isinstance(obj, model.Attribute)
+
+    obj2 = system.objForFullName(__name__ + '.Dummy3.documented_thing')
+    assert isinstance(obj2, model.Attribute)
+    assert obj2.docstring == "Docs"
+
+    obj3 = system.objForFullName(__name__ + '.Dummy3.settable_thing')
+    assert isinstance(obj3, model.Attribute)
+
 def test_introspection_extension() -> None:
     """Find docstrings from this test using introspection of an extension."""
 
