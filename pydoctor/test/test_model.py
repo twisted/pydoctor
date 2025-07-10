@@ -438,6 +438,7 @@ def test_introspection_pure_python_class_property() -> None:
 
     obj3 = system.objForFullName(__name__ + '.Dummy3.settable_thing')
     assert isinstance(obj3, model.Attribute)
+    assert obj3.docstring is None
 
 def test_introspection_extension() -> None:
     """Find docstrings from this test using introspection of an extension."""
