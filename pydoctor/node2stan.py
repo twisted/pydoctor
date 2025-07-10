@@ -87,7 +87,7 @@ class HTMLTranslator(html4css1.HTMLTranslator):
                 # Direct access to OptionParser is deprecated from Docutils 0.19
                 settings = frontend.get_default_settings(html4css1.Writer())
             else:
-                settings = frontend.OptionParser([html4css1.Writer()]).get_default_values() # type: ignore
+                settings = frontend.OptionParser([html4css1.Writer()]).get_default_values()
             
             # Save default settings as class attribute not to re-compute it all the times
             self.__class__.settings = settings
