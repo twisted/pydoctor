@@ -984,17 +984,19 @@ def import_mod_from_file_location(module_full_name:str, path: Path) -> types.Mod
 
 # Declare the types that we consider as functions (also when they are coming
 # from a C extension)
-func_types: Tuple[Type[Any], ...] = (types.BuiltinFunctionType, types.FunctionType)
-if hasattr(types, "MethodDescriptorType"):
-    # This is Python >= 3.7 only
-    func_types += (types.MethodDescriptorType, )
-else:
-    func_types += (type(str.join), )
-if hasattr(types, "ClassMethodDescriptorType"):
-    # This is Python >= 3.7 only
-    func_types += (types.ClassMethodDescriptorType, )
-else:
-    func_types += (type(dict.__dict__["fromkeys"]), )
+func_types: Tuple[Type[Any], ...] = (types.BuiltinFunctionType, 
+                                     types.FunctionType, 
+                                     types.MethodDescriptorType, 
+                                     types.ClassMethodDescriptorType)
+
+def _isfunction(thing: Any) -> bool:
+    return (isinstance(thing, func_types)
+        # In PyPy 7.3.1, functions from extensions are not
+        # instances of the abstract types in func_types, it will have the type 'builtin_function_or_method'.
+        # Additionnaly cython3 produces function of type 'cython_function_or_method', 
+        # so se use a heuristic on the class name as a fall back detection.
+        or (hasattr(thing, "__class__") and 
+            thing.__class__.__name__.endswith('function_or_method')))
 
 class ModuleNotAdded(Exception):
     ...
@@ -1446,13 +1448,7 @@ class System:
 
     def _introspectThing(self, thing: object, parent: CanContainImportsDocumentable, parentMod: _ModuleT) -> None:
         for k, v in thing.__dict__.items():
-            if (isinstance(v, func_types)
-                    # In PyPy 7.3.1, functions from extensions are not
-                    # instances of the abstract types in func_types, it will have the type 'builtin_function_or_method'.
-                    # Additionnaly cython3 produces function of type 'cython_function_or_method', 
-                    # so se use a heuristic on the class name as a fall back detection.
-                    or (hasattr(v, "__class__") and 
-                        v.__class__.__name__.endswith('function_or_method'))):
+            if _isfunction(v):
                 f = self.Function(self, k, parent)
                 f.parentMod = parentMod
                 f.docstring = v.__doc__
