@@ -410,14 +410,14 @@ def test_introspection_pure_python_class_ivar() -> None:
 
 class Dummy3:
     @property
-    def thing(self): pass
+    def thing(self) -> None: pass
     @property
-    def documented_thing(self): 
+    def documented_thing(self) -> None: 
         """Docs"""
     @property
-    def settable_thing(self): pass
+    def settable_thing(self) -> None: pass
     @settable_thing.setter
-    def settable_thing(self, v):
+    def settable_thing(self, v) -> None:
         """Ignored"""
 
 def test_introspection_pure_python_class_property() -> None:
@@ -427,7 +427,7 @@ def test_introspection_pure_python_class_property() -> None:
     system.introspectModule(Path(__file__), __name__, None)
     system.process()
 
-    assert list(system.objForFullName(__name__ + '.Dummy3').contents) == ['thing', 'documented_thing', 'settable_thing']
+    assert list(system.objForFullName(__name__ + '.Dummy3').contents) == ['thing', 'documented_thing', 'settable_thing'] # type: ignore
 
     obj = system.objForFullName(__name__ + '.Dummy3.thing')
     assert isinstance(obj, model.Attribute)
