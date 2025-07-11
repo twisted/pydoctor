@@ -73,6 +73,13 @@ What's New?
 in development
 ^^^^^^^^^^^^^^
 
+* Better ``attrs`` support: generate precise ``__init__`` method from analyzed fields, supports 
+  principal ``attrs`` idioms: 
+   - ``attr.s(auto_attribs, kw_only, auto_detect, init)``/``attrs.define(...)``
+   - ``attr.ib(init, default, factory, converter, type, kw_only)``/``attrs.field(...)``
+   - ``attr.Factory(list)``
+  It does not support the decorators based syntax for setting the validator/factory/default or converter.
+* Better ``dataclasses``support:  generate precise ``__init__`` method from analyzed fields. 
 * Fix bug that would result in duplicated "Cannot find link target" warnings when the 
   types under a docstring *Attributes* section failed to resolved.
 * Introduce --intersphinx-file option: Use local Sphinx objects inventory file to generate 
@@ -153,12 +160,6 @@ This is the last major release to support Python 3.7.
 * Astor is no longer a requirement starting at Python 3.9.
 * `ExtRegistrar.register_post_processor()` now supports a `priority` argument that is an int.
   Highest priority callables will be called first during post-processing.
-* Better ``attrs`` support: generate precise ``__init__`` method from analyzed fields, supports 
-  principal ``attrs`` idioms: 
-   - ``attr.s(auto_attribs, kw_only, auto_detect, init)``/``attrs.define(...)``
-   - ``attr.ib(init, default, factory, converter, type, kw_only)``/``attrs.field(...)``
-   - ``attr.Factory(list)``
-  It does not support the decorators based syntax for setting the validator/factory/default or converter.
 * Fix too noisy ``--verbose`` mode (suppres some ambiguous annotations warnings).
 * Fix type processing inside restructuredtext consolidated fields.
 * Add options ``--cls-member-order`` and ``--mod-member-order`` to customize the presentation
