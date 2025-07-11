@@ -1,6 +1,7 @@
 # Part of the sphinx.pycode.parser module.
 # Copyright 2007-2020 by the Sphinx team, see AUTHORS.
 # BSD, see LICENSE for details.
+from __future__ import annotations
 
 import ast
 import inspect
