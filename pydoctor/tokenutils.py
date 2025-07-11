@@ -39,6 +39,7 @@ class Token:
     >>> repr(t)
     "<Token kind='NAME' value='foo'>"
     >>> t == 3.14 # ValueError for unknown comparison type
+    Traceback (most recent call last):
     ...
     ValueError: Unknown value: 3.14
     """
@@ -55,7 +56,9 @@ class Token:
         self.source = source #: Source line
 
     def __eq__(self, other: Any) -> bool:
-        if isinstance(other, int):
+        if isinstance(other, Token):
+            return [self.kind, self.value] == [other.kind, other.value]
+        elif isinstance(other, int):
             return self.kind == other
         elif isinstance(other, str):
             return bool(self.value == other)
@@ -86,7 +89,7 @@ class TokenProcessor:
 
     # get_line returns the line at given lineno (1-based)
     >>> tp.get_line(1)
-    'foo = 123 # comment\\n'
+    'foo = 123 # comment\n'
 
     # fetch_token yields tokens one by one
     >>> t1 = tp.fetch_token()
