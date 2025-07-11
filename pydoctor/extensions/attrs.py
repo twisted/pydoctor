@@ -10,10 +10,9 @@ import ast
 import enum
 import inspect
 import copy
-import dataclasses
 
 from itertools import chain
-from typing import Any, Dict, List, Optional, Sequence, Tuple, Type, Union, TYPE_CHECKING
+from typing import Dict, List, Optional, Sequence, Tuple, Union, TYPE_CHECKING
 
 from pydoctor.epydoc.docutils import new_document, set_node_attributes
 from pydoctor.epydoc.markup.restructuredtext import ParsedRstDocstring
@@ -25,7 +24,7 @@ else:
 
 import attr as _attr, attrs as _attrs
 
-from pydoctor import astbuilder, model, astutils, extensions, epydoc2stan
+from pydoctor import model, astutils, extensions, epydoc2stan
 from pydoctor.epydoc.markup import ParsedDocstring, Field
 from pydoctor.epydoc.markup.plaintext import ParsedPlaintextDocstring
 from pydoctor.epydoc.markup._pyval_repr import colorize_inline_pyval
