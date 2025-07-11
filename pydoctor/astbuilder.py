@@ -17,7 +17,8 @@ from typing import (
 from pydoctor import epydoc2stan, model, extensions
 from pydoctor.astutils import (is_none_literal, is_typing_annotation, is_using_annotations, is_using_typing_final, node2dottedname, node2fullname, 
                                is__name__equals__main__, unstring_annotation, upgrade_annotation, iterassign, extract_docstring_linenum, infer_type, get_parents,
-                               get_docstring_node, get_assign_docstring_node, extract_doc_comment_before, extract_doc_comment_after, unparse, NodeVisitor, Parentage, Str)
+                               get_docstring_node, get_assign_docstring_node, unparse, NodeVisitor, Parentage, Str)
+from pydoctor.tokenutils import extract_doc_comment_before, extract_doc_comment_after
 
 
 def parseFile(path: Path) -> tuple[ast.Module, Sequence[str]]:
