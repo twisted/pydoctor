@@ -417,7 +417,7 @@ class Dummy3:
     @property
     def settable_thing(self) -> None: pass
     @settable_thing.setter
-    def settable_thing(self, v) -> None:
+    def settable_thing(self, v: object) -> None:
         """Ignored"""
 
 def test_introspection_pure_python_class_property() -> None:
