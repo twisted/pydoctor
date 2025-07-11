@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import abc
 import ast
+import inspect
 from itertools import chain
 from collections import defaultdict
 import datetime
@@ -984,17 +985,30 @@ def import_mod_from_file_location(module_full_name:str, path: Path) -> types.Mod
 
 # Declare the types that we consider as functions (also when they are coming
 # from a C extension)
-func_types: Tuple[Type[Any], ...] = (types.BuiltinFunctionType, types.FunctionType)
-if hasattr(types, "MethodDescriptorType"):
-    # This is Python >= 3.7 only
-    func_types += (types.MethodDescriptorType, )
-else:
-    func_types += (type(str.join), )
-if hasattr(types, "ClassMethodDescriptorType"):
-    # This is Python >= 3.7 only
-    func_types += (types.ClassMethodDescriptorType, )
-else:
-    func_types += (type(dict.__dict__["fromkeys"]), )
+func_types = (types.BuiltinFunctionType, 
+                types.FunctionType, 
+                types.MethodDescriptorType, 
+                types.ClassMethodDescriptorType)
+
+def _isfunction(thing: Any) -> bool:
+    return (isinstance(thing, func_types)
+        # In PyPy 7.3.1, functions from extensions are not
+        # instances of the abstract types in func_types, it will have the type 'builtin_function_or_method'.
+        # Additionnaly cython3 produces function of type 'cython_function_or_method', 
+        # so se use a heuristic on the class name as a fall back detection.
+        or (hasattr(thing, "__class__") and 
+            thing.__class__.__name__.endswith('function_or_method')))
+
+def _isdatadescriptor(thing: Any) -> bool:
+    return inspect.isdatadescriptor(thing)
+
+_ignorable_dunders = frozenset({' __class__', ' __bases__', 
+                                ' __mro__', ' __subclasses__', 
+                                '__weakref__', ' __flags__', 
+                                ' __doc__', '__dict__', 
+                                '__docformat__', '__all__'})
+def _isignorable(name: str) -> bool:
+    return name in _ignorable_dunders
 
 class ModuleNotAdded(Exception):
     ...
@@ -1445,13 +1459,9 @@ class System:
 
     def _introspectThing(self, thing: object, parent: CanContainImportsDocumentable, parentMod: _ModuleT) -> None:
         for k, v in thing.__dict__.items():
-            if (isinstance(v, func_types)
-                    # In PyPy 7.3.1, functions from extensions are not
-                    # instances of the abstract types in func_types, it will have the type 'builtin_function_or_method'.
-                    # Additionnaly cython3 produces function of type 'cython_function_or_method', 
-                    # so se use a heuristic on the class name as a fall back detection.
-                    or (hasattr(v, "__class__") and 
-                        v.__class__.__name__.endswith('function_or_method'))):
+            if _isignorable(k):
+                continue
+            if _isfunction(v):
                 f = self.Function(self, k, parent)
                 f.parentMod = parentMod
                 f.docstring = v.__doc__
@@ -1477,6 +1487,11 @@ class System:
                 c.docstring = v.__doc__
                 self.addObject(c)
                 self._introspectThing(v, c, parentMod)
+            elif _isdatadescriptor(v):
+                p = self.Attribute(self, k, parent)
+                p.docstring = getattr(v, '__doc__', None)
+                p.parentMod = parentMod
+                self.addObject(p)
         # This function is called for every introspected objects potentially having children, 
         # i.e. modules and classes. So this is a good place to process ivar and friends.
         if parent.docstring:

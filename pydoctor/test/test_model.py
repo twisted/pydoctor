@@ -408,6 +408,38 @@ def test_introspection_pure_python_class_ivar() -> None:
     assert obj3.parsed_docstring.to_text() == 'Docstring for issue 903.' # type: ignore
     assert obj3.parsed_type.to_text() == 'set[bytes]' # type: ignore
 
+class Dummy3:
+    @property
+    def thing(self) -> None: pass
+    @property
+    def documented_thing(self) -> None: 
+        """Docs"""
+    @property
+    def settable_thing(self) -> None: pass
+    @settable_thing.setter
+    def settable_thing(self, v: object) -> None:
+        """Ignored"""
+
+def test_introspection_pure_python_class_property() -> None:
+    # Test for issue https://github.com/twisted/pydoctor/issues/907
+    
+    system = model.System()
+    system.introspectModule(Path(__file__), __name__, None)
+    system.process()
+
+    assert list(system.objForFullName(__name__ + '.Dummy3').contents) == ['thing', 'documented_thing', 'settable_thing'] # type: ignore
+
+    obj = system.objForFullName(__name__ + '.Dummy3.thing')
+    assert isinstance(obj, model.Attribute)
+
+    obj2 = system.objForFullName(__name__ + '.Dummy3.documented_thing')
+    assert isinstance(obj2, model.Attribute)
+    assert obj2.docstring == "Docs"
+
+    obj3 = system.objForFullName(__name__ + '.Dummy3.settable_thing')
+    assert isinstance(obj3, model.Attribute)
+    assert obj3.docstring is None
+
 def test_introspection_extension() -> None:
     """Find docstrings from this test using introspection of an extension."""
 
@@ -508,6 +540,55 @@ def test_c_module_python_module_name_clash(capsys:CapSys) -> None:
         assert [mod] == list(system.allobjects['mymod'].contents.values())
         assert len(mod.contents) == 1
         assert 'coming_from_c_module' == mod.contents.popitem()[0]
+
+    finally:
+        # cleanup
+        subprocess.getoutput(f'rm -f {package_path}/*.so')
+
+@pytest.mark.skipif("platform.python_implementation() == 'PyPy' or platform.system() == 'Windows'")
+def test_c_module_class_ivar_and_datadescriptors(capsys:CapSys) -> None:
+    # Test for issues 
+    # - https://github.com/twisted/pydoctor/issues/907 and
+    # - https://github.com/twisted/pydoctor/issues/903
+    # using a real C-module
+    project_path = testpackages / 'c_module_class_ivar_and_datadescriptors'
+    package_path = project_path / 'mymod'
+    
+    # build extension
+    try:
+        cwd = os.getcwd()
+        code, outstr = subprocess.getstatusoutput(f'cd {project_path} && python3 setup.py build_ext --inplace')
+        os.chdir(cwd)
+        
+        assert code==0, outstr
+        system = model.System()
+        system.options.introspect_c_modules = True
+
+        system.addPackage(package_path, None)
+        system.process()
+
+        mod = system.allobjects['mymod.base']
+        assert [mod] == list(system.allobjects['mymod'].contents.values())
+        assert list(mod.contents) == ['Base']
+        
+        # fetch the class
+        cls, = mod.contents.values()
+        assert isinstance(cls, model.Class)
+        assert cls.docstring
+        
+        # checks the attributes are there
+        attr = cls.contents['value']
+        assert isinstance(attr, model.Attribute)
+        assert attr.docstring == 'dummy value'
+
+        attr = cls.contents['number']
+        assert isinstance(attr, model.Attribute)
+        assert attr.docstring == 'dummy integer attribute'
+
+        attr = cls.contents['thing']
+        assert isinstance(attr, model.Attribute)
+        assert attr.parsed_docstring.to_text() == 'My list of thing' # type: ignore[union-attr]
+        assert attr.parsed_type.to_text() == 'list[str]' # type: ignore[union-attr]
 
     finally:
         # cleanup
