@@ -1,5 +1,10 @@
 """
 Unit tests for model.
+
+@var test_introspection_pure_python_class_ivar: Test docstring, 
+    see test_introspection_pure_python_class_ivar() test.
+@var something_else_issue_903: Docstring for issue 903. 
+@type something_else_issue_903: set[bytes]
 """
 
 import subprocess
@@ -373,6 +378,35 @@ def test_introspection_python() -> None:
     func = module.contents['dummy_function_with_complex_signature']
     assert isinstance(func, model.Function)
     assert func.signature == signature(dummy_function_with_complex_signature)
+
+class Dummy2:
+    """
+    @ivar thing: My list of thing
+    @type thing: list[str]
+    """
+
+def test_introspection_pure_python_class_ivar() -> None:
+    # Test for issue https://github.com/twisted/pydoctor/issues/903
+    # part of the test rely on the fact that the docstring of this test function is defined
+    # as a var field at the top of this module. 
+
+    system = model.System()
+    system.introspectModule(Path(__file__), __name__, None)
+    system.process()
+
+    obj = system.objForFullName(__name__ + '.Dummy2.thing')
+    assert isinstance(obj, model.Attribute)
+    assert obj.parsed_docstring.to_text() == "My list of thing" # type: ignore
+    assert obj.parsed_type.to_text() == "list[str]" # type: ignore
+
+    obj2 = system.objForFullName(__name__ + '.test_introspection_pure_python_class_ivar')
+    assert isinstance(obj2, model.Function)
+    assert obj2.parsed_docstring.to_text().startswith('Test docstring') # type: ignore
+
+    obj3 =  system.objForFullName(__name__ + '.something_else_issue_903')
+    assert isinstance(obj3, model.Attribute)
+    assert obj3.parsed_docstring.to_text() == 'Docstring for issue 903.' # type: ignore
+    assert obj3.parsed_type.to_text() == 'set[bytes]' # type: ignore
 
 def test_introspection_extension() -> None:
     """Find docstrings from this test using introspection of an extension."""
