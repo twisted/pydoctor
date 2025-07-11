@@ -587,8 +587,8 @@ def test_c_module_class_ivar_and_datadescriptors(capsys:CapSys) -> None:
 
         attr = cls.contents['thing']
         assert isinstance(attr, model.Attribute)
-        assert attr.parsed_docstring.to_text() == 'My list of thing'
-        assert attr.parsed_type.to_text() == 'list[str]'
+        assert attr.parsed_docstring.to_text() == 'My list of thing' # type: ignore[union-attr]
+        assert attr.parsed_type.to_text() == 'list[str]' # type: ignore[union-attr]
 
     finally:
         # cleanup
