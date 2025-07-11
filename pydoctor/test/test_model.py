@@ -545,6 +545,55 @@ def test_c_module_python_module_name_clash(capsys:CapSys) -> None:
         # cleanup
         subprocess.getoutput(f'rm -f {package_path}/*.so')
 
+@pytest.mark.skipif("platform.python_implementation() == 'PyPy' or platform.system() == 'Windows'")
+def test_c_module_class_ivar_and_datadescriptors(capsys:CapSys) -> None:
+    # Test for issues 
+    # - https://github.com/twisted/pydoctor/issues/907 and
+    # - https://github.com/twisted/pydoctor/issues/903
+    # using a real C-module
+    project_path = testpackages / 'c_module_class_ivar_and_datadescriptors'
+    package_path = project_path / 'mymod'
+    
+    # build extension
+    try:
+        cwd = os.getcwd()
+        code, outstr = subprocess.getstatusoutput(f'cd {project_path} && python3 setup.py build_ext --inplace')
+        os.chdir(cwd)
+        
+        assert code==0, outstr
+        system = model.System()
+        system.options.introspect_c_modules = True
+
+        system.addPackage(package_path, None)
+        system.process()
+
+        mod = system.allobjects['mymod.base']
+        assert [mod] == list(system.allobjects['mymod'].contents.values())
+        assert list(mod.contents) == ['Base']
+        
+        # fetch the class
+        cls, = mod.contents.values()
+        assert isinstance(cls, model.Class)
+        assert cls.docstring
+        
+        # checks the attributes are there
+        attr = cls.contents['value']
+        assert isinstance(attr, model.Attribute)
+        assert attr.docstring == 'dummy value'
+
+        attr = cls.contents['number']
+        assert isinstance(attr, model.Attribute)
+        assert attr.docstring == 'dummy integer attribute'
+
+        attr = cls.contents['thing']
+        assert isinstance(attr, model.Attribute)
+        assert attr.parsed_docstring.to_text() == 'My list of thing'
+        assert attr.parsed_type.to_text() == 'list[str]'
+
+    finally:
+        # cleanup
+        subprocess.getoutput(f'rm -f {package_path}/*.so')
+
 def test_resolve_name_subclass(capsys:CapSys) -> None:
     """
     C{Model.resolveName} knows about single inheritance.
