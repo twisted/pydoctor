@@ -87,7 +87,7 @@ class HTMLTranslator(html4css1.HTMLTranslator):
                 # Direct access to OptionParser is deprecated from Docutils 0.19
                 settings = frontend.get_default_settings(html4css1.Writer())
             else:
-                settings = frontend.OptionParser([html4css1.Writer()]).get_default_values() # type: ignore
+                settings = frontend.OptionParser([html4css1.Writer()]).get_default_values()
             
             # Save default settings as class attribute not to re-compute it all the times
             self.__class__.settings = settings
@@ -103,10 +103,20 @@ class HTMLTranslator(html4css1.HTMLTranslator):
         # h1 is reserved for the page title. 
         self.section_level += 1
 
+        # All documents should be created with pydoctor.epydoc.docutils.new_document() helper
+        # such that the source attribute will always be one of the supported values.
+        self._document_is_code = is_code = document.attributes.get('source') == 'code'
+        if is_code:
+            # Do not wrap links in <code> tags if we're renderring a code-like parsed element.
+            self._link_xref = self._linker.link_xref
+        else:
+            self._link_xref = lambda target, label, lineno: Tag('code')(self._linker.link_xref(target, label, lineno))
+
+
     # Handle interpreted text (crossreferences)
     def visit_title_reference(self, node: nodes.title_reference) -> None:
         lineno = get_lineno(node)
-        self._handle_reference(node, link_func=partial(self._linker.link_xref, lineno=lineno))
+        self._handle_reference(node, link_func=partial(self._link_xref, lineno=lineno))
     
     # Handle internal references
     def visit_obj_reference(self, node: obj_reference) -> None:

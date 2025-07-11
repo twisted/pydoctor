@@ -3,8 +3,9 @@ The command-line parsing.
 """
 from __future__ import annotations
 
+import os
 import re
-from typing import Sequence, List, Optional, Type, Tuple, TYPE_CHECKING
+from typing import NamedTuple, Sequence, List, Optional, Type, Tuple, TYPE_CHECKING
 import sys
 import functools
 from pathlib import Path
@@ -221,6 +222,15 @@ def get_parser() -> ArgumentParser:
         help=MAX_AGE_HELP,
         metavar='DURATION',
     )
+        
+    parser.add_argument(
+        '--intersphinx-file', action='append', dest='intersphinx_file',
+        metavar='PATH_TO_OBJECTS.INV[::BASE_URL]', default=[], 
+        help=(
+            "Use Sphinx objects inventory file to generate links to external "
+            "documentation. If the optional base URL is provided, the links "
+            "will be made relative to this base URL. Can be repeated."))
+    
     parser.add_argument(
         '--pyval-repr-maxlines', dest='pyvalreprmaxlines', default=7, type=int, metavar='INT',
         help='Maxinum number of lines for a constant value representation. Use 0 for unlimited.')
@@ -306,6 +316,52 @@ def _convert_htmlbaseurl(url:str | None) -> str | None:
     if url and not url.endswith('/'): 
         url += '/'
     return url
+class IntersphinxFile(NamedTuple):
+    filepath: str | os.PathLike[str]
+    base_url: str | None
+def _parse_intersphinx_file(s: str) -> IntersphinxFile:
+    '''
+    Function returning a tuple (inventory file, base_url) for the 
+    intersphinx-file commandline argument. Used double commas because the simple comma
+    might conflict with windows drive names.
+
+    >>> _parse_intersphinx_file('c:/one::https://two/')
+    IntersphinxFile(filepath='c:/one', base_url='https://two/')
+    >>> _parse_intersphinx_file('c:/one')
+    IntersphinxFile(filepath='c:/one', base_url=None)
+    >>> _parse_intersphinx_file('three::c:/one::https://two/')
+    Traceback (most recent call last):
+    ...
+    ValueError: delimiter '::' when used, must be present only once per --interspinx-file option
+    >>> _parse_intersphinx_file('::one')
+    Traceback (most recent call last):
+    ...
+    ValueError: delimiter '::' must be present in between two non-empty strings
+    >>> _parse_intersphinx_file('one::')
+    Traceback (most recent call last):
+    ...
+    ValueError: delimiter '::' must be present in between two non-empty strings
+    >>> _parse_intersphinx_file('::::')
+    Traceback (most recent call last):
+    ...
+    ValueError: delimiter '::' when used, must be present only once per --interspinx-file option
+    '''
+    sep = '::'
+    if sep in s:
+        try:
+            filename, base_url = s.split(sep)
+        except ValueError:
+            raise ValueError(f'delimiter {sep!r} when used, must be present only once per --interspinx-file option')
+        if any(not v for v in [filename, base_url]):
+            raise ValueError(f'delimiter {sep!r} must be present in between two non-empty strings')
+        return IntersphinxFile(filename, base_url)
+    else:
+        return IntersphinxFile(s, None)
+def _convert_intersphinx_file(files: list[str]) -> list[IntersphinxFile]:
+    try:
+        return list(map(_parse_intersphinx_file, files))
+    except ValueError as e:
+        error(str(e))
 
 _RECOGNIZED_SOURCE_HREF = {
         # Sourceforge
@@ -381,6 +437,7 @@ class Options:
     intersphinx_cache_path:     str                                 = attr.ib()
     clear_intersphinx_cache:    bool                                = attr.ib()
     intersphinx_cache_max_age:  str                                 = attr.ib()
+    intersphinx_file:       list[IntersphinxFile]                   = attr.ib(converter=_convert_intersphinx_file)
     pyvalreprlinelen:       int                                     = attr.ib()
     pyvalreprmaxlines:      int                                     = attr.ib()
     sidebarexpanddepth:     int                                     = attr.ib()

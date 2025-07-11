@@ -1,4 +1,4 @@
-from typing import List
+from typing import Any, List
 from textwrap import dedent
 from pydoctor.epydoc.markup import ParseError, get_parser_by_name
 from pydoctor.test.epydoc.test_restructuredtext import prettify
@@ -8,11 +8,9 @@ from pydoctor.test.epydoc import parse_docstring
 from pydoctor.test.test_epydoc2stan import docstring2html
 from pydoctor.test.test_astbuilder import fromText
 from pydoctor.stanutils import flatten
-from pydoctor.napoleon.docstring import TokenType
 from pydoctor.epydoc.markup._types import ParsedTypeDocstring
 import pydoctor.epydoc.markup
 from pydoctor import model
-from twisted.web.template import Tag
 
 
 def doc2html(doc: str, markup: str, processtypes: bool = False) -> str:
@@ -40,23 +38,6 @@ def test_to_node_markup() -> None:
     for epystr, rststr in cases:
         assert doc2html(rststr, 'restructuredtext') == doc2html(epystr, 'epytext')
 
-def test_parsed_type_convert_obj_tokens_to_stan() -> None:
-    
-    convert_obj_tokens_cases = [
-                ([("list", TokenType.OBJ), ("(", TokenType.DELIMITER), ("int", TokenType.OBJ), (")", TokenType.DELIMITER)], 
-                [(Tag('code', children=['list', '(', 'int', ')']), TokenType.OBJ)]),    
-
-                ([("list", TokenType.OBJ), ("(", TokenType.DELIMITER), ("int", TokenType.OBJ), (")", TokenType.DELIMITER), (", ", TokenType.DELIMITER), ("optional", TokenType.CONTROL)], 
-                [(Tag('code', children=['list', '(', 'int', ')']), TokenType.OBJ), (", ", TokenType.DELIMITER), ("optional", TokenType.CONTROL)]),
-            ]
-
-    ann = ParsedTypeDocstring("")
-
-    for tokens_types, expected_token_types in convert_obj_tokens_cases:
-
-        assert str(ann._convert_obj_tokens_to_stan(tokens_types, NotFoundLinker()))==str(expected_token_types)
-
-
 def typespec2htmlvianode(s: str, markup: str) -> str:
     err: List[ParseError] = []
     parsed_doc = get_parser_by_name(markup)(s, err)
@@ -66,29 +47,23 @@ def typespec2htmlvianode(s: str, markup: str) -> str:
     assert not ann.warnings
     return html
 
-def typespec2htmlviastr(s: str) -> str:
-    ann = ParsedTypeDocstring(s, warns_on_unknown_tokens=True)
-    html = flatten(ann.to_stan(NotFoundLinker()))
-    assert not ann.warnings
-    return html
-
-def test_parsed_type() -> None:
+def test_parsed_type(subtests: Any) -> None:
     
     parsed_type_cases = [
         ('list of int or float or None', 
-        '<code>list</code> of <code>int</code> or <code>float</code> or <code>None</code>'),
+        '<code><a>list</a> of <a>int</a> or <a>float</a> or <a>None</a></code>'),
 
         ("{'F', 'C', 'N'}, default 'N'",
-        """<span class="literal">{'F', 'C', 'N'}</span>, <em>default</em> <span class="literal">'N'</span>"""),
+        """<code><span class="rst-variable-string">{'F', 'C', 'N'}</span>, <em>default</em> <span class="rst-variable-string">'N'</span></code>"""),
 
         ("DataFrame, optional",
-        "<code>DataFrame</code>, <em>optional</em>"),
+        """<code><a>DataFrame</a>, <em>optional</em></code>"""),
 
         ("List[str] or list(bytes), optional", 
-        "<code>List[str]</code> or <code>list(bytes)</code>, <em>optional</em>"),
+        """<code><a>List</a>[<a>str</a>] or <a>list</a>(<a>bytes</a>), <em>optional</em></code>"""),
 
         (('`complicated string` or `strIO <twisted.python.compat.NativeStringIO>`', 'L{complicated string} or L{strIO <twisted.python.compat.NativeStringIO>}'),
-        '<code>complicated string</code> or <code>strIO</code>'),
+        '<code><a>complicated string</a> or <a>strIO</a></code>'),
     ]
 
     for string, excepted_html in parsed_type_cases:
@@ -99,10 +74,11 @@ def test_parsed_type() -> None:
             rst_string, epy_string = string
         elif isinstance(string, str):
             rst_string = epy_string = string
+
+        with subtests.test('parse type', rst=rst_string, epy=epy_string):
         
-        assert typespec2htmlviastr(rst_string) == excepted_html
-        assert typespec2htmlvianode(rst_string, 'restructuredtext') == excepted_html            
-        assert typespec2htmlvianode(epy_string, 'epytext') == excepted_html
+            assert typespec2htmlvianode(rst_string, 'restructuredtext') == excepted_html            
+            assert typespec2htmlvianode(epy_string, 'epytext') == excepted_html
 
 def test_processtypes(capsys: CapSys) -> None:
     """
@@ -137,7 +113,7 @@ def test_processtypes(capsys: CapSys) -> None:
             ), 
 
                 ("list of int or float or None", 
-                "<code>list</code> of <code>int</code> or <code>float</code> or <code>None</code>")
+                '<code><a>list</a> of <a>int</a> or <a>float</a> or <a>None</a></code>')
 
         ),
 
@@ -166,8 +142,8 @@ def test_processtypes(capsys: CapSys) -> None:
                 """,
             ), 
 
-                ("<code>complicated string</code> or <code>strIO</code>, optional", 
-                "<code>complicated string</code> or <code>strIO</code>, <em>optional</em>")
+                ("<code><a>complicated string</a></code> or <code><a>strIO</a></code>, optional", 
+                '<code><a>complicated string</a> or <a>strIO</a>, <em>optional</em></code>')
 
         ),
 
@@ -199,8 +175,8 @@ def test_processtypes_more() -> None:
                   Whether it's not working.
               """, 
               """<ul class="rst-simple">
-<li><strong>working</strong>: <code>bool</code> - Whether it's working.</li>
-<li><strong>not_working</strong>: <code>bool</code> - Whether it's not working.</li>
+<li><strong>working</strong>: <code><a>bool</a></code> - Whether it's working.</li>
+<li><strong>not_working</strong>: <code><a>bool</a></code> - Whether it's not working.</li>
 </ul>"""), 
 
               ("""
@@ -212,8 +188,8 @@ def test_processtypes_more() -> None:
                   the content description.
                """, 
                """<ul class="rst-simple">
-<li><strong>name</strong>: <code>str</code> - the name description.</li>
-<li><strong>content</strong>: <code>str</code> - the content description.</li>
+<li><strong>name</strong>: <code><a>str</a></code> - the name description.</li>
+<li><strong>content</strong>: <code><a>str</a></code> - the content description.</li>
 </ul>"""),
               ]
     
@@ -240,10 +216,10 @@ def test_processtypes_with_system(capsys: CapSys) -> None:
     captured = capsys.readouterr().out
     assert not captured
 
-    assert "<code>list</code> of <code>int</code> or <code>float</code> or <code>None</code>" == fmt
+    assert '<code><a>list</a> of <a>int</a> or <a>float</a> or <a>None</a></code>' == fmt
     
 
-def test_processtypes_corner_cases(capsys: CapSys) -> None:
+def test_processtypes_corner_cases(capsys: CapSys, subtests: Any) -> None:
     """
     The corner cases does not trigger any warnings because they are still valid types.
     
@@ -251,13 +227,20 @@ def test_processtypes_corner_cases(capsys: CapSys) -> None:
     we should be careful with triggering warnings because whether the type spec triggers warnings is used
     to check is a string is a valid type or not.  
     """
-    def process(typestr: str) -> str:
+    def _process(typestr: str, fails:bool=False, docformat:str='both') -> str:
+        if docformat == 'both':
+            str1 = _process(typestr, fails, 'epytext')
+            str2 = _process(typestr, fails, 'restructuredtext')
+            assert str1 == str2
+            return str1
+        
         system = model.System()
         system.options.processtypes = True
         mod = fromText(f'''
+        __docformat__ = '{docformat}'
         a = None
         """
-        @type: {typestr}
+        {'@' if docformat == 'epytext' else ':'}type: {typestr}
         """
         ''', modname='test', system=system)
         a = mod.contents['a']
@@ -265,32 +248,43 @@ def test_processtypes_corner_cases(capsys: CapSys) -> None:
 
         assert isinstance(a.parsed_type, ParsedTypeDocstring)
         fmt = flatten(a.parsed_type.to_stan(NotFoundLinker()))
+        assert fmt.startswith(b:='<code>')
+        assert fmt.endswith(e:='</code>')
+        fmt = fmt[len(b):-(len(e))]
         
-        captured = capsys.readouterr().out
-        assert not captured
+        if not fails:
+            captured = capsys.readouterr().out
+            assert not captured
 
         return fmt
 
-    assert process('default[str]')                          == "<em>default</em>[<code>str]</code>"
-    assert process('[str]')                                 == "[<code>str]</code>"
-    assert process('[,]')                                   == "[, ]"
-    assert process('[[]]')                                  == "[[]]"
-    assert process(', [str]')                               == ", [<code>str]</code>"
-    assert process(' of [str]')                             == "of[<code>str]</code>"
-    assert process(' or [str]')                             == "or[<code>str]</code>"
-    assert process(': [str]')                               == ": [<code>str]</code>"
-    assert process("'hello'[str]")                          == "<span class=\"literal\">'hello'</span>[<code>str]</code>"
-    assert process('"hello"[str]')                          == "<span class=\"literal\">\"hello\"</span>[<code>str]</code>"
-    assert process('`hello`[str]')                          == "<code>hello</code>[<code>str]</code>"
-    assert process('`hello <https://github.com>`_[str]')    == """<a class="rst-external rst-reference" href="https://github.com" target="_top">hello</a>[<code>str]</code>"""
-    assert process('**hello**[str]')                        == "<strong>hello</strong>[<code>str]</code>"
-    assert process('["hello" or str, default: 2]')          == """[<span class="literal">"hello"</span> or <code>str</code>, <em>default</em>: <span class="literal">2</span>]"""
+    def process(input:str, expected:str, fails:bool=False, docformat:str='both') -> None:
+        # both is for epytext and restructuredtext
+        with subtests.test(msg="processtypes", input=input):
+            actual = _process(input, fails=fails, docformat=docformat)
+            assert actual == expected
 
-    # HTML ids for problematic elements changed in docutils 0.18.0, and again in 0.19.0, so we're not testing for the exact content anymore.
+    process('default[str]',                       "<em>default</em>[<a>str</a>]")
+    process('[str]',                              "[<a>str</a>]")
+    process('[,]',                                "[, ]")
+    process('[[]]',                               "[[]]")
+    process(', [str]',                            ", [<a>str</a>]")
+    process(' of [str]',                          "of [<a>str</a>]")
+    process(' or [str]',                          "or [<a>str</a>]")
+    process(': [str]',                            ': [<a>str</a>]')
+    process("'hello'[str]",                      "<span class=\"rst-variable-string\">'hello'</span>[<a>str</a>]")
+    process('"hello"[str]',                       "<span class=\"rst-variable-string\">\"hello\"</span>[<a>str</a>]")
+    process('["hello" or str, default: 2]',       """[<span class="rst-variable-string">"hello"</span> or <a>str</a>, <em>default</em>: <span class="rst-variable-string">2</span>]""")
     
-    problematic = process('Union[`hello <>`_[str]]')
-    assert "`hello &lt;&gt;`_" in problematic
-    assert "<code>str" in problematic
+    process('`hello`[str]',                       "`hello`[<a>str</a>]", fails=True, docformat='restructuredtext')
+    process('`hello <https://github.com>`_[str]', """`hello &lt;<a class="rst-external rst-reference" href="https://github.com" target="_top">https://github.com</a>&gt;`_[<a>str</a>]""", fails=True, docformat='restructuredtext')
+    process('**hello**[str]',                     "**hello**[<a>str</a>]", fails=True, docformat='restructuredtext')
+   
+    # HTML ids for problematic elements changed in docutils 0.18.0, and again in 0.19.0, so we're not testing for the exact content anymore.
+    with subtests.test(msg="processtypes", input='Union[`hello <>`_[str]]'):
+        problematic = _process('Union[`hello <>`_[str]]', fails=True, docformat='restructuredtext')
+        assert "`hello &lt;&gt;`_" in problematic
+        assert "<a>str</a>" in problematic
  
 def test_processtypes_warning_unexpected_element(capsys: CapSys) -> None:
     
@@ -311,7 +305,7 @@ def test_processtypes_warning_unexpected_element(capsys: CapSys) -> None:
         >>> print('example')
     """
 
-    expected = """<code>complicated string</code> or <code>strIO</code>, <em>optional</em>"""
+    expected = """<code><a>complicated string</a> or <a>strIO</a>, <em>optional</em></code>"""
     
     # Test epytext
     epy_errors: List[ParseError] = []
@@ -387,14 +381,14 @@ def test_napoleon_types_warnings(capsys: CapSys) -> None:
     # which includes much more lines because of the :type arg: fields. 
     assert '\n'.join(lines) == '''\
 warns:13: bad docstring: invalid type: 'docformatCan be one of'. Probably missing colon.
-warns:7: bad docstring: unbalanced parenthesis in type expression
-warns:9: bad docstring: unbalanced square braces in type expression
-warns:11: bad docstring: invalid value set (missing closing brace): {1
-warns:13: bad docstring: invalid value set (missing opening brace): 3}
-warns:15: bad docstring: malformed string literal (missing closing quote): '2
-warns:17: bad docstring: malformed string literal (missing opening quote): 2"
-warns:24: bad docstring: Unexpected element in type specification field: element 'doctest_block'. This value should only contain text or inline markup.
-warns:28: bad docstring: Unexpected element in type specification field: element 'paragraph'. This value should only contain text or inline markup.'''
+warns:6: bad docstring: unbalanced parenthesis in type expression
+warns:8: bad docstring: unbalanced square braces in type expression
+warns:10: bad docstring: invalid value set (missing closing brace): {1
+warns:12: bad docstring: invalid value set (missing opening brace): 3}
+warns:14: bad docstring: malformed string literal (missing closing quote): '2
+warns:16: bad docstring: malformed string literal (missing opening quote): 2"
+warns:23: bad docstring: Unexpected element in type specification field: element 'doctest_block'. This value should only contain text or inline markup.
+warns:27: bad docstring: Unexpected element in type specification field: element 'paragraph'. This value should only contain text or inline markup.'''
 
 def test_process_types_with_consolidated_fields(capsys: CapSys) -> None:
     """
@@ -423,4 +417,82 @@ def test_process_types_with_consolidated_fields(capsys: CapSys) -> None:
     lines = [line for line in capsys.readouterr().out.splitlines() if 'Cannot find link target' not in line]
     assert not lines
     assert '<code>int</code>' in html
-    
+
+def test_process_types_doesnt_mess_with_warning_linenumber(capsys: CapSys) -> None:
+    src = '''
+    __docformat__ = 'epytext'
+    class ConfigFileParser(object):
+        """doc"""
+
+        def parse(self, stream, stuff):
+            """
+            Parses the keys and values from a config file.
+
+            @param stream: A config file input stream (such as an open file object).
+            @type stream: (notfound, thing[)
+            @param stuff: Stuff
+            @type stuff: array_like, with L{np.bytes_} or L{np.str_} dtype
+            """
+    '''
+    system = model.System()
+    system.options.processtypes = True
+    mod = fromText(src, system=system)
+    docstring2html(mod.contents['ConfigFileParser'].contents['parse'])
+    # These linenumbers, are correct.
+    assert capsys.readouterr().out.splitlines() == [
+        '<test>:11: bad docstring: unbalanced square braces in type expression', 
+        '<test>:11: Cannot find link target for "notfound"', 
+        '<test>:11: Cannot find link target for "thing"', 
+        '<test>:13: Cannot find link target for "array_like"', 
+        '<test>:13: Cannot find link target for "np.bytes_" (you can link to external docs with --intersphinx)', 
+        '<test>:13: Cannot find link target for "np.str_" (you can link to external docs with --intersphinx)'
+        ]
+
+def test_process_types_doesnt_mess_with_warning_linenumber_rst(capsys: CapSys) -> None:
+    src = '''
+    __docformat__ = 'restructuredtext'
+    class ConfigFileParser(object):
+        """doc"""
+
+        def parse(self, stream, stuff):
+            """
+            Parses the keys and values from a config file.
+            
+            :param stream: A config file input stream (such as an open file object).
+            :type stream: (notfound, thing[)
+            :param stuff: Stuff
+            :type stuff: array_like, with `np.bytes_` or `np.str_` dtype
+            """
+    '''
+    system = model.System()
+    system.options.processtypes = True
+    mod = fromText(src, system=system)
+    html = docstring2html(mod.contents['ConfigFileParser'].contents['parse'])
+    assert 'np.bytes_' in html
+    # These linenumbers, are correct.
+    assert capsys.readouterr().out.splitlines() == [
+        '<test>:11: bad docstring: unbalanced square braces in type expression', 
+        '<test>:11: Cannot find link target for "notfound"', 
+        '<test>:11: Cannot find link target for "thing"', 
+        '<test>:13: Cannot find link target for "array_like"', 
+        '<test>:13: Cannot find link target for "np.bytes_" (you can link to external docs with --intersphinx)', 
+        '<test>:13: Cannot find link target for "np.str_" (you can link to external docs with --intersphinx)'
+        ]
+
+def test_bug_attribute_type_not_found_reports_only_once(capsys:CapSys) -> None:
+    src = '''
+    __docformat__ = 'numpy'
+    class MachAr:
+        """
+        Diagnosing machine parameters.
+
+        Attributes
+        ----------
+        ibeta : int
+            Radix in which numbers are represented.
+        """
+    '''
+
+    mod = fromText(src)
+    [docstring2html(o) for o in mod.system.allobjects.values()]
+    assert capsys.readouterr().out.splitlines() == ['<test>:8: Cannot find link target for "int"']

@@ -339,7 +339,7 @@ class PyvalColorizer:
             is_complete = True
         
         # Put it all together.
-        document = new_document('pyval_repr')
+        document = new_document('code')
         # This ensure the .parent and .document attributes of the child nodes are set correcly.
         set_node_attributes(document, children=[set_node_attributes(node, document=document) for node in state.result])
         return ColorizedPyvalRepr(document, is_complete, state.warnings)

@@ -14,22 +14,30 @@ from typing import (
     Type, TypeVar, Union, Set, cast
 )
 
+import attr
+
 from pydoctor import epydoc2stan, model, extensions
 from pydoctor.astutils import (is_none_literal, is_typing_annotation, is_using_annotations, is_using_typing_final, node2dottedname, node2fullname, 
                                is__name__equals__main__, unstring_annotation, upgrade_annotation, iterassign, extract_docstring_linenum, infer_type, get_parents,
                                get_docstring_node, get_assign_docstring_node, unparse, NodeVisitor, Parentage, Str)
 from pydoctor.tokenutils import extract_doc_comment_before, extract_doc_comment_after
 
+@attr.s(auto_attribs=True)
+class ParsedAstModule:
+    root: ast.Module
+    lines: Sequence[str]
 
-def parseFile(path: Path) -> tuple[ast.Module, Sequence[str]]:
+def parseFile(path: Path) -> ParsedAstModule:
     """
     Parse the contents of a Python source file.
 
-    @returns: Tuple: ast module, sequence of source code lines.
+    @returns: The ast module and it's source code lines as L{ParsedModule} instance.
     """
     with tokenize.open(path) as f: 
         src = f.read() + '\n'
-    return _parse(src, filename=str(path)), src.splitlines(keepends=True)
+    return ParsedAstModule(
+        _parse(src, filename=str(path)), 
+        src.splitlines(keepends=True))
 
 _parse = partial(ast.parse, type_comments=True)
 
@@ -1192,8 +1200,26 @@ class ASTBuilder:
         self.currentMod: Optional[model.Module] = None #: module, set when visiting ast.Module
         
         self._stack: List[model.Documentable] = []
-        self.ast_cache: Dict[Path, Optional[ast.Module]] = {} #: avoids calling parse() twice for the same path
-        self.lines_collection: dict[model.Module, Sequence[str] | None] = {} #: mapping from modules to source code lines 
+
+        self.lines_collection: dict[model.Module, Sequence[str] | None] = {} #: mapping from modules to their source code lines 
+    
+    def parseFile(self, path: Path, ctx: model.Module) -> Optional[ast.Module]:
+        try:
+            parsed = self.system._ast_parser.parseFile(path)
+        except Exception as e:
+            ctx.report(f"cannot parse file, {e}")
+            return None
+        self.lines_collection[ctx] = parsed.lines
+        return parsed.root
+    
+    def parseString(self, string:str, ctx: model.Module) -> Optional[ast.Module]:
+        try:
+            parsed = self.system._ast_parser.parseString(string)
+        except Exception:
+            ctx.report("cannot parse string")
+            return None
+        self.lines_collection[ctx] = parsed.lines
+        return parsed.root
 
     def _push(self, 
               cls: Type[DocumentableT], 
@@ -1299,32 +1325,54 @@ class ASTBuilder:
         vis.extensions.attach_visitor(vis)
         vis.walkabout(mod_ast)
 
-    def parseFile(self, path: Path, ctx: model.Module) -> Optional[ast.Module]:
-        try:
-            return self.ast_cache[path]
-        except KeyError:
-            mod: Optional[ast.Module] = None
-            lines: Sequence[str] | None = None
-            try:
-                mod, lines = parseFile(path)
-            except (SyntaxError, ValueError) as e:
-                ctx.report(f"cannot parse file, {e}")
+class AstParseError:
+    """
+    Parse errors are cached as instances of this class instead of bare exceptions
+    in order to avoid cycles with the locals. 
+    """
 
-            self.ast_cache[path] = mod
-            self.lines_collection[ctx] = lines
-            return mod
+    def __init__(self, exception: type[Exception], args: tuple[Any, ...]):
+        self._exce = exception
+        self._args = args
     
-    def parseString(self, py_string:str, ctx: model.Module) -> Optional[ast.Module]:
-        mod: Optional[ast.Module] = None
-        lines: Sequence[str] | None = None
+    def exception(self) -> Exception:
+        return self._exce(*self._args)
+
+class SyntaxTreeParser:
+    """
+    Responsible to read files and cache their parsed tree.
+    """
+    def __init__(self) -> None:
+        self.ast_cache: Dict[Path, ParsedAstModule | AstParseError] = {}
+
+    def parseFile(self, path: Path) -> ParsedAstModule:
         try:
-            mod, lines = _parse(py_string), py_string.splitlines(keepends=True)
-        except (SyntaxError, ValueError):
-            ctx.report("cannot parse string")
-        self.lines_collection[ctx] = lines
-        return mod
+            r = self.ast_cache[path]
+        except KeyError:
+            parsed: ParsedAstModule | AstParseError
+            try:
+                parsed = parseFile(path)
+                return parsed
+            except Exception as e:
+                parsed = AstParseError(type(e), e.args)
+                raise
+            finally:
+                self.ast_cache[path] = parsed
+        else:
+            if isinstance(r, AstParseError):
+                raise r.exception()
+            return r
+    
+    def parseString(self, string:str) -> ParsedAstModule:
+        mod = None
+        try:
+            mod = _parse(string)
+        except (SyntaxError, ValueError) as e:
+            raise SyntaxError("cannot parse string") from e
+        return ParsedAstModule(mod, string.splitlines(keepends=True))
 
 model.System.defaultBuilder = ASTBuilder
+model.System.syntaxTreeParser = SyntaxTreeParser
 
 def findModuleLevelAssign(mod_ast: ast.Module) -> Iterator[Tuple[str, ast.Assign]]:
     """

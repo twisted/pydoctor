@@ -5,66 +5,35 @@ This module provides yet another L{ParsedDocstring} subclass.
 """
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, List, Tuple, Union, cast
+from typing import Callable, Dict
 
-from pydoctor.epydoc.markup import DocstringLinker, ParseError, ParsedDocstring, get_parser_by_name
-from pydoctor.node2stan import node2stan
-from pydoctor.napoleon.docstring import TokenType, TypeDocstring
+from pydoctor.epydoc.markup import ParsedDocstring
+from pydoctor.epydoc.markup._pyval_repr import PyvalColorizer
+from pydoctor.napoleon.docstring import TokenType, ITokenizer, Tokenizer
+from pydoctor.epydoc.docutils import new_document, set_node_attributes, code
 
 from docutils import nodes
-from twisted.web.template import Tag, tags
 
-class ParsedTypeDocstring(TypeDocstring, ParsedDocstring):
+class NodeTokenizer(ITokenizer[nodes.document]):
     """
-    Add L{ParsedDocstring} interface on top of L{TypeDocstring} and 
-    allow to parse types from L{nodes.Node} objects, providing the C{--process-types} option.
+    A type tokenizer for annotation as docutils L{document <nodes.document>}.
     """
 
-    FIELDS = ('type', 'rtype', 'ytype', 'returntype', 'yieldtype')
+    def __init__(self, annotation: nodes.document, *, 
+                 warns_on_unknown_tokens: bool) -> None:
+        # build tokens and warnings
+        self.warnings = warnings = [] # type: list[str]
+        raw_tokens = Tokenizer.recombine_sets(self.tokenize_document(annotation, warnings))
+        self.tokens = Tokenizer.build(raw_tokens, warnings, warns_on_unknown_tokens)
     
-    #                                                   yes this overrides the superclass type!
-    _tokens: list[tuple[str | nodes.Node, TokenType]] # type: ignore
-
-    def __init__(self, annotation: Union[nodes.document, str],
-                 warns_on_unknown_tokens: bool = False, lineno: int = 0) -> None:
-        ParsedDocstring.__init__(self, ())
-        if isinstance(annotation, nodes.document):
-            TypeDocstring.__init__(self, '', warns_on_unknown_tokens)
-
-            _tokens = self._tokenize_node_type_spec(annotation)
-            self._tokens = cast('list[tuple[str | nodes.Node, TokenType]]', 
-                                self._build_tokens(_tokens))
-            self._trigger_warnings()
-        else:
-            TypeDocstring.__init__(self, annotation, warns_on_unknown_tokens)
-        
-        
-        # We need to store the line number because we need to pass it to DocstringLinker.link_xref
-        self._lineno = lineno
-
-    @property
-    def has_body(self) -> bool:
-        return len(self._tokens)>0
-
-    def to_node(self) -> nodes.document:
-        """
-        Not implemented at this time :/
-        """
-        #TODO: Fix this soon - PR https://github.com/twisted/pydoctor/pull/874
-        raise NotImplementedError()
-
-    def to_stan(self, docstring_linker: DocstringLinker) -> Tag:
-        """
-        Present the type as a stan tree. 
-        """
-        return self._convert_type_spec_to_stan(docstring_linker)
-
-    def _tokenize_node_type_spec(self, spec: nodes.document) -> List[Union[str, nodes.Node]]:
+    @staticmethod
+    def tokenize_document(spec: nodes.document, warnings: list[str]) -> list[str | nodes.Node]:
         def _warn_not_supported(n:nodes.Node) -> None:
-            self.warnings.append(f"Unexpected element in type specification field: element '{n.__class__.__name__}'. "
-                                    "This value should only contain text or inline markup.")
+            warnings.append("Unexpected element in type specification field: "
+                                 f"element '{n.__class__.__name__}'. This value should "
+                                 "only contain text or inline markup.")
 
-        tokens: List[Union[str, nodes.Node]] = []
+        tokens: list[str | nodes.Node] = []
         # Determine if the content is nested inside a paragraph
         # this is generally the case, except for consolidated fields generate documents.
         if spec.children and isinstance(spec.children[0], nodes.paragraph):
@@ -77,7 +46,7 @@ class ParsedTypeDocstring(TypeDocstring, ParsedDocstring):
         for child in children:
             if isinstance(child, nodes.Text):
                 # Tokenize the Text node with the same method TypeDocstring uses.
-                tokens.extend(TypeDocstring._tokenize_type_spec(child.astext()))
+                tokens.extend(Tokenizer.tokenize_str(child.astext()))
             elif isinstance(child, nodes.Inline):
                 tokens.append(child)
             else:
@@ -85,97 +54,80 @@ class ParsedTypeDocstring(TypeDocstring, ParsedDocstring):
         
         return tokens
 
-    def _convert_obj_tokens_to_stan(self, tokens: List[Tuple[Any, TokenType]], 
-                                    docstring_linker: DocstringLinker) -> list[tuple[Any, TokenType]]:
-        """
-        Convert L{TokenType.OBJ} and PEP 484 like L{TokenType.DELIMITER} type to stan, merge them together. Leave the rest untouched. 
 
-        Exemple:
+class ParsedTypeDocstring(ParsedDocstring):
+    """
+    Add L{ParsedDocstring} interface on top of L{TypeDocstring} and 
+    allow to parse types from L{nodes.Node} objects, 
+    providing the C{--process-types} option.
+    """
 
-        >>> tokens = [("list", TokenType.OBJ), ("(", TokenType.DELIMITER), ("int", TokenType.OBJ), (")", TokenType.DELIMITER)]
-        >>> ann._convert_obj_tokens_to_stan(tokens, NotFoundLinker())
-        ... [(Tag('code', children=['list', '(', 'int', ')']), TokenType.OBJ)]
-        
-        @param tokens: List of tuples: C{(token, type)}
-        """
+    FIELDS = ('type', 'rtype', 'ytype', 'returntype', 'yieldtype')
 
-        combined_tokens: list[tuple[Any, TokenType]] = []
+    def __init__(self, annotation: nodes.document, 
+                 warns_on_unknown_tokens: bool = False, 
+                 lineno: int = 0) -> None:
+        super().__init__(fields=())
 
-        open_parenthesis = 0
-        open_square_braces = 0
+        tokenizer = NodeTokenizer(annotation, 
+                              warns_on_unknown_tokens=warns_on_unknown_tokens)
+        self._tokens = tokenizer.tokens
+        self.warnings = tokenizer.warnings
+        self._lineno = lineno
+        self._document = self._parse_tokens()
 
-        for _token, _type in tokens:
-            # The actual type of_token is str | Tag | Node. 
+    @property
+    def has_body(self) -> bool:
+        return len(self._tokens)>0
 
-            if (_type is TokenType.DELIMITER and _token in ('[', '(', ')', ']')) \
-               or _type is TokenType.OBJ: 
-                if _token == "[": open_square_braces += 1
-                elif _token == "(": open_parenthesis += 1
+    def to_node(self) -> nodes.document:
+        return self._document
 
-                if _type is TokenType.OBJ:
-                    _token = docstring_linker.link_xref(
-                                _token, _token, self._lineno)
-
-                if open_square_braces + open_parenthesis > 0:
-                    try: last_processed_token = combined_tokens[-1]
-                    except IndexError:
-                        combined_tokens.append((_token, _type))
-                    else:
-                        if last_processed_token[1] is TokenType.OBJ \
-                           and isinstance(last_processed_token[0], Tag):
-                            # Merge with last Tag
-                            if _type is TokenType.OBJ:
-                                assert isinstance(_token, Tag)
-                                last_processed_token[0](*_token.children)
-                            else:
-                                last_processed_token[0](_token)
-                        else:
-                            combined_tokens.append((_token, _type))
-                else:
-                    combined_tokens.append((_token, _type))
-                
-                if _token == "]": open_square_braces -= 1
-                elif _token == ")": open_parenthesis -= 1
-
-            else:
-                # the token will be processed in _convert_type_spec_to_stan() method.
-                combined_tokens.append((_token, _type))
-
-        return combined_tokens
-
-    def _convert_type_spec_to_stan(self, docstring_linker: DocstringLinker) -> Tag:
-        """
-        Convert type to L{Tag} object.
-        """
-
-        tokens = self._convert_obj_tokens_to_stan(self._tokens, docstring_linker)
-
-        warnings: List[ParseError] = []
-
-        converters: Dict[TokenType, Callable[[Union[str, Tag]], Union[str, Tag]]] = {
-            TokenType.LITERAL:      lambda _token: tags.span(_token, class_="literal"),
-            TokenType.CONTROL:      lambda _token: tags.em(_token),
-            # We don't use safe_to_stan() here, if these converter functions raise an exception, 
-            # the whole type docstring will be rendered as plaintext.
-            # it does not crash on invalid xml entities
-            TokenType.REFERENCE:    lambda _token: get_parser_by_name('restructuredtext')(_token, warnings).to_stan(docstring_linker) if isinstance(_token, str) else _token, 
-            TokenType.UNKNOWN:      lambda _token: get_parser_by_name('restructuredtext')(_token, warnings).to_stan(docstring_linker) if isinstance(_token, str) else _token, 
-            TokenType.OBJ:          lambda _token: _token, # These convertions (OBJ and DELIMITER) are done in _convert_obj_tokens_to_stan().
-            TokenType.DELIMITER:    lambda _token: _token, 
-            TokenType.ANY:          lambda _token: _token, 
+    _converters: Dict[TokenType, Callable[[str, int], nodes.Node]] = {
+            TokenType.LITERAL: lambda _token, _: nodes.inline(
+                                         # we're re-using the STRING_TAG css 
+                                         # class for the whole literal token, it's the
+                                         # best approximation we have for now. 
+                _token, _token, classes=[PyvalColorizer.STRING_TAG]),
+            TokenType.CONTROL: lambda _token, _: nodes.emphasis(_token, _token),
+            TokenType.OBJ: lambda _token, lineno: set_node_attributes(
+                nodes.title_reference(_token, _token), lineno=lineno),
         }
 
-        for w in warnings:
-            self.warnings.append(w.descr())
+    def _parse_tokens(self) -> nodes.document:
+        """
+        Convert type to docutils document object.
+        """
 
-        converted = Tag('')
+        document = new_document('code')
 
-        for token, type_ in tokens:
+        converters = self._converters
+        lineno = self._lineno
+
+        elements: list[nodes.Node] = []
+        default = lambda _token, _: nodes.Text(_token)
+
+        for _tok in self._tokens:
+            token, type_ = _tok.value, _tok.type
             assert token is not None
-            if isinstance(token, nodes.Node):
-                token = node2stan(token, docstring_linker)
-            assert isinstance(token, (str, Tag))
-            converted_token = converters[type_](token)
-            converted(converted_token)
+            converted_token: nodes.Node
+            
+            if type_ is TokenType.ANY:
+                assert isinstance(token, nodes.Node)
+                converted_token = token
+            else:
+                assert isinstance(token, str)
+                converted_token = converters.get(type_, default)(token, lineno)
 
-        return converted
+            elements.append(set_node_attributes(converted_token, 
+                                                    document=document))
+
+        return set_node_attributes(document, children=[
+            set_node_attributes(code('', ''), 
+                                children=elements, 
+                                document=document, 
+                                lineno=lineno+1)])
+                                # the +1 here is coping with the fact that
+                                # Field.lineno are 0-based but the docutils tree 
+                                # is supposed to be 1-based
+

@@ -3,7 +3,10 @@ Collection of helper functions and classes related to the creation and processin
 """
 from __future__ import annotations
 
-from typing import Iterable, Iterator, Optional, TypeVar, cast
+from typing import Iterable, Iterator, Optional, TypeVar, cast, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from typing import Literal
 
 import optparse
 
@@ -14,11 +17,11 @@ __docformat__ = 'epytext en'
 
 _DEFAULT_DOCUTILS_SETTINGS: Optional[optparse.Values] = None
 
-def new_document(source_path: str, settings: Optional[optparse.Values] = None) -> nodes.document:
+def new_document(source: Literal['docstring', 'code'], settings: Optional[optparse.Values] = None) -> nodes.document:
     """
     Create a new L{nodes.document} using the provided settings or cached default settings.
 
-    @returns: L{nodes.document}
+    @returns: L{nodes.document} with a C{source} attribute that matches the provided source.
     """
     global _DEFAULT_DOCUTILS_SETTINGS
     # If we have docutils >= 0.19 we use get_default_settings to calculate and cache
@@ -29,7 +32,7 @@ def new_document(source_path: str, settings: Optional[optparse.Values] = None) -
 
         settings = _DEFAULT_DOCUTILS_SETTINGS
 
-    return utils.new_document(source_path, settings)
+    return utils.new_document(source, settings)
 
 def _set_nodes_parent(nodes: Iterable[nodes.Node], parent: nodes.Element) -> Iterator[nodes.Node]:
     """
@@ -145,7 +148,11 @@ def get_lineno(node: nodes.Element) -> int:
         return line
 
     if node.line:
+        # If the line is explicitely set, assume it's zero-based
         line = node.line
+        # If docutils suddenly starts populating the line attribute for
+        # title_reference node, all RST xref warnings will off by 1 :/
+
     else:
         line = get_first_parent_lineno(node.parent)
     

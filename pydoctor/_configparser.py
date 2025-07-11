@@ -277,7 +277,8 @@ class IniConfigParser(ConfigFileParser):
     >>> import configargparse
     >>> parser = configargparse.ArgParser(
     ...             default_config_files=['setup.cfg', 'my_super_tool.ini'],
-    ...             config_file_parser_class=configargparse.IniConfigParser(['tool:my_super_tool', 'my_super_tool']),
+    ...             config_file_parser_class=configargparse.IniConfigParser(
+    ...                 ['tool:my_super_tool', 'my_super_tool'], True),
     ...          )
 
     """

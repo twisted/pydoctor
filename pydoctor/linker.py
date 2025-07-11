@@ -153,14 +153,14 @@ class _EpydocLinker(DocstringLinker):
         try:
             resolved = self._resolve_identifier_xref(target, lineno)
         except LookupError:
-            xref = label
+            xref = tags.transparent(label)
         else:
             if isinstance(resolved, str):
                 xref = intersphinx_link(label, url=resolved)
             else:
                 xref = taglink(resolved, self.page_url, label)
                 
-        return tags.code(xref)
+        return xref
 
     def _resolve_identifier_xref(self,
             identifier: str,
@@ -243,13 +243,17 @@ class _EpydocLinker(DocstringLinker):
         raise LookupError(identifier)
 
 class NotFoundLinker(DocstringLinker):
-    """A DocstringLinker implementation that cannot find any links."""
+    """
+    A DocstringLinker implementation that cannot find any links.
+    
+    It will always output link tag with no C{href} attribute.
+    """
 
     def link_to(self, target: str, label: "Flattenable", *, is_annotation: bool = False) -> Tag:
-        return tags.transparent(label)
+        return tags.a(label)
 
     def link_xref(self, target: str, label: "Flattenable", lineno: int) -> Tag:
-        return tags.code(label)
+        return tags.a(label)
     
     @contextlib.contextmanager
     def switch_context(self, ob: Optional[model.Documentable]) -> Iterator[None]:

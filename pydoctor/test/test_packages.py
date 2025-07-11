@@ -1,15 +1,24 @@
+from __future__ import annotations
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Sequence
+from pydoctor.test import CapSys
 import pytest
 
 from pydoctor import model
 
 testpackages = Path(__file__).parent / 'testpackages'
 
-def processPackage(packname: str, systemcls: Callable[[], model.System] = model.System) -> model.System:
+def processPackage(pack: str | Sequence[str], systemcls: Callable[[], model.System] = model.System) -> model.System:
     system = systemcls()
-    builder = system.systemBuilder(system)
-    builder.addModule(testpackages / packname)
+    builderT = system.systemBuilder
+    if system.options.prependedpackage:
+        builderT = model.prepend_package(builderT, package=system.options.prependedpackage)
+    builder = builderT(system)
+    if isinstance(pack, str):
+        builder.addModule(testpackages / pack)
+    else:
+        for p in pack:
+            builder.addModule(testpackages / p)
     builder.buildModules()
     return system
 
@@ -167,3 +176,112 @@ def test_reparenting_crash(modname: str) -> None:
     assert isinstance(mod.contents[modname], model.Class)
     assert isinstance(mod.contents['reparented_func'], model.Function)
     assert isinstance(mod.contents[modname].contents['reparented_func'], model.Function)
+
+def test_just_py_modules(capsys: CapSys) -> None:
+    system = processPackage(['basic/mod.py', 'relativeimporttest/mod2.py'])
+    assert list(system.allobjects) == ['mod', 'mod2', 'mod.CONSTANT', 'mod.C', 
+                                       'mod.C.notreally', 'mod.C.S', 'mod.C.f', 
+                                       'mod.C.h', 'mod.C.cls_method', 
+                                       'mod.C.static_method', 'mod.D', 
+                                       'mod.D.T', 'mod.D.f', 'mod.D.g', 
+                                       'mod.D.cls_method2', 'mod.D.static_method2', 
+                                       'mod._private', 
+                                       
+                                       'mod2.B']
+
+def test_namespace_packages() -> None:
+    systemcls = lambda: model.System(model.Options.from_args(
+        ['--html-viewsource-base=https://github.com/some/repo/tree/master',
+         f'--project-base-dir={testpackages / "namespaces"}']))
+
+    system = processPackage(['namespaces/project1/lvl1', 
+                             'namespaces/project2/lvl1'], systemcls)
+    
+    assert list(system.allobjects) == ['lvl1', 'lvl1.lvl2', 'lvl1.lvl2.sub1', 'lvl1.lvl2.sub2', 
+                                       'lvl1.lvl2.sub1.f1', 'lvl1.lvl2.sub2.f2']
+    
+    assert isinstance(root:=system.allobjects['lvl1'], model.Package)
+    assert root.kind is model.DocumentableKind.NAMESPACE_PACKAGE
+
+    assert isinstance(nested:=root.contents['lvl2'], model.Package)
+    assert nested.kind is model.DocumentableKind.NAMESPACE_PACKAGE
+
+    assert len(root.source_paths) == 2
+    assert len(nested.source_paths) == 2
+
+    assert system.allobjects['lvl1.lvl2.sub1'].kind == model.DocumentableKind.PACKAGE
+    assert system.allobjects['lvl1.lvl2.sub2'].kind == model.DocumentableKind.PACKAGE
+
+    assert root.source_hrefs == ['https://github.com/some/repo/tree/master/project1/lvl1', 
+                                   'https://github.com/some/repo/tree/master/project2/lvl1']
+    assert nested.source_hrefs == ['https://github.com/some/repo/tree/master/project1/lvl1/lvl2', 
+                                   'https://github.com/some/repo/tree/master/project2/lvl1/lvl2']
+
+def test_namespace_packages_oldschool() -> None:
+    systemcls = lambda: model.System(model.Options.from_args(
+        ['--html-viewsource-base=https://github.com/some/repo/tree/master',
+         f'--project-base-dir={testpackages / "namespaces"}']))
+
+    system = processPackage(['namespaces/project1-oldschool/lvl1', 
+                             'namespaces/project2-oldschool/lvl1'], systemcls)
+    
+    assert list(system.allobjects) == ['lvl1', 'lvl1.lvl2', 'lvl1.lvl2.sub1', 'lvl1.lvl2.sub2', 
+                                       'lvl1.lvl2.sub1.f1', 'lvl1.lvl2.sub2.f2']
+    
+    assert isinstance(root:=system.allobjects['lvl1'], model.Package)
+    assert root.kind is model.DocumentableKind.NAMESPACE_PACKAGE
+
+    assert isinstance(nested:=root.contents['lvl2'], model.Package)
+    assert nested.kind is model.DocumentableKind.NAMESPACE_PACKAGE
+
+    assert len(root.source_paths) == 2
+    assert len(nested.source_paths) == 2
+
+    assert system.allobjects['lvl1.lvl2.sub1'].kind == model.DocumentableKind.PACKAGE
+    assert system.allobjects['lvl1.lvl2.sub2'].kind == model.DocumentableKind.PACKAGE
+
+    assert root.source_hrefs == ['https://github.com/some/repo/tree/master/project1-oldschool/lvl1', 
+                                   'https://github.com/some/repo/tree/master/project2-oldschool/lvl1']
+    assert nested.source_hrefs == ['https://github.com/some/repo/tree/master/project1-oldschool/lvl1/lvl2', 
+                                   'https://github.com/some/repo/tree/master/project2-oldschool/lvl1/lvl2']
+
+def test_namespace_packages_nested_under_regular_pack_ignored() -> None:
+    system = processPackage(['namespaces/project_regular_pack_contains_ns'],)
+    
+    assert isinstance(root:=system.allobjects['project_regular_pack_contains_ns'], model.Package)
+    assert root.kind is model.DocumentableKind.PACKAGE
+
+    assert isinstance(nested:=root.contents['subpack'], model.Package)
+    assert nested.kind is model.DocumentableKind.PACKAGE
+
+    assert list(nested.contents) == []
+
+def test_empty_namespace_package() -> None:
+    system = processPackage(['namespaces/project_empty'],)
+    assert list(system.allobjects) == ['project_empty']
+    assert system.rootobjects[0].kind is model.DocumentableKind.NAMESPACE_PACKAGE
+
+def test_collision_regular_package_with_nspack(capsys: CapSys) -> None:
+    
+    assert (system:=processPackage(['namespaces/basic', 'basic'])).allobjects['basic'].kind is model.DocumentableKind.NAMESPACE_PACKAGE
+    assert "discarding duplicate Package 'basic' because existing namespace package has the same name" in capsys.readouterr().out
+    assert list(map(repr, filter(lambda o: isinstance(o, model.Module), system.allobjects.values()))) == ["Namespace Package 'basic'", 
+                                                                                                          "Package 'basic.subpack'", 
+                                                                                                          "Module 'basic.subpack.mod'",]
+
+    assert (system:=processPackage(['basic', 'namespaces/basic'])).allobjects['basic'].kind is model.DocumentableKind.NAMESPACE_PACKAGE
+    assert "discarding existing Package 'basic' because Namespace Package 'basic' overrides it" in capsys.readouterr().out
+    assert list(map(repr, filter(lambda o: isinstance(o, model.Module), system.allobjects.values()))) == ["Namespace Package 'basic'", 
+                                                                                                          "Package 'basic.subpack'", 
+                                                                                                          "Module 'basic.subpack.mod'",]
+
+def test_prepend_package_works_with_namespace_packages() -> None:
+    systemcls = lambda: model.System(model.Options.from_args(
+        ['--prepend-package=some.package']))
+
+    system = processPackage(['namespaces/project1/lvl1', 
+                             'namespaces/project2/lvl1'], systemcls)
+    
+    assert list(system.allobjects) == ['some', 'some.package', 'some.package.lvl1', 'some.package.lvl1.lvl2', 
+                                        'some.package.lvl1.lvl2.sub1', 'some.package.lvl1.lvl2.sub2', 
+                                        'some.package.lvl1.lvl2.sub1.f1', 'some.package.lvl1.lvl2.sub2.f2']

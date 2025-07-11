@@ -88,7 +88,7 @@ def get_supported_docformats() -> Iterator[str]:
 
 def get_parser_by_name(docformat: str, objclass: ObjClass | None = None) -> ParserFunction:
     """
-    Get the C{parse_docstring(str, List[ParseError], bool) -> ParsedDocstring} function based on a parser name. 
+    Get the C{parse_docstring(str, List[ParseError]) -> ParsedDocstring} function based on a parser name. 
 
     @raises ImportError: If the parser could not be imported, probably meaning that your are missing a dependency
         or it could be that the docformat name do not match any know L{pydoctor.epydoc.markup} submodules.
@@ -113,7 +113,7 @@ def processtypes(parse:ParserFunction) -> ParserFunction:
         for field in doc.fields:
             if field.tag() in ParsedTypeDocstring.FIELDS:
                 body = ParsedTypeDocstring(field.body().to_node(), lineno=field.lineno)
-                append_warnings(body.warnings, errs, lineno=field.lineno+1)
+                append_warnings(body.warnings, errs, lineno=field.lineno)
                 field.replace_body(body)
     
     def parse_and_processtypes(doc:str, errs:List['ParseError']) -> 'ParsedDocstring':
@@ -149,8 +149,8 @@ class ParsedDocstring(abc.ABC):
         """
         self._stan: Optional[Tag] = None
 
-    @property  
-    @abc.abstractmethod  
+    @property
+    @abc.abstractmethod
     def has_body(self) -> bool:
         """
         Does this docstring have a non-empty body?
@@ -168,7 +168,7 @@ class ParsedDocstring(abc.ABC):
         except NotImplementedError:
             return None
         contents = build_table_of_content(document, depth=depth)
-        docstring_toc = new_document('toc')
+        docstring_toc = new_document('docstring')
         if contents:
             docstring_toc.extend(contents)
             return ParsedRstDocstring(docstring_toc, ())
@@ -228,7 +228,7 @@ class ParsedDocstring(abc.ABC):
 
 def parsed_text(text: str, 
                 klass: str | None = None, 
-                source: str = 'docstring') -> ParsedDocstring:
+                source: Literal['docstring', 'code'] = 'docstring') -> ParsedDocstring:
     """
     Create a parsed representation of a simple text 
     with a given class (or no class at all).
@@ -455,7 +455,7 @@ class SummaryExtractor(nodes.NodeVisitor):
             self.other_docs = True
             raise nodes.StopTraversal()
 
-        summary_doc = new_document('summary')
+        summary_doc = new_document('docstring')
         summary_pieces: list[nodes.Node] = []
 
         # Extract the first sentences from the first paragraph until maximum number 

@@ -74,7 +74,7 @@ class Token:
                                              self.value.strip())
 
 class TokenProcessor:
-    """
+    r"""
     Processes tokens from source code lines.
 
     Example usage:
@@ -111,7 +111,7 @@ class TokenProcessor:
     >>> any(t.value == ')' for t in tokens)
     True
     """
-    
+
     def __init__(self, buffers: Sequence[str]) -> None:
         lines = iter(buffers)
         self.buffers = buffers

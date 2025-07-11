@@ -1358,25 +1358,25 @@ def test_annotated_variables(systemcls: Type[model.System]) -> None:
     assert type2html(b) == 'string'
     c = C.contents['c']
     assert c.docstring == """third"""
-    assert type2html(c) == '<code>str</code>'
+    assert type2html(c) == '<code><a>str</a></code>'
     d = C.contents['d']
     assert d.docstring == """fourth"""
-    assert type2html(d) == '<code>str</code>'
+    assert type2html(d) == '<code><a>str</a></code>'
     e = C.contents['e']
     assert e.docstring == """fifth"""
-    assert type2html(e) == '<code>List[C]</code>'
+    assert type2html(e) == '<code><a>List</a>[<a>C</a>]</code>'
     f = C.contents['f']
     assert f.docstring == """sixth"""
-    assert type2html(f) == '<code>List[C]</code>'
+    assert type2html(f) == '<code><a>List</a>[<a>C</a>]</code>'
     g = C.contents['g']
     assert g.docstring == """seventh"""
-    assert type2html(g) == '<code>List[C]</code>'
+    assert type2html(g) == '<code><a>List</a>[<a>C</a>]</code>'
     s = C.contents['s']
     assert s.docstring == """instance"""
-    assert type2html(s) == '<code>List[str]</code>'
+    assert type2html(s) == '<code><a>List</a>[<a>str</a>]</code>'
     m = mod.contents['m']
     assert m.docstring == """module-level"""
-    assert type2html(m) == '<code>bytes</code>'
+    assert type2html(m) == '<code><a>bytes</a></code>'
 
 @systemcls_param
 def test_type_comment(systemcls: Type[model.System], capsys: CapSys) -> None:

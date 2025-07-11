@@ -237,6 +237,7 @@ class HtmlTemplate(Template):
                 continue
 
             # Remove the meta tag as soon as found
+            assert meta.parentNode is not None
             meta.parentNode.removeChild(meta)
 
             if not meta.hasAttribute("content"):

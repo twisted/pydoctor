@@ -3,7 +3,12 @@ Package directory used to store pydoctor templates.
 
 Usage example:
 
+>>> from pydoctor.templatewriter import TemplateLookup
 >>> template_lookup = TemplateLookup(importlib_resources.files('pydoctor.themes') / 'base')
+>>> template_lookup.get_template('index.html').version >= 3
+True
+
+@see: L{TemplateLookup}, L{Template} and L{TemplateElement}. 
 """
 from typing import Iterator
 

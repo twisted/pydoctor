@@ -360,7 +360,7 @@ ul ul ul ul ul ul ul {
     }
 }
 
-table .package {
+table .package, table .namespacepackage {
     background-color: #fff3e0;
 }
 
@@ -511,7 +511,7 @@ code, .rst-literal {
     padding:2px 4px;
     background-color: #f4f4f4;
     border-radius:4px;
-    font-size: 90%;
+    font-size: 90%; /* <code> and class="rst-literal" are closely equivalent */
 }
 
 

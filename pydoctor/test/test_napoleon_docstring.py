@@ -11,7 +11,7 @@ from textwrap import dedent
 
 from pydoctor.napoleon.docstring import (GoogleDocstring as _GoogleDocstring, 
         NumpyDocstring as _NumpyDocstring, 
-        TokenType, TypeDocstring, is_type, is_google_typed_arg)
+        TokenType, TypeDocstring, is_type, is_google_typed_arg, Tokenizer, Token)
 from pydoctor.utils import partialclass
 
 import sphinx.ext.napoleon as sphinx_napoleon
@@ -112,6 +112,9 @@ class TypeDocstringTest(BaseDocstringTest):
         self.assertTrue(is_google_typed_arg("Random words are not a type spec (list of int or float or None, default: None)"))
         self.assertTrue(is_google_typed_arg("Random words are not a type spec (`complicated string` or `strIO <twisted.python.compat.NativeStringIO>`, optional)"))
 
+
+        self.assertTrue(is_google_typed_arg('param2 (str, {"html", "json", "xml"}, optional)'))
+
     def test_token_type(self):
         tokens = (
         ("1", TokenType.LITERAL),
@@ -139,15 +142,29 @@ class TypeDocstringTest(BaseDocstringTest):
         ("just a string",  TokenType.UNKNOWN),
         (len("not a string"),  TokenType.ANY),
         )
-        type_spec = TypeDocstring('', 0)
         for token, _type in tokens:
-            actual = type_spec._token_type(token)
+            actual = Tokenizer._token_type(token, [], False)
             self.assertEqual(_type, actual)
 
     def test_tokenize_type_spec(self):
         specs = (
             "str",
             "defaultdict",
+            
+            "defaultdict, defaultlist,defaultset or object",
+            "defaultdict, and x",
+            "defaultdict, or x",
+            "defaultdict of x",
+            "defaultdict of x to y",
+            "defaultdict, and ",
+            "defaultdict, or ",
+            "defaultdict of ",
+            "defaultdict of x to ",
+            "defaultdict, and",
+            "defaultdict, or",
+            "defaultdict of",
+            "defaultdict of x to",
+
             "int, float, or complex",
             "int or float or None, optional",
             '{"F", "C", "N"}',
@@ -164,6 +181,21 @@ class TypeDocstringTest(BaseDocstringTest):
         tokens = (
             ["str"],
             ["defaultdict"],
+
+            ['defaultdict', ', ', 'defaultlist', ', ', 'defaultset', ' or ', 'object'],
+            ['defaultdict', ', and ', 'x'],
+            ['defaultdict', ', or ', 'x'],
+            ['defaultdict', ' of ', 'x'],
+            ['defaultdict', ' of ', 'x', ' to ', 'y'],
+            ['defaultdict', ', and '],
+            ['defaultdict', ', or '],
+            ['defaultdict', ' of '],
+            ['defaultdict', ' of ', 'x', ' to '],
+            ['defaultdict', ', ', 'and'],
+            ['defaultdict', ', ', 'or'],
+            ['defaultdict of'],
+            ['defaultdict', ' of ', 'x to'],
+
             ["int", ", ", "float", ", or ", "complex"],
             ["int", " or ", "float", " or ", "None", ", ", "optional"],
             ["{", '"F"', ", ", '"C"', ", ", '"N"', "}"],
@@ -178,8 +210,9 @@ class TypeDocstringTest(BaseDocstringTest):
         )
 
         for spec, expected in zip(specs, tokens):
-            actual = TypeDocstring._tokenize_type_spec(spec)
-            self.assertEqual(expected, actual)
+            with self.subTest(f'tokenize type {spec!r}'):
+                actual = Tokenizer.tokenize_str(spec)
+                self.assertEqual(expected, actual)
 
     def test_recombine_set_tokens(self):
         tokens = (
@@ -197,7 +230,7 @@ class TypeDocstringTest(BaseDocstringTest):
         )
 
         for tokens_, expected in zip(tokens, combined_tokens):
-            actual = TypeDocstring._recombine_set_tokens(tokens_)
+            actual = Tokenizer.recombine_sets(tokens_)
             self.assertEqual(expected, actual)
 
     def test_recombine_set_tokens_invalid(self):
@@ -213,7 +246,7 @@ class TypeDocstringTest(BaseDocstringTest):
         )
 
         for tokens_, expected in zip(tokens, combined_tokens):
-            actual = TypeDocstring._recombine_set_tokens(tokens_)
+            actual = Tokenizer.recombine_sets(tokens_)
             self.assertEqual(expected, actual)
 
     def test_convert_numpy_type_spec(self):
@@ -277,6 +310,40 @@ class TypeDocstringTest(BaseDocstringTest):
         for spec, expected in zip(specs, converted):
             actual = str(TypeDocstring(spec))
             self.assertEqual(expected, actual)
+    
+    def test_natural_language_delimiters_parsed_tokens(self):
+        specs = [
+            "defaultdict, and x",
+            "defaultdict, or x",
+            "defaultdict of x",
+            "defaultdict of x to y",
+            "defaultdict, and ",
+            "defaultdict, or ",
+            "defaultdict of ",
+            "defaultdict of x to ",
+            "defaultdict, and",
+            "defaultdict, or",
+            "defaultdict of",
+            "defaultdict of x to",
+        ]
+        expected = [
+            [('defaultdict', TokenType.OBJ), (', and ', TokenType.DELIMITER), ('x', TokenType.OBJ)],
+            [('defaultdict', TokenType.OBJ), (', or ', TokenType.DELIMITER), ('x', TokenType.OBJ)],
+            [('defaultdict', TokenType.OBJ), (' of ', TokenType.DELIMITER), ('x', TokenType.OBJ)],
+            [('defaultdict', TokenType.OBJ), (' of ', TokenType.DELIMITER), ('x', TokenType.OBJ), (' to ', TokenType.DELIMITER), ('y', TokenType.OBJ)],
+            [('defaultdict', TokenType.OBJ), (', and ', TokenType.DELIMITER)],
+            [('defaultdict', TokenType.OBJ), (', or ', TokenType.DELIMITER)],
+            [('defaultdict', TokenType.OBJ), (' of ', TokenType.DELIMITER)],
+            [('defaultdict', TokenType.OBJ), (' of ', TokenType.DELIMITER), ('x', TokenType.OBJ), (' to ', TokenType.DELIMITER)],
+            [('defaultdict', TokenType.OBJ), (', ', TokenType.DELIMITER), ('and', TokenType.OBJ)],
+            [('defaultdict', TokenType.OBJ), (', ', TokenType.DELIMITER), ('or', TokenType.OBJ)],
+            [('defaultdict of', TokenType.UNKNOWN)],
+            [('defaultdict', TokenType.OBJ), (' of ', TokenType.DELIMITER), ('x to', TokenType.UNKNOWN)],
+        ]
+        for spec, expected in zip(specs, expected):
+            with self.subTest(f'parsed tokens: {spec!r}'):
+                actual = TypeDocstring(spec)._tokens
+                self.assertEqual([Token(*v) for v in expected], actual)
 
     def test_token_type_invalid(self):
         tokens = (
@@ -296,11 +363,11 @@ class TypeDocstringTest(BaseDocstringTest):
             r"malformed string literal \(missing opening quote\):",
         )
         for token, error in zip(tokens, errors):
-            type_spec = TypeDocstring('')
-            type_spec._token_type(token)
+            warnings = []
+            Tokenizer._token_type(token, warnings, False)
             match_re = re.compile(error)
-            assert len(type_spec.warnings) == 1, type_spec.warnings
-            assert match_re.match(str(type_spec.warnings.pop()))
+            assert len(warnings) == 1, warnings
+            assert match_re.match(str(warnings.pop()))
 
     def test_unbalanced_parenthesis(self):
         strings = (

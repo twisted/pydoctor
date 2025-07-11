@@ -105,12 +105,12 @@ def test_rst_anon_link_email() -> None:
 def test_rst_xref_with_target() -> None:
     src = "`mapping <typing.MutableMapping>`"
     html = rst2html(src)
-    assert html.startswith('<code>mapping</code>')
+    assert html == '<code><a>mapping</a></code>'
 
 def test_rst_xref_implicit_target() -> None:
     src = "`func()`"
     html = rst2html(src)
-    assert html.startswith('<code>func()</code>')
+    assert html == '<code><a>func()</a></code>'
 
 def test_rst_directive_adnomitions() -> None:
     expected_html_multiline="""

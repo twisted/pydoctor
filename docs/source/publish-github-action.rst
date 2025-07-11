@@ -29,7 +29,7 @@ with the appropriate information.
         steps:
         - uses: actions/checkout@master
         - name: Set up Python 3.12
-          uses: actions/setup-python@v2
+          uses: actions/setup-python@v4
           with:
             python-version: 3.12
 
