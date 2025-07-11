@@ -1479,6 +1479,11 @@ class System:
                 c.docstring = v.__doc__
                 self.addObject(c)
                 self._introspectThing(v, c, parentMod)
+        # This function is called for every introspected objects potentially having children, 
+        # i.e. modules and classes. So this is a good place to process ivar and friends.
+        if parent.docstring:
+            from pydoctor import epydoc2stan
+            epydoc2stan.extract_fields(parent)
 
     def introspectModule(self,
             path: Path,
