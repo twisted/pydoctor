@@ -77,28 +77,6 @@ class AttrsLikeClass(ClassMixin, model.Class):
         self._cls_constructor_parameters: List[inspect.Parameter] = []
         self._cls_constructor_annotations: Dict[str, Optional[ast.expr]] = {}
 
-    # @abstractmethod
-    # def get_al_type(self, cls:ast.ClassDef, mod:model.Module) -> AlClassType:
-    #     """
-    #     If this classdef adopts dataclass-like behaviour, returns an non-zero int, otherwise returns None.
-    #     Returned value is directly stored in the C{dataclassLike} attribute of the visited class.
-    #     Used to determine whether L{handleField} method should be called for each class variables
-    #     in this class.
-
-    #     The int value should be a constant representing the kind of dataclass-like this class implements.
-    #     Class decorated with @dataclass and @attr.s will have different non-zero C{dataclassLike} attribute.
-    #     """
-
-    # @abstractmethod
-    # def handle_field(self, cls:model.Class, attr:model.Attribute, 
-    #                       annotation:Optional[ast.expr],
-    #                       value:Optional[ast.expr]) -> None:
-    #     """
-    #     Transform this class variable into a instance variable.
-    #     This method is left abstract because it's not as simple as setting::
-    #         attr.kind = model.DocumentableKind.INSTANCE_VARIABLE
-    #     """
-
 class ClassType(enum.Enum):
 
     REGULAR = 0
@@ -130,28 +108,30 @@ class ClassType(enum.Enum):
             c: int
     """
 
-def _attrs_class_sig_helper(
+def _attrs_class_sig_helper( # type: ignore
     maybe_cls=None, these=None, repr_ns=None, repr=None, cmp=None,
     hash=None, init=None, slots=False, frozen=False, weakref_slot=True,
     str=False, auto_attribs=False, kw_only=False, cache_hash=False,
     auto_exc=False, eq=None, order=None, auto_detect=False, collect_by_mro=False,
     getstate_setstate=None, on_setattr=None, field_transformer=None, match_args=True,
     unsafe_hash=None,
-): ... # type: ignore
+): ...
 
-def _define_class_sig_helper(
+def _define_class_sig_helper( # type: ignore
     maybe_cls=None, *, these=None, repr=None, unsafe_hash=None, hash=None,
     init=None, slots=True, frozen=False, weakref_slot=True, str=False, auto_attribs=None,
     kw_only=False, cache_hash=False, auto_exc=True, eq=None, order=False, auto_detect=True,
     getstate_setstate=None, on_setattr=None, field_transformer=None, match_args=True,
-): ... # type: ignore
+): ...
 
-def _dataclass_class_sig_helper(cls=None, /, *, init=True, repr=True, eq=True, order=False,
-              unsafe_hash=False, frozen=False, match_args=True,
-              kw_only=False, slots=False, weakref_slot=False): ... # type: ignore
+def _dataclass_class_sig_helper( # type: ignore
+        cls=None, /, *, init=True, repr=True, eq=True, order=False,
+        unsafe_hash=False, frozen=False, match_args=True,
+        kw_only=False, slots=False, weakref_slot=False): ...
 
-def _dataclass_field_sig_helperd(*, default=..., default_factory=..., init=True, repr=True,
-          hash=None, compare=True, metadata=None, kw_only=...):... # type: ignore
+def _dataclass_field_sig_helperd( # type: ignore
+        *, default=..., default_factory=..., init=True, repr=True,
+        hash=None, compare=True, metadata=None, kw_only=...):...
 
 _class_type_2_decorator_signature = {
     ClassType.ATTRS_CLASSIC: inspect.signature(_attrs_class_sig_helper),
@@ -175,8 +155,8 @@ _fallback_call = ast.Call(func=ast.Name(id='define', ctx=ast.Load()),
                                 args=[], keywords=[], lineno=0,)
 
 def get_cls_type_decorator(decorators: list[ast.expr], ctx: model.Documentable
-                           ) -> tuple[ClassType, ast.AST | None]:
-    types: list[tuple[ClassType, ast.AST]] = []
+                           ) -> tuple[ClassType, ast.expr | None]:
+    types: list[tuple[ClassType, ast.expr]] = []
     
     for dottedname, decnode in astutils.iter_decorators(decorators, ctx):
         if dottedname in (
@@ -205,7 +185,7 @@ def get_cls_type_decorator(decorators: list[ast.expr], ctx: model.Documentable
 def _get_decorator_param_spec(cls_type: ClassType
                               ) -> dict[str, tuple[object, type | tuple[type, ...]]]:
      # init attrs options based on arguments and whether the newer version of the APIs are in-use.
-    decorator_param_spec = {
+    decorator_param_spec: dict[str, tuple[object, type | tuple[type, ...]]] = {
         # there two options are also compatble with dataclasses.
         'init': (None, (bool, type(None))),
         'kw_only': (False, bool),
@@ -233,7 +213,7 @@ def get_cls_decorator_options(cls_type: ClassType,
     if not attrs_args:
         attrs_args = astutils.bind_args(sig, _fallback_call)
 
-    options: ClassOptions = {name: astutils.get_literal_arg(attrs_args, 
+    options: ClassOptions = {name: astutils.get_literal_arg(attrs_args, # type: ignore[assignment]
                                               name,
                                               default, 
                                               typecheck, 
@@ -522,7 +502,7 @@ class ModuleVisitor(ModuleVisitorExt):
 
             init_param_name: str
             if cls._cls_type!= ClassType.DATACLASS:
-                if not (init_param_name:=attrib_args_value.get('alias')):
+                if not (init_param_name:=attrib_args_value.get('alias')): # type:ignore[assignment]
                     init_param_name = attr.name.lstrip('_')
             else:
                 init_param_name = attr.name

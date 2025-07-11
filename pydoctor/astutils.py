@@ -94,7 +94,7 @@ def iterassign(node:_AssingT) -> Iterator[Optional[List[str]]]:
         yield dottedname
 
 def iter_decorators(decorator_list:List[ast.expr], 
-                    ctx: model.Documentable) -> Iterator[tuple[str|None, ast.AST]]:
+                    ctx: model.Documentable) -> Iterator[tuple[str|None, ast.expr]]:
     """
     Utility function to iterate decorators.
     """
