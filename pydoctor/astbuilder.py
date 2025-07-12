@@ -831,6 +831,11 @@ class ModuleVistor(NodeVisitor):
                 self._handleInstanceVar(targetNode.attr, annotation, expr, lineno)
         else:
             raise IgnoreAssignment()
+        
+    def _handleAssignmentDoc(self, node: ast.Assign | ast.AnnAssign, target: ast.expr) -> None:
+        """Process doc-comments and inline docstrings of the given assignment."""
+        self._handleDocComment(node, target)
+        self._handleInlineDocstrings(node, target)
 
     def _handleDocComment(self, node: ast.Assign | ast.AnnAssign, target: ast.expr) -> None:
         """Process the doc-comments, this is very similar to the inline docstrings."""
@@ -839,16 +844,14 @@ class ModuleVistor(NodeVisitor):
         except ValueError:
             return
         
-        # fetch the target of the doc-comment
-        if (attr:=parent.contents.get(name)) is None:
-            return
-        
-        if lines := self.builder.lines_collection[self.module]:
+        # fetch the target of the doc-comment and the source code of the current module.
+        if (attr:=parent.contents.get(name)) and (
+            lines:=self.builder.lines_collection[self.module]):
             for doc_comment in [extract_doc_comment_before(node, lines), 
                                 extract_doc_comment_after(node, lines)]:
                 if doc_comment:
-                    attr._setDocstringValue(doc_comment[1], doc_comment[0])
-        
+                    lineno, doc = doc_comment
+                    attr._setDocstringValue(doc, lineno)
 
     def visit_Assign(self, node: ast.Assign) -> None:
         lineno = node.lineno
@@ -877,12 +880,10 @@ class ModuleVistor(NodeVisitor):
                 continue
             else:
                 if not isTupleAssignment:
-                    self._handleDocComment(node, target)
-                    self._handleInlineDocstrings(node, target)
+                    self._handleAssignmentDoc(node, target)
                 else:
                     for elem in cast(ast.Tuple, target).elts: # mypy is not as smart as pyright yet.
-                        self._handleDocComment(node, elem)
-                        self._handleInlineDocstrings(node, elem)
+                        self._handleAssignmentDoc(node, elem)
 
     def visit_AnnAssign(self, node: ast.AnnAssign) -> None:
         annotation = upgrade_annotation(unstring_annotation(
@@ -892,8 +893,7 @@ class ModuleVistor(NodeVisitor):
         except IgnoreAssignment:
             return
         else:
-            self._handleDocComment(node, node.target)
-            self._handleInlineDocstrings(node, node.target)
+            self._handleAssignmentDoc(node, node.target)
 
     def _getClassFromMethodContext(self) -> Optional[model.Class]:
         func = self.builder.current
@@ -930,7 +930,7 @@ class ModuleVistor(NodeVisitor):
         return parent, dottedname[0]
 
     def _handleInlineDocstrings(self, assign:Union[ast.Assign, ast.AnnAssign], target:ast.expr) -> None:
-        # Process the inline docstrings
+        """Process the inline docstrings"""
         try:
             parent, name = self._contextualizeTarget(target)
         except ValueError:
@@ -939,8 +939,7 @@ class ModuleVistor(NodeVisitor):
         docstring_node = get_assign_docstring_node(assign)
         if docstring_node:
             # fetch the target of the inline docstring
-            attr = parent.contents.get(name)
-            if attr:
+            if attr:=parent.contents.get(name):
                 attr.setDocstring(docstring_node)
     
     def visit_AugAssign(self, node:ast.AugAssign) -> None:
