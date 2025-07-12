@@ -75,6 +75,7 @@ in development
 
 * Add support for doc-comments as found in Sphinx. Use the special comment formatting ``#:`` to start the comment instead of just ``#``.
   Comments need to be either on a line of their own before the definition, or immediately after the assignment on the same line. 
+* Fix a regression that prevented the source link on package' page to be rendered.
 * Improve introspection of C-modules to support data descriptors.
 * Dunders that are not supposed to be part of the API are now ignored when introspecting code.
 * Fix bug, ``ivar`` field and fiends are not ignored anymore in introspected C-modules.
