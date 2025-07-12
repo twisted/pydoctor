@@ -39,10 +39,8 @@ class Token:
     True
     >>> repr(t)
     "<Token kind='NAME' value='foo'>"
-    >>> t == 3.14 # ValueError for unknown comparison type
-    Traceback (most recent call last):
-    ...
-    ValueError: Unknown value: 3.14
+    >>> t == 3.14
+    False
     """
 
     def __init__(self, kind: int, 
@@ -58,17 +56,17 @@ class Token:
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, Token):
-            return [self.kind, self.value] == [other.kind, other.value]
+            return (self.kind == other.kind and
+                self.value == other.value)
         elif isinstance(other, int):
             return self.kind == other
         elif isinstance(other, str):
             return bool(self.value == other)
-        elif isinstance(other, (list, tuple)):
-            return [self.kind, self.value] == list(other)
-        elif other is None:
-            return False
-        else:
-            raise ValueError('Unknown value: %r' % other)
+        elif isinstance(other, list):
+            return [self.kind, self.value] == other
+        elif isinstance(other, tuple):
+            return (self.kind, self.value) == other
+        return NotImplemented
 
     def match(self, *conditions: Any) -> bool:
         return any(self == candidate for candidate in conditions)
