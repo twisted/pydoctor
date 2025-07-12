@@ -31,7 +31,8 @@ def parseFile(path: Path) -> ParsedAstModule:
     """
     Parse the contents of a Python source file.
 
-    @returns: The ast module and it's source code lines as L{ParsedModule} instance.
+    @returns: The parsed ast module
+    @raises Exception: Any exception raised by L{ast.parse}
     """
     with tokenize.open(path) as f: 
         src = f.read() + '\n'
@@ -832,7 +833,7 @@ class ModuleVistor(NodeVisitor):
             raise IgnoreAssignment()
 
     def _handleDocComment(self, node: ast.Assign | ast.AnnAssign, target: ast.expr) -> None:
-        # Process the doc-comments, this is very similiar to the inline docstrings.
+        """Process the doc-comments, this is very similar to the inline docstrings."""
         try:
             parent, name = self._contextualizeTarget(target)
         except ValueError:
@@ -842,8 +843,7 @@ class ModuleVistor(NodeVisitor):
         if (attr:=parent.contents.get(name)) is None:
             return
         
-        lines = self.builder.lines_collection[self.module]
-        if lines:
+        if lines := self.builder.lines_collection[self.module]:
             for doc_comment in [extract_doc_comment_before(node, lines), 
                                 extract_doc_comment_after(node, lines)]:
                 if doc_comment:
