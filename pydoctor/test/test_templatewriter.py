@@ -981,3 +981,16 @@ def test_namespace_package_source_links() -> None:
     
     assert ('<a href="https://github.com/some/repo/tree/master/project1/lvl1/lvl2" class="sourceLink">(source)</a>, '
         '<a href="https://github.com/some/repo/tree/master/project2/lvl1/lvl2" class="sourceLink">(source)</a>') in html2
+
+def test_regular_package_source_links() -> None:
+    systemcls = lambda: model.System(model.Options.from_args(
+        ['--html-viewsource-base=https://github.com/some/repo/tree/master',
+         f'--project-base-dir={testpackages}']))
+    
+    system = processPackage('basic', systemcls)
+    assert isinstance(root:=system.allobjects['basic'], model.Package)
+    assert root.kind is model.DocumentableKind.PACKAGE
+    assert root.source_href == 'https://github.com/some/repo/tree/master/basic/__init__.py'
+    assert root.source_hrefs == ['https://github.com/some/repo/tree/master/basic/__init__.py']
+    html1 = getHTMLOf(root)
+    assert (f'<a href="{root.source_href}" class="sourceLink">(source)</a>') in html1

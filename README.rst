@@ -73,6 +73,7 @@ What's New?
 in development
 ^^^^^^^^^^^^^^
 
+* Fix a regression that prevented the source link on package' page to be rendered.
 * Improve introspection of C-modules to support data descriptors.
 * Dunders that are not supposed to be part of the API are now ignored when introspecting code.
 * Fix bug, ``ivar`` field and fiends are not ignored anymore in introspected C-modules.
