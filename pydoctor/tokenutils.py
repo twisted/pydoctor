@@ -61,7 +61,7 @@ class Token:
         elif isinstance(other, int):
             return self.kind == other
         elif isinstance(other, str):
-            return bool(self.value == other)
+            return self.value == other
         elif isinstance(other, list):
             return [self.kind, self.value] == other
         elif isinstance(other, tuple):
