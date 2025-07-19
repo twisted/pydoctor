@@ -1100,7 +1100,7 @@ def test_EpydocLinker_adds_intersphinx_link_css_class() -> None:
     sut = target.docstring_linker
     assert isinstance(sut, linker._EpydocLinker)
 
-    result1 = sut.link_xref('base.module.other', 'base.module.other', 0).children[0] # wrapped in a code tag
+    result1 = sut.link_xref('base.module.other', 'base.module.other', 0)
     result2 = sut.link_to('base.module.other', 'base.module.other')
     
     res = flatten(result2)
@@ -1337,28 +1337,6 @@ def test_EpydocLinker_warnings(capsys: CapSys) -> None:
     # No warnings are logged when generating the summary.
     assert captured == ''
 
-def test_AnnotationLinker_xref(capsys: CapSys) -> None:
-    """
-    Even if the annotation linker is not designed to resolve xref,
-    it will still do the right thing by forwarding any xref requests to
-    the initial object's linker.
-    """
-
-    mod = fromText('''
-    class C:
-        var="don't use annotation linker for xref!"
-    ''')
-    mod.system.intersphinx = cast(SphinxInventory, InMemoryInventory())
-    _linker = linker._AnnotationLinker(mod.contents['C'])
-    
-    url = flatten(_linker.link_xref('socket.socket', 'socket', 0))
-    assert 'https://docs.python.org/3/library/socket.html#socket.socket' in url
-    assert not capsys.readouterr().out
-
-    url = flatten(_linker.link_xref('var', 'var', 0))
-    assert 'href="#var"' in url
-    assert not capsys.readouterr().out
-
 def test_EpydocLinker_xref_look_for_name_multiple_candidates(capsys:CapSys) -> None:
     """
     When the linker use look_for_name(), if 'identifier' refers to more than one object, it complains.
@@ -1503,7 +1481,7 @@ class RecordingAnnotationLinker(NotFoundLinker):
     def __init__(self) -> None:
         self.requests: List[str] = []
 
-    def link_to(self, target: str, label: "Flattenable") -> Tag:
+    def link_to(self, target: str, label: "Flattenable", *, is_annotation: bool = False) -> Tag:
         if target.startswith('builtins.'):
             target = target[len('builtins.'):]
         self.requests.append(target)
@@ -2067,8 +2045,10 @@ def test_class_level_type_alias() -> None:
 
     assert isinstance(f, model.Function)
     assert f.signature
-    assert "href" in repr(f.signature.parameters['x'].annotation)
-    assert "href" in repr(f.signature.return_annotation)
+    assert "href" in flatten(epydoc2stan.colorize_inline_pyval(
+        f.signature.parameters['x'].annotation, is_annotation=True).to_stan(f.docstring_linker))
+    assert "href" in flatten(epydoc2stan.colorize_inline_pyval(
+        f.signature.return_annotation, is_annotation=True).to_stan(f.docstring_linker))
 
     assert isinstance(var, model.Attribute)
     assert "href" in flatten(epydoc2stan.type2stan(var) or '')
@@ -2089,23 +2069,23 @@ def test_top_level_type_alias_wins_over_class_level(capsys:CapSys) -> None:
         var: typ
     '''
     system = model.System()
-    system.options.verbosity = 1
     mod = fromText(src, modname='m', system=system)
     f = mod.system.allobjects['m.C.f']
     var = mod.system.allobjects['m.C.var']
 
     assert isinstance(f, model.Function)
     assert f.signature
-    assert 'href="index.html#typ"' in repr(f.signature.parameters['x'].annotation)
-    assert 'href="index.html#typ"' in repr(f.signature.return_annotation)
+    assert 'href="index.html#typ"' in flatten(epydoc2stan.colorize_inline_pyval(
+        f.signature.parameters['x'].annotation, is_annotation=True).to_stan(f.docstring_linker))
+
+    assert 'href="index.html#typ"' in flatten(epydoc2stan.colorize_inline_pyval(
+        f.signature.return_annotation, is_annotation=True).to_stan(f.docstring_linker))
 
     assert isinstance(var, model.Attribute)
     assert 'href="index.html#typ"' in flatten(epydoc2stan.type2stan(var) or '')
 
-    assert capsys.readouterr().out == """\
-m:5: ambiguous annotation 'typ', could be interpreted as 'm.C.typ' instead of 'm.typ'
-m:7: ambiguous annotation 'typ', could be interpreted as 'm.C.typ' instead of 'm.typ'
-"""
+    assert not capsys.readouterr().out
+    # Pydoctor is not a checker so no warning is beeing reported.
 
 def test_not_found_annotation_does_not_create_link() -> None:
     """
@@ -2219,7 +2199,7 @@ def test_parsed_names_partially_resolved_early() -> None:
     then again when we actually resolve the name when generating the stan for the annotation.
     """
     typing = '''\
-    List = ClassVar = TypeVar = object()
+    Callable = ClassVar = TypeVar = object()
     '''
 
     base = '''\
@@ -2228,7 +2208,7 @@ def test_parsed_names_partially_resolved_early() -> None:
         ...
     '''
     src = '''\
-    from typing import List
+    from typing import Callable
     import typing as t
 
     from .base import Vis
@@ -2237,8 +2217,8 @@ def test_parsed_names_partially_resolved_early() -> None:
         """
         L{Cls}
         """
-        clsvar:List[str]
-        clsvar2:t.ClassVar[List[str]]
+        clsvar:Callable[[], str]
+        clsvar2:t.ClassVar[Callable[[], str]]
 
         def __init__(self, a:'_T'):
             self._a:'_T' = a
@@ -2267,9 +2247,9 @@ def test_parsed_names_partially_resolved_early() -> None:
     clsvar = Cls.contents['clsvar']
     clsvar2 = Cls.contents['clsvar2']
     a = Cls.contents['_a']
-    assert clsvar.expandName('typing.List')=='typing.List'
-    assert 'refuri="typing.List"' in clsvar.parsed_type.to_node().pformat() #type: ignore
-    assert 'href="typing.html#List"' in flatten(clsvar.parsed_type.to_stan(clsvar.docstring_linker)) #type: ignore
+    assert clsvar.expandName('typing.Callable')=='typing.Callable'
+    assert 'refuri="typing.Callable"' in clsvar.parsed_type.to_node().pformat() #type: ignore
+    assert 'href="typing.html#Callable"' in flatten(clsvar.parsed_type.to_stan(clsvar.docstring_linker)) #type: ignore
     assert 'href="typing.html#ClassVar"' in flatten(clsvar2.parsed_type.to_stan(clsvar2.docstring_linker)) #type: ignore
     assert 'href="top.src.html#_T"' in flatten(a.parsed_type.to_stan(clsvar.docstring_linker)) #type: ignore
 
@@ -2279,7 +2259,7 @@ def test_parsed_names_partially_resolved_early() -> None:
     assert 'href="top.Cls.html"' in flatten(Cls.parsed_docstring.to_stan(Cls.docstring_linker)) #type: ignore
     
     unknow = system.allobjects['top.src.unknow']
-    assert flatten_text(unknow.parsed_type.to_stan(unknow.docstring_linker)) == 'i|None|list' #type: ignore
+    assert flatten_text(unknow.parsed_type.to_stan(unknow.docstring_linker)) == 'i | None | list' #type: ignore
 
     # test the __init__ signature
     assert 'href="top.src.html#_T"' in flatten(format_signature(Cls.contents['__init__'])) #type: ignore
@@ -2335,8 +2315,8 @@ def test_reparented_builtins_confusion() -> None:
     assert 'refuri="builtins.print"' in Ci.parsed_value.to_node().pformat() #type: ignore
     assert 'refuri="builtins.int"' in C.parsed_bases[0].to_node().pformat() #type: ignore
     assert 'refuri="builtins.object"' in __init__.parsed_decorators[0].to_node().pformat() #type: ignore
-    assert 'refuri="builtins.bytes"' in __init__.signature.parameters['v'].default.parsed.to_node().pformat() #type: ignore
-    assert 'refuri="builtins.bytes"' in __init__.signature.parameters['v'].annotation.parsed.to_node().pformat() #type: ignore
+    assert 'refuri="builtins.bytes"' in __init__.parsed_signature.to_node().pformat() #type: ignore
+    assert 'refuri="builtins.bytes"' in __init__.parsed_signature.to_node().pformat() #type: ignore
     assert 'refuri="builtins.bytes"' in __init__.parsed_annotations['v'].to_node().pformat() #type: ignore
     assert __init__.parsed_docstring is None # should not be none, actually :/
     # assert 'refuri="builtins.bytes"' in __init__.parsed_docstring.to_node().pformat() #type: ignore
@@ -2377,9 +2357,7 @@ def test_reference_transform_in_type_docstring() -> None:
     builder.addModuleString('from src import C;__all__=["C"];list=True', modname='top') 
     builder.buildModules()
     clsvar = system.allobjects['top.C']
-
-    with pytest.raises(NotImplementedError):
-        assert 'refuri="builtins.list"' in clsvar.parsed_docstring.fields[1].body().to_node().pformat() #type: ignore
+    assert 'refuri="builtins.list"' in clsvar.parsed_docstring.fields[1].body().to_node().pformat() #type: ignore
 
 # what to do with inherited documentation of reparented class attribute part of an
 # import cycle? We can't set the value of parsed_docstring from the astbuilder because
@@ -2461,3 +2439,76 @@ def test_does_not_loose_type_linenumber(capsys: CapSys) -> None:
     assert capsys.readouterr().out == ('<test>:16: Existing docstring at line 10 is overriden\n'
                                        '<test>:10: Cannot find link target for "bool"\n')
 
+def test_numpydoc_warns_about_unknown_types_in_explicit_references_at_line(capsys: CapSys) -> None:
+    # we don't have a good knowledge of linenumber in numpy or google docstring
+    # because of https://github.com/twisted/pydoctor/issues/807
+    # But this regression test tries to ensure we're not making it worse.
+    # it might need to be adjusted when we fix #807.
+
+    src = '''
+    import numpy as np
+    __docformat__ = 'numpy'
+    def find(a, sub, start=0, end=None):
+        """
+        For each element, return the lowest index in the string where
+        substring ``sub`` is found, such that ``sub`` is contained in the
+        range [``start``, ``end``).
+
+        Parameters
+        ----------
+        a : array_like, with ``StringDType``, ``bytes_`` or ``str_`` dtype
+        sub : array_like, with `np.bytes_` or `np.str_` dtype
+            The substring to search for.
+        """
+    '''
+    system = model.System(model.Options.from_args(['-q']))
+    builder = system.systemBuilder(system)
+    builder.addModuleString('', modname='numpy', is_package=True)
+    builder.addModuleString('', modname='_core', is_package=True, parent_name='numpy')
+    builder.addModuleString(src, modname='strings.py', parent_name='numpy._core')
+    builder.buildModules()
+    for o in system.allobjects.values():
+        docstring2html(o)
+    assert capsys.readouterr().out == ('numpy._core.strings.py:11: Cannot find link target for "array_like"\n'
+        'numpy._core.strings.py:13: Cannot find link target for "array_like"\n'
+        'numpy._core.strings.py:13: Cannot find link target for "numpy.bytes_", resolved from "np.bytes_"\n'
+        'numpy._core.strings.py:13: Cannot find link target for "numpy.str_", resolved from "np.str_"\n')
+
+@pytest.mark.parametrize('signature,expected', (
+    ('(*, a: bytes, b=None)', 
+     ('(<span class="rst-sig-symbol">*, </span>'
+      '<span class="rst-sig-param">a: <code>bytes</code>, </span>'
+      '<span class="rst-sig-param">b=None</span>)')),
+    
+    ('(*, a=(), b) -> list[str]', 
+     ('(<span class="rst-sig-symbol">*, </span>'
+      '<span class="rst-sig-param">a=(), </span>'
+      '<span class="rst-sig-param">b</span>) -&gt; '
+      '<code>list[<wbr></wbr>str]</code>')),
+    
+    ('(a, b=3, *c, **kw) -> None', 
+     ('(<span class="rst-sig-param">a, </span>'
+      '<span class="rst-sig-param">b=3, </span>'
+      '<span class="rst-sig-param">*c, </span>'
+      '<span class="rst-sig-param">**kw</span>)')),
+    
+    ('(x, *v) -> ...', (
+        '(<span class="rst-sig-param">x, </span>'
+        '<span class="rst-sig-param">*v</span>) -&gt; <code>'
+        '<span class="rst-variable-ellipsis">...</span></code>')),
+    
+    ('(x: self, *, v=1)', 
+     ('(<span class="rst-sig-param">x: <code>self</code>, </span>'
+      '<span class="rst-sig-symbol">*, </span>'
+      '<span class="rst-sig-param">v=1</span>)')),
+    ))
+def test_function_signature_html(signature: str, expected: str) -> None:
+    """
+    Check the html of signatures, with annotations. 
+    """
+    mod = fromText(f'def f{signature}: ...')
+    docfunc, = mod.contents.values()
+    assert isinstance(docfunc, model.Function)
+    # This little trick makes it possible to back reproduce the original signature from the genrated HTML.
+    html = flatten(format_signature(docfunc))
+    assert html == expected

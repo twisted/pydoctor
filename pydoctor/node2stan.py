@@ -3,6 +3,7 @@ Helper function to convert L{docutils} nodes to Stan tree.
 """
 from __future__ import annotations
 
+from functools import partial
 from itertools import chain
 import re
 import optparse
@@ -16,7 +17,7 @@ import attr
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable
     from pydoctor.epydoc.markup import DocstringLinker
-    from pydoctor.epydoc.docutils import obj_reference
+    from pydoctor.epydoc.docutils import obj_reference, code, wbr
 
 from pydoctor.epydoc.docutils import get_lineno
 from pydoctor.epydoc.doctest import colorize_codeblock, colorize_doctest
@@ -113,7 +114,7 @@ class HTMLTranslator(html4css1.HTMLTranslator):
                 # Direct access to OptionParser is deprecated from Docutils 0.19
                 settings = frontend.get_default_settings(html4css1.Writer())
             else:
-                settings = frontend.OptionParser([html4css1.Writer()]).get_default_values() # type: ignore
+                settings = frontend.OptionParser([html4css1.Writer()]).get_default_values()
             
             # Save default settings as class attribute not to re-compute it all the times
             self.__class__.settings = settings
@@ -126,17 +127,30 @@ class HTMLTranslator(html4css1.HTMLTranslator):
         super().__init__(document)
 
         # don't allow <h1> tags, start at <h2>
-        # h1 is reserved for the page nodes.title. 
+        # h1 is reserved for the page title. 
         self.section_level += 1
+
+        # All documents should be created with pydoctor.epydoc.docutils.new_document() helper
+        # such that the source attribute will always be one of the supported values.
+        self._document_is_code = is_code = document.attributes.get('source') == 'code'
+        if is_code:
+            # Do not wrap links in <code> tags if we're renderring a code-like parsed element.
+            self._link_xref = self._linker.link_xref
+        else:
+            self._link_xref = lambda target, label, lineno: Tag('code')(self._linker.link_xref(target, label, lineno))
+
 
     # Handle interpreted text (crossreferences)
     def visit_title_reference(self, node: nodes.title_reference) -> None:
         lineno = get_lineno(node)
-        self._handle_reference(node, link_func=lambda target, label: self._linker.link_xref(target, label, lineno))
+        self._handle_reference(node, link_func=partial(self._link_xref, lineno=lineno))
     
     # Handle internal references
     def visit_obj_reference(self, node: obj_reference) -> None:
-        self._handle_reference(node, link_func=self._linker.link_to)
+        if node.attributes.get('is_annotation'):
+            self._handle_reference(node, link_func=partial(self._linker.link_to, is_annotation=True))
+        else:
+            self._handle_reference(node, link_func=self._linker.link_to)
     
     def _handle_reference(self, node: nodes.title_reference, link_func: Callable[[str, "Flattenable"], "Flattenable"]) -> None:
         ref = parse_reference(node)
@@ -149,6 +163,12 @@ class HTMLTranslator(html4css1.HTMLTranslator):
             label = node_label
         self.body.append(flatten(link_func(target, label)))
         raise nodes.SkipNode()
+
+    def visit_code(self, node: code) -> None:
+        self.body.append(self.starttag(node, 'code', suffix=''))
+    
+    def depart_code(self, node: code) -> None:
+        self.body.append('</code>')
 
     def should_be_compact_paragraph(self, node: nodes.Element) -> bool:
         if self.document.children == [node]:
@@ -298,7 +318,7 @@ class HTMLTranslator(html4css1.HTMLTranslator):
     def depart_tip(self, node: nodes.Element) -> None:
         self.depart_admonition(node)
 
-    def visit_wbr(self, node: nodes.Node) -> None:
+    def visit_wbr(self, node: wbr) -> None:
         self.body.append('<wbr></wbr>')
     
     def depart_wbr(self, node: nodes.Node) -> None:

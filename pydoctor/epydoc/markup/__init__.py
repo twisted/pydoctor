@@ -40,10 +40,11 @@ from importlib import import_module
 from inspect import getmodulename
 
 from docutils import nodes
-from twisted.web.template import Tag, tags
+from twisted.web.template import Tag
 
 from pydoctor import node2stan
-from pydoctor.epydoc.docutils import set_node_attributes, build_table_of_content, new_document
+from pydoctor.epydoc.docutils import (set_node_attributes, build_table_of_content, 
+                                      new_document, text_node)
 
 
 # In newer Python versions, use importlib.resources from the standard library.
@@ -87,7 +88,7 @@ def get_supported_docformats() -> Iterator[str]:
 
 def get_parser_by_name(docformat: str, objclass: ObjClass | None = None) -> ParserFunction:
     """
-    Get the C{parse_docstring(str, List[ParseError], bool) -> ParsedDocstring} function based on a parser name. 
+    Get the C{parse_docstring(str, List[ParseError]) -> ParsedDocstring} function based on a parser name. 
 
     @raises ImportError: If the parser could not be imported, probably meaning that your are missing a dependency
         or it could be that the docformat name do not match any know L{pydoctor.epydoc.markup} submodules.
@@ -112,7 +113,7 @@ def processtypes(parse:ParserFunction) -> ParserFunction:
         for field in doc.fields:
             if field.tag() in ParsedTypeDocstring.FIELDS:
                 body = ParsedTypeDocstring(field.body().to_node(), lineno=field.lineno)
-                append_warnings(body.warnings, errs, lineno=field.lineno+1)
+                append_warnings(body.warnings, errs, lineno=field.lineno)
                 field.replace_body(body)
     
     def parse_and_processtypes(doc:str, errs:List['ParseError']) -> 'ParsedDocstring':
@@ -132,7 +133,7 @@ class ParsedDocstring(abc.ABC):
     markup parsers such as L{pydoctor.epydoc.markup.epytext.parse_docstring()}
     or L{pydoctor.epydoc.markup.restructuredtext.parse_docstring()}.
 
-    Subclasses must implement L{has_body()} and L{to_node()}.
+    Subclasses must at least implement L{has_body()} and L{to_node()}.
     
     A default implementation for L{to_stan()} method, relying on L{to_node()} is provided.
     But some subclasses override this behaviour.
@@ -146,11 +147,10 @@ class ParsedDocstring(abc.ABC):
         A list of L{Field}s, each of which encodes a single field.
         The field's bodies are encoded as C{ParsedDocstring}s.
         """
-
         self._stan: Optional[Tag] = None
-        self._summary: Optional['ParsedDocstring'] = None
 
-    @abc.abstractproperty
+    @property
+    @abc.abstractmethod
     def has_body(self) -> bool:
         """
         Does this docstring have a non-empty body?
@@ -168,10 +168,9 @@ class ParsedDocstring(abc.ABC):
         except NotImplementedError:
             return None
         contents = build_table_of_content(document, depth=depth)
-        docstring_toc = new_document('toc')
+        docstring_toc = new_document('docstring')
         if contents:
             docstring_toc.extend(contents)
-            from pydoctor.epydoc.markup.restructuredtext import ParsedRstDocstring
             return ParsedRstDocstring(docstring_toc, ())
         else:
             return None
@@ -206,25 +205,39 @@ class ParsedDocstring(abc.ABC):
         """
         raise NotImplementedError()
     
+    def to_text(self) -> str:
+        """
+        Translate this docstring to a string.
+        The default implementation depends on L{to_node}.
+        """
+        doc = self.to_node()
+        return ''.join(node2stan.gettext(doc))
+ 
     def get_summary(self) -> 'ParsedDocstring':
         """
         Returns the summary of this docstring.
-        
-        @note: The summary is cached.
         """
-        # Avoid rare cyclic import error, see https://github.com/twisted/pydoctor/pull/538#discussion_r845668735
-        from pydoctor import epydoc2stan
-        if self._summary is not None:
-            return self._summary
         try: 
             _document = self.to_node()
             visitor = SummaryExtractor(_document)
             _document.walk(visitor)
         except Exception: 
-            self._summary = epydoc2stan.ParsedStanOnly(tags.span(class_='undocumented')("Broken summary"))
-        else:
-            self._summary = visitor.summary or epydoc2stan.ParsedStanOnly(tags.span(class_='undocumented')("No summary"))
-        return self._summary
+            return parsed_text('Broken summary', 'undocumented')
+        
+        return visitor.summary or parsed_text('No summary', 'undocumented')
+
+def parsed_text(text: str, 
+                klass: str | None = None, 
+                source: Literal['docstring', 'code'] = 'docstring') -> ParsedDocstring:
+    """
+    Create a parsed representation of a simple text 
+    with a given class (or no class at all).
+    
+    The C{source} is used for L{new_document} call.
+    """
+    return ParsedRstDocstring(set_node_attributes(new_document(source), 
+            children=[text_node(text, klass) 
+                      if klass else nodes.Text(text)]), ())
 
       
 ##################################################
@@ -289,7 +302,7 @@ class DocstringLinker(Protocol):
     target URL for crossreference links.
     """
 
-    def link_to(self, target: str, label: "Flattenable") -> Tag:
+    def link_to(self, target: str, label: "Flattenable", *, is_annotation: bool = False) -> Tag:
         """
         Format a link to a Python identifier.
         This will resolve the identifier like Python itself would.
@@ -297,6 +310,8 @@ class DocstringLinker(Protocol):
         @param target: The name of the Python identifier that
             should be linked to.
         @param label: The label to show for the link.
+        @param is_annotation: Generated links will give precedence to the module
+            defined variables rather the nested definitions when there are name collisions.
         @return: The link, or just the label if the target was not found.
         """
 
@@ -327,6 +342,7 @@ class DocstringLinker(Protocol):
         Pass C{None} to always generate full URLs (for summaries for example), 
         in this case error will NOT be reported at all.
         """
+
 
 ##################################################
 ## ParseError exceptions
@@ -439,7 +455,7 @@ class SummaryExtractor(nodes.NodeVisitor):
             self.other_docs = True
             raise nodes.StopTraversal()
 
-        summary_doc = new_document('summary')
+        summary_doc = new_document('docstring')
         summary_pieces: list[nodes.Node] = []
 
         # Extract the first sentences from the first paragraph until maximum number 
@@ -478,7 +494,6 @@ class SummaryExtractor(nodes.NodeVisitor):
             set_node_attributes(nodes.paragraph('', ''), document=summary_doc, lineno=1, 
             children=summary_pieces)])
 
-        from pydoctor.epydoc.markup.restructuredtext import ParsedRstDocstring
         self.summary = ParsedRstDocstring(summary_doc, fields=[])
 
     def visit_field(self, node: nodes.Node) -> None:
@@ -486,3 +501,6 @@ class SummaryExtractor(nodes.NodeVisitor):
 
     def unknown_visit(self, node: nodes.Node) -> None:
         '''Ignore all unknown nodes'''
+
+
+from pydoctor.epydoc.markup.restructuredtext import ParsedRstDocstring

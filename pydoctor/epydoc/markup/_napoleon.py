@@ -61,7 +61,7 @@ class NapoelonDocstringParser:
         errors: list[ParseError],
         docstring_cls: type[GoogleDocstring],
     ) -> ParsedDocstring:
-
+        
         docstring_obj = docstring_cls(
             docstring, 
             what=self.objclass,

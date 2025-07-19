@@ -28,7 +28,7 @@ numpy.ndarray: super-dooper attribute"""
 
         actual = flatten(parsed_doc.fields[-1].body().to_stan(NotFoundLinker()))
         
-        expected = """<code>numpy.ndarray</code>"""
+        expected = """<code><a>numpy.ndarray</a></code>"""
 
         self.assertEqual(expected, actual)
         self.assertEqual(errors, [])
@@ -65,7 +65,7 @@ numpy.ndarray: super-dooper attribute"""
 
         actual = flatten(parsed_doc.fields[-1].body().to_stan(NotFoundLinker()))
 
-        expected = """<code>numpy.ndarray</code>"""
+        expected = """<code><a>numpy.ndarray</a></code>"""
 
         self.assertEqual(expected, actual)
         self.assertEqual(errors, [])
@@ -170,8 +170,9 @@ Some more text.
         self.assertIn("invalid value set (missing closing brace)", errors[1].descr())
         self.assertIn("malformed string literal (missing opening quote)", errors[0].descr())
         
-        self.assertEqual(errors[2].linenum(), 21) # #FIXME: It should be 23 actually...
-        self.assertEqual(errors[1].linenum(), 18)
-        self.assertEqual(errors[0].linenum(), 14)
+        #FIXME: It should be 23 actually: https://github.com/twisted/pydoctor/issues/807
+        self.assertEqual(errors[2].linenum(), 20) 
+        self.assertEqual(errors[1].linenum(), 17)
+        self.assertEqual(errors[0].linenum(), 13)
 
         

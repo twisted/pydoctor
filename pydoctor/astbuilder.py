@@ -13,12 +13,10 @@ from typing import (
     Type, TypeVar, Union, Set, cast
 )
 
-from pydoctor import epydoc2stan, model, node2stan, extensions, linker
-from pydoctor.epydoc.markup._pyval_repr import colorize_inline_pyval
+from pydoctor import epydoc2stan, model, extensions
 from pydoctor.astutils import (is_none_literal, is_typing_annotation, is_using_annotations, is_using_typing_final, node2dottedname, node2fullname, 
                                is__name__equals__main__, unstring_annotation, upgrade_annotation, iterassign, extract_docstring_linenum, infer_type, get_parents,
                                get_docstring_node, get_assign_docstring_node, unparse, NodeVisitor, Parentage, Str)
-
 
 def parseFile(path: Path) -> ast.Module:
     """Parse the contents of a Python source file."""
@@ -1033,9 +1031,9 @@ class ModuleVistor(NodeVisitor):
 
         parameters: List[Parameter] = []
         def add_arg(name: str, kind: Any, default: Optional[ast.expr]) -> None:
-            default_val = Parameter.empty if default is None else _ValueFormatter(default, ctx=func)
+            default_val = Parameter.empty if default is None else default
                                                                                # this cast() is safe since we're checking if annotations.get(name) is None first
-            annotation = Parameter.empty if annotations.get(name) is None else _AnnotationValueFormatter(cast(ast.expr, annotations[name]), ctx=func)
+            annotation = Parameter.empty if annotations.get(name) is None else cast(ast.expr, annotations[name])
             parameters.append(Parameter(name, kind, default=default_val, annotation=annotation))
 
         for index, arg in enumerate(posonlyargs):
@@ -1057,13 +1055,12 @@ class ModuleVistor(NodeVisitor):
             add_arg(kwarg.arg, Parameter.VAR_KEYWORD, None)
 
         return_type = annotations.get('return')
-        return_annotation = Parameter.empty if return_type is None or is_none_literal(return_type) else _AnnotationValueFormatter(return_type, ctx=func)
+        return_annotation = Parameter.empty if return_type is None or is_none_literal(return_type) else return_type
         try:
             signature = Signature(parameters, return_annotation=return_annotation)
         except ValueError as ex:
             func.report(f'{func.fullName()} has invalid parameters: {ex}')
-            signature = Signature()
-
+            signature = None
         func.annotations = annotations
 
         # Only set main function signature if it is a non-overload
@@ -1121,7 +1118,7 @@ class ModuleVistor(NodeVisitor):
         @param func: The function definition's AST.
         @return: Mapping from argument name to annotation.
             The name C{return} is used for the return type.
-            Unannotated arguments are omitted.
+            Unannotated arguments are still included with a None value.
         """
         def _get_all_args() -> Iterator[ast.arg]:
             base_args = func.args
@@ -1150,47 +1147,7 @@ class ModuleVistor(NodeVisitor):
                 value, self.builder.current), self.builder.current)
             for name, value in _get_all_ast_annotations()
             }
-    
-class _ValueFormatter:
-    """
-    Class to encapsulate a python value and translate it to HTML when calling L{repr()} on the L{_ValueFormatter}.
-    Used for presenting default values of parameters.
-    """
 
-    def __init__(self, value: ast.expr, ctx: model.Documentable):
-        self.parsed = colorize_inline_pyval(value)
-        """
-        The colorized value as L{ParsedDocstring}.
-        """
-
-        self.linker = ctx.docstring_linker
-        """
-        Linker.
-        """
-
-    def __repr__(self) -> str:
-        """
-        Present the python value as HTML. 
-        Without the englobing <code> tags.
-        """
-        # Using node2stan.node2html instead of flatten(to_stan()). 
-        # This avoids calling flatten() twice, 
-        # but potential XML parser errors caused by XMLString needs to be handled later.
-        return ''.join(node2stan.node2html(self.parsed.to_node(), self.linker))
-
-class _AnnotationValueFormatter(_ValueFormatter):
-    """
-    Special L{_ValueFormatter} for function annotations.
-    """
-    def __init__(self, value: ast.expr, ctx: model.Function):
-        super().__init__(value, ctx)
-        self.linker = linker._AnnotationLinker(ctx)
-    
-    def __repr__(self) -> str:
-        """
-        Present the annotation wrapped inside <code> tags.
-        """
-        return '<code>%s</code>' % super().__repr__()
 
 DocumentableT = TypeVar('DocumentableT', bound=model.Documentable)
 
@@ -1209,7 +1166,21 @@ class ASTBuilder:
         self.currentMod: Optional[model.Module] = None # current module, set when visiting ast.Module.
         
         self._stack: List[model.Documentable] = []
-        self.ast_cache: Dict[Path, Optional[ast.Module]] = {}
+
+    
+    def parseFile(self, path: Path, ctx: model.Module) -> Optional[ast.Module]:
+        try:
+            return self.system._ast_parser.parseFile(path)
+        except Exception as e:
+            ctx.report(f"cannot parse file, {e}")
+            return None
+    
+    def parseString(self, string:str, ctx: model.Module) -> Optional[ast.Module]:
+        try:
+            return self.system._ast_parser.parseString(string)
+        except Exception:
+            ctx.report("cannot parse string")
+            return None
 
     def _push(self, 
               cls: Type[DocumentableT], 
@@ -1315,28 +1286,55 @@ class ASTBuilder:
         vis.extensions.attach_visitor(vis)
         vis.walkabout(mod_ast)
 
-    def parseFile(self, path: Path, ctx: model.Module) -> Optional[ast.Module]:
-        try:
-            return self.ast_cache[path]
-        except KeyError:
-            mod: Optional[ast.Module] = None
-            try:
-                mod = parseFile(path)
-            except (SyntaxError, ValueError) as e:
-                ctx.report(f"cannot parse file, {e}")
+class SyntaxTreeParser:
+    """
+    Responsible to read files and cache their parsed tree.
+    """
 
-            self.ast_cache[path] = mod
-            return mod
+    class _Error:
+        """
+        Errors are cached as instances of this class instead of base exceoptions
+        in order to avoid cycles with the locals. 
+        """
+
+        def __init__(self, exception: type[Exception], args: tuple[Any, ...]):
+            self._exce = exception
+            self._args = args
+        
+        def exception(self) -> Exception:
+            return self._exce(*self._args)
+
+    def __init__(self) -> None:
+        self.ast_cache: Dict[Path, ast.Module | SyntaxTreeParser._Error] = {}
+
+    def parseFile(self, path: Path) -> ast.Module:
+        try:
+            r = self.ast_cache[path]
+        except KeyError:
+            tree: ast.Module | SyntaxTreeParser._Error
+            try:
+                tree = parseFile(path)
+                return tree
+            except Exception as e:
+                tree = SyntaxTreeParser._Error(type(e), e.args)
+                raise
+            finally:
+                self.ast_cache[path] = tree
+        else:
+            if isinstance(r, SyntaxTreeParser._Error):
+                raise r.exception()
+            return r
     
-    def parseString(self, py_string:str, ctx: model.Module) -> Optional[ast.Module]:
+    def parseString(self, string:str) -> ast.Module:
         mod = None
         try:
-            mod = _parse(py_string)
-        except (SyntaxError, ValueError):
-            ctx.report("cannot parse string")
+            mod = _parse(string)
+        except (SyntaxError, ValueError) as e:
+            raise SyntaxError("cannot parse string") from e
         return mod
 
 model.System.defaultBuilder = ASTBuilder
+model.System.syntaxTreeParser = SyntaxTreeParser
 
 def findModuleLevelAssign(mod_ast: ast.Module) -> Iterator[Tuple[str, ast.Assign]]:
     """

@@ -73,7 +73,35 @@ What's New?
 in development
 ^^^^^^^^^^^^^^
 
+* Fix a regression that prevented the source link on package' page to be rendered.
+* Improve introspection of C-modules to support data descriptors.
+* Dunders that are not supposed to be part of the API are now ignored when introspecting code.
+* Fix bug, ``ivar`` field and fiends are not ignored anymore in introspected C-modules.
+* Fix bug that would result in duplicated "Cannot find link target" warnings when the 
+  types under a docstring *Attributes* section failed to resolved.
+* Introduce --intersphinx-file option: Use local Sphinx objects inventory file to generate 
+  links to external documentation. If the optional base URL is provided, the links will be 
+  made relative to this base URL. Can be repeated. Format is *PATH_TO_OBJECTS.INV[::BASE_URL]*. 
+
+pydoctor 25.4.0
+^^^^^^^^^^^^^^^
+
 * Drop support for Python 3.8.
+* Add support for `Namespace Packages <https://packaging.python.org/en/latest/guides/packaging-namespace-packages>`_: 
+  
+  - Support implicit native namespace packages (PEP 420). Get rid of the error: ``Source directory lacks __init__.py``. 
+  - Some limited support for legacy namespace packages is included as well (with ``declare_namespace(__name__)`` or ``__path__ = extend_path(__path__, __name__)``).
+  - Better messages are now triggered when there is a module/package name collision (exit code will not change though).
+
+* Signatures of function definitions are now wrapped onto several lines when the function has the focus. 
+* The first parameter of classmethods and methods (``cls`` or ``self``) is colored in gray so it's clear that these are not part of the API.
+* When pydoctor encounters an invalid signature, it shows (…) as the signature instead of the misleading zero argument signature.
+* Improve field tables so the correspondence with the description column is more legible.
+* Highlighting in readthedocs theme now cover the whole docstring content 
+  instead of just the signature.
+* Fix a bug in the MRO computing code that would result in an incorrect  
+  ``Cannot compute linearization of the class inheritance hierarchy`` message 
+  for valid types extending ``typing.Generic`` as well as other generic classes.
 
 pydoctor 24.11.2
 ^^^^^^^^^^^^^^^^

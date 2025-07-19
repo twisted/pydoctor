@@ -164,7 +164,7 @@ def slugify(string:str) -> str:
     A generic slugifier utility (currently only for Latin-based scripts).
     Example:
         >>> slugify("Héllo Wörld")
-        "hello-world"
+        'hello-world'
     """
     return re.sub(r'[-\s]+', '-', 
                 re.sub(rb'[^\w\s-]', b'',
@@ -1379,7 +1379,7 @@ class ParsedEpytextDocstring(ParsedDocstring):
         if self._document is not None:
             return self._document
 
-        self._document = new_document('epytext')
+        self._document = new_document('docstring')
 
         if self._tree is not None:
             node, = self._to_node(self._tree)

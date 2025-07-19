@@ -133,7 +133,7 @@ class _EpydocLinker(DocstringLinker):
 
     def link_to(self, identifier: str, label: "Flattenable", *, is_annotation: bool = False) -> Tag:
         if is_annotation:
-            fullID = self.obj.expandAnnotationName(identifier)
+            fullID = (self.obj.parent or self.obj).expandAnnotationName(identifier)
         else:
             fullID = self.obj.expandName(identifier)
 
@@ -157,14 +157,14 @@ class _EpydocLinker(DocstringLinker):
         try:
             resolved = self._resolve_identifier_xref(target, lineno)
         except LookupError:
-            xref = label
+            xref = tags.transparent(label)
         else:
             if isinstance(resolved, str):
                 xref = intersphinx_link(label, url=resolved)
             else:
                 xref = taglink(resolved, self.page_url, label)
                 
-        return tags.code(xref)
+        return xref
 
     def _resolve_identifier_xref(self,
             identifier: str,
@@ -256,45 +256,20 @@ class _EpydocLinker(DocstringLinker):
             self.reporting_obj.report(message, 'resolve_identifier_xref', lineno)
         raise LookupError(identifier)
 
-class _AnnotationLinker(DocstringLinker):
-    """
-    Specialized linker to resolve annotations attached to the given L{Documentable}. 
-
-    Links will be created in the context of C{obj} but 
-    generated with the C{obj.module}'s linker when possible.
-    """
-    def __init__(self, obj:'model.Documentable') -> None:
-        self._obj = obj
-        self._module = obj.module
-        self._scope = obj.parent or obj
-        self._scope_linker = _EpydocLinker(self._scope)
-    
-    @property
-    def obj(self) -> 'model.Documentable':
-        return self._obj
-    
-    def link_to(self, target: str, label: "Flattenable") -> Tag:
-        with self.switch_context(self._obj):
-            return self._scope_linker.link_to(target, label, is_annotation=True)
-    
-    def link_xref(self, target: str, label: "Flattenable", lineno: int) -> Tag:
-        with self.switch_context(self._obj):
-            return self.obj.docstring_linker.link_xref(target, label, lineno)
-
-    @contextlib.contextmanager
-    def switch_context(self, ob:Optional['model.Documentable']) -> Iterator[None]:
-        with self._scope_linker.switch_context(ob):
-            yield
-
 class NotFoundLinker(DocstringLinker):
-    """A DocstringLinker implementation that cannot find any links."""
+    """
+    A DocstringLinker implementation that cannot find any links.
+    
+    It will always output link tag with no C{href} attribute.
+    """
 
-    def link_to(self, target: str, label: "Flattenable") -> Tag:
-        return tags.transparent(label)
+    def link_to(self, target: str, label: "Flattenable", *, is_annotation: bool = False) -> Tag:
+        return tags.a(label)
 
     def link_xref(self, target: str, label: "Flattenable", lineno: int) -> Tag:
-        return tags.code(label)
+        return tags.a(label)
     
     @contextlib.contextmanager
     def switch_context(self, ob: Optional[model.Documentable]) -> Iterator[None]:
         yield
+

@@ -10,7 +10,7 @@ import json
 import attr
 
 from pydoctor.templatewriter.pages import Page
-from pydoctor import model, epydoc2stan, node2stan
+from pydoctor import model, epydoc2stan
 
 from twisted.web.template import Tag, renderer
 from lunr import lunr, get_default_builder
@@ -104,12 +104,7 @@ class LunrIndexWriter:
         source = epydoc2stan.ensure_parsed_docstring(ob)
         if source is not None:
             assert ob.parsed_docstring is not None
-            try:
-                doc = ' '.join(node2stan.gettext(ob.parsed_docstring.to_node()))
-            except NotImplementedError:
-                # some ParsedDocstring subclass raises NotImplementedError on calling to_node()
-                # Like ParsedPlaintextDocstring.
-                doc = source.docstring
+            doc = ob.parsed_docstring.to_text()
         return doc
 
     def format_kind(self, ob:model.Documentable) -> str:
