@@ -661,7 +661,12 @@ def ensure_parsed_docstring(obj: model.Documentable) -> Optional[model.Documenta
     Currently, it's not 100% clear at what point the L{Documentable.parsed_docstring} attribute is set.
     It can be set from the ast builder or later processing step.
 
-    This function ensures that the C{parsed_docstring} attribute of a documentable is set to it's final value.
+    This function ensures that the C{parsed_docstring} attribute of a 
+    documentable is set to a relevant value at the given point of the processing.
+    Meaning if an obvious docstring is found it will be stored, if some some reason 
+    (i.e import cycles) the docstring source has not been processed yet, this function is a no-op and
+    will return as-is the docstring is None. This function might have a different effect in a further 
+    point of the processing.
 
     @returns:
         - If the C{obj.parsed_docstring} is set to a L{ParsedDocstring} instance:
@@ -1307,23 +1312,23 @@ def _apply_reference_transform(doc:ParsedDocstring, ctx:'model.Documentable') ->
     else:
         _ReferenceTransform(document, ctx).apply()
 
-def transform_parsed_names(node:'model.Module') -> None:
+def transform_parsed_names(node: model.Module) -> None:
     """
     Walk this module's content and apply in-place transformations to the 
     L{ParsedDocstring} instances that olds L{obj_reference} or L{nodes.title_reference} nodes. 
 
     Fixing "Lookup of name in annotation fails on reparented object #295".
-    The fix is not 100% complete at the moment: attribute values and decorators
-    are not handled.
     """
-    from pydoctor import model, astbuilder
+    from pydoctor import model
     # resolve names early when possible
     for ob in model.walk(node):
         # resolve names in parsed_docstring, do not forget field bodies
-        if ob.parsed_docstring:
-            _apply_reference_transform(ob.parsed_docstring, ob)
+        if docsource:=ensure_parsed_docstring(ob):
+            assert ob.parsed_docstring is not None
+            _apply_reference_transform(ob.parsed_docstring, docsource)
             for f in ob.parsed_docstring.fields:
-                _apply_reference_transform(f.body(), ob)
+                _apply_reference_transform(f.body(), docsource)
+        
         if isinstance(ob, model.Function):
             if sig:=get_parsed_signature(ob):
                 _apply_reference_transform(sig, ob)
@@ -1356,8 +1361,6 @@ def transform_parsed_names(node:'model.Module') -> None:
         elif isinstance(ob, model.Class):
             for base in get_parsed_bases(ob):
                 _apply_reference_transform(base, ob)
-
-# TODO: do one test with parsed type docstrings
 
 def get_namespace_docstring(ns: model.Package) -> str:
     """

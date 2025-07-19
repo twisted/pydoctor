@@ -495,4 +495,4 @@ def test_bug_attribute_type_not_found_reports_only_once(capsys:CapSys) -> None:
 
     mod = fromText(src)
     [docstring2html(o) for o in mod.system.allobjects.values()]
-    assert capsys.readouterr().out.splitlines() == ['<test>:8: Cannot find link target for "int"']
+    assert capsys.readouterr().out.splitlines() == ['<test>:8: Cannot find link target for "builtins.int", resolved from "int" (you can link to external docs with --intersphinx)']

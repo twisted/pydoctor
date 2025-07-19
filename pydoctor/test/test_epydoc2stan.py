@@ -1122,7 +1122,7 @@ def test_EpydocLinker_resolve_identifier_xref_intersphinx_absolute_id() -> None:
     assert isinstance(sut, linker._EpydocLinker)
 
     url = sut.link_to('base.module.other', 'o').attributes['href']
-    url_xref = sut._resolve_identifier_xref('base.module.other', 0)
+    url_xref = sut._resolve_identifier_xref('base.module.other', 0, 'base.module.other')
 
     assert "http://tm.tld/some.html" == url
     assert "http://tm.tld/some.html" == url_xref
@@ -1149,7 +1149,7 @@ def test_EpydocLinker_resolve_identifier_xref_intersphinx_relative_id() -> None:
 
     # This is called for the L{ext_module<Pretty Text>} markup.
     url = sut.link_to('ext_module', 'ext').attributes['href']
-    url_xref = sut._resolve_identifier_xref('ext_module', 0)
+    url_xref = sut._resolve_identifier_xref('ext_module', 0, 'ext_module')
 
     assert "http://tm.tld/some.html" == url
     assert "http://tm.tld/some.html" == url_xref
@@ -1176,7 +1176,7 @@ def test_EpydocLinker_resolve_identifier_xref_intersphinx_link_not_found(capsys:
     assert sut.link_to('ext_module', 'ext').tagName == ''
     assert not capsys.readouterr().out
     with raises(LookupError):
-        sut._resolve_identifier_xref('ext_module', 0)
+        sut._resolve_identifier_xref('ext_module', 0, 'ext_module')
 
     captured = capsys.readouterr().out
     expected = (
@@ -1211,9 +1211,8 @@ def test_EpydocLinker_link_not_found_show_original(capsys: CapSys) -> None:
     builder.buildModules()
     docstring2html(system.allobjects['src'])
     captured = capsys.readouterr().out
-    # TODO: shoud say resolved from "S"
     expected = (
-        'src:2: Cannot find link target for "n.Stuff", resolved from "m.S"\n'
+        'src:2: Cannot find link target for "n.Stuff", resolved from "S"\n'
         )
     assert expected == captured
 
@@ -1250,7 +1249,7 @@ def test_EpydocLinker_resolve_identifier_xref_order(capsys: CapSys) -> None:
     assert isinstance(_linker, linker._EpydocLinker)
 
     url = _linker.link_to('socket.socket', 's').attributes['href']
-    url_xref = _linker._resolve_identifier_xref('socket.socket', 0)
+    url_xref = _linker._resolve_identifier_xref('socket.socket', 0, 'socket.socket')
 
     assert 'https://docs.python.org/3/library/socket.html#socket.socket' == url
     assert 'https://docs.python.org/3/library/socket.html#socket.socket' == url_xref
@@ -1272,7 +1271,7 @@ def test_EpydocLinker_resolve_identifier_xref_internal_full_name() -> None:
     sut = target.docstring_linker
     assert isinstance(sut, linker._EpydocLinker)
     url = sut.link_to('internal_module.C','C').attributes['href']
-    xref = sut._resolve_identifier_xref('internal_module.C', 0)
+    xref = sut._resolve_identifier_xref('internal_module.C', 0, 'internal_module.C')
 
     assert "internal_module.C.html" == url
     assert int_mod.contents['C'] is xref
@@ -1487,7 +1486,7 @@ class RecordingAnnotationLinker(NotFoundLinker):
         self.requests.append(target)
         return tags.transparent(label)
 
-    def link_xref(self, target: str, label: "Flattenable", lineno: int) -> Tag:
+    def link_xref(self, target: str, label: "Flattenable", lineno: int, rawtarget: str | None = None) -> Tag:
         assert False
 
 @mark.parametrize('annotation', (
@@ -2318,8 +2317,7 @@ def test_reparented_builtins_confusion() -> None:
     assert 'refuri="builtins.bytes"' in __init__.parsed_signature.to_node().pformat() #type: ignore
     assert 'refuri="builtins.bytes"' in __init__.parsed_signature.to_node().pformat() #type: ignore
     assert 'refuri="builtins.bytes"' in __init__.parsed_annotations['v'].to_node().pformat() #type: ignore
-    assert __init__.parsed_docstring is None # should not be none, actually :/
-    # assert 'refuri="builtins.bytes"' in __init__.parsed_docstring.to_node().pformat() #type: ignore
+    assert 'refuri="builtins.bytes"' in __init__.parsed_docstring.to_node().pformat() #type: ignore
 
 def test_link_resolving_unbound_names() -> None:
     """
@@ -2405,7 +2403,7 @@ def test_regression_not_found_linenumbers(capsys: CapSys) -> None:
     mod = fromText(code, )
     docstring2html(mod.contents['Settings'])
     captured = capsys.readouterr().out
-    assert captured == '<test>:15: Cannot find link target for "TypeError"\n'
+    assert captured == '<test>:15: Cannot find link target for "builtins.TypeError", resolved from "TypeError" (you can link to external docs with --intersphinx)\n'
 
 def test_does_not_loose_type_linenumber(capsys: CapSys) -> None:
     # exmaple from numpy/distutils/ccompiler_opt.py
@@ -2437,7 +2435,7 @@ def test_does_not_loose_type_linenumber(capsys: CapSys) -> None:
     # the link not found warnings.
     getHTMLOf(mod.contents['C'])
     assert capsys.readouterr().out == ('<test>:16: Existing docstring at line 10 is overriden\n'
-                                       '<test>:10: Cannot find link target for "bool"\n')
+                                       '<test>:10: Cannot find link target for "builtins.bool", resolved from "bool" (you can link to external docs with --intersphinx)\n')
 
 def test_numpydoc_warns_about_unknown_types_in_explicit_references_at_line(capsys: CapSys) -> None:
     # we don't have a good knowledge of linenumber in numpy or google docstring
@@ -2512,3 +2510,31 @@ def test_function_signature_html(signature: str, expected: str) -> None:
     # This little trick makes it possible to back reproduce the original signature from the genrated HTML.
     html = flatten(format_signature(docfunc))
     assert html == expected
+
+def test_linker_reports_error_with_link_as_in_source(capsys: CapSys) -> None:
+    src1 = '''
+    # test._impl
+    class notfoundthing:
+        from notfound import thing as t
+    '''
+
+    src2 = '''
+    # test.lib
+    from ._impl import notfoundthing as a
+    thing = 123; 'L{a.t.bar}' # a symbol externally defined
+    foo = 456; 'L{str}' # a builtin
+    '''
+
+    builder = (s:=model.System()).systemBuilder(s)
+    builder.addModuleString('', 'test', is_package=True)
+    builder.addModuleString(src1, '_impl', parent_name='test')
+    builder.addModuleString(src2, 'lib', parent_name='test')
+    builder.buildModules()
+
+    docstring2html(s.allobjects['test.lib.thing'])
+    docstring2html(s.allobjects['test.lib.foo'])
+
+    assert capsys.readouterr().out == (
+        'test.lib:4: Cannot find link target for "notfound.thing.bar", resolved from "a.t.bar" (you can link to external docs with --intersphinx)\n'
+        'test.lib:5: Cannot find link target for "builtins.str", resolved from "str" (you can link to external docs with --intersphinx)\n')
+

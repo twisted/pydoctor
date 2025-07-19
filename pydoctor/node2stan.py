@@ -65,7 +65,6 @@ def gettext(node: Union[nodes.Node, List[nodes.Node]]) -> List[str]:
 class Reference:
     label: str | Sequence[nodes.Node]
     target: str
-    rawtarget: str
 
 def parse_reference(node:nodes.title_reference) -> Reference:
     """
@@ -85,7 +84,7 @@ def parse_reference(node:nodes.title_reference) -> Reference:
     # Support linking to functions and methods with () at the end
     if target.endswith('()'):
         target = target[:len(target)-2]
-    return Reference(label, target, node.attributes.get('rawtarget', target))
+    return Reference(label, target)
 
 _TARGET_RE = re.compile(r'^(.*?)\s*<(?:URI:|URL:)?([^<>]+)>$')
 _VALID_IDENTIFIER_RE = re.compile('[^0-9a-zA-Z_]')
@@ -137,13 +136,15 @@ class HTMLTranslator(html4css1.HTMLTranslator):
             # Do not wrap links in <code> tags if we're renderring a code-like parsed element.
             self._link_xref = self._linker.link_xref
         else:
-            self._link_xref = lambda target, label, lineno: Tag('code')(self._linker.link_xref(target, label, lineno))
+            self._link_xref = lambda target, label, lineno, rawtarget = None: Tag('code')(
+                self._linker.link_xref(target, label, lineno, rawtarget))
 
 
     # Handle interpreted text (crossreferences)
     def visit_title_reference(self, node: nodes.title_reference) -> None:
         lineno = get_lineno(node)
-        self._handle_reference(node, link_func=partial(self._link_xref, lineno=lineno))
+        self._handle_reference(node, link_func=partial(self._link_xref, lineno=lineno, 
+                                                       rawtarget=node.attributes.get('rawtarget')))
     
     # Handle internal references
     def visit_obj_reference(self, node: obj_reference) -> None:
