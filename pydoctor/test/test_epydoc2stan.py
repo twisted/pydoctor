@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import List, Optional, Type, cast, TYPE_CHECKING
 import re
 
