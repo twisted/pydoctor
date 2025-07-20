@@ -3327,3 +3327,23 @@ def test_docformat_variable_ignored_corner_case(capsys: CapSys) -> None:
 
     from .test_epydoc2stan import docstring2html
     assert 'href' in docstring2html(s.allobjects['test.sub.subsub'])
+
+def test__all__variable_ignored_corner_case(capsys: CapSys) -> None:
+    raise NotImplementedError('unfinished!')
+    src_top = '''
+    # test
+    '''
+
+    src_sub = '''
+    # test.sub
+    '''
+
+    src_sub_sub = '''
+    # test.sub.subsub
+    '''
+
+    builder = (s:=model.System()).systemBuilder(s)
+    builder.addModuleString(src_top, 'test', is_package=True)
+    builder.addModuleString(src_sub, 'sub', parent_name='test', is_package=True)
+    builder.addModuleString(src_sub_sub, 'subsub', parent_name='test.sub')
+    builder.buildModules()
