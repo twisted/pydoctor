@@ -1320,8 +1320,13 @@ def transform_parsed_names(node: model.Module) -> None:
     Fixing "Lookup of name in annotation fails on reparented object #295".
     """
     from pydoctor import model
+    privacy = node.system.privacyClass
     # resolve names early when possible
     for ob in model.walk(node):
+        if privacy(ob) == model.PrivacyClass.HIDDEN:
+            # do not do anything with HIDDEN objects since they won't be renderred.
+            continue
+        
         # resolve names in parsed_docstring, do not forget field bodies
         if docsource:=ensure_parsed_docstring(ob):
             assert ob.parsed_docstring is not None

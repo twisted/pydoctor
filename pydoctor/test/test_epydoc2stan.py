@@ -2541,3 +2541,20 @@ def test_linker_reports_error_with_link_as_in_source(capsys: CapSys) -> None:
         'test.lib:4: Cannot find link target for "notfound.thing.bar", resolved from "a.t.bar" (you can link to external docs with --intersphinx)\n'
         'test.lib:5: Cannot find link target for "builtins.str", resolved from "str" (you can link to external docs with --intersphinx)\n')
 
+def test_hidden_object_doesnt_gets_its_docstring_parsed(capsys: CapSys) -> None:
+    src = '''
+    class C:
+        def __eq__(self, other):
+            """
+            L{Invalid) epytext.
+            """
+    '''
+
+    builder = (s:=model.System()).systemBuilder(s)
+    s.options.privacy.append((model.PrivacyClass.HIDDEN, '**.__eq__'))
+    builder.addModuleString(src, 'test')
+    builder.buildModules()
+    assert s.privacyClass(eq:=s.allobjects['test.C.__eq__']) == model.PrivacyClass.HIDDEN
+    assert not eq.parsed_docstring
+    assert not capsys.readouterr().out
+
