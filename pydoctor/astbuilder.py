@@ -1164,21 +1164,6 @@ class ASTBuilder:
         
         self._stack: List[model.Documentable] = []
 
-    
-    def parseFile(self, path: Path, ctx: model.Module) -> Optional[ast.Module]:
-        try:
-            return self.system._ast_parser.parseFile(path)
-        except Exception as e:
-            ctx.report(f"cannot parse file, {e}")
-            return None
-    
-    def parseString(self, string:str, ctx: model.Module) -> Optional[ast.Module]:
-        try:
-            return self.system._ast_parser.parseString(string)
-        except Exception:
-            ctx.report("cannot parse string")
-            return None
-
     def _push(self, 
               cls: Type[DocumentableT], 
               name: str, 
@@ -1270,14 +1255,6 @@ class ASTBuilder:
 
     def processModuleAST(self, mod_ast: ast.Module, mod: model.Module) -> None:
 
-        for name, node in findModuleLevelAssign(mod_ast):
-            try:
-                module_var_parser = MODULE_VARIABLES_META_PARSERS[name]
-            except KeyError:
-                continue
-            else:
-                module_var_parser(node, mod)
-
         vis = self.ModuleVistor(self, mod)
         vis.extensions.add(*self.system._astbuilder_visitors)
         vis.extensions.attach_visitor(vis)
@@ -1304,7 +1281,7 @@ class SyntaxTreeParser:
     def __init__(self) -> None:
         self.ast_cache: Dict[Path, ast.Module | SyntaxTreeParser._Error] = {}
 
-    def parseFile(self, path: Path) -> ast.Module:
+    def parseFileOnly(self, path: Path) -> ast.Module:
         try:
             r = self.ast_cache[path]
         except KeyError:
@@ -1322,7 +1299,7 @@ class SyntaxTreeParser:
                 raise r.exception()
             return r
     
-    def parseString(self, string:str) -> ast.Module:
+    def parseStringOnly(self, string:str) -> ast.Module:
         mod = None
         try:
             mod = _parse(string)
@@ -1330,6 +1307,20 @@ class SyntaxTreeParser:
             raise SyntaxError("cannot parse string") from e
         return mod
 
+    def parseFile(self, path: Path, ctx: model.Module) -> model.ParsedAstModule | None:
+        try:
+            return model.ParsedAstModule(self.parseFileOnly(path))
+        except Exception as e:
+            ctx.report(f"cannot parse file, {e}")
+            return None
+    
+    def parseString(self, string:str, ctx: model.Module) -> model.ParsedAstModule | None:
+        try:
+            return model.ParsedAstModule(self.parseStringOnly(string))
+        except Exception:
+            ctx.report("cannot parse string")
+            return None
+        
 model.System.defaultBuilder = ASTBuilder
 model.System.syntaxTreeParser = SyntaxTreeParser
 
