@@ -3347,3 +3347,10 @@ def test__all__variable_ignored_corner_case(capsys: CapSys) -> None:
     builder.addModuleString(src_sub, 'sub', parent_name='test', is_package=True)
     builder.addModuleString(src_sub_sub, 'subsub', parent_name='test.sub')
     builder.buildModules()
+
+def test_preprocess_names_dont_draw_incorrect_conclusions() -> None:
+    # TODO: test the case of https://pydoctor.readthedocs.io/en/latest/api/pydoctor.model.System.html#postProcess
+    # docstring that have a link to L{extensions.PriorityProcessor} which can be interpreted as beeing
+    # in the extensions attribute of System but really is in the extensions package.
+    ...
+    raise NotImplementedError('unfinished!')
