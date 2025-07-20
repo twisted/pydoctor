@@ -116,6 +116,19 @@ class DocumentableKind(Enum):
     PROPERTY            = 150
     VARIABLE            = 100
 
+def walk(node:'Documentable') -> Iterator['Documentable']:
+    """
+    Recursively yield all descendant nodes in the tree starting at *node*
+    (including *node* itself), in no specified order.  This is useful if you
+    only want to modify nodes in place and don't care about the context.
+    """
+    from collections import deque
+    todo = deque([node])
+    while todo:
+        node = todo.popleft()
+        todo.extend(node.contents.values())
+        yield node
+
 class Documentable:
     """An object that can be documented.
 
@@ -305,7 +318,7 @@ class Documentable:
     def _localNameToFullName(self, name: str) -> str:
         raise NotImplementedError(self._localNameToFullName)
     
-    def isNameDefined(self, name:str) -> bool:
+    def isNameDefined(self, name:str, only_locals:bool=False) -> bool:
         """
         Is the given name defined in the globals/locals of self-context?
         Only the first name of a dotted name is checked.
@@ -412,7 +425,8 @@ class Documentable:
 
     def report(self, descr: str, section: str = 'parsing', lineno_offset: int = 0, thresh:int=-1) -> None:
         """
-        Log an error or warning about this documentable object.
+        Log an error or warning about this documentable object. 
+        A reported message will only be printed once.
 
         @param descr: The error/warning string
         @param section: What the warning is about.
@@ -437,7 +451,8 @@ class Documentable:
         self.system.msg(
             section,
             f'{self.description}:{linenumber}: {descr}',
-            thresh=thresh)
+            # some warnings can be reported more that once.
+            thresh=thresh, once=True)
 
     @property
     def docstring_linker(self) -> 'linker.DocstringLinker':
@@ -456,13 +471,13 @@ class CanContainImportsDocumentable(Documentable):
         super().setup()
         self._localNameToFullName_map: Dict[str, str] = {}
     
-    def isNameDefined(self, name: str) -> bool:
+    def isNameDefined(self, name: str, only_locals:bool=False) -> bool:
         name = name.split('.')[0]
         if name in self.contents:
             return True
         if name in self._localNameToFullName_map:
             return True
-        if not isinstance(self, Module):
+        if not isinstance(self, Module) and not only_locals:
             return self.module.isNameDefined(name)
         else:
             return False
@@ -471,9 +486,22 @@ class CanContainImportsDocumentable(Documentable):
         return chain(self.contents.keys(),
                      self._localNameToFullName_map.keys())
 
+@attr.s(auto_attribs=True)
+class ParsedAstModule:
+    root: ast.Module
+    # will soon contain the source code lines as well
+    # this will enable to process tokens and eventually
+    # generate HTML for source code, see issue #???
+
 class Module(CanContainImportsDocumentable):
     kind = DocumentableKind.MODULE
     state = ProcessingState.UNPROCESSED
+
+    parsed_ast: ParsedAstModule | None = None
+    """
+    When the AST of a module is succesfully parsed, it is encapsulated
+    in a L{ParsedAstModule} instance and stored here to be processed later.
+    """
 
     @property
     def privacyClass(self) -> PrivacyClass:
@@ -793,6 +821,7 @@ class Class(CanContainImportsDocumentable):
         self.subclasses: List[Class] = []
         self._initialbases: List[str] = []
         self._initialbaseobjects: List[Optional['Class']] = []
+        self.parsed_bases:Optional[List[ParsedDocstring]] = None
     
     @overload
     def mro(self, include_external:'Literal[True]', include_self:bool=True) -> Sequence[Class | str]:...
@@ -927,8 +956,8 @@ class Inheritable(Documentable):
     def _localNameToFullName(self, name: str) -> str:
         return self.parent._localNameToFullName(name)
     
-    def isNameDefined(self, name: str) -> bool:
-        return self.parent.isNameDefined(name)
+    def isNameDefined(self, name: str, only_locals:bool=False) -> bool:
+        return self.parent.isNameDefined(name, only_locals=only_locals)
 
 class Function(Inheritable):
     kind = DocumentableKind.FUNCTION
@@ -946,6 +975,8 @@ class Function(Inheritable):
             self.kind = DocumentableKind.METHOD
         self.signature = None
         self.overloads = []
+        self.parsed_decorators:Optional[Sequence[ParsedDocstring]] = None
+        self.parsed_annotations:Optional[Dict[str, Optional[ParsedDocstring]]] = None
 
 @attr.s(auto_attribs=True)
 class FunctionOverload:
@@ -955,6 +986,7 @@ class FunctionOverload:
     primary: Function
     signature: Signature | None 
     decorators: Sequence[ast.expr]
+    parsed_decorators:Optional[Sequence[ParsedDocstring]] = None
     parsed_signature: ParsedDocstring | None = None # set in get_parsed_signature()
 
 class Attribute(Inheritable):
@@ -967,6 +999,8 @@ class Attribute(Inheritable):
 
     None value means the value is not initialized at the current point of the the process. 
     """
+    parsed_decorators:Optional[Sequence[ParsedDocstring]] = None
+    parsed_value:Optional[ParsedDocstring] = None
 
 # Work around the attributes of the same name within the System class.
 _ModuleT = Module
@@ -1574,7 +1608,7 @@ class System:
     
     def _is_oldschool_namespace_package(self, path: Path) -> bool:
         try:
-            tree = self._ast_parser.parseFile(
+            tree = self._ast_parser.parseFileOnly(
                 path.joinpath('__init__.py'))
         except Exception:
             return False
@@ -1647,18 +1681,17 @@ class System:
             assert head == mod.fullName()
         else:
             builder = self.defaultBuilder(self)
-            ast = None
-            if mod._py_string is not None:
-                ast = builder.parseString(mod._py_string, mod)
-            elif mod.kind is not DocumentableKind.NAMESPACE_PACKAGE:
-                # There is no AST for namespace packages.
-                assert mod.source_path is not None
-                ast = builder.parseFile(mod.source_path, mod)
-            if ast:
+            # if mod._py_string is not None:
+            #     ast = builder.parseString(mod._py_string, mod)
+            # elif mod.kind is not DocumentableKind.NAMESPACE_PACKAGE:
+            #     # There is no AST for namespace packages.
+            #     assert mod.source_path is not None
+            #     ast = builder.parseFile(mod.source_path, mod)
+            if mod.parsed_ast:
                 self.processing_modules.append(mod.fullName())
                 if mod._py_string is None:
                     self.msg("processModule", "processing %s"%(self.processing_modules), 1)
-                builder.processModuleAST(ast, mod)
+                builder.processModuleAST(mod.parsed_ast.root, mod)
                 mod.state = ProcessingState.PROCESSED
                 head = self.processing_modules.pop()
                 assert head == mod.fullName()
@@ -1668,8 +1701,39 @@ class System:
             self.module_count,
             f"modules processed, {self.violations} warnings")
 
+    def preProcess(self) -> None:
+        """
+        Called before any module gets processed, at this point the only existing
+        objects are L{Modules <Module>}.
+
+        Pre-processing is the place to compute informations needed at any point of
+        of the processing. Analysis of relations between documentables SHALL NOT be done here.
+        """
+        # 1. parse ASTs of all modules
+        for mod in self.unprocessed_modules:
+            if mod._py_string is not None:
+                mod.parsed_ast = self._ast_parser.parseString(mod._py_string, mod)
+            elif mod.kind is not DocumentableKind.NAMESPACE_PACKAGE:
+                # There is no AST for namespace packages.
+                assert mod.source_path is not None
+                mod.parsed_ast = self._ast_parser.parseFile(mod.source_path, mod)
+        
+        # 2. (one-day we might need this) do some pre analysis 
+        # 3. process meta-variables
+        from . import astbuilder
+        for mod in self.unprocessed_modules:
+            if not (parsed_ast:=mod.parsed_ast):
+                continue
+            for name, node in astbuilder.findModuleLevelAssign(parsed_ast.root):
+                try:
+                    module_var_parser = astbuilder.MODULE_VARIABLES_META_PARSERS[name]
+                except KeyError:
+                    continue
+                else:
+                    module_var_parser(node, mod)
 
     def process(self) -> None:
+        self.preProcess()
         while self.unprocessed_modules:
             mod = next(iter(self.unprocessed_modules))
             self.processModule(mod)

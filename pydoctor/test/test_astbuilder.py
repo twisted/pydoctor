@@ -3294,3 +3294,63 @@ def test_Final_constant_under_control_flow_block_is_still_constant(systemcls: Ty
     assert mod.contents['w'].kind == model.DocumentableKind.CONSTANT
     assert mod.contents['x'].kind == model.DocumentableKind.CONSTANT
     
+def test_docformat_variable_ignored_corner_case(capsys: CapSys) -> None:
+    # test for https://github.com/twisted/pydoctor/pull/723/files#r2217424695
+
+    src_top = '''
+    # test
+    # epytext is used by default but let's be explicit
+    __docformat__ = 'epytext'
+
+    # this import might shortcut the processing of 
+    # test.sub such that __docformat__ variable will be ignored
+    from test.sub.subsub import thing
+    '''
+
+    src_sub = '''
+    # test.sub
+    __docformat__ = 'restructuredtext'
+    '''
+
+    src_sub_sub = '''
+    # test.sub.subsub
+    # should be restructuredtext formatting
+    '`link <https://twisted.org>`_'
+    thing = False
+    '''
+
+    builder = (s:=model.System()).systemBuilder(s)
+    builder.addModuleString(src_top, 'test', is_package=True)
+    builder.addModuleString(src_sub, 'sub', parent_name='test', is_package=True)
+    builder.addModuleString(src_sub_sub, 'subsub', parent_name='test.sub')
+    builder.buildModules()
+
+    from .test_epydoc2stan import docstring2html
+    assert 'href' in docstring2html(s.allobjects['test.sub.subsub'])
+
+def test__all__variable_ignored_corner_case(capsys: CapSys) -> None:
+    raise NotImplementedError('unfinished!')
+    src_top = '''
+    # test
+    '''
+
+    src_sub = '''
+    # test.sub
+    '''
+
+    src_sub_sub = '''
+    # test.sub.subsub
+    '''
+
+    builder = (s:=model.System()).systemBuilder(s)
+    builder.addModuleString(src_top, 'test', is_package=True)
+    builder.addModuleString(src_sub, 'sub', parent_name='test', is_package=True)
+    builder.addModuleString(src_sub_sub, 'subsub', parent_name='test.sub')
+    builder.buildModules()
+
+def test_preprocess_names_dont_draw_incorrect_conclusions() -> None:
+    # TODO: test the case of https://pydoctor.readthedocs.io/en/latest/api/pydoctor.model.System.html#postProcess
+    # docstring that have a link to L{extensions.PriorityProcessor} which can be interpreted as beeing
+    # in the extensions attribute of System but really is in the extensions package.
+    ...
+    raise NotImplementedError('unfinished!')

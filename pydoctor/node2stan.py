@@ -7,11 +7,13 @@ from functools import partial
 from itertools import chain
 import re
 import optparse
-from typing import Any, Callable, ClassVar, Iterable, List, Optional, Union, TYPE_CHECKING
+from typing import Any, Callable, ClassVar, Iterable, List, Optional, Sequence, Tuple, Union, TYPE_CHECKING
 from docutils.writers import html4css1
 from docutils import nodes, frontend, __version_info__ as docutils_version_info
 
 from twisted.web.template import Tag
+import attr
+
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable
     from pydoctor.epydoc.markup import DocstringLinker
@@ -59,6 +61,30 @@ def gettext(node: Union[nodes.Node, List[nodes.Node]]) -> List[str]:
             filtered.extend(gettext(child))
     return filtered
 
+@attr.s(auto_attribs=True)
+class Reference:
+    label: str | Sequence[nodes.Node]
+    target: str
+
+def parse_reference(node:nodes.title_reference) -> Reference:
+    """
+    Split a reference into (label, target).
+    """
+    label: Union[str, Sequence[nodes.Node]]
+    if 'refuri' in node.attributes:
+        # Epytext parsed or manually constructed nodes.
+        label, target = node.children, node.attributes['refuri']
+    else:
+        # RST parsed.
+        m = _TARGET_RE.match(node.astext())
+        if m:
+            label, target = m.groups()
+        else:
+            label = target = node.astext()
+    # Support linking to functions and methods with () at the end
+    if target.endswith('()'):
+        target = target[:len(target)-2]
+    return Reference(label, target)
 
 _TARGET_RE = re.compile(r'^(.*?)\s*<(?:URI:|URL:)?([^<>]+)>$')
 _VALID_IDENTIFIER_RE = re.compile('[^0-9a-zA-Z_]')
@@ -110,13 +136,15 @@ class HTMLTranslator(html4css1.HTMLTranslator):
             # Do not wrap links in <code> tags if we're renderring a code-like parsed element.
             self._link_xref = self._linker.link_xref
         else:
-            self._link_xref = lambda target, label, lineno: Tag('code')(self._linker.link_xref(target, label, lineno))
+            self._link_xref = lambda target, label, lineno, rawtarget = None: Tag('code')(
+                self._linker.link_xref(target, label, lineno, rawtarget))
 
 
     # Handle interpreted text (crossreferences)
     def visit_title_reference(self, node: nodes.title_reference) -> None:
         lineno = get_lineno(node)
-        self._handle_reference(node, link_func=partial(self._link_xref, lineno=lineno))
+        self._handle_reference(node, link_func=partial(self._link_xref, lineno=lineno, 
+                                                       rawtarget=node.attributes.get('rawtarget')))
     
     # Handle internal references
     def visit_obj_reference(self, node: obj_reference) -> None:
@@ -126,22 +154,14 @@ class HTMLTranslator(html4css1.HTMLTranslator):
             self._handle_reference(node, link_func=self._linker.link_to)
     
     def _handle_reference(self, node: nodes.title_reference, link_func: Callable[[str, "Flattenable"], "Flattenable"]) -> None:
+        ref = parse_reference(node)
+        node_label = ref.label
+        target = ref.target
         label: "Flattenable"
-        if 'refuri' in node.attributes:
-            # Epytext parsed or manually constructed nodes.
-            label, target = node2stan(node.children, self._linker), node.attributes['refuri']
+        if not isinstance(node_label, str):
+            label = node2stan(node_label, self._linker)
         else:
-            # RST parsed.
-            m = _TARGET_RE.match(node.astext())
-            if m:
-                label, target = m.groups()
-            else:
-                label = target = node.astext()
-        
-        # Support linking to functions and methods with () at the end
-        if target.endswith('()'):
-            target = target[:len(target)-2]
-
+            label = node_label
         self.body.append(flatten(link_func(target, label)))
         raise nodes.SkipNode()
 

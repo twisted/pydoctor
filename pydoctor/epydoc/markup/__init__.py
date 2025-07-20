@@ -315,7 +315,7 @@ class DocstringLinker(Protocol):
         @return: The link, or just the label if the target was not found.
         """
 
-    def link_xref(self, target: str, label: "Flattenable", lineno: int) -> Tag:
+    def link_xref(self, target: str, label: "Flattenable", lineno: int, rawtarget: str | None = None) -> Tag:
         """
         Format a cross-reference link to a Python identifier.
         This will resolve the identifier to any reasonable target,
@@ -326,8 +326,10 @@ class DocstringLinker(Protocol):
         @param label: The label to show for the link.
         @param lineno: The line number within the docstring at which the
             crossreference is located.
+        @param rawtarget: The name of the Python identifier that
+            should be linked to, as written in the docstring, for warning purposes.
+            If it's left None, the C{identifier} will be used instead.
         @return: The link, or just the label if the target was not found.
-            In either case, the returned top-level tag will be C{<code>}.
         """
 
     def switch_context(self, ob:Optional['Documentable']) -> ContextManager[None]:

@@ -137,9 +137,13 @@ class _EpydocLinker(DocstringLinker):
         else:
             fullID = self.obj.expandName(identifier)
 
-        target = self.obj.system.objForFullName(fullID)
-        if target is not None:
-            return taglink(target, self.page_url, label)
+        try:
+            target = self.obj.system.find_object(fullID)
+        except LookupError:
+            pass
+        else:
+            if target is not None:
+                return taglink(target, self.page_url, label)
 
         url = self.look_for_intersphinx(fullID)
         if url is not None:
@@ -148,10 +152,10 @@ class _EpydocLinker(DocstringLinker):
         link = tags.transparent(label)
         return link
 
-    def link_xref(self, target: str, label: "Flattenable", lineno: int) -> Tag:
+    def link_xref(self, target: str, label: "Flattenable", lineno: int, rawtarget: str | None = None) -> Tag:
         xref: "Flattenable"
         try:
-            resolved = self._resolve_identifier_xref(target, lineno)
+            resolved = self._resolve_identifier_xref(target, lineno, rawtarget)
         except LookupError:
             xref = tags.transparent(label)
         else:
@@ -164,7 +168,8 @@ class _EpydocLinker(DocstringLinker):
 
     def _resolve_identifier_xref(self,
             identifier: str,
-            lineno: int
+            lineno: int,
+            rawtarget: str | None,
             ) -> Union[str, 'model.Documentable']:
         """
         Resolve a crossreference link to a Python identifier.
@@ -188,8 +193,18 @@ class _EpydocLinker(DocstringLinker):
         if target is not None:
             return target
 
-        # Check if the fullID exists in an intersphinx inventory.
         fullID = self.obj.expandName(identifier)
+
+        # Try fetching the name with it's outdated fullname
+        try:
+            target = self.obj.system.find_object(fullID)
+        except LookupError:
+            pass
+        else:
+            if target is not None:
+                return target
+        
+        # Check if the fullID exists in an intersphinx inventory.
         target_url = self.look_for_intersphinx(fullID)
         if not target_url:
             # FIXME: https://github.com/twisted/pydoctor/issues/125
@@ -233,8 +248,9 @@ class _EpydocLinker(DocstringLinker):
             return target
 
         message = f'Cannot find link target for "{fullID}"'
-        if identifier != fullID:
-            message = f'{message}, resolved from "{identifier}"'
+        rawtarget = rawtarget or identifier
+        if rawtarget != fullID:
+            message = f'{message}, resolved from "{rawtarget}"'
         root_idx = fullID.find('.')
         if root_idx != -1 and fullID[:root_idx] not in self.obj.system.root_names:
             message += ' (you can link to external docs with --intersphinx)'
@@ -252,7 +268,8 @@ class NotFoundLinker(DocstringLinker):
     def link_to(self, target: str, label: "Flattenable", *, is_annotation: bool = False) -> Tag:
         return tags.a(label)
 
-    def link_xref(self, target: str, label: "Flattenable", lineno: int) -> Tag:
+    def link_xref(self, target: str, label: "Flattenable", 
+                  lineno: int, rawtarget: str | None = None) -> Tag:
         return tags.a(label)
     
     @contextlib.contextmanager
