@@ -3315,7 +3315,11 @@ def test_docformat_variable_ignored_corner_case(capsys: CapSys) -> None:
     src_sub_sub = '''
     # test.sub.subsub
     # should be restructuredtext formatting
-    '`link <https://twisted.org>`_'
+    """
+    `link <https://twisted.org>`_
+
+    :var thing: something `link <https://twisted.org>`_
+    """
     thing = False
     '''
 
@@ -3327,3 +3331,4 @@ def test_docformat_variable_ignored_corner_case(capsys: CapSys) -> None:
 
     from .test_epydoc2stan import docstring2html
     assert 'href' in docstring2html(s.allobjects['test.sub.subsub'])
+    assert 'href' in docstring2html(s.allobjects['test.sub.subsub.thing'])
