@@ -72,7 +72,7 @@ class HTMLTranslator(html4css1.HTMLTranslator):
     Pydoctor's HTML translator.
     """
     
-    settings: ClassVar[Optional[optparse.Values]] = None
+    settings: optparse.Values | None = None
     body: List[str]
 
     def __init__(self,
@@ -155,7 +155,7 @@ class HTMLTranslator(html4css1.HTMLTranslator):
         if self.document.children == [node]:
             return True
         else:
-            return super().should_be_compact_paragraph(node)  # type: ignore[no-any-return]
+            return super().should_be_compact_paragraph(node)
 
     def visit_document(self, node: nodes.document) -> None:
         pass
@@ -163,7 +163,7 @@ class HTMLTranslator(html4css1.HTMLTranslator):
     def depart_document(self, node: nodes.document) -> None:
         pass
 
-    def starttag(self, node: nodes.Node, tagname: str, suffix: str = '\n', **attributes: Any) -> str:
+    def starttag(self, node: nodes.Element, tagname: str, suffix: str = '\n', **attributes: Any) -> str:
         """
         This modified version of starttag makes a few changes to HTML
         tags, to prevent them from conflicting with epydoc.  In particular:
@@ -219,7 +219,7 @@ class HTMLTranslator(html4css1.HTMLTranslator):
             attributes['class'] = ' '.join([attributes.get('class',''),
                                             'heading']).strip()
 
-        return super().starttag(node, tagname, suffix, **attributes)  # type: ignore[no-any-return]
+        return super().starttag(node, tagname, suffix, **attributes)
 
     def visit_doctest_block(self, node: nodes.doctest_block) -> None:
         pysrc = node[0].astext()
@@ -239,64 +239,64 @@ class HTMLTranslator(html4css1.HTMLTranslator):
 
     # this part of the HTMLTranslator is based on sphinx's HTMLTranslator:
     # https://github.com/sphinx-doc/sphinx/blob/3.x/sphinx/writers/html.py#L271
-    def _visit_admonition(self, node: nodes.Element, name: str) -> None:
+    def _visit_admonition(self, node: nodes.admonition, name: str) -> None:
         self.body.append(self.starttag(
             node, 'div', CLASS=('admonition ' + _valid_identifier(name))))
         node.insert(0, nodes.title(name, name.title()))
         self.set_first_last(node)
 
-    def visit_note(self, node: nodes.Element) -> None:
+    def visit_note(self, node: nodes.admonition) -> None:
         self._visit_admonition(node, 'note')
 
-    def depart_note(self, node: nodes.Element) -> None:
+    def depart_note(self, node: nodes.admonition) -> None:
         self.depart_admonition(node)
 
-    def visit_warning(self, node: nodes.Element) -> None:
+    def visit_warning(self, node: nodes.admonition) -> None:
         self._visit_admonition(node, 'warning')
 
-    def depart_warning(self, node: nodes.Element) -> None:
+    def depart_warning(self, node: nodes.admonition) -> None:
         self.depart_admonition(node)
 
-    def visit_attention(self, node: nodes.Element) -> None:
+    def visit_attention(self, node: nodes.admonition) -> None:
         self._visit_admonition(node, 'attention')
 
-    def depart_attention(self, node: nodes.Element) -> None:
+    def depart_attention(self, node: nodes.admonition) -> None:
         self.depart_admonition(node)
 
-    def visit_caution(self, node: nodes.Element) -> None:
+    def visit_caution(self, node: nodes.admonition) -> None:
         self._visit_admonition(node, 'caution')
 
-    def depart_caution(self, node: nodes.Element) -> None:
+    def depart_caution(self, node: nodes.admonition) -> None:
         self.depart_admonition(node)
 
-    def visit_danger(self, node: nodes.Element) -> None:
+    def visit_danger(self, node: nodes.admonition) -> None:
         self._visit_admonition(node, 'danger')
 
-    def depart_danger(self, node: nodes.Element) -> None:
+    def depart_danger(self, node: nodes.admonition) -> None:
         self.depart_admonition(node)
 
-    def visit_error(self, node: nodes.Element) -> None:
+    def visit_error(self, node: nodes.admonition) -> None:
         self._visit_admonition(node, 'error')
 
-    def depart_error(self, node: nodes.Element) -> None:
+    def depart_error(self, node: nodes.admonition) -> None:
         self.depart_admonition(node)
 
-    def visit_hint(self, node: nodes.Element) -> None:
+    def visit_hint(self, node: nodes.admonition) -> None:
         self._visit_admonition(node, 'hint')
 
-    def depart_hint(self, node: nodes.Element) -> None:
+    def depart_hint(self, node: nodes.admonition) -> None:
         self.depart_admonition(node)
 
-    def visit_important(self, node: nodes.Element) -> None:
+    def visit_important(self, node: nodes.admonition) -> None:
         self._visit_admonition(node, 'important')
 
-    def depart_important(self, node: nodes.Element) -> None:
+    def depart_important(self, node: nodes.admonition) -> None:
         self.depart_admonition(node)
 
-    def visit_tip(self, node: nodes.Element) -> None:
+    def visit_tip(self, node: nodes.admonition) -> None:
         self._visit_admonition(node, 'tip')
 
-    def depart_tip(self, node: nodes.Element) -> None:
+    def depart_tip(self, node: nodes.admonition) -> None:
         self.depart_admonition(node)
 
     def visit_wbr(self, node: wbr) -> None:
@@ -305,10 +305,10 @@ class HTMLTranslator(html4css1.HTMLTranslator):
     def depart_wbr(self, node: nodes.Node) -> None:
         pass
 
-    def visit_seealso(self, node: nodes.Element) -> None:
+    def visit_seealso(self, node: nodes.admonition) -> None:
         self._visit_admonition(node, 'see also')
 
-    def depart_seealso(self, node: nodes.Element) -> None:
+    def depart_seealso(self, node: nodes.admonition) -> None:
         self.depart_admonition(node)
 
     def visit_versionmodified(self, node: nodes.Element) -> None:
