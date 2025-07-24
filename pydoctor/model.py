@@ -1688,23 +1688,21 @@ class System:
         Pre-processing is the place to compute informations needed at any point of
         of the processing. Analysis of relations between documentables SHALL NOT be done here.
         """
-        from pydoctor import astbuilder
-
+        # 1. parse ASTs of all modules
         for mod in self.unprocessed_modules:
-            # 1. parse ASTs of all modules
-            parsed_ast = None
             if mod._py_string is not None:
-                mod.parsed_ast = parsed_ast = self._ast_parser.parseString(mod._py_string, mod)
+                mod.parsed_ast = self._ast_parser.parseString(mod._py_string, mod)
             elif mod.kind is not DocumentableKind.NAMESPACE_PACKAGE:
                 # There is no AST for namespace packages.
                 assert mod.source_path is not None
-                mod.parsed_ast = parsed_ast =self._ast_parser.parseFile(mod.source_path, mod)
+                mod.parsed_ast = self._ast_parser.parseFile(mod.source_path, mod)
         
-            # 2. (one-day we might need this) do some pre analysis 
-            if not parsed_ast:
+        # 2. (one-day we might need this) do some pre analysis 
+        # 3. process meta-variables
+        from . import astbuilder
+        for mod in self.unprocessed_modules:
+            if not (parsed_ast:=mod.parsed_ast):
                 continue
-
-            # 3. process meta-variables    
             for name, node in astbuilder.findModuleLevelAssign(parsed_ast.root):
                 try:
                     module_var_parser = astbuilder.MODULE_VARIABLES_META_PARSERS[name]
