@@ -140,7 +140,7 @@ def get_str_value(expr:ast.expr) -> Optional[str]:
     return None
 def get_num_value(expr:ast.expr) -> Optional[Number]:
     if isinstance(expr, ast.Constant) and isinstance(expr.value, Number):
-        return expr.value
+        return expr.value # type: ignore[unreachable]
     return None
 def _is_str_constant(expr: ast.expr, s: str) -> bool:
     return isinstance(expr, ast.Constant) and expr.value == s
