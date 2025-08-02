@@ -244,6 +244,11 @@ class HTMLTranslator(html4css1.HTMLTranslator):
             node, 'div', CLASS=('admonition ' + _valid_identifier(name))))
         node.insert(0, nodes.title(name, name.title()))
         self.set_first_last(node)
+    
+    if TYPE_CHECKING:
+        # docutils stubs are a work in progress, so this copes with it.
+        def depart_admonition(self, node: nodes.Admonition) -> None: # type: ignore
+            pass
 
     def visit_note(self, node: nodes.note) -> None:
         self._visit_admonition(node, 'note')
