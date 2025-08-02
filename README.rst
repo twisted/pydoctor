@@ -82,6 +82,7 @@ in development
 * Introduce --intersphinx-file option: Use local Sphinx objects inventory file to generate 
   links to external documentation. If the optional base URL is provided, the links will be 
   made relative to this base URL. Can be repeated. Format is *PATH_TO_OBJECTS.INV[::BASE_URL]*. 
+* Prefer newer "tomli" package over "toml".
 
 pydoctor 25.4.0
 ^^^^^^^^^^^^^^^
