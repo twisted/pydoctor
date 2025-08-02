@@ -412,7 +412,7 @@ def test_process_types_with_consolidated_fields(capsys: CapSys) -> None:
     mod = fromText(src, modname='do_not_warn_please', system=system)
     attr = mod.contents['V'].contents['id']
     assert isinstance(attr, model.Attribute)
-    html = getHTMLOfAttribute(attr)
+    html = getHTMLOfAttribute(attr, 'base')
     # Filter docstring linker warnings
     lines = [line for line in capsys.readouterr().out.splitlines() if 'Cannot find link target' not in line]
     assert not lines
