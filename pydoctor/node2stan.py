@@ -163,7 +163,7 @@ class HTMLTranslator(html4css1.HTMLTranslator):
     def depart_document(self, node: nodes.document) -> None:
         pass
 
-    def starttag(self, node: nodes.Element, tagname: str, suffix: str = '\n', **attributes: Any) -> str:
+    def starttag(self, node: nodes.Element, tagname: str, suffix: str = '\n', *args: Any, **attributes: Any) -> str:
         """
         This modified version of starttag makes a few changes to HTML
         tags, to prevent them from conflicting with epydoc.  In particular:
@@ -182,7 +182,7 @@ class HTMLTranslator(html4css1.HTMLTranslator):
         attr_dicts = [attributes]
         if isinstance(node, nodes.Element):
             attr_dicts.append(node.attributes)
-        if isinstance(node, dict):
+        if isinstance(node, dict): # type: ignore
             attr_dicts.append(node)
         # Munge each attribute dictionary.  Unfortunately, we need to
         # iterate through attributes one at a time because some
@@ -219,7 +219,7 @@ class HTMLTranslator(html4css1.HTMLTranslator):
             attributes['class'] = ' '.join([attributes.get('class',''),
                                             'heading']).strip()
 
-        return super().starttag(node, tagname, suffix, **attributes)
+        return super().starttag(node, tagname, suffix, *args, **attributes)
 
     def visit_doctest_block(self, node: nodes.doctest_block) -> None:
         pysrc = node[0].astext()
@@ -239,7 +239,7 @@ class HTMLTranslator(html4css1.HTMLTranslator):
 
     # this part of the HTMLTranslator is based on sphinx's HTMLTranslator:
     # https://github.com/sphinx-doc/sphinx/blob/3.x/sphinx/writers/html.py#L271
-    def _visit_admonition(self, node: nodes.Admonition, name: str) -> None:
+    def _visit_admonition(self, node: nodes.Element, name: str) -> None:
         self.body.append(self.starttag(
             node, 'div', CLASS=('admonition ' + _valid_identifier(name))))
         node.insert(0, nodes.title(name, name.title()))
@@ -316,8 +316,8 @@ class HTMLTranslator(html4css1.HTMLTranslator):
     def depart_seealso(self, node: nodes.Admonition) -> None:
         self.depart_admonition(node)
 
-    def visit_versionmodified(self, node: nodes.Admonition) -> None:
+    def visit_versionmodified(self, node: nodes.Element) -> None:
         self.body.append(self.starttag(node, 'div', CLASS=node['type']))
 
-    def depart_versionmodified(self, node: nodes.Admonition) -> None:
+    def depart_versionmodified(self, node: nodes.Element) -> None:
         self.body.append('</div>\n')
