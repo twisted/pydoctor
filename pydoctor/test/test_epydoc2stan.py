@@ -2016,7 +2016,7 @@ def test_not_found_annotation_does_not_create_link() -> None:
 
     mod = fromText(src)
 
-    html = getHTMLOf(mod)
+    html = getHTMLOf(mod, 'base')
 
     assert '<a>NotFound</a>' not in html
 
@@ -2171,7 +2171,7 @@ def test_does_not_loose_type_linenumber(capsys: CapSys) -> None:
     from pydoctor.test.test_templatewriter import getHTMLOf 
     # we use this function as a shortcut to trigger
     # the link not found warnings.
-    getHTMLOf(mod.contents['C'])
+    getHTMLOf(mod.contents['C'], 'base')
     assert capsys.readouterr().out == ('<test>:16: Existing docstring at line 10 is overriden\n'
                                        '<test>:10: Cannot find link target for "bool"\n')
 
