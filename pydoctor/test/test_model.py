@@ -783,10 +783,14 @@ def test_preprocess_step(capsys:CapSys) -> None:
             assert p1 == p2 == self.unprocessed_modules
 
             # check the __all__ variable has been computed already
-            assert self.allobjects['package.module'].all == ['_thing', 'bar']
+            mod = self.allobjects['package.module']
+            assert isinstance(mod, model.Module)
+            assert mod.all == ['_thing', 'bar']
 
             # check the __docformat__ variable has been computed as well
-            assert self.allobjects['package'].docformat == 'google'
+            pack = self.allobjects['package']
+            assert isinstance(pack, model.Module)
+            assert pack.docformat == 'google'
 
     src = '''
     # package
