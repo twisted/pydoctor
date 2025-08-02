@@ -476,7 +476,7 @@ class ParsedAstModule:
     root: ast.Module
     # will soon contain the source code lines as well
     # this will enable to process tokens and eventually
-    # generate HTML for source code, see issue #???
+    # generate HTML for source code, see issue #477
 
 class Module(CanContainImportsDocumentable):
     kind = DocumentableKind.MODULE
