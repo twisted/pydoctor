@@ -72,8 +72,8 @@ class HTMLTranslator(html4css1.HTMLTranslator):
     Pydoctor's HTML translator.
     """
     # we use the class attribute and the instance attribute in two different manner,
-    # for now this is not playing well wit type checkers.
-    settings: optparse.Values | None = None # type :ignore
+    # for now this is not playing well with type checkers.
+    settings: optparse.Values | None = None # type: ignore
     body: List[str]
 
     def __init__(self,
