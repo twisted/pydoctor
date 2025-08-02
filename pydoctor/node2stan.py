@@ -7,7 +7,7 @@ from functools import partial
 from itertools import chain
 import re
 import optparse
-from typing import Any, Callable, ClassVar, Iterable, List, Optional, Union, TYPE_CHECKING
+from typing import Any, Callable, Iterable, List, Union, TYPE_CHECKING
 from docutils.writers import html4css1
 from docutils import nodes, frontend, __version_info__ as docutils_version_info
 
@@ -71,8 +71,9 @@ class HTMLTranslator(html4css1.HTMLTranslator):
     """
     Pydoctor's HTML translator.
     """
-    
-    settings: ClassVar[Optional[optparse.Values]] = None
+    # we use the class attribute and the instance attribute in two different manner,
+    # for now this is not playing well with type checkers.
+    settings: optparse.Values | None = None # type: ignore
     body: List[str]
 
     def __init__(self,
@@ -155,7 +156,7 @@ class HTMLTranslator(html4css1.HTMLTranslator):
         if self.document.children == [node]:
             return True
         else:
-            return super().should_be_compact_paragraph(node)  # type: ignore[no-any-return]
+            return super().should_be_compact_paragraph(node)
 
     def visit_document(self, node: nodes.document) -> None:
         pass
@@ -163,7 +164,7 @@ class HTMLTranslator(html4css1.HTMLTranslator):
     def depart_document(self, node: nodes.document) -> None:
         pass
 
-    def starttag(self, node: nodes.Node, tagname: str, suffix: str = '\n', **attributes: Any) -> str:
+    def starttag(self, node: nodes.Element, tagname: str, suffix: str = '\n', *args: Any, **attributes: Any) -> str:
         """
         This modified version of starttag makes a few changes to HTML
         tags, to prevent them from conflicting with epydoc.  In particular:
@@ -182,8 +183,10 @@ class HTMLTranslator(html4css1.HTMLTranslator):
         attr_dicts = [attributes]
         if isinstance(node, nodes.Element):
             attr_dicts.append(node.attributes)
-        if isinstance(node, dict):
-            attr_dicts.append(node)
+        # I must say we are keeping this for historical reason and I am not sure this
+        # code path is even used in production.
+        if isinstance(node, dict): # type: ignore
+            attr_dicts.append(node)  # type: ignore
         # Munge each attribute dictionary.  Unfortunately, we need to
         # iterate through attributes one at a time because some
         # versions of docutils don't case-normalize attributes.
@@ -219,7 +222,7 @@ class HTMLTranslator(html4css1.HTMLTranslator):
             attributes['class'] = ' '.join([attributes.get('class',''),
                                             'heading']).strip()
 
-        return super().starttag(node, tagname, suffix, **attributes)  # type: ignore[no-any-return]
+        return super().starttag(node, tagname, suffix, *args, **attributes)
 
     def visit_doctest_block(self, node: nodes.doctest_block) -> None:
         pysrc = node[0].astext()
@@ -244,75 +247,80 @@ class HTMLTranslator(html4css1.HTMLTranslator):
             node, 'div', CLASS=('admonition ' + _valid_identifier(name))))
         node.insert(0, nodes.title(name, name.title()))
         self.set_first_last(node)
+    
+    if TYPE_CHECKING:
+        # docutils stubs are a work in progress, so this copes with it.
+        def depart_admonition(self, node: nodes.Admonition) -> None: # type: ignore
+            pass
 
-    def visit_note(self, node: nodes.Element) -> None:
+    def visit_note(self, node: nodes.note) -> None:
         self._visit_admonition(node, 'note')
 
-    def depart_note(self, node: nodes.Element) -> None:
+    def depart_note(self, node: nodes.note) -> None:
         self.depart_admonition(node)
 
-    def visit_warning(self, node: nodes.Element) -> None:
+    def visit_warning(self, node: nodes.warning) -> None:
         self._visit_admonition(node, 'warning')
 
-    def depart_warning(self, node: nodes.Element) -> None:
+    def depart_warning(self, node: nodes.warning) -> None:
         self.depart_admonition(node)
 
-    def visit_attention(self, node: nodes.Element) -> None:
+    def visit_attention(self, node: nodes.attention) -> None:
         self._visit_admonition(node, 'attention')
 
-    def depart_attention(self, node: nodes.Element) -> None:
+    def depart_attention(self, node: nodes.attention) -> None:
         self.depart_admonition(node)
 
-    def visit_caution(self, node: nodes.Element) -> None:
+    def visit_caution(self, node: nodes.caution) -> None:
         self._visit_admonition(node, 'caution')
 
-    def depart_caution(self, node: nodes.Element) -> None:
+    def depart_caution(self, node: nodes.caution) -> None:
         self.depart_admonition(node)
 
-    def visit_danger(self, node: nodes.Element) -> None:
+    def visit_danger(self, node: nodes.danger) -> None:
         self._visit_admonition(node, 'danger')
 
-    def depart_danger(self, node: nodes.Element) -> None:
+    def depart_danger(self, node: nodes.danger) -> None:
         self.depart_admonition(node)
 
-    def visit_error(self, node: nodes.Element) -> None:
+    def visit_error(self, node: nodes.error) -> None:
         self._visit_admonition(node, 'error')
 
-    def depart_error(self, node: nodes.Element) -> None:
+    def depart_error(self, node: nodes.error) -> None:
         self.depart_admonition(node)
 
-    def visit_hint(self, node: nodes.Element) -> None:
+    def visit_hint(self, node: nodes.hint) -> None:
         self._visit_admonition(node, 'hint')
 
-    def depart_hint(self, node: nodes.Element) -> None:
+    def depart_hint(self, node: nodes.hint) -> None:
         self.depart_admonition(node)
 
-    def visit_important(self, node: nodes.Element) -> None:
+    def visit_important(self, node: nodes.important) -> None:
         self._visit_admonition(node, 'important')
 
-    def depart_important(self, node: nodes.Element) -> None:
+    def depart_important(self, node: nodes.important) -> None:
         self.depart_admonition(node)
 
-    def visit_tip(self, node: nodes.Element) -> None:
+    def visit_tip(self, node: nodes.tip) -> None:
         self._visit_admonition(node, 'tip')
 
-    def depart_tip(self, node: nodes.Element) -> None:
+    def depart_tip(self, node: nodes.tip) -> None:
         self.depart_admonition(node)
 
     def visit_wbr(self, node: wbr) -> None:
         self.body.append('<wbr></wbr>')
     
-    def depart_wbr(self, node: nodes.Node) -> None:
+    def depart_wbr(self, node: wbr) -> None:
         pass
 
     def visit_seealso(self, node: nodes.Element) -> None:
         self._visit_admonition(node, 'see also')
 
-    def depart_seealso(self, node: nodes.Element) -> None:
+    def depart_seealso(self, node: nodes.Admonition) -> None:
         self.depart_admonition(node)
 
     def visit_versionmodified(self, node: nodes.Element) -> None:
         self.body.append(self.starttag(node, 'div', CLASS=node['type']))
 
-    def depart_versionmodified(self, node: nodes.Node) -> None:
+    def depart_versionmodified(self, node: nodes.Element) -> None:
         self.body.append('</div>\n')
