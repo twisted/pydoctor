@@ -239,80 +239,80 @@ class HTMLTranslator(html4css1.HTMLTranslator):
 
     # this part of the HTMLTranslator is based on sphinx's HTMLTranslator:
     # https://github.com/sphinx-doc/sphinx/blob/3.x/sphinx/writers/html.py#L271
-    def _visit_admonition(self, node: nodes.admonition, name: str) -> None:
+    def _visit_admonition(self, node: nodes.Admonition, name: str) -> None:
         self.body.append(self.starttag(
             node, 'div', CLASS=('admonition ' + _valid_identifier(name))))
         node.insert(0, nodes.title(name, name.title()))
         self.set_first_last(node)
 
-    def visit_note(self, node: nodes.admonition) -> None:
+    def visit_note(self, node: nodes.note) -> None:
         self._visit_admonition(node, 'note')
 
-    def depart_note(self, node: nodes.admonition) -> None:
+    def depart_note(self, node: nodes.note) -> None:
         self.depart_admonition(node)
 
-    def visit_warning(self, node: nodes.admonition) -> None:
+    def visit_warning(self, node: nodes.warning) -> None:
         self._visit_admonition(node, 'warning')
 
-    def depart_warning(self, node: nodes.admonition) -> None:
+    def depart_warning(self, node: nodes.warning) -> None:
         self.depart_admonition(node)
 
-    def visit_attention(self, node: nodes.admonition) -> None:
+    def visit_attention(self, node: nodes.attention) -> None:
         self._visit_admonition(node, 'attention')
 
-    def depart_attention(self, node: nodes.admonition) -> None:
+    def depart_attention(self, node: nodes.attention) -> None:
         self.depart_admonition(node)
 
-    def visit_caution(self, node: nodes.admonition) -> None:
+    def visit_caution(self, node: nodes.caution) -> None:
         self._visit_admonition(node, 'caution')
 
-    def depart_caution(self, node: nodes.admonition) -> None:
+    def depart_caution(self, node: nodes.caution) -> None:
         self.depart_admonition(node)
 
-    def visit_danger(self, node: nodes.admonition) -> None:
+    def visit_danger(self, node: nodes.danger) -> None:
         self._visit_admonition(node, 'danger')
 
-    def depart_danger(self, node: nodes.admonition) -> None:
+    def depart_danger(self, node: nodes.danger) -> None:
         self.depart_admonition(node)
 
-    def visit_error(self, node: nodes.admonition) -> None:
+    def visit_error(self, node: nodes.error) -> None:
         self._visit_admonition(node, 'error')
 
-    def depart_error(self, node: nodes.admonition) -> None:
+    def depart_error(self, node: nodes.error) -> None:
         self.depart_admonition(node)
 
-    def visit_hint(self, node: nodes.admonition) -> None:
+    def visit_hint(self, node: nodes.hint) -> None:
         self._visit_admonition(node, 'hint')
 
-    def depart_hint(self, node: nodes.admonition) -> None:
+    def depart_hint(self, node: nodes.hint) -> None:
         self.depart_admonition(node)
 
-    def visit_important(self, node: nodes.admonition) -> None:
+    def visit_important(self, node: nodes.important) -> None:
         self._visit_admonition(node, 'important')
 
-    def depart_important(self, node: nodes.admonition) -> None:
+    def depart_important(self, node: nodes.important) -> None:
         self.depart_admonition(node)
 
-    def visit_tip(self, node: nodes.admonition) -> None:
+    def visit_tip(self, node: nodes.tip) -> None:
         self._visit_admonition(node, 'tip')
 
-    def depart_tip(self, node: nodes.admonition) -> None:
+    def depart_tip(self, node: nodes.tip) -> None:
         self.depart_admonition(node)
 
     def visit_wbr(self, node: wbr) -> None:
         self.body.append('<wbr></wbr>')
     
-    def depart_wbr(self, node: nodes.Node) -> None:
+    def depart_wbr(self, node: wbr) -> None:
         pass
 
-    def visit_seealso(self, node: nodes.admonition) -> None:
+    def visit_seealso(self, node: nodes.Admonition) -> None:
         self._visit_admonition(node, 'see also')
 
-    def depart_seealso(self, node: nodes.admonition) -> None:
+    def depart_seealso(self, node: nodes.Admonition) -> None:
         self.depart_admonition(node)
 
-    def visit_versionmodified(self, node: nodes.Element) -> None:
+    def visit_versionmodified(self, node: nodes.Admonition) -> None:
         self.body.append(self.starttag(node, 'div', CLASS=node['type']))
 
-    def depart_versionmodified(self, node: nodes.Node) -> None:
+    def depart_versionmodified(self, node: nodes.Admonition) -> None:
         self.body.append('</div>\n')
