@@ -85,6 +85,7 @@ in development
 * Fixes a bug where the `__docformat__` variable of a parent package would be ignored if an import 
   shortcuts the default processing order, leading to process the docstrings with system's docformat 
   instead of the one specified in the parent package `__docformat__`.
+* Prefer newer "tomli" package over "toml".
 
 pydoctor 25.4.0
 ^^^^^^^^^^^^^^^
