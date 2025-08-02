@@ -71,8 +71,9 @@ class HTMLTranslator(html4css1.HTMLTranslator):
     """
     Pydoctor's HTML translator.
     """
-    
-    settings: optparse.Values | None = None
+    # we use the class attribute and the instance attribute in two different manner,
+    # for now this is not playing well wit type checkers.
+    settings: optparse.Values | None = None # type :ignore
     body: List[str]
 
     def __init__(self,
@@ -182,8 +183,10 @@ class HTMLTranslator(html4css1.HTMLTranslator):
         attr_dicts = [attributes]
         if isinstance(node, nodes.Element):
             attr_dicts.append(node.attributes)
+        # I must say we are keeping this for historical reason and I am not sure this
+        # code path is even used in production.
         if isinstance(node, dict): # type: ignore
-            attr_dicts.append(node)
+            attr_dicts.append(node)  # type: ignore
         # Munge each attribute dictionary.  Unfortunately, we need to
         # iterate through attributes one at a time because some
         # versions of docutils don't case-normalize attributes.
@@ -310,7 +313,7 @@ class HTMLTranslator(html4css1.HTMLTranslator):
     def depart_wbr(self, node: wbr) -> None:
         pass
 
-    def visit_seealso(self, node: nodes.Admonition) -> None:
+    def visit_seealso(self, node: nodes.Element) -> None:
         self._visit_admonition(node, 'see also')
 
     def depart_seealso(self, node: nodes.Admonition) -> None:
