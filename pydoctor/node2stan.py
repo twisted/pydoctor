@@ -7,7 +7,7 @@ from functools import partial
 from itertools import chain
 import re
 import optparse
-from typing import Any, Callable, ClassVar, Iterable, List, Optional, Union, TYPE_CHECKING
+from typing import Any, Callable, Iterable, List, Union, TYPE_CHECKING
 from docutils.writers import html4css1
 from docutils import nodes, frontend, __version_info__ as docutils_version_info
 
