@@ -476,7 +476,7 @@ class ParsedAstModule:
     root: ast.Module
     # will soon contain the source code lines as well
     # this will enable to process tokens and eventually
-    # generate HTML for source code, see issue #477
+    # generate HTML for source code, see issue #???
 
 class Module(CanContainImportsDocumentable):
     kind = DocumentableKind.MODULE
@@ -1660,12 +1660,6 @@ class System:
             assert head == mod.fullName()
         else:
             builder = self.defaultBuilder(self)
-            # if mod._py_string is not None:
-            #     ast = builder.parseString(mod._py_string, mod)
-            # elif mod.kind is not DocumentableKind.NAMESPACE_PACKAGE:
-            #     # There is no AST for namespace packages.
-            #     assert mod.source_path is not None
-            #     ast = builder.parseFile(mod.source_path, mod)
             if mod.parsed_ast:
                 self.processing_modules.append(mod.fullName())
                 if mod._py_string is None:
