@@ -3294,3 +3294,41 @@ def test_Final_constant_under_control_flow_block_is_still_constant(systemcls: Ty
     assert mod.contents['w'].kind == model.DocumentableKind.CONSTANT
     assert mod.contents['x'].kind == model.DocumentableKind.CONSTANT
     
+def test_docformat_variable_ignored_corner_case(capsys: CapSys) -> None:
+    # test for https://github.com/twisted/pydoctor/pull/723/files#r2217424695
+
+    src_top = '''
+    # test
+    # epytext is used by default but let's be explicit
+    __docformat__ = 'epytext'
+
+    # this import might shortcut the processing of 
+    # test.sub such that __docformat__ variable will be ignored
+    from test.sub.subsub import thing
+    '''
+
+    src_sub = '''
+    # test.sub
+    __docformat__ = 'restructuredtext'
+    '''
+
+    src_sub_sub = '''
+    # test.sub.subsub
+    # should be restructuredtext formatting
+    """
+    `link <https://twisted.org>`_
+
+    :var thing: something `link <https://twisted.org>`_
+    """
+    thing = False
+    '''
+
+    builder = (s:=model.System()).systemBuilder(s)
+    builder.addModuleString(src_top, 'test', is_package=True)
+    builder.addModuleString(src_sub, 'sub', parent_name='test', is_package=True)
+    builder.addModuleString(src_sub_sub, 'subsub', parent_name='test.sub')
+    builder.buildModules()
+
+    from .test_epydoc2stan import docstring2html
+    assert 'href' in docstring2html(s.allobjects['test.sub.subsub'])
+    assert 'href' in docstring2html(s.allobjects['test.sub.subsub.thing'])

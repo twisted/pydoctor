@@ -471,9 +471,22 @@ class CanContainImportsDocumentable(Documentable):
         return chain(self.contents.keys(),
                      self._localNameToFullName_map.keys())
 
+@attr.s(auto_attribs=True)
+class ParsedAstModule:
+    root: ast.Module
+    # will soon contain the source code lines as well
+    # this will enable to process tokens and eventually
+    # generate HTML for source code, see issue #???
+
 class Module(CanContainImportsDocumentable):
     kind = DocumentableKind.MODULE
     state = ProcessingState.UNPROCESSED
+
+    parsed_ast: ParsedAstModule | None = None
+    """
+    When the AST of a module is succesfully parsed, it is encapsulated
+    in a L{ParsedAstModule} instance and stored here to be processed later.
+    """
 
     @property
     def privacyClass(self) -> PrivacyClass:
@@ -1574,7 +1587,7 @@ class System:
     
     def _is_oldschool_namespace_package(self, path: Path) -> bool:
         try:
-            tree = self._ast_parser.parseFile(
+            tree = self._ast_parser.parseFileOnly(
                 path.joinpath('__init__.py'))
         except Exception:
             return False
@@ -1647,18 +1660,11 @@ class System:
             assert head == mod.fullName()
         else:
             builder = self.defaultBuilder(self)
-            ast = None
-            if mod._py_string is not None:
-                ast = builder.parseString(mod._py_string, mod)
-            elif mod.kind is not DocumentableKind.NAMESPACE_PACKAGE:
-                # There is no AST for namespace packages.
-                assert mod.source_path is not None
-                ast = builder.parseFile(mod.source_path, mod)
-            if ast:
+            if mod.parsed_ast:
                 self.processing_modules.append(mod.fullName())
                 if mod._py_string is None:
                     self.msg("processModule", "processing %s"%(self.processing_modules), 1)
-                builder.processModuleAST(ast, mod)
+                builder.processModuleAST(mod.parsed_ast.root, mod)
                 mod.state = ProcessingState.PROCESSED
                 head = self.processing_modules.pop()
                 assert head == mod.fullName()
@@ -1668,8 +1674,39 @@ class System:
             self.module_count,
             f"modules processed, {self.violations} warnings")
 
+    def preProcess(self) -> None:
+        """
+        Called before any module gets processed, at this point the only existing
+        objects are L{Modules <Module>}.
+
+        Pre-processing is the place to compute informations needed at any point of
+        of the processing. Analysis of relations between documentables SHALL NOT be done here.
+        """
+        # 1. parse ASTs of all modules
+        for mod in self.unprocessed_modules:
+            if mod._py_string is not None:
+                mod.parsed_ast = self._ast_parser.parseString(mod._py_string, mod)
+            elif mod.kind is not DocumentableKind.NAMESPACE_PACKAGE:
+                # There is no AST for namespace packages.
+                assert mod.source_path is not None
+                mod.parsed_ast = self._ast_parser.parseFile(mod.source_path, mod)
+        
+        # 2. (one-day we might need this) do some pre analysis 
+        # 3. process meta-variables
+        from . import astbuilder
+        for mod in self.unprocessed_modules:
+            if not (parsed_ast:=mod.parsed_ast):
+                continue
+            for name, node in astbuilder.findModuleLevelAssign(parsed_ast.root):
+                try:
+                    module_var_parser = astbuilder.MODULE_VARIABLES_META_PARSERS[name]
+                except KeyError:
+                    continue
+                else:
+                    module_var_parser(node, mod)
 
     def process(self) -> None:
+        self.preProcess()
         while self.unprocessed_modules:
             mod = next(iter(self.unprocessed_modules))
             self.processModule(mod)
