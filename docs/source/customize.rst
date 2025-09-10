@@ -52,7 +52,7 @@ HTML templates have their own versioning system and warnings will be triggered w
 .. admonition:: Demo theme example
     
   There is a demo template inspired by Twisted web page for which the source code is `here <https://github.com/twisted/pydoctor/tree/master/docs/sample_template>`_.
-  You can try the result by checking `this page <custom_template_demo/pydoctor.html>`_.
+  You can try the result by checking `this page <custom_template_demo/>`_.
 
   .. note:: 
 
