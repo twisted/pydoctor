@@ -760,3 +760,50 @@ def test_priority_processor(capsys:CapSys) -> None:
                                                             'priority 100 (bis)',
                                                             'priority 25',
                                                             ]
+
+def test_preprocess_step(capsys:CapSys) -> None:
+    """
+    Meta variables like __all__ and __docformat__ are computed before any module
+    gets processed.
+    """
+    
+    class PreProcessingTestSystem(model.System):
+        def preProcess(self) -> None:
+            assert not self.processing_modules
+            assert (p1:=self.unprocessed_modules)
+            assert all(isinstance(p, model.Module) 
+                       for p in self.unprocessed_modules)
+            assert (p2:=list(self.allobjects.values())) == self.unprocessed_modules
+
+            super().preProcess()
+
+            # check the pre processing doesn't change 
+            # the unprocessed or processing module list
+            assert not self.processing_modules
+            assert p1 == p2 == self.unprocessed_modules
+
+            # check the __all__ variable has been computed already
+            mod = self.allobjects['package.module']
+            assert isinstance(mod, model.Module)
+            assert mod.all == ['_thing', 'bar']
+
+            # check the __docformat__ variable has been computed as well
+            pack = self.allobjects['package']
+            assert isinstance(pack, model.Module)
+            assert pack.docformat == 'google'
+
+    src = '''
+    # package
+    __docformat__ = 'google'
+    '''
+
+    src2 = '''
+    # package.module
+    __all__ = ['_thing', 'bar']
+    '''
+
+    builder = (system:=PreProcessingTestSystem()).systemBuilder(system)
+    builder.addModuleString(src, 'package', is_package=True)
+    builder.addModuleString(src2, 'module', parent_name='package')
+    builder.buildModules()
+    assert not capsys.readouterr().out
