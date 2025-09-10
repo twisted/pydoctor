@@ -2,7 +2,7 @@
 from typing import Any, Dict, Iterable, List, Type, cast
 from pydoctor.test.test_astbuilder import fromText, type2html, ZopeInterfaceSystem
 from pydoctor.test.test_packages import processPackage
-from pydoctor.test.test_templatewriter import getHTMLOf
+from pydoctor.test.test_templatewriter import getHTMLOf, theme_param
 from pydoctor.extensions.zopeinterface import ZopeInterfaceClass
 from pydoctor.epydoc.markup import ParsedDocstring
 from pydoctor import model
@@ -159,7 +159,7 @@ def test_attribute(capsys: CapSys, systemcls: Type[model.System]) -> None:
     assert captured == 'mod:5: definition of attribute "bad_attr" should have docstring as its sole argument\n'
 
 @zope_interface_systemcls_param
-def test_interfaceclass(systemcls: Type[model.System]) -> None:
+def test_interfaceclass(systemcls: Type[model.System], capsys: CapSys) -> None:
     system = processPackage('interfaceclass', systemcls=systemcls)
     mod = system.allobjects['interfaceclass.mod']
     I = mod.contents['MyInterface']
@@ -170,6 +170,8 @@ def test_interfaceclass(systemcls: Type[model.System]) -> None:
     J = mod.contents['AnInterface']
     assert isinstance(J, ZopeInterfaceClass)
     assert J.isinterface
+
+    assert 'interfaceclass.mod duplicate' not in capsys.readouterr().out
 
 @zope_interface_systemcls_param
 def test_warnerproofing(systemcls: Type[model.System]) -> None:
@@ -197,17 +199,17 @@ def test_zopeschema(capsys: CapSys, systemcls: Type[model.System]) -> None:
     text = mod.contents['IMyInterface'].contents['text']
     assert text.docstring == 'fun in a bun'
     assert isinstance(text, model.Attribute)
-    assert type2html(text)==  "<code>schema.TextLine</code>"
+    assert type2html(text)==  "<code><a>schema.TextLine</a></code>"
     assert text.kind is model.DocumentableKind.SCHEMA_FIELD
     undoc = mod.contents['IMyInterface'].contents['undoc']
     assert undoc.docstring is None
     assert isinstance(undoc, model.Attribute)
-    assert type2html(undoc) == "<code>schema.Bool</code>"
+    assert type2html(undoc) == "<code><a>schema.Bool</a></code>"
     assert undoc.kind is model.DocumentableKind.SCHEMA_FIELD
     bad = mod.contents['IMyInterface'].contents['bad']
     assert bad.docstring is None
     assert isinstance(bad, model.Attribute)
-    assert type2html(bad) == "<code>schema.ASCII</code>"
+    assert type2html(bad) == "<code><a>schema.ASCII</a></code>"
     assert bad.kind is model.DocumentableKind.SCHEMA_FIELD
     captured = capsys.readouterr().out
     assert captured == 'mod:6: description of field "bad" is not a string literal\n'
@@ -242,14 +244,14 @@ def test_zopeschema_inheritance(systemcls: Type[model.System]) -> None:
     mod = fromText(src, modname='mod', systemcls=systemcls)
     mytext = mod.contents['IMyInterface'].contents['mytext']
     assert mytext.docstring == 'fun in a bun'
-    assert flatten(cast(ParsedDocstring, mytext.parsed_type).to_stan(NotFoundLinker())) == "<code>MyTextLine</code>"
+    assert flatten(cast(ParsedDocstring, mytext.parsed_type).to_stan(NotFoundLinker())) == '<code><a>MyTextLine</a></code>'
     assert mytext.kind is model.DocumentableKind.SCHEMA_FIELD
     myothertext = mod.contents['IMyInterface'].contents['myothertext']
     assert myothertext.docstring == 'fun in another bun'
-    assert flatten(cast(ParsedDocstring, myothertext.parsed_type).to_stan(NotFoundLinker())) == "<code>MyOtherTextLine</code>"
+    assert flatten(cast(ParsedDocstring, myothertext.parsed_type).to_stan(NotFoundLinker())) == "<code><a>MyOtherTextLine</a></code>"
     assert myothertext.kind is model.DocumentableKind.SCHEMA_FIELD
     myint = mod.contents['IMyInterface'].contents['myint']
-    assert flatten(cast(ParsedDocstring, myint.parsed_type).to_stan(NotFoundLinker())) == "<code>INTEGERSCHMEMAFIELD</code>"
+    assert flatten(cast(ParsedDocstring, myint.parsed_type).to_stan(NotFoundLinker())) == "<code><a>INTEGERSCHMEMAFIELD</a></code>"
     assert myint.kind is model.DocumentableKind.SCHEMA_FIELD
 
 @zope_interface_systemcls_param
@@ -539,7 +541,8 @@ def test_classimplements_badarg(capsys: CapSys, systemcls: Type[model.System]) -
         )
 
 @zope_interface_systemcls_param
-def test_implements_renders_ok(systemcls: Type[model.System]) -> None:
+@theme_param
+def test_implements_renders_ok(systemcls: Type[model.System], theme: str) -> None:
     """
     The Class renderer effectively includes the implemented interfaces.
     """
@@ -552,8 +555,8 @@ def test_implements_renders_ok(systemcls: Type[model.System]) -> None:
         pass
     '''
     mod = fromText(src, modname='zi', systemcls=systemcls)
-    ifoo_html = getHTMLOf(mod.contents['IFoo'])
-    foo_html = getHTMLOf(mod.contents['Foo'])
+    ifoo_html = getHTMLOf(mod.contents['IFoo'], theme)
+    foo_html = getHTMLOf(mod.contents['Foo'], theme)
     
     assert 'Known implementations:' in ifoo_html
     assert 'zi.Foo' in ifoo_html
@@ -589,9 +592,10 @@ def _get_modules_test_zope_interface_imports_cycle_proof() -> List[Iterable[Dict
         (mod_top,mod_impl,mod_interface),
         ]
 
+@theme_param
 @pytest.mark.parametrize('modules', _get_modules_test_zope_interface_imports_cycle_proof())
 @zope_interface_systemcls_param
-def test_zope_interface_imports_cycle_proof(systemcls: Type[model.System], modules:Iterable[Dict[str, Any]]) -> None:
+def test_zope_interface_imports_cycle_proof(systemcls: Type[model.System], modules:Iterable[Dict[str, Any]], theme: str) -> None:
     """
     Zope interface informations is collected no matter the cyclics imports and the order of processing of modules.
     This test only check some basic cyclic imports examples.
@@ -609,8 +613,8 @@ def test_zope_interface_imports_cycle_proof(systemcls: Type[model.System], modul
     assert isinstance(interface, model.Class)
     assert isinstance(impl, model.Class)
 
-    ihtml = getHTMLOf(interface)
-    html = getHTMLOf(impl)
+    ihtml = getHTMLOf(interface, theme)
+    html = getHTMLOf(impl, theme)
     
     assert 'top.impl.Address' in ihtml
     assert 'top.interface.IAddress' in html

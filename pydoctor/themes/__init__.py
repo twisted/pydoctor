@@ -3,17 +3,18 @@ Package directory used to store pydoctor templates.
 
 Usage example:
 
+>>> from pydoctor.templatewriter import TemplateLookup
 >>> template_lookup = TemplateLookup(importlib_resources.files('pydoctor.themes') / 'base')
+>>> template_lookup.get_template('index.html').version >= 3
+True
+
+@see: L{TemplateLookup}, L{Template} and L{TemplateElement}. 
 """
-import sys
 from typing import Iterator
 
 # In newer Python versions, use importlib.resources from the standard library.
 # On older versions, a compatibility package must be installed from PyPI.
-if sys.version_info < (3, 9):
-    import importlib_resources
-else:
-    import importlib.resources as importlib_resources
+import importlib.resources as importlib_resources
 
 def get_themes() -> Iterator[str]:
     """

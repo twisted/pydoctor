@@ -3,7 +3,10 @@ Collection of helper functions and classes related to the creation and processin
 """
 from __future__ import annotations
 
-from typing import Iterable, Iterator, Optional
+from typing import Iterable, Iterator, Optional, TypeVar, cast, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from typing import Literal
 
 import optparse
 
@@ -14,22 +17,22 @@ __docformat__ = 'epytext en'
 
 _DEFAULT_DOCUTILS_SETTINGS: Optional[optparse.Values] = None
 
-def new_document(source_path: str, settings: Optional[optparse.Values] = None) -> nodes.document:
+def new_document(source: Literal['docstring', 'code'], settings: Optional[optparse.Values] = None) -> nodes.document:
     """
     Create a new L{nodes.document} using the provided settings or cached default settings.
 
-    @returns: L{nodes.document}
+    @returns: L{nodes.document} with a C{source} attribute that matches the provided source.
     """
     global _DEFAULT_DOCUTILS_SETTINGS
     # If we have docutils >= 0.19 we use get_default_settings to calculate and cache
     # the default settings. Otherwise we let new_document figure it out.
     if settings is None and docutils_version_info >= (0,19):
         if _DEFAULT_DOCUTILS_SETTINGS is None:
-            _DEFAULT_DOCUTILS_SETTINGS = frontend.get_default_settings() # type:ignore[attr-defined]
+            _DEFAULT_DOCUTILS_SETTINGS = frontend.get_default_settings()
 
         settings = _DEFAULT_DOCUTILS_SETTINGS
 
-    return utils.new_document(source_path, settings)
+    return utils.new_document(source, settings)
 
 def _set_nodes_parent(nodes: Iterable[nodes.Node], parent: nodes.Element) -> Iterator[nodes.Node]:
     """
@@ -41,10 +44,11 @@ def _set_nodes_parent(nodes: Iterable[nodes.Node], parent: nodes.Element) -> Ite
         node.parent = parent
         yield node
 
-def set_node_attributes(node: nodes.Node, 
+TNode = TypeVar('TNode', bound=nodes.Node)
+def set_node_attributes(node: TNode, 
                         document: Optional[nodes.document] = None, 
                         lineno: Optional[int] = None, 
-                        children: Optional[Iterable[nodes.Node]] = None) -> nodes.Node:
+                        children: Optional[Iterable[nodes.Node]] = None) -> TNode:
     """
     Set the attributes of a Node and return the modified node.
     This is required to manually construct a docutils document that is consistent.
@@ -68,29 +72,34 @@ def set_node_attributes(node: nodes.Node,
 
     return node
 
-def build_table_of_content(node: nodes.Node, depth: int, level: int = 0) -> Optional[nodes.Node]:
+def build_table_of_content(node: nodes.Element, depth: int, level: int = 0) -> nodes.Element | None:
     """
     Simplified from docutils Contents transform. 
 
     All section nodes MUST have set attribute 'ids' to a list of strings.
     """
 
-    def _copy_and_filter(node: nodes.Node) -> nodes.Node:
+    def _copy_and_filter(node: nodes.Element) -> nodes.Element:
         """Return a copy of a title, with references, images, etc. removed."""
-        visitor = parts.ContentsFilter(node.document)
+        if (doc:=node.document) is None:
+            raise AssertionError(f'missing document attribute on {node}')
+        visitor = parts.ContentsFilter(doc)
         node.walkabout(visitor)
-        return visitor.get_entry_text()
+        #                                 the stubs are currently imcomplete, 2024.
+        return visitor.get_entry_text() # type:ignore
 
     level += 1
     sections = [sect for sect in node if isinstance(sect, nodes.section)]
     entries = []
+    if (doc:=node.document) is None:
+        raise AssertionError(f'missing document attribute on {node}')
+    
     for section in sections:
-        title = section[0]
+        title = cast(nodes.Element, section[0]) # the first element of a section is the header.
         entrytext = _copy_and_filter(title)
         reference = nodes.reference('', '', refid=section['ids'][0],
                                     *entrytext)
-        ref_id = node.document.set_id(reference,
-                                    suggested_prefix='toc-entry')
+        ref_id = doc.set_id(reference, suggested_prefix='toc-entry')
         entry = nodes.paragraph('', '', reference)
         item = nodes.list_item('', entry)
         if title.next_node(nodes.reference) is None:
@@ -105,7 +114,7 @@ def build_table_of_content(node: nodes.Node, depth: int, level: int = 0) -> Opti
     else:
         return None
 
-def get_lineno(node: nodes.Node) -> int:
+def get_lineno(node: nodes.Element) -> int:
     """
     Get the 0-based line number for a docutils `nodes.title_reference`.
 
@@ -114,7 +123,7 @@ def get_lineno(node: nodes.Node) -> int:
     """
     # Fixes https://github.com/twisted/pydoctor/issues/237
         
-    def get_first_parent_lineno(_node: Optional[nodes.Node]) -> int:
+    def get_first_parent_lineno(_node: nodes.Element | None) -> int:
         if _node is None:
             return 0
         
@@ -139,11 +148,26 @@ def get_lineno(node: nodes.Node) -> int:
         return line
 
     if node.line:
+        # If the line is explicitely set, assume it's zero-based
         line = node.line
+        # If docutils suddenly starts populating the line attribute for
+        # title_reference node, all RST xref warnings will off by 1 :/
+
     else:
         line = get_first_parent_lineno(node.parent)
     
-    return line # type:ignore[no-any-return]
+    return line
+
+def text_node(text: str, klass: str | None = None) -> nodes.inline:
+    """
+    Create an inline node with the given text and class.
+    """
+    return set_node_attributes(
+        nodes.inline('', '', classes=[klass] if klass else []), 
+        children=[nodes.Text(text)],
+    )
+
+# additional docutils nodes: 
 
 class wbr(nodes.inline):
     """
@@ -155,4 +179,9 @@ class wbr(nodes.inline):
 class obj_reference(nodes.title_reference):
     """
     A reference to a documentable object.
+    """
+
+class code(nodes.inline):
+    """
+    Like a inline[class='literal'], but more elegant.
     """
