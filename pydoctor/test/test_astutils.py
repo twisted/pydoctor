@@ -19,7 +19,6 @@ def test_get_assign_docstring_node() -> None:
     astutils.Parentage().visit(tree)
     assert astutils.get_str_value(astutils.get_assign_docstring_node(tree.body[0])) == "inline docs" # type:ignore
 
-
 def test_get_assign_docstring_node_not_in_body() -> None:
     src = dedent('''
     if True: pass

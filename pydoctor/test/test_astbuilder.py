@@ -3075,6 +3075,84 @@ def test_typealias_unstring(systemcls: Type[model.System]) -> None:
         next(n for n in ast.walk(typealias.value) if isinstance(n, ast.Constant))
 
 @systemcls_param
+def test_doc_comment(systemcls: Type[model.System],  capsys: CapSys) -> None:
+    """
+    Tests for feature https://github.com/twisted/pydoctor/issues/800
+    """
+    code = ('class Foo(object):\n'
+            '    """class Foo!"""\n'
+            '    #: comment before attr1\n'
+            '    attr1 = None\n'
+            '    attr2 = None  # attribute comment for attr2 (without colon)\n'
+            '    attr3 = None  #: attribute comment for attr3\n'
+            '    attr4 = None  #: long attribute comment\n'
+            '                  #: for attr4\n'
+            '    #: comment before attr5\n'
+            '    attr5 = None  #: attribute comment for attr5\n'
+            '    attr6, attr7 = 1, 2  #: this comment is not ignored\n'
+            '\n'
+            '    def __init__(self):\n'
+            '       self.attr8 = None  #: first attribute comment (ignored)\n'
+            '       self.attr8 = None  #: attribute comment for attr8\n'
+            '       #: comment before attr9\n'
+            '       self.attr9 = None  #: comment after attr9\n'
+            '       "string after attr9"\n'
+            '\n'
+            '    def bar(self, arg1, arg2=True, *args, **kwargs):\n'
+            '       """method Foo.bar"""\n'
+            '       pass\n'
+            '\n'
+            'def baz():\n'
+            '   """function baz"""\n'
+            '   pass\n'
+            '\n'
+            'class Qux: attr1 = 1; attr2 = 2')
+    
+    mod = fromText(code, systemcls=systemcls)
+    
+    def docs(name: str) -> str | None:
+        return mod.contents['Foo'].contents[name].docstring
+    
+    assert docs('attr1') == 'comment before attr1'
+    assert docs('attr2') == None # not a doc comment
+    assert docs('attr3') == 'attribute comment for attr3'
+    assert docs('attr4') == 'long attribute comment'
+    assert docs('attr4') == 'long attribute comment'
+    assert docs('attr5') == 'attribute comment for attr5'
+    assert docs('attr6') == 'this comment is not ignored' 
+    assert docs('attr7') == 'this comment is not ignored'
+    assert docs('attr8') == 'attribute comment for attr8'
+    assert docs('attr9') == 'string after attr9'
+    
+@systemcls_param
+def test_doc_comment_module_var(systemcls: Type[model.System],  capsys: CapSys) -> None:
+    src = """
+    a: int = 42 #: This is a variable.
+
+    #: This is b variable.
+    b = None
+
+    #: This is c variable.
+    c: float #: This takes precedence!
+
+    d: None  #: This is also ignored.
+    '''Because I exist!'''
+
+    #: this is not documentation
+
+    e = 43
+    """
+    mod = fromText(src, systemcls=systemcls)
+
+    def docs(name: str) -> str | None:
+        return mod.contents[name].docstring
+
+    assert docs('a') == 'This is a variable.'
+    assert docs('c') == 'This takes precedence!'
+    assert docs('d') == 'Because I exist!'
+    assert docs('e') is None
+    
+@systemcls_param
 def test_mutilple_docstrings_warnings(systemcls: Type[model.System], capsys: CapSys) -> None:
     """
     When pydoctor encounters multiple places where the docstring is defined, it reports a warning.
@@ -3105,7 +3183,7 @@ def test_mutilple_docstrings_warnings(systemcls: Type[model.System], capsys: Cap
 def test_mutilple_docstring_with_doc_comments_warnings(systemcls: Type[model.System], capsys: CapSys) -> None:
     src = '''
     class C:
-        a: int;"docs" #: re-docs
+        a: int;"re-docs" #: docs
     
     class B:
         """
@@ -3122,10 +3200,56 @@ def test_mutilple_docstring_with_doc_comments_warnings(systemcls: Type[model.Sys
         a: int 
         "re-re-docs"
     '''
-    fromText(src, systemcls=systemcls)
-    # TODO: handle doc comments.x
-    assert capsys.readouterr().out == '<test>:18: Existing docstring at line 14 is overriden\n'
+    mod = fromText(src, systemcls=systemcls)
+    
+    assert capsys.readouterr().out == (
+        '<test>:3: Existing docstring at line 3 is overriden\n'
+        '<test>:9: Existing docstring at line 7 is overriden\n'
+        '<test>:16: Existing docstring at line 14 is overriden\n'
+        '<test>:18: Existing docstring at line 16 is overriden\n')
 
+    assert mod.contents['C'].contents['a'].docstring == 're-docs'
+    assert mod.contents['B'].contents['a'].docstring == 're-docs'
+    assert mod.contents['B2'].contents['a'].docstring == 're-re-docs'
+
+@systemcls_param
+def test_doc_comment_multiple_assigments(systemcls: Type[model.System], capsys: CapSys) -> None:
+    # TODO: this currently does not support nested tuple assignments.
+    src = '''
+    class C:
+        def __init__(self):
+            self.x, x = 1, 1 #: x docs
+            self.y = x = 1 #: y docs
+    x,y = 1,1 #: x and y docs
+    v = w = 1 #: v and w docs
+    '''
+    mod =  fromText(src, systemcls=systemcls)
+    assert not capsys.readouterr().out
+    assert mod.contents['x'].docstring == 'x and y docs'
+    assert mod.contents['y'].docstring == 'x and y docs'
+    assert mod.contents['v'].docstring == 'v and w docs'
+    assert mod.contents['w'].docstring == 'v and w docs'
+    assert mod.contents['C'].contents['x'].docstring == 'x docs'
+    assert mod.contents['C'].contents['y'].docstring == 'y docs'
+
+@systemcls_param
+def test_other_encoding(systemcls: Type[model.System], capsys: CapSys) -> None:
+    # Test for issue https://github.com/twisted/pydoctor/issues/805
+    processPackage('coding_not_utf8', 
+        systemcls=lambda: systemcls(model.Options.from_args(['-q'])))
+    assert not capsys.readouterr().out
+    
+@systemcls_param
+def test_alias_resets_attribute_state(systemcls: Type[model.System], capsys:CapSys) -> None:
+    # from https://github.com/lxml/lxml/blob/a56babb0013dc46baf480f49ebd5cc1ab65bc418/src/lxml/html/builder.py
+    src = '''
+    E = True #: Legit docstring
+    A = E.a  #: trash1
+    ABBR = E.abbr  #: trash2
+    '''
+    fromText(src, systemcls=systemcls)
+    assert not capsys.readouterr().out
+    
 @systemcls_param
 def test_import_all_inside_else_branch_is_processed(systemcls: Type[model.System], capsys: CapSys) -> None:
     src1 = '''

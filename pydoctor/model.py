@@ -474,9 +474,9 @@ class CanContainImportsDocumentable(Documentable):
 @attr.s(auto_attribs=True)
 class ParsedAstModule:
     root: ast.Module
-    # will soon contain the source code lines as well
-    # this will enable to process tokens and eventually
-    # generate HTML for source code, see issue #???
+    lines: Sequence[str]
+    # lines enables to process tokens and eventually
+    # generate HTML for source code, see issue #477
 
 class Module(CanContainImportsDocumentable):
     kind = DocumentableKind.MODULE
@@ -1589,7 +1589,7 @@ class System:
         try:
             tree = self._ast_parser.parseFileOnly(
                 path.joinpath('__init__.py'))
-        except Exception:
+        except SyntaxError:
             return False
         return astutils.is_old_school_namespace_package(tree)
 

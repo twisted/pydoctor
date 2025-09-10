@@ -193,6 +193,8 @@ def get_node_block(node: ast.AST) -> tuple[ast.AST, str]:
     Tell in wich block the given node lives in. 
     
     A block is defined by a tuple: (parent node, fieldname)
+
+    @raise ValueError: If the assignment parent is missing or boggus.
     """
     try:
         parent = next(get_parents(node))
@@ -212,7 +214,7 @@ def get_assign_docstring_node(assign:ast.Assign | ast.AnnAssign) -> Str | None:
     This helper function relies on the non-standard C{.parent} attribute on AST nodes
     to navigate upward in the tree and determine this node direct siblings.
     """
-    # if this call raises an ValueError it means that we're doing something nasty with the ast...
+    # this call raises an ValueError if we're doing something nasty with the ast... please report
     parent_node, fieldname = get_node_block(assign)
     statements = getattr(parent_node, fieldname, None)
     
