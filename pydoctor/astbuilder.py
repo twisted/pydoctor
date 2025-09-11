@@ -825,7 +825,7 @@ class ModuleVistor(NodeVisitor):
             expr: ast.expr|None,
             lineno: int,
             augassign:ast.operator|None=None,
-            typevars:Sequence[ast.type_param] | None=None,
+            typevars:Sequence[ast.type_param] | None = None,
             ) -> None:
         """
         @raises IgnoreAssignment: If the assignemnt should not be further processed.
@@ -841,7 +841,10 @@ class ModuleVistor(NodeVisitor):
                                                typevars=typevars)
             elif isinstance(scope, model.Class):
                 if augassign or not self._handleOldSchoolMethodDecoration(target, expr):
-                    self._handleAssignmentInClass(target, annotation, expr, lineno, augassign=augassign)
+                    self._handleAssignmentInClass(target, annotation, expr, lineno, 
+                                                  augassign=augassign, 
+                                                  # TODO: Change here to support type aliases under class body. 
+                                                  )
         elif isinstance(targetNode, ast.Attribute) and not augassign:
             value = targetNode.value
             if targetNode.attr == '__doc__':
