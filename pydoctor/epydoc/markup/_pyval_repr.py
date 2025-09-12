@@ -296,6 +296,7 @@ class PyvalColorizer:
     ELLIPSIS_TAG = 'variable-ellipsis'
     LINEWRAP_TAG = 'variable-linewrap'
     UNKNOWN_TAG = 'variable-unknown'
+    TYPE_PARAM_TAG = 'type-param'
 
     RE_CHAR_TAG = None
     RE_GROUP_TAG = 're-group'
@@ -736,18 +737,18 @@ class PyvalColorizer:
 
     # Python 3.12
     def _colorize_ast_typevar(self, pyval:ast.TypeVar, state: _ColorizerState) -> None:
-        self._output(pyval.name, self.LINK_TAG, state, link=True)
+        self._output(pyval.name, self.TYPE_PARAM_TAG, state)
         if pyval.bound:
             self._output(': ', self.COLON_TAG, state)
             self._colorize_ast(pyval.bound, state)
     # Python 3.12
     def _colorize_ast_typevartuple(self, pyval:ast.TypeVarTuple, state: _ColorizerState) -> None:
         self._output('*', None, state)
-        self._output(pyval.name, self.LINK_TAG, state, link=True)
+        self._output(pyval.name, self.TYPE_PARAM_TAG, state)
     # Python 3.12
     def _colorize_ast_paramspec(self, pyval:ast.ParamSpec, state: _ColorizerState) -> None:
         self._output('**', None, state)
-        self._output(pyval.name, self.LINK_TAG, state, link=True)
+        self._output(pyval.name, self.TYPE_PARAM_TAG, state)
 
     def _colorize_ast_generic(self, pyval: ast.AST, state: _ColorizerState) -> None:
         try:

@@ -939,8 +939,15 @@ def test_pep_695_generic_classes(systemcls: Type[model.System]) -> None:
     class ClassB[S: Sequence[T], T]: ...
     '''
     mod = fromText(src, systemcls=systemcls, modname='t')
-    assert '[<a href="t.ClassA.html" class="internal-link" title="t.ClassA">S</a>, <a href="t.ClassA.html" class="internal-link" title="t.ClassA">T</a>: Sequence[<wbr></wbr><a href="t.ClassA.html" class="internal-link" title="t.ClassA">S</a>]]' in flatten(pages.format_class_signature(mod.contents['ClassA'])) # type:ignore
-    assert '[<a href="t.ClassB.html" class="internal-link" title="t.ClassB">S</a>: Sequence[<wbr></wbr><a href="t.ClassB.html" class="internal-link" title="t.ClassB">T</a>], <a href="t.ClassB.html" class="internal-link" title="t.ClassB">T</a>]' in flatten(pages.format_class_signature(mod.contents['ClassB'])) # type:ignore
+    assert ('[<span class="rst-type-param">S</span>, '
+            '<span class="rst-type-param">T</span>: '
+            'Sequence[<wbr></wbr><a href="t.ClassA.html" class="internal-link" title="t.ClassA">S</a>]]') in flatten(
+                pages.format_class_signature(mod.contents['ClassA'])) # type:ignore
+    
+    assert ('[<span class="rst-type-param">S</span>: '
+            'Sequence[<wbr></wbr><a href="t.ClassB.html" class="internal-link" '
+            'title="t.ClassB">T</a>], <span class="rst-type-param">T</span>]') in flatten(
+                pages.format_class_signature(mod.contents['ClassB'])) # type:ignore
 
 @pytest.mark.skipif(sys.version_info < (3,12), reason='Usage of type variables')
 @systemcls_param

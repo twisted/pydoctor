@@ -62,7 +62,6 @@ def format_type_params(ob: model.Function | model.FunctionOverload | model.Class
     if not ob.type_params:
         return
     refmap = model.type_param_refs(ob)
-    print(f'{ob} typevars refs?: {refmap}')
     ctx = ob.primary if isinstance(ob, model.FunctionOverload) else ob   
     linker = ctx.docstring_linker 
     stan: list[Flattenable] = []
@@ -97,8 +96,9 @@ def format_signature(func: Union[model.Function, model.FunctionOverload]) -> Fla
 
 def format_class_signature(cls: model.Class) -> Flattenable:
     """
-    The class signature is the formatted list of bases this class extends. 
-    It's not the class constructor.
+    The class signature is the formatted list of 
+    type parameters and bases this class uses. 
+    It's not the constructor.
     """
     r: List["Flattenable"] = [*format_type_params(cls),]
     # the linker will only be used to resolve the generic arguments of the base classes, 

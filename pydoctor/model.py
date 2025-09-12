@@ -1001,7 +1001,7 @@ class FunctionOverload:
     primary: Function
     signature: Signature | None = None
     decorators: Sequence[ast.expr] | None = None
-    type_params: Sequence[ast.type_param] | None = None
+    type_params: Sequence[ast.TypeVar | ast.TypeVarTuple | ast.ParamSpec] | None = None
     type_params_sources: Sequence[TypeParamSource] | None = None
 
     parsed_signature: ParsedDocstring | None = None # set in get_parsed_signature()

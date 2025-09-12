@@ -331,7 +331,12 @@ class ModuleVistor(NodeVisitor):
         cls: model.Class = self.builder.pushClass(node.name, lineno)
         cls.decorators = []
         cls.rawbases = rawbases
-        cls.type_params = getattr(node, 'type_params', None)
+        
+        if raw_type_params:=getattr(node, 'type_params', None):
+            supported_type_params = [t for t in raw_type_params if isinstance(t, 
+                                (ast.TypeVar, ast.TypeVarTuple, ast.ParamSpec))]
+            cls.type_params = supported_type_params
+            
         cls._initialbaseobjects = initialbaseobjects
         cls._initialbases = initialbases
 
@@ -639,14 +644,14 @@ class ModuleVistor(NodeVisitor):
             expr: Optional[ast.expr],
             lineno: int,
             augassign:Optional[ast.operator],
-            typevars:Sequence[ast.type_param] | None,
+            type_params:Sequence[ast.TypeVar | ast.TypeVarTuple | ast.ParamSpec] | None,
             ) -> None:
         if target in MODULE_VARIABLES_META_PARSERS:
             # This is metadata, not a variable that needs to be documented,
             # and therefore doesn't need an Attribute instance.
             raise IgnoreAssignment()
         default_kind = (model.DocumentableKind.VARIABLE 
-                        if typevars is None else 
+                        if type_params is None else 
                         model.DocumentableKind.TYPE_ALIAS)
         parent = self.builder.current
         obj = parent.contents.get(target)
@@ -658,8 +663,8 @@ class ModuleVistor(NodeVisitor):
                                             parent=parent, 
                                             lineno=lineno)
             # store type variables
-            if typevars is not None:
-                obj.type_params = typevars
+            if type_params is not None:
+                obj.type_params = type_params
         if obj.kind is None:
             obj.kind = default_kind
         # If it's not an attribute it means that the name is already denifed as function/class 
@@ -690,13 +695,13 @@ class ModuleVistor(NodeVisitor):
             expr: Optional[ast.expr],
             lineno: int,
             augassign:Optional[ast.operator],
-            typevars:Sequence[ast.type_param] | None,
+            type_params:Sequence[ast.TypeVar | ast.TypeVarTuple | ast.ParamSpec] | None,
             ) -> None:
         module = self.builder.current
         assert isinstance(module, model.Module)
         if not _handleAliasing(module, target, expr):
             self._handleModuleVar(target, annotation, expr, lineno, 
-                                  augassign=augassign, typevars=typevars)
+                                  augassign=augassign, type_params=type_params)
         else:
             raise IgnoreAssignment()
 
@@ -706,7 +711,7 @@ class ModuleVistor(NodeVisitor):
             expr: Optional[ast.expr],
             lineno: int,
             augassign:Optional[ast.operator],
-            typevars:Sequence[ast.type_param] | None,
+            type_params:Sequence[ast.TypeVar | ast.TypeVarTuple | ast.ParamSpec] | None,
             ) -> None:
         
         cls = self.builder.current
@@ -715,7 +720,7 @@ class ModuleVistor(NodeVisitor):
             raise IgnoreAssignment()
 
         default_kind = (model.DocumentableKind.CLASS_VARIABLE 
-                        if typevars is None else 
+                        if type_params is None else 
                         model.DocumentableKind.TYPE_ALIAS)
         # Class variables can only be Attribute, so it's OK to cast
         obj = cast(Optional[model.Attribute], cls.contents.get(name))
@@ -725,8 +730,8 @@ class ModuleVistor(NodeVisitor):
                 return
             obj = self.builder.addAttribute(name=name, kind=None, parent=cls, lineno=lineno)
             # store type variables
-            if typevars is not None:
-                obj.type_params = typevars
+            if type_params is not None:
+                obj.type_params = type_params
 
         if obj.kind is None:
             obj.kind = default_kind
@@ -770,13 +775,13 @@ class ModuleVistor(NodeVisitor):
             expr: Optional[ast.expr],
             lineno: int,
             augassign:Optional[ast.operator],
-            typevars:Sequence[ast.type_param] | None,
+            type_params:Sequence[ast.TypeVar | ast.TypeVarTuple | ast.ParamSpec] | None,
             ) -> None:
         cls = self.builder.current
         assert isinstance(cls, model.Class)
         if not _handleAliasing(cls, target, expr):
             self._handleClassVar(target, annotation, expr, lineno, augassign=augassign,
-                                 typevars=typevars)
+                                 type_params=type_params)
         else:
             raise IgnoreAssignment()
 
@@ -834,7 +839,7 @@ class ModuleVistor(NodeVisitor):
             expr: ast.expr|None,
             lineno: int,
             augassign:ast.operator|None=None,
-            typevars:Sequence[ast.type_param] | None = None,
+            type_params:Sequence[ast.TypeVar | ast.TypeVarTuple | ast.ParamSpec] | None = None,
             ) -> None:
         """
         @raises IgnoreAssignment: If the assignemnt should not be further processed.
@@ -847,12 +852,12 @@ class ModuleVistor(NodeVisitor):
             if isinstance(scope, model.Module):
                 self._handleAssignmentInModule(target, annotation, expr, lineno, 
                                                augassign=augassign, 
-                                               typevars=typevars)
+                                               type_params=type_params)
             elif isinstance(scope, model.Class):
                 if augassign or not self._handleOldSchoolMethodDecoration(target, expr):
                     self._handleAssignmentInClass(target, annotation, expr, lineno, 
                                                   augassign=augassign, 
-                                                  typevars=typevars)
+                                                  type_params=type_params)
         elif isinstance(targetNode, ast.Attribute) and not augassign:
             value = targetNode.value
             if targetNode.attr == '__doc__':
@@ -933,10 +938,15 @@ class ModuleVistor(NodeVisitor):
         # - when the annotations are rendered, manually link the typevar names to the definition.
         #   so in the case of a class the type variables the bases will link to the class it self, and for all
         #   methods the class's type var are accumulated with the eventual method's.
-        if isinstance(node.name, ast.Name):
-            self._handleAssignment(node.name, None, node.value, 
-                                   node.lineno, 
-                                   typevars=node.type_params)
+
+        # Implemetation note: we determine a type alias kind by given a non-None value to
+        # type_param argument, even that is an empty list it's still relevant for 
+        # the rest of the code.
+        supported_type_params = [t for t in node.type_params if isinstance(t, 
+                                (ast.TypeVar, ast.TypeVarTuple, ast.ParamSpec))]
+        self._handleAssignment(node.name, None, node.value, 
+                                node.lineno, 
+                                type_params=supported_type_params)
 
     def _getClassFromMethodContext(self) -> Optional[model.Class]:
         func = self.builder.current

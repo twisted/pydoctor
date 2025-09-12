@@ -1583,20 +1583,20 @@ if sys.version_info >= (3, 12):
                               t3.type_params[0], t4.type_params[0]) #type:ignore
         assert color(tv1) == '\n'.join(['<document source="code">',
                               '    **',
-                              '    <obj_reference refuri="P">',
+                              '    <inline classes="type-param">',
                               '        P\n'])
         assert color(tv2) == '\n'.join(['<document source="code">',
                               '    *',
-                              '    <obj_reference refuri="Ts">',
+                              '    <inline classes="type-param">',
                               '        Ts\n'])
         assert color(tv3) == '\n'.join(['<document source="code">',
-                              '    <obj_reference refuri="T">',
+                              '    <inline classes="type-param">',
                               '        T',
                               '    : ',
                               '    <obj_reference refuri="Hashable">',
                               '        Hashable\n'])
         assert color(tv4) == '\n'.join(['<document source="code">',
-                              '    <obj_reference refuri="T">',
+                              '    <inline classes="type-param">',
                               '        T',
                               '    : ',
                               '    (', '    <wbr>',
