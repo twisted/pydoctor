@@ -981,7 +981,7 @@ def test_pep_695_generic_functions(systemcls: Type[model.System]) -> None:
                   mod.contents['func3'])
     v1 = mod.contents['V']
 
-    htmlv1 = flatten(epydoc2stan.format_constant_value(v1)) # type:ignore
+    htmlv1 = flatten(epydoc2stan.format_attribute_value(v1)) # type:ignore
     assert '<a href=' not in htmlv1
 
     html1 = flatten(pages.format_function_def('func1', False, f1)) # type:ignore

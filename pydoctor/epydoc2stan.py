@@ -990,7 +990,7 @@ def colorized_pyval_fallback(_: List[ParseError], doc:ParsedDocstring, __:model.
     """
     return tags.code(doc.to_text())
 
-def _format_constant_value(obj: model.Attribute) -> Iterator["Flattenable"]:
+def _format_attribute_value(obj: model.Attribute) -> Iterator["Flattenable"]:
 
     # yield the table title, "Value"
     row = tags.tr(class_="fieldStart")
@@ -1015,14 +1015,14 @@ def _format_constant_value(obj: model.Attribute) -> Iterator["Flattenable"]:
 
     # yield the value repr.
     row = tags.tr()
-    row(tags.td(tags.pre(class_='constant-value')(value_repr)))
+    row(tags.td(tags.pre(class_='attribute-value')(value_repr)))
     yield row
 
-def format_constant_value(obj: model.Attribute) -> "Flattenable":
+def format_attribute_value(obj: model.Attribute) -> "Flattenable":
     """
     Should be only called for L{Attribute} objects that have the L{Attribute.value} property set.
     """
-    rows = list(_format_constant_value(obj))
+    rows = list(_format_attribute_value(obj))
     return tags.table(class_='valueTable')(*rows)
 
 def _split_indentifier_parts_on_case(indentifier:str) -> List[str]:

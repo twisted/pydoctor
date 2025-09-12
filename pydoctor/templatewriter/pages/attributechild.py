@@ -83,10 +83,16 @@ class AttributeChild(TemplateElement):
 
     @renderer
     def constantValue(self, request: object, tag: Tag) -> "Flattenable":
+        import warnings
+        warnings.warn('renderer "constantValue" is deprecated, please use "attributeValue" instead.')
+        return self.attributeValue(request, tag)
+    
+    @renderer
+    def attributeValue(self, request: object, tag: Tag) -> "Flattenable":
         showval = self.ob.system.showAttrValue(self.ob)
         if showval is AttributeValueDisplay.HIDDEN:
             return tag.clear()
         elif showval is AttributeValueDisplay.AS_CODE_BLOCK:
-            return epydoc2stan.format_constant_value(self.ob)
+            return epydoc2stan.format_attribute_value(self.ob)
         else:
             assert False

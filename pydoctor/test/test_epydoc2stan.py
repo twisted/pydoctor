@@ -1587,7 +1587,7 @@ def test_cli_docformat_plaintext_overrides_module_docformat(capsys: CapSys) -> N
 
 def test_constant_values_rst(capsys: CapSys) -> None:
     """
-    Test epydoc2stan.format_constant_value().
+    Test epydoc2stan.format_attribute_value().
     """
     mod1 = '''
     def f(a, b): 
@@ -1614,7 +1614,7 @@ def test_constant_values_rst(capsys: CapSys) -> None:
 
     expected = ('<table class="valueTable"><tr class="fieldStart">'
                 '<td class="fieldName">Value</td></tr><tr><td>'
-                '<pre class="constant-value"><code>(<wbr></wbr>'
+                '<pre class="attribute-value"><code>(<wbr></wbr>'
                 '<a href="pack.mod1.html#f" class="internal-link" title="pack.mod1.f">f</a>)</code></pre></td></tr></table>')
     
     attr = mod.contents['CONST']
@@ -1622,7 +1622,7 @@ def test_constant_values_rst(capsys: CapSys) -> None:
 
     docstring2html(attr)
 
-    assert ''.join(flatten(epydoc2stan.format_constant_value(attr)).splitlines()) == expected
+    assert ''.join(flatten(epydoc2stan.format_attribute_value(attr)).splitlines()) == expected
 
     
 def test_warns_field(capsys: CapSys) -> None:
