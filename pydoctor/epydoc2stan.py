@@ -289,7 +289,7 @@ class FieldHandler:
         formatted_annotations = {
             name: None if value is None
                        else ParamType(safe_to_stan(colorize_inline_pyval(value, 
-                                 refmap=model.gather_type_params_refs(self.obj), 
+                                 refmap=model.type_param_refs(self.obj), 
                                  is_annotation=True), _linker,
                             self.obj, fallback=colorized_pyval_fallback, section='annotation', report=False),
                             # don't spam the log, invalid annotation are going to be reported when the signature gets colorized
@@ -889,7 +889,7 @@ def get_parsed_type(obj: model.Attribute) -> Optional[ParsedDocstring]:
     # Only Attribute instances have the 'annotation' attribute.
     annotation: Optional[ast.expr] = getattr(obj, 'annotation', None)
     if annotation is not None:
-        return colorize_inline_pyval(annotation, refmap=model.gather_type_params_refs(obj),
+        return colorize_inline_pyval(annotation, refmap=model.type_param_refs(obj),
                                      is_annotation=True)
 
     return None
@@ -1000,7 +1000,7 @@ def _format_constant_value(obj: model.Attribute) -> Iterator["Flattenable"]:
 
     refmap: Mapping[str, str] | None = None
     if obj.kind is model.DocumentableKind.TYPE_ALIAS:
-        refmap = model.gather_type_params_refs(obj)
+        refmap = model.type_param_refs(obj)
 
     doc = colorize_pyval(obj.value,
         linelen=obj.system.options.pyvalreprlinelen,
@@ -1291,7 +1291,7 @@ def _colorize_signature(sig: inspect.Signature,
     render_kw_only_separator = True
     param_number = len(sig.parameters)
     result.append(nodes.Text('('))
-    refmap = model.gather_type_params_refs(function)
+    refmap = model.type_param_refs(function)
 
     for i, param in enumerate(sig.parameters.values()):
         kind = param.kind

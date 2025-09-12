@@ -59,14 +59,14 @@ def format_decorators(obj: Union[model.Function, model.Attribute, model.Function
     return tags.transparent
 
 def format_type_params(ob: model.Function | model.FunctionOverload | model.Class | model.Attribute) -> Iterator[Flattenable]:
-    if not ob.typevars:
+    if not ob.type_params:
         return
-    refmap = model.gather_type_params_refs(ob)
+    refmap = model.type_param_refs(ob)
     print(f'{ob} typevars refs?: {refmap}')
     ctx = ob.primary if isinstance(ob, model.FunctionOverload) else ob   
     linker = ctx.docstring_linker 
     stan: list[Flattenable] = []
-    for t in ob.typevars:
+    for t in ob.type_params:
         if stan:
             stan += [', ']
         stan += [*epydoc2stan.safe_to_stan(
@@ -104,7 +104,7 @@ def format_class_signature(cls: model.Class) -> Flattenable:
     # the linker will only be used to resolve the generic arguments of the base classes, 
     # it won't actually resolve the base classes (see comment few lines below).
     # this is why we're using the annotation linker.
-    base_refmap = model.gather_type_params_refs(cls)
+    base_refmap = model.type_param_refs(cls)
     _linker = cls.docstring_linker
     if cls.rawbases:
         r.append('(')

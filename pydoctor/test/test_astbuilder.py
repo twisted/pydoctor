@@ -2522,6 +2522,63 @@ def test_type_alias_definition(systemcls: Type[model.System]) -> None:
     assert attr.value
     assert unparse(attr.value).strip() == "t.Literal['1', 1]"
 
+@pytest.mark.skipif(sys.version_info < (3,12), reason='Type variable introduced in Python 3.12')
+@systemcls_param
+def test_nested_type_alias_definition(systemcls: Type[model.System]) -> None:
+    src = '''
+    import typing as t
+    class C:
+        type One = t.Literal['1', 1]
+        class B:
+            type Three = One[2]
+    '''
+    mod = fromText(src, systemcls=systemcls)
+    attr = mod.contents['C'].contents['One']
+    assert isinstance(attr, model.Attribute)
+    assert attr.kind == model.DocumentableKind.TYPE_ALIAS
+    assert attr.value
+    assert unparse(attr.value).strip() == "t.Literal['1', 1]"
+
+    attr2 = mod.contents['C'].contents['B'].contents['Three']
+    assert isinstance(attr, model.Attribute)
+    assert attr2.kind == model.DocumentableKind.TYPE_ALIAS
+    assert attr2.value
+    assert unparse(attr.value).strip() == "One[2]"
+
+@pytest.mark.skipif(sys.version_info < (3,12), reason='Type variable introduced in Python 3.12')
+@systemcls_param
+def test_typevar_source_of_instance_var(systemcls: Type[model.System]) -> None:
+    src = '''
+    class C:
+        def __init__[T](self, thing: T, stuff: T):
+            self.thing = thing, T
+    '''
+
+    mod = fromText(src, modname='t', systemcls=systemcls)
+    thing = mod.contents['C'].contents['thing']
+    assert isinstance(thing, model.Attribute)
+    assert repr(thing.type_params_sources) == "[Class 't.C', Function 't.C.__init__', Attribute 't.C.thing']"
+
+@pytest.mark.skipif(sys.version_info < (3,12), reason='Type variable introduced in Python 3.12')
+@systemcls_param
+def test_typevar_source_of_overloaded_function(systemcls: Type[model.System]) -> None:
+    src = '''
+    from typing import overload
+    class C[T, S]:
+        @overload
+        def foo(x: T, y: S) -> T:
+            ...
+        @overload
+        def foo(x: T, y: T) -> S:
+            ...
+    '''
+
+    mod = fromText(src, modname='t', systemcls=systemcls)
+    thing = mod.contents['C'].contents['foo']
+    assert isinstance(thing, model.Function)
+    thing1 = thing.overloads[0]
+    assert repr(thing1.type_params_sources) == "[Class 't.C', FunctionOverload 't.C.foo']"
+
 
 @systemcls_param
 def test_typevartuple(systemcls: Type[model.System]) -> None:

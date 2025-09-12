@@ -477,6 +477,12 @@ class CanContainImportsDocumentable(Documentable):
         return chain(self.contents.keys(),
                      self._localNameToFullName_map.keys())
 
+TypeParamSource: TypeAlias = 'Class | Attribute | Function | FunctionOverload'
+"""
+Annotation to mark Documentable-ish classes that can hold type parameters
+as introduced in Python3.12.
+"""
+
 @attr.s(auto_attribs=True)
 class ParsedAstModule:
     root: ast.Module
@@ -762,7 +768,7 @@ def _find_dunder_constructor(cls:'Class') -> Optional['Function']:
             return _init
     return None
 
-def gather_type_params_refs(ob: Class | Function | Attribute | FunctionOverload) -> Mapping[str, str]:
+def type_param_refs(ob: Class | Function | Attribute | FunctionOverload) -> Mapping[str, str]:
     """
     Starting with Python 3.12 classes and functions can include defintions of type variable -likes.
     This function returns all mapping of all type variables- like defined in the context of the given object
@@ -773,24 +779,9 @@ def gather_type_params_refs(ob: Class | Function | Attribute | FunctionOverload)
     They currently can't have embeded documentation, but it would nice to be able
     to document them under a "Type Variables" section and/or @tvar: fields...
     """
-    curr = ob
-    typevar_sources: list[Class | Function | Attribute | FunctionOverload] = []
-    while True:
-        typevar_sources += [curr]
-        # For class members re-exported this might gather the implementation 
-        # full-names instead of the public llocation names.
-        if isinstance(curr.parent, (Module, type(None))):
-            break
-        else:
-            # type var sources can only be Class/Attribute or Function
-            # the syntax does not allow Module-wide type variables.
-            curr = cast(Class, curr.parent)
-
     refmap = {t.name:o.fullName() for o in 
-              reversed(typevar_sources) for t in o.typevars or [] 
-              # the condition is only for mypy since type_params 
-              # can only be one of these three types at the moment
-              if isinstance(t, (ast.TypeVar, ast.TypeVarTuple, ast.ParamSpec))}
+              ob.type_params_sources or [ob] for t in o.type_params or [] }
+              
     return refmap
 
 def get_constructors(cls:Class) -> Iterator[Function]:
@@ -830,7 +821,8 @@ class Class(CanContainImportsDocumentable):
     kind = DocumentableKind.CLASS
     parent: CanContainImportsDocumentable
     decorators: Sequence[Tuple[str, Optional[Sequence[ast.expr]]]]
-    typevars: Sequence[ast.type_param] | None = None
+    type_params: Sequence[ast.TypeVar | ast.TypeVarTuple | ast.ParamSpec] | None = None
+    type_params_sources: Sequence[TypeParamSource] | None = None
 
     # set in post-processing:
     _finalbaseobjects: Optional[List[Optional['Class']]] = None 
@@ -963,6 +955,9 @@ class Class(CanContainImportsDocumentable):
 
 
 class Inheritable(Documentable):
+    type_params: Sequence[ast.TypeVar | ast.TypeVarTuple | ast.ParamSpec] | None = None
+    type_params_sources: Sequence[TypeParamSource] | None = None
+
     documentation_location = DocLocation.PARENT_PAGE
 
     parent: CanContainImportsDocumentable
@@ -988,7 +983,6 @@ class Function(Inheritable):
     decorators: Sequence[ast.expr] | None
     signature: Signature | None
     overloads: List[FunctionOverload]
-    typevars: Sequence[ast.type_param] | None = None
 
     parsed_signature: ParsedDocstring | None = None # set in get_parsed_signature()
 
@@ -999,7 +993,7 @@ class Function(Inheritable):
         self.signature = None
         self.overloads = []
 
-@attr.s(auto_attribs=True)
+@attr.s(auto_attribs=True, repr=False)
 class FunctionOverload:
     """
     @note: This is not an actual documentable type. 
@@ -1007,9 +1001,13 @@ class FunctionOverload:
     primary: Function
     signature: Signature | None = None
     decorators: Sequence[ast.expr] | None = None
-    typevars: Sequence[ast.type_param] | None = None
+    type_params: Sequence[ast.type_param] | None = None
+    type_params_sources: Sequence[TypeParamSource] | None = None
 
     parsed_signature: ParsedDocstring | None = None # set in get_parsed_signature()
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__} {self.fullName()!r}"
 
     @property
     def parent(self) -> CanContainImportsDocumentable:
@@ -1035,8 +1033,6 @@ class Attribute(Inheritable):
 
     None value means the value is not initialized at the current point of the the process. 
     """
-    typevars: Sequence[ast.type_param] | None = None
-
 # Work around the attributes of the same name within the System class.
 _ModuleT = Module
 _PackageT = Package

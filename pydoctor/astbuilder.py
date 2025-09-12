@@ -279,6 +279,7 @@ class ModuleVistor(NodeVisitor):
         self._tweak_constants_annotations(self.builder.current)
         self._infer_attr_annotations(self.builder.current)
         self.builder.pop(self.module)
+        assert not self.builder.current
 
     def visit_ClassDef(self, node: ast.ClassDef) -> None:
         # Ignore classes within functions.
@@ -330,8 +331,7 @@ class ModuleVistor(NodeVisitor):
         cls: model.Class = self.builder.pushClass(node.name, lineno)
         cls.decorators = []
         cls.rawbases = rawbases
-        if sys.version_info >= (3,12):
-            cls.typevars = node.type_params
+        cls.type_params = getattr(node, 'type_params', None)
         cls._initialbaseobjects = initialbaseobjects
         cls._initialbases = initialbases
 
@@ -657,6 +657,9 @@ class ModuleVistor(NodeVisitor):
                                             kind=default_kind, 
                                             parent=parent, 
                                             lineno=lineno)
+            # store type variables
+            if typevars is not None:
+                obj.type_params = typevars
         
         # If it's not an attribute it means that the name is already denifed as function/class 
         # probably meaning that this attribute is a bound callable. 
@@ -679,9 +682,6 @@ class ModuleVistor(NodeVisitor):
         self._handleConstant(obj, annotation, expr, lineno, 
                              defaultKind=default_kind)
         self._storeAttrValue(obj, expr, augassign)
-        # store type variables
-        if typevars is not None and obj.kind is model.DocumentableKind.TYPE_ALIAS:
-            obj.typevars = typevars
 
     def _handleAssignmentInModule(self,
             target: str,
@@ -1144,8 +1144,8 @@ class ModuleVistor(NodeVisitor):
             func_model = func
         
         # store type variables
-        if sys.version_info >= (3,12):
-            func_model.typevars = node.type_params
+        func_model.type_params = getattr(node, 'type_params', None)
+        func_model.type_params_sources = self.builder.current_type_param_sources()[:-1] + [func_model]
         
         func_model.signature = signature
         func_model.decorators = node.decorator_list
@@ -1238,6 +1238,9 @@ DocumentableT = TypeVar('DocumentableT', bound=model.Documentable)
 class ASTBuilder:
     """
     Keeps tracks of the state of the AST build, creates documentable and adds objects to the system.
+
+    One AStBuilder instance can only be used to analyze one L{Module} instance in it's
+    lifecycle.
     """
     ModuleVistor = ModuleVistor
 
@@ -1248,6 +1251,10 @@ class ASTBuilder:
         self.currentMod: Optional[model.Module] = None #: module, set when visiting ast.Module
         
         self._stack: List[model.Documentable] = []
+
+    def current_type_param_sources(self) -> List[model.TypeParamSource]:
+        # The first item in the stack is None, the second item is the Moddule instance.
+        return self._stack[2:] + [self.current]
 
     def _push(self, 
               cls: Type[DocumentableT], 
@@ -1303,7 +1310,9 @@ class ASTBuilder:
         """
         Create and a new class in the system.
         """
-        return self._push(self.system.Class, name, lineno)
+        cls = self._push(self.system.Class, name, lineno)
+        cls.type_params_sources = self.current_type_param_sources()
+        return cls
 
     def popClass(self) -> None:
         """
@@ -1315,7 +1324,9 @@ class ASTBuilder:
         """
         Create and enter a new function in the system.
         """
-        return self._push(self.system.Function, name, lineno)
+        fn = self._push(self.system.Function, name, lineno)
+        fn.type_params_sources = self.current_type_param_sources()
+        return fn
 
     def popFunction(self) -> None:
         """
@@ -1333,6 +1344,7 @@ class ASTBuilder:
         Add a new attribute to the system.
         """
         attr = self._push(self.system.Attribute, name, lineno, parent=parent)
+        attr.type_params_sources = self.current_type_param_sources()
         self._pop(self.system.Attribute)
         attr.kind = kind
         return attr

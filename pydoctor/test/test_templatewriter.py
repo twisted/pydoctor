@@ -957,7 +957,7 @@ def test_pep_695_generic_classes_and_methods(systemcls: Type[model.System]) -> N
     mod = fromText(src, systemcls=systemcls, modname='t')
     meth = mod.contents['ClassA'].contents['method3']
     assert isinstance(meth, model.Function)
-    assert model.gather_type_params_refs(meth) == {'T': 't.ClassA.method3'}
+    assert model.type_param_refs(meth) == {'T': 't.ClassA.method3'}
     html = flatten(pages.format_function_def('ClassA', False, meth))
     assert 'x: <code><a href="#method3" class="internal-link" title="t.ClassA.method3">T</a>' in html
     assert '= <a href="#T" class="internal-link" title="t.ClassA.T">T</a>' in html
