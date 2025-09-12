@@ -1624,6 +1624,22 @@ def test_constant_values_rst(capsys: CapSys) -> None:
 
     assert ''.join(flatten(epydoc2stan.format_attribute_value(attr)).splitlines()) == expected
 
+def test_attribute_value_get_type_params_references(capsys: CapSys) -> None:
+    # The outout is currently sub-optimal since the title of the type vaer links
+    # will hold the name of the class it's defined under, not the name of the type
+    # variable.  But this can be fixed later.
+    src = '''
+    from typing import Final
+    class C[T]:
+        thing: Final = bool[T]
+    '''
+    expected = ('<table class="valueTable"><tr class="fieldStart"><td class="fieldName">Value</td></tr>'
+                '<tr><td><pre class="attribute-value"><code>bool[<wbr></wbr>'
+                '<a href="t.C.html" class="internal-link" title="t.C">T</a>]</code></pre></td></tr></table>')
+    mod = fromText(src, modname='t')
+    thing = mod.contents['C'].contents['thing']
+    assert ''.join(flatten(epydoc2stan.format_attribute_value(thing)).splitlines()) == expected
+
     
 def test_warns_field(capsys: CapSys) -> None:
     """Test if the :warns: field is correctly recognized."""

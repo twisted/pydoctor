@@ -998,9 +998,7 @@ def _format_attribute_value(obj: model.Attribute) -> Iterator["Flattenable"]:
     # yield the first row.
     yield row
 
-    refmap: Mapping[str, str] | None = None
-    if obj.kind is model.DocumentableKind.TYPE_ALIAS:
-        refmap = model.type_param_refs(obj)
+    refmap = model.type_param_refs(obj)
 
     doc = colorize_pyval(obj.value,
         linelen=obj.system.options.pyvalreprlinelen,
