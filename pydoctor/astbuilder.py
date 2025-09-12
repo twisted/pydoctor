@@ -660,7 +660,8 @@ class ModuleVistor(NodeVisitor):
             # store type variables
             if typevars is not None:
                 obj.type_params = typevars
-        
+        if obj.kind is None:
+            obj.kind = default_kind
         # If it's not an attribute it means that the name is already denifed as function/class 
         # probably meaning that this attribute is a bound callable. 
         #
@@ -705,6 +706,7 @@ class ModuleVistor(NodeVisitor):
             expr: Optional[ast.expr],
             lineno: int,
             augassign:Optional[ast.operator],
+            typevars:Sequence[ast.type_param] | None,
             ) -> None:
         
         cls = self.builder.current
@@ -712,6 +714,9 @@ class ModuleVistor(NodeVisitor):
         if not _maybeAttribute(cls, name):
             raise IgnoreAssignment()
 
+        default_kind = (model.DocumentableKind.CLASS_VARIABLE 
+                        if typevars is None else 
+                        model.DocumentableKind.TYPE_ALIAS)
         # Class variables can only be Attribute, so it's OK to cast
         obj = cast(Optional[model.Attribute], cls.contents.get(name))
 
@@ -719,16 +724,18 @@ class ModuleVistor(NodeVisitor):
             if augassign:
                 return
             obj = self.builder.addAttribute(name=name, kind=None, parent=cls, lineno=lineno)
+            # store type variables
+            if typevars is not None:
+                obj.type_params = typevars
 
         if obj.kind is None:
-            obj.kind = model.DocumentableKind.CLASS_VARIABLE
-
+            obj.kind = default_kind
         self._setAttributeAnnotation(obj, annotation)
         
         obj.setLineNumber(lineno)
 
         self._handleConstant(obj, annotation, expr, lineno, 
-                                  model.DocumentableKind.CLASS_VARIABLE)
+                             defaultKind=default_kind)
         self._storeAttrValue(obj, expr, augassign)
 
        
@@ -763,11 +770,13 @@ class ModuleVistor(NodeVisitor):
             expr: Optional[ast.expr],
             lineno: int,
             augassign:Optional[ast.operator],
+            typevars:Sequence[ast.type_param] | None,
             ) -> None:
         cls = self.builder.current
         assert isinstance(cls, model.Class)
         if not _handleAliasing(cls, target, expr):
-            self._handleClassVar(target, annotation, expr, lineno, augassign=augassign)
+            self._handleClassVar(target, annotation, expr, lineno, augassign=augassign,
+                                 typevars=typevars)
         else:
             raise IgnoreAssignment()
 
@@ -843,8 +852,7 @@ class ModuleVistor(NodeVisitor):
                 if augassign or not self._handleOldSchoolMethodDecoration(target, expr):
                     self._handleAssignmentInClass(target, annotation, expr, lineno, 
                                                   augassign=augassign, 
-                                                  # TODO: Change here to support type aliases under class body. 
-                                                  )
+                                                  typevars=typevars)
         elif isinstance(targetNode, ast.Attribute) and not augassign:
             value = targetNode.value
             if targetNode.attr == '__doc__':

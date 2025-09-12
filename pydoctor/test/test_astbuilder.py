@@ -1237,6 +1237,10 @@ def test_variable_scopes(systemcls: Type[model.System]) -> None:
 @systemcls_param
 def test_variable_types(systemcls: Type[model.System]) -> None:
     mod = fromText('''
+    """
+    @type c: string
+    """
+    c = "C"
     class C:
         """class docstring
 
@@ -1278,6 +1282,10 @@ def test_variable_types(systemcls: Type[model.System]) -> None:
             self.g = g = "G"
             """seventh"""
     ''', modname='test', systemcls=systemcls)
+
+    c = mod.contents['c']
+    assert c.kind is model.DocumentableKind.VARIABLE
+
     C = mod.contents['C']
     assert sorted(C.contents.keys()) == [
         '__init__', 'a', 'b', 'c', 'd', 'e', 'f', 'g'
@@ -2543,7 +2551,7 @@ def test_nested_type_alias_definition(systemcls: Type[model.System]) -> None:
     assert isinstance(attr, model.Attribute)
     assert attr2.kind == model.DocumentableKind.TYPE_ALIAS
     assert attr2.value
-    assert unparse(attr.value).strip() == "One[2]"
+    assert unparse(attr2.value).strip() == "One[2]"
 
 @pytest.mark.skipif(sys.version_info < (3,12), reason='Type variable introduced in Python 3.12')
 @systemcls_param
