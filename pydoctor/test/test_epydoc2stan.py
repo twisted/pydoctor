@@ -1,6 +1,6 @@
 from typing import List, Optional, Type, cast, TYPE_CHECKING
 import re
-
+import sys
 from pytest import mark, raises
 import pytest
 from twisted.web.template import Tag, tags
@@ -1624,6 +1624,7 @@ def test_constant_values_rst(capsys: CapSys) -> None:
 
     assert ''.join(flatten(epydoc2stan.format_attribute_value(attr)).splitlines()) == expected
 
+@pytest.mark.skipif(sys.version_info < (3,12), reason='type variables introduced in python 3.12')
 def test_attribute_value_get_type_params_references(capsys: CapSys) -> None:
     # The outout is currently sub-optimal since the title of the type vaer links
     # will hold the name of the class it's defined under, not the name of the type
