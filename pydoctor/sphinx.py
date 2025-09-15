@@ -76,7 +76,21 @@ class SphinxInventory:
         payload = self._getPayload(base_url, data)
         self._links.update(self._parseInventory(base_url, payload))
 
-    def _getPayload(self, base_url: str, data: bytes) -> str:
+    def update_file(self, path: str | os.PathLike[str], base_url: str | None) -> None:
+        """
+        Update inventory from local path. If base_url is supplied, the
+        links are made relative to the supplied base url.
+        """
+        with open(path, 'rb') as f:
+            data = f.read()
+
+        payload = self._getPayload(str(path), data)
+        links = self._parseInventory(base_url or os.path.dirname(path), 
+                                     payload)
+        
+        self._links.update(links)
+            
+    def _getPayload(self, payload_source: str, data: bytes) -> str:
         """
         Parse inventory and return clear text payload without comments.
         """
@@ -95,14 +109,14 @@ class SphinxInventory:
         except zlib.error:
             self.error(
                 'sphinx',
-                'Failed to uncompress inventory from %s' % (base_url,))
+                'Failed to uncompress inventory from %s' % (payload_source,))
             return ''
         try:
             return decompressed.decode('utf-8')
         except UnicodeError:
             self.error(
                 'sphinx',
-                'Failed to decode inventory from %s' % (base_url,))
+                'Failed to decode inventory from %s' % (payload_source,))
             return ''
 
     def _parseInventory(
@@ -194,7 +208,7 @@ class SphinxInventoryWriter:
     def error(self, where: str, message: str) -> None:
         self._logger(where, message, thresh=-1)
 
-    def generate(self, subjects: Iterable[Documentable], basepath: str) -> None:
+    def generate(self, subjects: Iterable[Documentable], basepath: str | os.PathLike[str]) -> None:
         """
         Generate Sphinx objects inventory version 2 at `basepath`/objects.inv.
         """

@@ -3,38 +3,50 @@ from __future__ import annotations
 
 import ast
 import tokenize
+import contextlib
 import sys
 
-from functools import partial
 from inspect import Parameter, Signature
-from itertools import chain
 from pathlib import Path
 from typing import (
     Any, Callable, Collection, Dict, Iterable, Iterator, List, Mapping, Optional, Sequence, Tuple,
-    Type, TypeVar, Union, cast
+    Type, TypeVar, Union, Set, cast
 )
 
-from pydoctor import epydoc2stan, model, node2stan, extensions, linker
-from pydoctor.epydoc.markup._pyval_repr import colorize_inline_pyval
+from pydoctor import epydoc2stan, model, extensions
 from pydoctor.astutils import (is_none_literal, is_typing_annotation, is_using_annotations, is_using_typing_final, node2dottedname, node2fullname, 
                                is__name__equals__main__, unstring_annotation, upgrade_annotation, iterassign, extract_docstring_linenum, infer_type, get_parents,
-                               get_docstring_node, get_assign_docstring_node, extract_doc_comment_before, extract_doc_comment_after, validate_inline_docstring_node, 
-                               unparse, NodeVisitor, Parentage, Str)
+                               get_docstring_node, get_assign_docstring_node, validate_inline_docstring_node, unparse, NodeVisitor, Parentage, Str)
+from pydoctor.tokenutils import extract_doc_comment_before, extract_doc_comment_after
 
-def parseFile(path: Path) -> tuple[ast.Module, Sequence[str]]:
+
+def parseFile(path: Path) -> model.ParsedAstModule:
     """
     Parse the contents of a Python source file.
 
-    @returns: Tuple: ast module, sequence of source code lines.
+    @returns: The parsed ast module
+    @raises SyntaxError: If any exception is raised by L{ast.parse}
     """
     with tokenize.open(path) as f: 
         src = f.read() + '\n'
-    return _parse(src, filename=str(path)), src.splitlines(keepends=True)
+    node = _parse(src, filename=str(path))
+    return model.ParsedAstModule(node, src.splitlines(keepends=True))
 
-if sys.version_info >= (3,8):
-    _parse = partial(ast.parse, type_comments=True)
-else:
-    _parse = ast.parse
+def _parse(source: str, *, filename: str = "<unknown>") -> ast.Module:
+    """
+    Wraps L{ast.parse}.
+
+    @raises SyntaxError: If any exception is raised by L{ast.parse}
+    """
+    try:
+        node = ast.parse(source, filename=filename, type_comments=True)
+    except SyntaxError:
+        raise
+    except Exception as e:
+        # this could be UnicodeDecodeError, MemoryError, RecursionError, SystemError
+        # but we keep in large in case Python evolves into raising more kind of exceptions.
+        raise SyntaxError(str(e)) from e
+    return node
 
 def _maybeAttribute(cls: model.Class, name: str) -> bool:
     """Check whether a name is a potential attribute of the given class.
@@ -93,9 +105,11 @@ def is_constant(obj: model.Attribute,
     
     @note: Must be called after setting obj.annotation to detect variables using Final.
     """
+    if is_using_typing_final(annotation, obj):
+        return True
     if not is_attribute_overridden(obj, value) and value:
         if not any(isinstance(n, _CONTROL_FLOW_BLOCKS) for n in get_parents(value)):
-            return obj.name.isupper() or is_using_typing_final(annotation, obj)
+            return obj.name.isupper()
     return False
 
 class TypeAliasVisitorExt(extensions.ModuleVisitorExt):
@@ -151,24 +165,14 @@ def is_attribute_overridden(obj: model.Attribute, new_value: Optional[ast.expr])
     """
     return obj.value is not None and new_value is not None
 
-def _extract_annotation_subscript(annotation: ast.Subscript) -> ast.AST:
-    """
-    Extract the "str, bytes" part from annotations like  "Union[str, bytes]".
-    """
-    ann_slice = annotation.slice
-    if sys.version_info < (3,9) and isinstance(ann_slice, ast.Index):
-        return ann_slice.value
-    else:
-        return ann_slice
-
 def extract_final_subscript(annotation: ast.Subscript) -> ast.expr:
     """
     Extract the "str" part from annotations like  "Final[str]".
 
     @raises ValueError: If the "Final" annotation is not valid.
     """ 
-    ann_slice = _extract_annotation_subscript(annotation)
-    if isinstance(ann_slice, (ast.ExtSlice, ast.Slice, ast.Tuple)):
+    ann_slice = annotation.slice
+    if isinstance(ann_slice, (ast.Slice, ast.Tuple)):
         raise ValueError("Annotation is invalid, it should not contain slices.")
     else:
         assert isinstance(ann_slice, ast.expr)
@@ -181,6 +185,35 @@ class ModuleVistor(NodeVisitor):
         self.builder = builder
         self.system = builder.system
         self.module = module
+        self._override_guard_state: Tuple[Optional[model.Documentable], Set[str]] = (None, set())
+    
+    @contextlib.contextmanager
+    def override_guard(self) -> Iterator[None]:
+        """
+        Returns a context manager that will make the builder ignore any new 
+        assigments to existing names within the same context.  Currently used to visit C{If.orelse} and C{Try.handlers}.
+        
+        @note: The list of existing names is generated at the moment of
+            calling the function, such that new names defined inside these blocks follows the usual override rules.
+        """
+        ctx = self.builder.current
+        while not isinstance(ctx, model.CanContainImportsDocumentable):
+            assert ctx.parent
+            ctx = ctx.parent
+        ignore_override_init = self._override_guard_state
+        # we list names only once to ignore new names added inside the block,
+        # they should be overriden as usual.
+        self._override_guard_state = (ctx, set(ctx.localNames()))
+        yield
+        self._override_guard_state = ignore_override_init
+    
+    def _ignore_name(self, ob: model.Documentable, name:str) -> bool:
+        """
+        Should this C{name} be ignored because it matches 
+        the override guard in the context of C{ob}?
+        """
+        ctx, names = self._override_guard_state
+        return ctx is ob and name in names
 
     def _infer_attr_annotations(self, scope: model.Documentable) -> None:
         # Infer annotation when leaving scope so explicit
@@ -193,6 +226,14 @@ class ModuleVistor(NodeVisitor):
             if attrib.annotation is None and attrib.value is not None:
                 # do not override explicit annotation
                 attrib.annotation = infer_type(attrib.value)
+    
+    def _tweak_constants_annotations(self, scope: model.Documentable) -> None:
+        # tweak constants annotations when we leave the scope so we can still
+        # check whether the annotation uses Final while we're visiting other nodes.
+        for attrib in scope.contents.values():
+            if not isinstance(attrib, model.Attribute) or attrib.kind is not model.DocumentableKind.CONSTANT :
+                continue
+            self._tweak_constant_annotation(attrib)
 
     def visit_If(self, node: ast.If) -> None:
         if isinstance(node.test, ast.Compare):
@@ -200,7 +241,29 @@ class ModuleVistor(NodeVisitor):
                 # skip if __name__ == '__main__': blocks since
                 # whatever is declared in them cannot be imported
                 # and thus is not part of the API
-                raise self.SkipNode()
+                raise self.SkipChildren()
+    
+    def depart_If(self, node: ast.If) -> None:
+        # At this point the body of the If node has already been visited
+        # Visit the 'orelse' block of the If node, with override guard
+        with self.override_guard():
+            for n in node.orelse:
+                self.walkabout(n)
+    
+    def depart_Try(self, node: ast.Try) -> None:
+        # At this point the body of the Try node has already been visited
+        # Visit the 'orelse' and 'finalbody' blocks of the Try node.
+        
+        for n in node.orelse:
+            self.walkabout(n)
+        for n in node.finalbody:
+            self.walkabout(n)
+        
+        # Visit the handlers with override guard 
+        with self.override_guard():
+            for h in node.handlers:
+                for n in h.body:
+                    self.walkabout(n)
 
     def visit_Module(self, node: ast.Module) -> None:
         assert self.module.docstring is None
@@ -213,6 +276,7 @@ class ModuleVistor(NodeVisitor):
             epydoc2stan.extract_fields(self.module)
 
     def depart_Module(self, node: ast.Module) -> None:
+        self._tweak_constants_annotations(self.builder.current)
         self._infer_attr_annotations(self.builder.current)
         self.builder.pop(self.module)
 
@@ -221,6 +285,9 @@ class ModuleVistor(NodeVisitor):
         parent = self.builder.current
         if isinstance(parent, model.Function):
             raise self.SkipNode()
+        # Ignore in override guard
+        if self._ignore_name(parent, node.name):
+            raise self.IgnoreNode()
 
         rawbases = []
         initialbases = []
@@ -298,6 +365,7 @@ class ModuleVistor(NodeVisitor):
 
 
     def depart_ClassDef(self, node: ast.ClassDef) -> None:
+        self._tweak_constants_annotations(self.builder.current)
         self._infer_attr_annotations(self.builder.current)
         self.builder.popClass()
 
@@ -342,34 +410,36 @@ class ModuleVistor(NodeVisitor):
     def _importAll(self, modname: str) -> None:
         """Handle a C{from <modname> import *} statement."""
 
+        current = self.builder.current
+
         mod = self.system.getProcessedModule(modname)
         if mod is None:
             # We don't have any information about the module, so we don't know
             # what names to import.
-            self.builder.current.report(f"import * from unknown {modname}", thresh=1)
+            current.report(f"import * from unknown {modname}", thresh=1)
             return
 
-        self.builder.current.report(f"import * from {modname}", thresh=1)
+        current.report(f"import * from {modname}", thresh=1)
 
         # Get names to import: use __all__ if available, otherwise take all
         # names that are not private.
         names = mod.all
         if names is None:
-            names = [
-                name
-                for name in chain(mod.contents.keys(),
-                                  mod._localNameToFullName_map.keys())
-                if not name.startswith('_')
-                ]
+            names = [ name for name in mod.localNames() 
+                     if not name.startswith('_') ]
 
         # Fetch names to export.
         exports = self._getCurrentModuleExports()
 
         # Add imported names to our module namespace.
-        assert isinstance(self.builder.current, model.CanContainImportsDocumentable)
-        _localNameToFullName = self.builder.current._localNameToFullName_map
+        assert isinstance(current, model.CanContainImportsDocumentable)
+        _localNameToFullName = current._localNameToFullName_map
         expandName = mod.expandName
         for name in names:
+
+            # # Ignore in override guard
+            if self._ignore_name(current, name):
+                continue
 
             if self._handleReExport(exports, name, name, mod) is True:
                 continue
@@ -434,6 +504,11 @@ class ModuleVistor(NodeVisitor):
             orgname, asname = al.name, al.asname
             if asname is None:
                 asname = orgname
+            
+            # Ignore in override guard
+            if self._ignore_name(current, asname):
+                continue
+            
             # If we're importing from a package, make sure imported modules
             # are processed (getProcessedModule() ignores non-modules).
             if isinstance(mod, model.Package):
@@ -456,15 +531,20 @@ class ModuleVistor(NodeVisitor):
         (dotted_name, as_name) where as_name is None if there was no 'as foo'
         part of the statement.
         """
-        if not isinstance(self.builder.current, model.CanContainImportsDocumentable):
+        current = self.builder.current
+        if not isinstance(current, model.CanContainImportsDocumentable):
             # processing import statement in odd context
             return
-        _localNameToFullName = self.builder.current._localNameToFullName_map
+        _localNameToFullName = current._localNameToFullName_map
+        
         for al in node.names:
             targetname, asname = al.name, al.asname
             if asname is None:
                 # we're keeping track of all defined names
                 asname = targetname = targetname.split('.')[0]
+            # Ignore in override guard
+            if self._ignore_name(current, asname):
+                continue
             _localNameToFullName[asname] = targetname
 
     def _handleOldSchoolMethodDecoration(self, target: str, expr: Optional[ast.expr]) -> bool:
@@ -502,29 +582,31 @@ class ModuleVistor(NodeVisitor):
                              defaultKind:model.DocumentableKind) -> None:
         if is_constant(obj, annotation=annotation, value=value):
             obj.kind = model.DocumentableKind.CONSTANT
-            cls._tweakConstantAnnotation(obj=obj, annotation=annotation, 
-                                value=value, lineno=lineno)
+            # do not call tweak annotation just yet...
         elif obj.kind is model.DocumentableKind.CONSTANT:
-            obj.kind = defaultKind
+            # reset to the default kind only for attributes that were heuristically
+            # declared as constants
+            if not is_using_typing_final(obj.annotation, obj):
+                obj.kind = defaultKind
     
     @staticmethod
-    def _tweakConstantAnnotation(obj: model.Attribute, annotation:Optional[ast.expr], 
-                        value: Optional[ast.expr], lineno: int) -> None:
+    def _tweak_constant_annotation(obj: model.Attribute) -> None:
         # Display variables annotated with Final with the real type instead.
+        annotation = obj.annotation
         if is_using_typing_final(annotation, obj):
             if isinstance(annotation, ast.Subscript):
                 try:
                     annotation = extract_final_subscript(annotation)
                 except ValueError as e:
-                    obj.report(str(e), section='ast', lineno_offset=lineno-obj.linenumber)
-                    obj.annotation = infer_type(value) if value else None
+                    obj.report(str(e), section='ast', lineno_offset=annotation.lineno-obj.linenumber)
+                    obj.annotation = infer_type(obj.value) if obj.value else None
                 else:
                     # Will not display as "Final[str]" but rather only "str"
                     obj.annotation = annotation
             else:
                 # Just plain "Final" annotation.
                 # Simply ignore it because it's duplication of information.
-                obj.annotation = infer_type(value) if value else None
+                obj.annotation = infer_type(obj.value) if obj.value else None
 
     @staticmethod
     def _setAttributeAnnotation(obj: model.Attribute, 
@@ -649,6 +731,8 @@ class ModuleVistor(NodeVisitor):
             raise IgnoreAssignment()
         if not _maybeAttribute(cls, name):
             raise IgnoreAssignment()
+        if self._ignore_name(cls, name):
+            raise IgnoreAssignment()
 
         # Class variables can only be Attribute, so it's OK to cast because we used _maybeAttribute() above.
         obj = cast(Optional[model.Attribute], cls.contents.get(name))
@@ -737,6 +821,8 @@ class ModuleVistor(NodeVisitor):
         if isinstance(targetNode, ast.Name):
             target = targetNode.id
             scope = self.builder.current
+            if self._ignore_name(scope, target):
+                raise IgnoreAssignment()
             if isinstance(scope, model.Module):
                 self._handleAssignmentInModule(target, annotation, expr, lineno, augassign=augassign)
             elif isinstance(scope, model.Class):
@@ -751,6 +837,27 @@ class ModuleVistor(NodeVisitor):
                 self._handleInstanceVar(targetNode.attr, annotation, expr, lineno)
         else:
             raise IgnoreAssignment()
+        
+    def _handleAssignmentDoc(self, node: ast.Assign | ast.AnnAssign, target: ast.expr) -> None:
+        """Process doc-comments and inline docstrings of the given assignment."""
+        self._handleDocComment(node, target)
+        self._handleInlineDocstrings(node, target)
+
+    def _handleDocComment(self, node: ast.Assign | ast.AnnAssign, target: ast.expr) -> None:
+        """Process the doc-comments, this is very similar to the inline docstrings."""
+        try:
+            parent, name = self._contextualizeTarget(target)
+        except ValueError:
+            return
+        
+        # fetch the target of the doc-comment and the source code of the current module.
+        if (attr:=parent.contents.get(name)) and self.module.parsed_ast and (
+            lines:=self.module.parsed_ast.lines):
+            for doc_comment in [extract_doc_comment_before(node, lines), 
+                                extract_doc_comment_after(node, lines)]:
+                if doc_comment:
+                    lineno, doc = doc_comment
+                    attr._setDocstringValue(doc, lineno)
 
     def _handleDocComment(self, node: ast.Assign | ast.AnnAssign, target: ast.expr) -> None:
         # Process the doc-comments, this is very similiar to the inline docstrings.
@@ -798,12 +905,10 @@ class ModuleVistor(NodeVisitor):
                 continue
             else:
                 if not isTupleAssignment:
-                    self._handleDocComment(node, target)
-                    self._handleInlineDocstrings(node, target)
+                    self._handleAssignmentDoc(node, target)
                 else:
                     for elem in cast(ast.Tuple, target).elts: # mypy is not as smart as pyright yet.
-                        self._handleDocComment(node, elem)
-                        self._handleInlineDocstrings(node, elem)
+                        self._handleAssignmentDoc(node, elem)
 
     def visit_AnnAssign(self, node: ast.AnnAssign) -> None:
         annotation = upgrade_annotation(unstring_annotation(
@@ -813,8 +918,8 @@ class ModuleVistor(NodeVisitor):
         except IgnoreAssignment:
             return
         else:
-            self._handleDocComment(node, node.target)
-            self._handleInlineDocstrings(node, node.target)
+          self._handleAssignmentDoc(node, node.target)
+
 
     def _getClassFromMethodContext(self) -> Optional[model.Class]:
         func = self.builder.current
@@ -851,19 +956,21 @@ class ModuleVistor(NodeVisitor):
         return parent, dottedname[0]
 
     def _handleInlineDocstrings(self, assign:Union[ast.Assign, ast.AnnAssign], target:ast.expr) -> None:
-        # Process the inline docstrings
+        """Process the inline docstrings"""
         try:
             parent, name = self._contextualizeTarget(target)
         except ValueError:
             return
         
         docstring_node = get_assign_docstring_node(assign)
+
         # Validate the docstring, it's not valid if there is a comment in between...
         if docstring_node and validate_inline_docstring_node(assign, 
-                docstring_node, self.builder.lines_collection[self.module]
+                docstring_node, self.module.parsed_ast.lines
                        # fetch the target of the inline docstring
                 ) and (attr:=parent.contents.get(name)):
             attr.setDocstring(docstring_node)
+
     
     def visit_AugAssign(self, node:ast.AugAssign) -> None:
         try:
@@ -891,6 +998,9 @@ class ModuleVistor(NodeVisitor):
         parent = self.builder.current
         if isinstance(parent, model.Function):
             raise self.SkipNode()
+        # Ignore in override guard
+        if self._ignore_name(parent, node.name):
+            raise self.IgnoreNode()
 
         lineno = node.lineno
 
@@ -937,7 +1047,7 @@ class ModuleVistor(NodeVisitor):
                 attr.report(f'{attr.fullName()} is both property and classmethod')
             if is_staticmethod:
                 attr.report(f'{attr.fullName()} is both property and staticmethod')
-            raise self.SkipNode()
+            raise self.SkipNode() # visitor extensions will still be called.
 
         # Check if it's a new func or exists with an overload
         existing_func = parent.contents.get(func_name)
@@ -948,7 +1058,7 @@ class ModuleVistor(NodeVisitor):
             # properties set for the primary function and not overloads.
             if existing_func.signature and is_overload_func:
                 existing_func.report(f'{existing_func.fullName()} overload appeared after primary function', lineno_offset=lineno-existing_func.linenumber)
-                raise self.SkipNode()
+                raise self.IgnoreNode()
             # Do not recreate function object, just re-push it
             self.builder.push(existing_func, lineno)
             func = existing_func
@@ -972,8 +1082,7 @@ class ModuleVistor(NodeVisitor):
         elif is_classmethod:
             func.kind = model.DocumentableKind.CLASS_METHOD
 
-        # Position-only arguments were introduced in Python 3.8.
-        posonlyargs: Sequence[ast.arg] = getattr(node.args, 'posonlyargs', ())
+        posonlyargs: Sequence[ast.arg] = node.args.posonlyargs
 
         num_pos_args = len(posonlyargs) + len(node.args.args)
         defaults = node.args.defaults
@@ -987,9 +1096,9 @@ class ModuleVistor(NodeVisitor):
 
         parameters: List[Parameter] = []
         def add_arg(name: str, kind: Any, default: Optional[ast.expr]) -> None:
-            default_val = Parameter.empty if default is None else _ValueFormatter(default, ctx=func)
+            default_val = Parameter.empty if default is None else default
                                                                                # this cast() is safe since we're checking if annotations.get(name) is None first
-            annotation = Parameter.empty if annotations.get(name) is None else _AnnotationValueFormatter(cast(ast.expr, annotations[name]), ctx=func)
+            annotation = Parameter.empty if annotations.get(name) is None else cast(ast.expr, annotations[name])
             parameters.append(Parameter(name, kind, default=default_val, annotation=annotation))
 
         for index, arg in enumerate(posonlyargs):
@@ -1011,13 +1120,12 @@ class ModuleVistor(NodeVisitor):
             add_arg(kwarg.arg, Parameter.VAR_KEYWORD, None)
 
         return_type = annotations.get('return')
-        return_annotation = Parameter.empty if return_type is None or is_none_literal(return_type) else _AnnotationValueFormatter(return_type, ctx=func)
+        return_annotation = Parameter.empty if return_type is None or is_none_literal(return_type) else return_type
         try:
             signature = Signature(parameters, return_annotation=return_annotation)
         except ValueError as ex:
             func.report(f'{func.fullName()} has invalid parameters: {ex}')
-            signature = Signature()
-
+            signature = None
         func.annotations = annotations
 
         # Only set main function signature if it is a non-overload
@@ -1075,15 +1183,11 @@ class ModuleVistor(NodeVisitor):
         @param func: The function definition's AST.
         @return: Mapping from argument name to annotation.
             The name C{return} is used for the return type.
-            Unannotated arguments are omitted.
+            Unannotated arguments are still included with a None value.
         """
         def _get_all_args() -> Iterator[ast.arg]:
             base_args = func.args
-            # New on Python 3.8 -- handle absence gracefully
-            try:
-                yield from base_args.posonlyargs
-            except AttributeError:
-                pass
+            yield from base_args.posonlyargs
             yield from base_args.args
             varargs = base_args.vararg
             if varargs:
@@ -1108,47 +1212,7 @@ class ModuleVistor(NodeVisitor):
                 value, self.builder.current), self.builder.current)
             for name, value in _get_all_ast_annotations()
             }
-    
-class _ValueFormatter:
-    """
-    Class to encapsulate a python value and translate it to HTML when calling L{repr()} on the L{_ValueFormatter}.
-    Used for presenting default values of parameters.
-    """
 
-    def __init__(self, value: ast.expr, ctx: model.Documentable):
-        self._colorized = colorize_inline_pyval(value)
-        """
-        The colorized value as L{ParsedDocstring}.
-        """
-
-        self._linker = ctx.docstring_linker
-        """
-        Linker.
-        """
-
-    def __repr__(self) -> str:
-        """
-        Present the python value as HTML. 
-        Without the englobing <code> tags.
-        """
-        # Using node2stan.node2html instead of flatten(to_stan()). 
-        # This avoids calling flatten() twice, 
-        # but potential XML parser errors caused by XMLString needs to be handled later.
-        return ''.join(node2stan.node2html(self._colorized.to_node(), self._linker))
-
-class _AnnotationValueFormatter(_ValueFormatter):
-    """
-    Special L{_ValueFormatter} for function annotations.
-    """
-    def __init__(self, value: ast.expr, ctx: model.Function):
-        super().__init__(value, ctx)
-        self._linker = linker._AnnotationLinker(ctx)
-    
-    def __repr__(self) -> str:
-        """
-        Present the annotation wrapped inside <code> tags.
-        """
-        return '<code>%s</code>' % super().__repr__()
 
 DocumentableT = TypeVar('DocumentableT', bound=model.Documentable)
 
@@ -1165,8 +1229,6 @@ class ASTBuilder:
         self.currentMod: Optional[model.Module] = None #: module, set when visiting ast.Module
         
         self._stack: List[model.Documentable] = []
-        self.ast_cache: Dict[Path, Optional[ast.Module]] = {} #: avoids calling parse() twice for the same path
-        self.lines_collection: dict[model.Module, Sequence[str] | None] = {} #: mapping from modules to source code lines 
 
     def _push(self, 
               cls: Type[DocumentableT], 
@@ -1259,45 +1321,75 @@ class ASTBuilder:
 
     def processModuleAST(self, mod_ast: ast.Module, mod: model.Module) -> None:
 
-        for name, node in findModuleLevelAssign(mod_ast):
-            try:
-                module_var_parser = MODULE_VARIABLES_META_PARSERS[name]
-            except KeyError:
-                continue
-            else:
-                module_var_parser(node, mod)
-
         vis = self.ModuleVistor(self, mod)
         vis.extensions.add(*self.system._astbuilder_visitors)
         vis.extensions.attach_visitor(vis)
         vis.walkabout(mod_ast)
 
-    def parseFile(self, path: Path, ctx: model.Module) -> Optional[ast.Module]:
-        try:
-            return self.ast_cache[path]
-        except KeyError:
-            mod: Optional[ast.Module] = None
-            lines: Sequence[str] | None = None
-            try:
-                mod, lines = parseFile(path)
-            except (SyntaxError, ValueError) as e:
-                ctx.report(f"cannot parse file, {e}")
+class AstParseError:
+    """
+    Parse errors are cached as instances of this class instead of bare exceptions
+    in order to avoid cycles with the locals. 
+    """
 
-            self.ast_cache[path] = mod
-            self.lines_collection[ctx] = lines
-            return mod
+    def __init__(self, exception: type[SyntaxError], args: tuple[Any, ...]):
+        self._exce = exception
+        self._args = args
     
-    def parseString(self, py_string:str, ctx: model.Module) -> Optional[ast.Module]:
-        mod: Optional[ast.Module] = None
-        lines: Sequence[str] | None = None
-        try:
-            mod, lines = _parse(py_string), py_string.splitlines(keepends=True)
-        except (SyntaxError, ValueError):
-            ctx.report("cannot parse string")
-        self.lines_collection[ctx] = lines
-        return mod
+    def exception(self) -> SyntaxError:
+        return self._exce(*self._args)
 
+class SyntaxTreeParser:
+    """
+    Responsible to read files and cache their parsed tree.
+    """
+    def __init__(self) -> None:
+        self.ast_cache: Dict[Path, model.ParsedAstModule | AstParseError] = {}
+
+    def _parseFile(self, path: Path) -> model.ParsedAstModule:
+        # handles caching
+        try:
+            r = self.ast_cache[path]
+        except KeyError:
+            parsed: model.ParsedAstModule | AstParseError
+            try:
+                parsed = parseFile(path)
+            except SyntaxError as e:
+                parsed = AstParseError(type(e), e.args)
+                raise
+            finally:
+                self.ast_cache[path] = parsed
+            return parsed
+        else:
+            if isinstance(r, AstParseError):
+                raise r.exception()
+            return r
+    
+    def parseFileOnly(self, path: Path) -> ast.Module:
+        return self._parseFile(path).root
+    
+    def parseStringOnly(self, string:str) -> ast.Module:
+        return _parse(string)
+
+    def parseFile(self, path: Path, ctx: model.Module) -> model.ParsedAstModule | None:
+        try:
+            return self._parseFile(path)
+        except SyntaxError as e:
+            ctx.report(f"cannot parse file, {e}")
+            return None
+    
+    def parseString(self, string:str, ctx: model.Module) -> model.ParsedAstModule | None:
+        try: 
+            node = self.parseStringOnly(string)
+        except SyntaxError:
+            ctx.report("cannot parse string")
+            return None
+        return model.ParsedAstModule(
+                node, string.splitlines(keepends=True))
+        
+        
 model.System.defaultBuilder = ASTBuilder
+model.System.syntaxTreeParser = SyntaxTreeParser
 
 def findModuleLevelAssign(mod_ast: ast.Module) -> Iterator[Tuple[str, ast.Assign]]:
     """

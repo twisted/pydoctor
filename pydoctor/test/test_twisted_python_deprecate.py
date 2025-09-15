@@ -18,7 +18,8 @@ twisted_deprecated_systemcls_param = pytest.mark.parametrize(
                  )
     )
 @twisted_deprecated_systemcls_param
-def test_twisted_python_deprecate(capsys: CapSys, systemcls: Type[model.System]) -> None:
+@test_templatewriter.theme_param
+def test_twisted_python_deprecate(capsys: CapSys, systemcls: Type[model.System], theme: str) -> None:
     """
     It recognizes Twisted deprecation decorators and add the
     deprecation info as part of the documentation.
@@ -54,8 +55,8 @@ def test_twisted_python_deprecate(capsys: CapSys, systemcls: Type[model.System])
         class stuff: ...
         """, system=system, modname='mod')
 
-    mod_html_text = flatten_text(html2stan(test_templatewriter.getHTMLOf(mod)))
-    class_html_text = flatten_text(html2stan(test_templatewriter.getHTMLOf(mod.contents['Baz'])))
+    mod_html_text = flatten_text(html2stan(test_templatewriter.getHTMLOf(mod, theme)))
+    class_html_text = flatten_text(html2stan(test_templatewriter.getHTMLOf(mod.contents['Baz'], theme)))
 
     assert capsys.readouterr().out == ''
 
@@ -84,7 +85,8 @@ def test_twisted_python_deprecate(capsys: CapSys, systemcls: Type[model.System])
     ), class_html_text, re.DOTALL), class_html_text
 
 @twisted_deprecated_systemcls_param
-def test_twisted_python_deprecate_arbitrary_text(capsys: CapSys, systemcls: Type[model.System]) -> None:
+@test_templatewriter.theme_param
+def test_twisted_python_deprecate_arbitrary_text(capsys: CapSys, systemcls: Type[model.System], theme: str) -> None:
     """
     The deprecated object replacement can be given as a free form text as well, it does not have to be an identifier or an object.
     """
@@ -99,13 +101,14 @@ def test_twisted_python_deprecate_arbitrary_text(capsys: CapSys, systemcls: Type
     def foo(): ...
     """, system=system, modname='mod')
 
-    mod_html = test_templatewriter.getHTMLOf(mod)
+    mod_html = test_templatewriter.getHTMLOf(mod, theme)
 
     assert not capsys.readouterr().out
     assert 'just use something else' in mod_html
 
 @twisted_deprecated_systemcls_param
-def test_twisted_python_deprecate_security(capsys: CapSys, systemcls: Type[model.System]) -> None:
+@test_templatewriter.theme_param
+def test_twisted_python_deprecate_security(capsys: CapSys, systemcls: Type[model.System], theme: str) -> None:
     system = systemcls()
     system.options.verbosity = -1
     
@@ -119,14 +122,15 @@ def test_twisted_python_deprecate_security(capsys: CapSys, systemcls: Type[model
     def _bar(): ...
     """, system=system, modname='mod')
 
-    mod_html = test_templatewriter.getHTMLOf(mod)
+    mod_html = test_templatewriter.getHTMLOf(mod, theme)
 
     assert capsys.readouterr().out == '''mod:4: Invalid package name: 'Twisted\\n.. raw:: html\\n\\n   <script>alert(1)</script>'
 ''', capsys.readouterr().out
     assert '<script>alert(1)</script>' not in mod_html
 
 @twisted_deprecated_systemcls_param
-def test_twisted_python_deprecate_corner_cases(capsys: CapSys, systemcls: Type[model.System]) -> None:
+@test_templatewriter.theme_param
+def test_twisted_python_deprecate_corner_cases(capsys: CapSys, systemcls: Type[model.System], theme: str) -> None:
     """
     It does not crash and report appropriate warnings while handling Twisted deprecation decorators.
     """
@@ -168,8 +172,8 @@ def test_twisted_python_deprecate_corner_cases(capsys: CapSys, systemcls: Type[m
         class stuff: ...
         """, system=system, modname='mod')
 
-    test_templatewriter.getHTMLOf(mod)
-    class_html_text = flatten_text(html2stan(test_templatewriter.getHTMLOf(mod.contents['Baz'])))
+    test_templatewriter.getHTMLOf(mod, theme)
+    class_html_text = flatten_text(html2stan(test_templatewriter.getHTMLOf(mod.contents['Baz'], theme)))
 
     assert capsys.readouterr().out=="""mod:5: missing a required argument: 'micro'
 mod:10: Invalid call to incremental.Version(), 'major' should be an int or 'NEXT'.
@@ -184,3 +188,33 @@ mod:20: Cannot find link target for "notfound"
     assert re.match(_html_template_with_replacement.format(
         name='foum', package='Twisted', version='NEXT', replacement='mod.Baz.faam'
     ), class_html_text, re.DOTALL), class_html_text
+
+
+@twisted_deprecated_systemcls_param
+@test_templatewriter.theme_param
+def test_twisted_python_deprecate_else_branch(capsys: CapSys, systemcls: Type[model.System], theme: str) -> None:
+    """
+    When @deprecated decorator is used within the else branch of a if block and the same name is defined
+    in the body branch, the name is not marked as deprecated.
+    """
+
+    mod = fromText('''
+    if sys.version_info>(3.8):
+        def foo():
+            ...
+        
+        class Bar:
+            ...
+    else:
+        from incremental import Version
+        @twisted.python.deprecate.deprecated(Version('python', 3, 8, 0), replacement='just use newer python version')
+        def foo():
+            ...
+        @twisted.python.deprecate.deprecated(Version('python', 3, 8, 0), replacement='just use newer python version')
+        class Bar:
+            ...
+    ''', systemcls=systemcls)
+
+    assert not capsys.readouterr().out
+    assert 'just use newer python version' not in test_templatewriter.getHTMLOf(mod.contents['foo'], theme)
+    assert 'just use newer python version' not in test_templatewriter.getHTMLOf(mod.contents['Bar'], theme)

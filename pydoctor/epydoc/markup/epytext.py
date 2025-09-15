@@ -139,9 +139,8 @@ import unicodedata
 from docutils import nodes
 from twisted.web.template import Tag
 
-from pydoctor.epydoc.markup import Field, ParseError, ParsedDocstring, ParserFunction
+from pydoctor.epydoc.markup import Field, ObjClass, ParseError, ParsedDocstring, ParserFunction
 from pydoctor.epydoc.docutils import set_node_attributes, new_document
-from pydoctor.model import Documentable
 
 ##################################################
 ## Helper functions
@@ -165,7 +164,7 @@ def slugify(string:str) -> str:
     A generic slugifier utility (currently only for Latin-based scripts).
     Example:
         >>> slugify("Héllo Wörld")
-        "hello-world"
+        'hello-world'
     """
     return re.sub(r'[-\s]+', '-', 
                 re.sub(rb'[^\w\s-]', b'',
@@ -1297,7 +1296,7 @@ def parse_docstring(docstring: str, errors: List[ParseError]) -> ParsedDocstring
     else:
         return ParsedEpytextDocstring(None, fields)
 
-def get_parser(obj: Optional[Documentable]) -> ParserFunction:
+def get_parser(_: ObjClass | None) -> ParserFunction:
     """
     Get the L{parse_docstring} function. 
     """
@@ -1380,7 +1379,7 @@ class ParsedEpytextDocstring(ParsedDocstring):
         if self._document is not None:
             return self._document
 
-        self._document = new_document('epytext')
+        self._document = new_document('docstring')
 
         if self._tree is not None:
             node, = self._to_node(self._tree)

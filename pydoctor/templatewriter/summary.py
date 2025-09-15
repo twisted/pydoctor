@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from string import Template
+from textwrap import dedent
 from typing import (
     TYPE_CHECKING, DefaultDict, Dict, Iterable, List, Mapping, MutableSet,
     Sequence, Tuple, Type, Union, cast
@@ -358,12 +360,141 @@ class UndocumentedSummaryPage(Page):
                 ))
         return tag
 
+# TODO: The help page should dynamically include notes about the (source) code links. 
+class HelpPage(Page):
+
+    filename = 'apidocs-help.html'
+
+    RST_SOURCE_TEMPLATE = Template('''
+    Navigation
+    ----------
+
+    There is one page per class, module and package. 
+    Each page present summary table(s) which feature the members of the object.
+
+    Package or Module page
+    ~~~~~~~~~~~~~~~~~~~~~~~
+
+    Each of these pages has two main sections consisting of:
+
+    - summary tables submodules and subpackages and the members of the module or in the ``__init__.py`` file. 
+    - detailed descriptions of function and attribute members.
+
+    Class page
+    ~~~~~~~~~~
+
+    Each class has its own separate page. 
+    Each of these pages has three main sections consisting of:
+
+    - declaration, constructors, know subclasses and description
+    - summary tables of members, including inherited
+    - detailed descriptions of method and attribute members
+    
+    Entries in each of these sections are omitted if they are empty or not applicable.
+
+    Module Index
+    ~~~~~~~~~~~~
+    
+    Provides a high level overview of the packages and modules structure.
+    
+    Class Hierarchy
+    ~~~~~~~~~~~~~~~
+    
+    Provides a list of classes organized by inheritance structure. Note that ``object`` is ommited.
+
+    Index Of Names
+    ~~~~~~~~~~~~~~
+    
+    The Index contains an alphabetic index of all objects in the documentation.
+
+
+    Search
+    ------
+
+    You can search for definitions of modules, packages, classes, functions, methods and attributes. 
+    
+    These items can be searched using part or all of the name and/or from their docstrings if "search in docstrings" is enabled. 
+    Multiple search terms can be provided separated by whitespace. 
+
+    The search is powered by `lunrjs <https://lunrjs.com/>`_.
+
+    Indexing
+    ~~~~~~~~
+    
+    By default the search only matches on the name of the object. 
+    Enable the full text search in the docstrings with the checkbox option. 
+
+    You can instruct the search to look only in specific fields by passing the field name in the search like ``docstring:term``. 
+    
+    **Possible fields are**: 
+    
+    - ``name``, the name of the object (example: "MyClassAdapter" or "my_fmin_opti").
+    - ``qname``, the fully qualified name of the object (example: "lib.classses.MyClassAdapter").
+    - ``names``, the name splitted on camel case or snake case (example: "My Class Adapter" or "my fmin opti")
+    - ``docstring``, the docstring of the object (example: "This is an adapter for HTTP json requests that logs into a file...")
+    - ``kind``, can be one of: $kind_names
+        
+    Last two fields are only applicable if "search in docstrings" is enabled. 
+
+    Other search features
+    ~~~~~~~~~~~~~~~~~~~~~
+
+    Term presence. 
+        The default behaviour is to give a better ranking to object matching multiple terms of your query,
+        but still show entries that matches only one of the two terms. 
+        To change this behavour, you can use the sign ``+``.
+        
+        - To indicate a term must exactly match use the plus sing: ``+``. 
+        - To indicate a term must not match use the minus sing: ``-``.
+        
+    
+    Wildcards
+        A trailling wildcard is automatically added to each term of your query if they don't contain an explicit term presence (``+`` or ``-``). 
+        Searching for ``foo`` is the same as searching for ``foo*``. 
+        
+        If the query include a dot (``.``), a leading wildcard will to also added, 
+        searching for ``model.`` is the same as ``*model.*`` and ``.model`` is the same as ``*.model*``.
+
+        In addition to this automatic feature, you can manually add a wildcard anywhere else in the query.
+
+
+    Query examples
+    ~~~~~~~~~~~~~~
+
+    - "doc" matches "pydoctor.model.Documentable" and "pydoctor.model.DocLocation".
+    - "+doc" matches "pydoctor.model.DocLocation" but won't match "pydoctor.model.Documentable".
+    - "ensure doc" matches "pydoctor.epydoc2stan.ensure_parsed_docstring" and other object whose matches either "doc" or "ensure".
+    - "inp str" matches "java.io.InputStream" and other object whose matches either "in" or "str".
+    - "model." matches everything in the pydoctor.model module.
+    - ".web.*tag" matches "twisted.web.teplate.Tag" and related.
+    - "docstring:ansi" matches object whose docstring matches "ansi".
+    ''')
+
+    def title(self) -> str:
+        return 'Help'
+    
+    @renderer
+    def heading(self, request: object, tag: Tag) -> Tag:
+        return tag.clear()("Help")
+
+    @renderer
+    def helpcontent(self, request: object, tag: Tag) -> Tag:
+        from pydoctor.epydoc.markup import restructuredtext, ParseError
+        from pydoctor.linker import NotFoundLinker
+        errs: list[ParseError] = []
+        parsed = restructuredtext.parse_docstring(dedent(self.RST_SOURCE_TEMPLATE.substitute(
+            kind_names=', '.join(f'"{k.name}"' for k in model.DocumentableKind)
+        )), errs)
+        assert not errs
+        return parsed.to_stan(NotFoundLinker())
+
 def summaryPages(system: model.System) -> Iterable[Type[Page]]:
-    pages = [
+    pages: list[type[Page]] = [
         ModuleIndexPage,
         ClassIndexPage,
         NameIndexPage,
         UndocumentedSummaryPage,
+        HelpPage, 
     ]
     if len(system.root_names) > 1:
         pages.append(IndexPage)

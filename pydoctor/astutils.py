@@ -4,32 +4,19 @@ Various bits of reusable code related to L{ast.AST} node processing.
 from __future__ import annotations
 
 import inspect
-import platform
-import re
 import sys
 from numbers import Number
 from typing import Any, Callable, Collection, Iterator, Optional, List, Iterable, Sequence, TYPE_CHECKING, Tuple, Union, cast
 from inspect import BoundArguments, Signature
 import ast
 
-if sys.version_info >= (3, 9):
-    from ast import unparse as _unparse
-else:
-    from astor import to_source as _unparse
+unparse = ast.unparse
 
 from pydoctor import visitor
 
 if TYPE_CHECKING:
     from pydoctor import model
 
-def unparse(node:ast.AST) -> str:
-    """
-    This function convert a node tree back into python sourcecode.
-
-    Uses L{ast.unparse} or C{astor.to_source} for python versions before 3.9.
-    """
-    return _unparse(node)
-    
 # AST visitors
 
 def iter_values(node: ast.AST) -> Iterator[ast.AST]:
@@ -79,15 +66,15 @@ def iterassign(node:_AssingT) -> Iterator[Optional[List[str]]]:
     """
     Utility function to iterate assignments targets. 
 
-    Useful for all the following AST assignments:
+    Useful for all the following AST assignments::
 
-    >>> var:int=2
-    >>> self.var = target = node.astext()
-    >>> lol = ['extensions']
+        var:int=2
+        self.var = target = node.astext()
+        ol = ['extensions']
 
-    NOT Useful for the following AST assignments:
+    NOT Useful for the following AST assignments::
 
-    >>> x, y = [1,2]
+        x, y = [1,2]
 
     Example:
 
@@ -95,7 +82,7 @@ def iterassign(node:_AssingT) -> Iterator[Optional[List[str]]]:
     >>> from ast import parse
     >>> node = parse('self.var = target = thing[0] = node.astext()').body[0]
     >>> list(iterassign(node))
-    
+    [['self', 'var'], ['target'], None]
     """
     for target in node.targets if isinstance(node, ast.Assign) else [node.target]:
         dottedname = node2dottedname(target) 
@@ -147,32 +134,16 @@ def bind_args(sig: Signature, call: ast.Call) -> BoundArguments:
     return sig.bind(*call.args, **kwargs)
 
 
-
-if sys.version_info[:2] >= (3, 8):
-    # Since Python 3.8 "foo" is parsed as ast.Constant.
-    def get_str_value(expr:ast.expr) -> Optional[str]:
-        if isinstance(expr, ast.Constant) and isinstance(expr.value, str):
-            return expr.value
-        return None
-    def get_num_value(expr:ast.expr) -> Optional[Number]:
-        if isinstance(expr, ast.Constant) and isinstance(expr.value, Number):
-            return expr.value
-        return None
-    def _is_str_constant(expr: ast.expr, s: str) -> bool:
-        return isinstance(expr, ast.Constant) and expr.value == s
-else:
-    # Before Python 3.8 "foo" was parsed as ast.Str.
-    # TODO: remove me when python3.7 is not supported anymore
-    def get_str_value(expr:ast.expr) -> Optional[str]:
-        if isinstance(expr, ast.Str):
-            return expr.s
-        return None
-    def get_num_value(expr:ast.expr) -> Optional[Number]:
-        if isinstance(expr, ast.Num):
-            return expr.n
-        return None
-    def _is_str_constant(expr: ast.expr, s: str) -> bool:
-        return isinstance(expr, ast.Str) and expr.s == s
+def get_str_value(expr:ast.expr) -> Optional[str]:
+    if isinstance(expr, ast.Constant) and isinstance(expr.value, str):
+        return expr.value
+    return None
+def get_num_value(expr:ast.expr) -> Optional[Number]:
+    if isinstance(expr, ast.Constant) and isinstance(expr.value, Number):
+        return expr.value # type: ignore[unreachable]
+    return None
+def _is_str_constant(expr: ast.expr, s: str) -> bool:
+    return isinstance(expr, ast.Constant) and expr.value == s
 
 def get_int_value(expr: ast.expr) -> Optional[int]:
     num = get_num_value(expr)
@@ -265,11 +236,7 @@ def get_assign_docstring_node(assign:ast.Assign | ast.AnnAssign) -> Str | None:
 
 def is_none_literal(node: ast.expr) -> bool:
     """Does this AST node represent the literal constant None?"""
-    if sys.version_info >= (3,8):
-        return isinstance(node, ast.Constant) and node.value is None
-    else:
-        # TODO: remove me when python3.7 is not supported anymore
-        return isinstance(node, (ast.Constant, ast.NameConstant)) and node.value is None
+    return isinstance(node, ast.Constant) and node.value is None
     
 def unstring_annotation(node: ast.expr, ctx:'model.Documentable', section:str='annotation') -> ast.expr:
     """Replace all strings in the given expression by parsed versions.
@@ -327,8 +294,6 @@ class _AnnotationStringParser(ast.NodeTransformer):
     
     visit_Attribute = visit_Name = visit_fast
 
-    # For Python >= 3.8:
-
     def visit_Constant(self, node: ast.Constant) -> ast.expr:
         value = node.value
         if isinstance(value, str):
@@ -337,12 +302,6 @@ class _AnnotationStringParser(ast.NodeTransformer):
             const = self.generic_visit(node)
             assert isinstance(const, ast.Constant), const
             return const
-
-    # For Python < 3.8:
-    if sys.version_info < (3,8):
-        # TODO: remove me when python3.7 is not supported anymore
-        def visit_Str(self, node: ast.Str) -> ast.expr:
-            return ast.copy_location(self._parse_string(node.s), node)
 
 def upgrade_annotation(node: ast.expr, ctx: model.Documentable, section:str='annotation') -> ast.expr:
     """
@@ -390,8 +349,6 @@ class _UpgradeDeprecatedAnnotations(ast.NodeTransformer):
             # tuple of types, includea single element tuple, which is the same
             # as the directly using the type: Union[x] == Union[(x,)] == x
             slice_ = node.slice
-            if sys.version_info <= (3,9) and isinstance(slice_, ast.Index): # Compat
-                slice_ = slice_.value
             if isinstance(slice_, ast.Tuple):
                 args = slice_.elts
                 if len(args) > 1:
@@ -404,8 +361,6 @@ class _UpgradeDeprecatedAnnotations(ast.NodeTransformer):
         elif fullName == 'typing.Optional':
             # typing.Optional requires a single type, so we don't process when slice is a tuple.
             slice_ = node.slice
-            if sys.version_info <= (3,9) and isinstance(slice_, ast.Index): # Compat
-                slice_ = slice_.value
             if isinstance(slice_, (ast.Attribute, ast.Name, ast.Subscript, ast.BinOp)):
                 return self._union_args_to_bitor([slice_, ast.Constant(value=None)], node)
 
@@ -534,23 +489,11 @@ def get_docstring_node(node: ast.AST) -> Str | None:
             return node.value
     return None
 
-_string_lineno_is_end = sys.version_info < (3,8) \
-                    and platform.python_implementation() != 'PyPy'
-"""True iff the 'lineno' attribute of an AST string node points to the last
-line in the string, rather than the first line.
-"""
-
-
 class _StrMeta(type):
-    if sys.version_info >= (3,8):
-        def __instancecheck__(self, instance: object) -> bool:
-            if isinstance(instance, ast.expr):
-                return get_str_value(instance) is not None
-            return False
-    else:
-        # TODO: remove me when python3.7 is not supported
-        def __instancecheck__(self, instance: object) -> bool:
-            return isinstance(instance, ast.Str)
+    def __instancecheck__(self, instance: object) -> bool:
+        if isinstance(instance, ast.expr):
+            return get_str_value(instance) is not None
+        return False
 
 class Str(ast.expr, metaclass=_StrMeta):
     """
@@ -559,14 +502,10 @@ class Str(ast.expr, metaclass=_StrMeta):
     Do not try to instanciate this class.
     """
 
+    value: str
+
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         raise TypeError(f'{Str.__qualname__} cannot be instanciated')
-
-    if sys.version_info >= (3,8):
-        value: str
-    else:
-        # TODO: remove me when python3.7 is not supported
-        s: str
 
 def extract_docstring_linenum(node: Str) -> int:
     r"""
@@ -578,18 +517,8 @@ def extract_docstring_linenum(node: Str) -> int:
     Leading blank lines are stripped by cleandoc(), so we must
     return the line number of the first non-blank line.
     """
-    if sys.version_info >= (3,8):
-        doc = node.value
-    else:
-        # TODO: remove me when python3.7 is not supported
-        doc = node.s
+    doc = node.value
     lineno = node.lineno
-    if _string_lineno_is_end:
-        # In older CPython versions, the AST only tells us the end line
-        # number and we must approximate the start line number.
-        # This approximation is correct if the docstring does not contain
-        # explicit newlines ('\n') or joined lines ('\' at end of line).
-        lineno -= doc.count('\n')
 
     # Leading blank lines are stripped by cleandoc(), so we must
     # return the line number of the first non-blank line.
@@ -609,11 +538,7 @@ def extract_docstring(node: Str) -> Tuple[int, str]:
         - The line number of the first non-blank line of the docsring. See L{extract_docstring_linenum}.
         - The docstring to be parsed, cleaned by L{inspect.cleandoc}.
     """
-    if sys.version_info >= (3,8):
-        value = node.value
-    else:
-        # TODO: remove me when python3.7 is not supported
-        value = node.s
+    value = node.value
     lineno = extract_docstring_linenum(node)
     return lineno, inspect.cleandoc(value)
 
@@ -819,176 +744,6 @@ del _op_data, _index, _precedence_data, _symbol_data, _deprecated
 # This was part of the astor library for Python AST manipulation.
 
 
-# Part of the sphinx.pycode.parser module.
-# Copyright 2007-2020 by the Sphinx team, see AUTHORS.
-# BSD, see LICENSE for details.
-from token import DEDENT, INDENT, NAME, NEWLINE, NUMBER, OP, STRING
-from tokenize import COMMENT, generate_tokens, tok_name
-
-class Token:
-    """Better token wrapper for tokenize module."""
-
-    def __init__(self, kind: int, value: Any, start: Tuple[int, int], end: Tuple[int, int],
-                 source: str) -> None:
-        self.kind = kind
-        self.value = value
-        self.start = start
-        self.end = end
-        self.source = source
-
-    def __eq__(self, other: Any) -> bool:
-        if isinstance(other, int):
-            return self.kind == other
-        elif isinstance(other, str):
-            return bool(self.value == other)
-        elif isinstance(other, (list, tuple)):
-            return [self.kind, self.value] == list(other)
-        elif other is None:
-            return False
-        else:
-            raise ValueError('Unknown value: %r' % other)
-
-    def match(self, *conditions: Any) -> bool:
-        return any(self == candidate for candidate in conditions)
-
-    def __repr__(self) -> str:
-        return '<Token kind=%r value=%r>' % (tok_name[self.kind],
-                                             self.value.strip())
-
-class TokenProcessor:
-    def __init__(self, buffers: Sequence[str]) -> None:
-        lines = iter(buffers)
-        self.buffers = buffers
-        self.tokens = generate_tokens(lambda: next(lines))
-        self.current: Token | None = None
-        self.previous: Token | None = None
-
-    def get_line(self, lineno: int) -> str:
-        """Returns specified line."""
-        return self.buffers[lineno - 1]
-
-    def fetch_token(self) -> Token | None:
-        """Fetch a next token from source code.
-
-        Returns ``None`` if sequence finished.
-        """
-        try:
-            self.previous = self.current
-            self.current = Token(*next(self.tokens))
-        except StopIteration:
-            self.current = None
-
-        return self.current
-
-    def fetch_until(self, condition: Any) -> List[Token]:
-        """Fetch tokens until specified token appeared.
-
-        .. note:: This also handles parenthesis well.
-        """
-        tokens = []
-        while self.fetch_token():
-            assert self.current
-            tokens.append(self.current)
-            if self.current == condition:
-                break
-            elif self.current == [OP, '(']:
-                tokens += self.fetch_until([OP, ')'])
-            elif self.current == [OP, '{']:
-                tokens += self.fetch_until([OP, '}'])
-            elif self.current == [OP, '[']:
-                tokens += self.fetch_until([OP, ']'])
-
-        return tokens
-
-
-class AfterCommentParser(TokenProcessor):
-    """Python source code parser to pick up comment after assignment.
-
-    This parser takes a python code starts with assignment statement,
-    and returns the comments for variable if exists.
-    """
-
-    def __init__(self, lines: Sequence[str]) -> None:
-        super().__init__(lines)
-        self.comment: str | None = None 
-
-    def fetch_rvalue(self) -> Sequence[Token]:
-        """Fetch right-hand value of assignment."""
-        tokens: list[Token] = []
-        while self.fetch_token():
-            assert self.current
-            tokens.append(self.current)
-            if self.current == [OP, '(']:
-                tokens += self.fetch_until([OP, ')'])
-            elif self.current == [OP, '{']:
-                tokens += self.fetch_until([OP, '}'])
-            elif self.current == [OP, '[']:
-                tokens += self.fetch_until([OP, ']'])
-            elif self.current == INDENT:
-                tokens += self.fetch_until(DEDENT)
-            elif self.current == [OP, ';']:
-                break
-            elif self.current.kind not in (OP, NAME, NUMBER, STRING):
-                break
-
-        return tokens
-
-    def parse(self) -> None:
-        """Parse the code and obtain comment after assignment."""
-        # skip lvalue (or whole of AnnAssign)
-        while (current:=self.fetch_token()) and not current.match([OP, '='], NEWLINE, COMMENT):
-            assert self.current
-
-        # skip rvalue (if exists)
-        if self.current == [OP, '=']:
-            self.fetch_rvalue()
-
-        if self.current == COMMENT:
-            assert self.current
-            self.comment = self.current.value
-
-comment_re = re.compile('^\\s*#: ?(.*)\r?\n?$')
-indent_re = re.compile('^\\s*$')
-
-def extract_doc_comment_after(node: ast.Assign | ast.AnnAssign, lines: Sequence[str]) ->  Tuple[int, str] | None:
-    """
-    Support for doc comment as found in sphinx.
-
-    @param node: the assignment node
-    @param lines: the lines of the source code, as generated by
-        C{code.splitlines(keepends=True)}.
-    @returns: A tuple linenumber, docstring or None if the assignment doesn't have a doc comment.
-    """
-    # check doc comments after assignment
-    current_line = lines[node.lineno - 1]
-    parser = AfterCommentParser([current_line[node.col_offset:], *lines[node.lineno:]])
-    parser.parse()
-    if parser.comment and comment_re.match(parser.comment):
-        docstring = comment_re.sub('\\1', parser.comment)
-        return node.lineno, docstring
-
-    return None
-
-def extract_doc_comment_before(node: ast.Assign | ast.AnnAssign, lines: Sequence[str]) ->  Tuple[int, str] | None:
-    """
-    Same as L{extract_doc_comment_after} but fetch the comment before the assignment.
-    """
-    # check doc comments before assignment
-    comment_lines = []
-    for i in range(node.lineno - 1):
-        before_line = lines[node.lineno - 2 - i]
-        if comment_re.match(before_line):
-            comment_lines.append(comment_re.sub('\\1', before_line))
-        else:
-            break
-    if comment_lines:
-        docstring = inspect.cleandoc('\n'.join(reversed(comment_lines)))
-        return node.lineno - len(comment_lines), docstring
-
-    return None
-
-# This was part of the sphinx.pycode.parser module.
-
 def validate_inline_docstring_node(node: ast.Assign | ast.AnnAssign, 
                                    docstring: Str, 
                                    lines: Sequence[str]) -> bool:
@@ -997,3 +752,102 @@ def validate_inline_docstring_node(node: ast.Assign | ast.AnnAssign,
     """
     start, stop = node.lineno, docstring.lineno - 1
     return not any(lines[i].lstrip().startswith('#') for i in range(start, stop))
+
+class _OldSchoolNamespacePackageVis(ast.NodeVisitor):
+
+    is_namespace_package: bool = False
+
+    def visit_Module(self, node: ast.Module) -> None:
+        try:
+            self.generic_visit(node)
+        except StopIteration:
+            pass
+    
+    def visit_skip(self, node: ast.AST) -> None:
+        pass
+    
+    visit_FunctionDef = visit_AsyncFunctionDef = visit_ClassDef = visit_skip
+    visit_AugAssign = visit_skip
+    visit_Return = visit_Raise = visit_Assert = visit_skip
+    visit_Pass = visit_Break = visit_Continue = visit_Delete = visit_skip
+    visit_Global = visit_Nonlocal = visit_skip
+    visit_Import = visit_ImportFrom = visit_skip
+
+    def visit_Expr(self, node: ast.Expr) -> None:
+        # Search for ast.Expr nodes that contains a call to a name or attribute 
+        # access of "declare_namespace" and a single argument: __name__
+        if not isinstance(val:=node.value, ast.Call):
+            return
+        if not isinstance(func:=val.func, (ast.Name, ast.Attribute)):
+            return
+        if isinstance(func, ast.Name) and func.id == 'declare_namespace' or \
+           isinstance(func, ast.Attribute) and func.attr == 'declare_namespace':
+            # checks the arguments are the basic one, not custom
+            try:
+                arg1, = (*val.args, *(k.value for k in val.keywords))
+            except ValueError:
+                raise StopIteration
+            if not isinstance(arg1, ast.Name) or arg1.id != '__name__':
+                raise StopIteration
+            
+            self.is_namespace_package = True
+            raise StopIteration
+        
+    def visit_Assign(self, node: ast.Assign) -> None:
+        # search for assignments nodes that contains a call in the 
+        # rhs to name or attribute acess of "extend_path" and two arguments: 
+        # __path__ and __name__. 
+
+        if not any(isinstance(t, ast.Name) and t.id == '__path__' for t in node.targets):
+            return
+        if not isinstance(val:=node.value, ast.Call):
+            return
+        if not isinstance(func:=val.func, (ast.Name, ast.Attribute)):
+            return
+        if isinstance(func, ast.Name) and func.id == 'extend_path' or \
+           isinstance(func, ast.Attribute) and func.attr == 'extend_path':
+            # checks the arguments are the basic one, not custom
+            try:
+                arg1, arg2 = (*val.args, *(k.value for k in val.keywords))
+            except ValueError:
+                raise StopIteration
+            if (not isinstance(arg1, ast.Name)) or arg1.id != '__path__':
+                raise StopIteration
+            if (not isinstance(arg2, ast.Name)) or arg2.id != '__name__':
+                raise StopIteration
+
+            self.is_namespace_package = True
+            raise StopIteration
+    
+    def visit_AnnAssign(self, node: ast.AnnAssign) -> None:
+        setattr(node, 'targets', [node.target])
+        try:
+            self.visit_Assign(node) # type:ignore[arg-type]
+        finally:
+            delattr(node, 'targets')
+       
+def is_old_school_namespace_package(tree: ast.Module) -> bool:
+    """
+    Returns True if the module is a pre PEP 420 namespace package::
+    
+        from pkgutil import extend_path
+        __path__ = extend_path(__path__, __name__)
+        # OR
+        import pkg_resources
+        pkg_resources.declare_namespace(__name__)
+        # OR
+        __import__('pkg_resources').declare_namespace(__name__)
+        # OR
+        import pkg_resources
+        pkg_resources.declare_namespace(name=__name__)
+
+    The following code will return False, tho::
+
+        from pkgutil import extend_path
+        __path__ = extend_path(__path__, __name__ + '.impl')
+    
+    """
+    v =_OldSchoolNamespacePackageVis()
+    v.visit(tree)
+    return v.is_namespace_package
+

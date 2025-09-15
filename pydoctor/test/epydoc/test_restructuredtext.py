@@ -105,12 +105,12 @@ def test_rst_anon_link_email() -> None:
 def test_rst_xref_with_target() -> None:
     src = "`mapping <typing.MutableMapping>`"
     html = rst2html(src)
-    assert html.startswith('<code>mapping</code>')
+    assert html == '<code><a>mapping</a></code>'
 
 def test_rst_xref_implicit_target() -> None:
     src = "`func()`"
     html = rst2html(src)
-    assert html.startswith('<code>func()</code>')
+    assert html == '<code><a>func()</a></code>'
 
 def test_rst_directive_adnomitions() -> None:
     expected_html_multiline="""
@@ -249,7 +249,6 @@ def test_summary(markup:str) -> None:
         errors: List[ParseError] = []
         pdoc = get_parser_by_name(markup)(dedent(src), errors)
         assert not errors
-        assert pdoc.get_summary() == pdoc.get_summary() # summary is cached inside ParsedDocstring as well.
         assert flatten_text(pdoc.get_summary().to_stan(NotFoundLinker())) == summary_text
 
 

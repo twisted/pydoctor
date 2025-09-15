@@ -6,15 +6,11 @@ An extension can be composed by mixin classes, AST builder visitor extensions an
 from __future__ import annotations
 
 import importlib
-import sys
 from typing import Any, Callable, Dict, Iterable, Iterator, List, Optional, Tuple, Type, Union, TYPE_CHECKING, cast
 
 # In newer Python versions, use importlib.resources from the standard library.
 # On older versions, a compatibility package must be installed from PyPI.
-if sys.version_info < (3, 9):
-    import importlib_resources
-else:
-    import importlib.resources as importlib_resources
+import importlib.resources as importlib_resources
 
 if TYPE_CHECKING:
     from pydoctor import astbuilder, model
