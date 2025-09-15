@@ -1279,8 +1279,7 @@ def _colorize_signature_param(param: inspect.Parameter,
 
 # From inspect.Signature.format() (Python 3.13)
 def _colorize_signature(sig: inspect.Signature, 
-                        ctx: model.Documentable, 
-                        function: model.Function | model.FunctionOverload) -> ParsedDocstring:
+                        function: model.FunctionLike) -> ParsedDocstring:
     """
     Colorize this signature into a ParsedDocstring.
     """
@@ -1316,7 +1315,7 @@ def _colorize_signature(sig: inspect.Signature,
             # reset the flag
             render_kw_only_separator = False
 
-        result.append(_colorize_signature_param(param, ctx, 
+        result.append(_colorize_signature_param(param, function.context, 
                         has_next=has_next or render_pos_only_separator, 
                         is_first=i==0, refmap=refmap))
     
@@ -1336,24 +1335,23 @@ def _colorize_signature(sig: inspect.Signature,
     return ParsedRstDocstring(set_node_attributes(
         new_document('code'), children=result), ())
 
-def get_parsed_signature(func: model.Function | model.FunctionOverload) -> ParsedDocstring | None:
+def get_parsed_signature(func: model.FunctionLike) -> ParsedDocstring | None:
     if (psig:=func.parsed_signature) is not None:
         return psig
     
     if (signature:=func.signature) is None:
         return None
 
-    ctx = func.primary if isinstance(func, model.FunctionOverload) else func
-    func.parsed_signature = psig = _colorize_signature(signature, ctx, func)
+    func.parsed_signature = psig = _colorize_signature(signature, func)
     return psig
 
-def function_signature_len(func: model.Function | model.FunctionOverload) -> int:
+def function_signature_len(func: model.FunctionLike) -> int:
     """
     The lenght of the a function def is defnied by the lenght of it's name plus the lenght of it's signature.
     On top of that, a function or method that takes no argument (expect unannotated 'self' for methods, and 'cls' for classmethods) 
     will always have a lenght equals to the function name len plus two for 'function()'.
     """
-    ctx = func.primary if isinstance(func, model.FunctionOverload) else func
+    ctx = func.context
     name_len = len(ctx.name)
 
     if (sig:=func.signature) is None or (

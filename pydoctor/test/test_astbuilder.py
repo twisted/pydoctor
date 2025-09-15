@@ -109,7 +109,7 @@ def to_html(
         ) -> str:
     return flatten(parsed_docstring.to_stan(linker))
 
-def signature2str(func: model.Function | model.FunctionOverload, 
+def signature2str(func: model.FunctionLike, 
                   fails: bool = False) -> str:
     doc = get_parsed_signature(func)
     fromhtml = flatten_text(format_signature(func))
@@ -2548,7 +2548,7 @@ def test_nested_type_alias_definition(systemcls: Type[model.System]) -> None:
     assert unparse(attr.value).strip() == "t.Literal['1', 1]"
 
     attr2 = mod.contents['C'].contents['B'].contents['Three']
-    assert isinstance(attr, model.Attribute)
+    assert isinstance(attr2, model.Attribute)
     assert attr2.kind == model.DocumentableKind.TYPE_ALIAS
     assert attr2.value
     assert unparse(attr2.value).strip() == "One[2]"

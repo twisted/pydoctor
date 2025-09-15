@@ -22,7 +22,7 @@ from inspect import signature, Signature
 from pathlib import Path
 from typing import (
     TYPE_CHECKING, Any, Collection, Dict, Iterable, Iterator, List, Mapping, Callable, 
-    Optional, Sequence, Set, Tuple, Type, TypeVar, Union, cast, overload
+    Optional, Sequence, Set, Tuple, Type, TypeVar, Union, cast, overload, runtime_checkable
 )
 from graphlib import TopologicalSorter
 from urllib.parse import quote
@@ -122,6 +122,37 @@ class DocumentableKind(Enum):
     PROPERTY            = 150
     VARIABLE            = 100
 
+class DocumentableLike(Protocol):
+    """
+    Annotation to mark Documentable-ish classes.
+    """
+    @property
+    def context(self) -> Documentable:
+        ...
+
+    @property
+    def type_params(self) -> Sequence[ast.TypeVar | ast.TypeVarTuple | ast.ParamSpec] | None:
+        ...
+    
+    @property
+    def type_params_sources(self) -> Sequence[DocumentableLike] | None:
+        ...
+   
+    @property
+    def parent(self) -> Documentable | None:
+        ...
+    
+    @property
+    def module(self) -> Module:
+        ...
+    
+    def fullName(self) -> str:
+        ...
+
+    def report(self, descr: str, section: str = ..., 
+               lineno_offset: int = 0, thresh: int = ...) -> None:
+        ...
+
 class Documentable:
     """An object that can be documented.
 
@@ -162,12 +193,16 @@ class Documentable:
         self.setup()
 
     @property
-    def doctarget(self) -> 'Documentable':
+    def context(self) -> Documentable:
         return self
 
     def setup(self) -> None:
         self.contents: Dict[str, Documentable] = {}
         self._linker: Optional['linker.DocstringLinker'] = None
+
+        # python 3.12 type parameters
+        self.type_params: Sequence[ast.TypeVar | ast.TypeVarTuple | ast.ParamSpec] | None = None
+        self.type_params_sources: Sequence[DocumentableLike] | None = None
 
     def setDocstring(self, node: astutils.Str) -> None:
         lineno, doc = astutils.extract_docstring(node)
@@ -477,12 +512,6 @@ class CanContainImportsDocumentable(Documentable):
         return chain(self.contents.keys(),
                      self._localNameToFullName_map.keys())
 
-TypeParamSource: TypeAlias = 'Class | Attribute | Function | FunctionOverload'
-"""
-Annotation to mark Documentable-ish classes that can hold type parameters
-as introduced in Python3.12.
-"""
-
 @attr.s(auto_attribs=True)
 class ParsedAstModule:
     root: ast.Module
@@ -540,7 +569,7 @@ class Module(CanContainImportsDocumentable):
             return name
 
     @property
-    def module(self) -> 'Module':
+    def module(self) -> Module:
         return self
 
     @property
@@ -768,7 +797,7 @@ def _find_dunder_constructor(cls:'Class') -> Optional['Function']:
             return _init
     return None
 
-def type_param_refs(ob: Class | Function | Attribute | FunctionOverload) -> Mapping[str, str]:
+def type_param_refs(ob: DocumentableLike) -> Mapping[str, str]:
     """
     Starting with Python 3.12 classes and functions can include defintions of type variable -likes.
     This function returns all mapping of all type variables- like defined in the context of the given object
@@ -779,8 +808,9 @@ def type_param_refs(ob: Class | Function | Attribute | FunctionOverload) -> Mapp
     They currently can't have embeded documentation, but it would nice to be able
     to document them under a "Type Variables" section and/or @tvar: fields...
     """
-    refmap = {t.name:o.fullName() for o in 
-              ob.type_params_sources or [ob] for t in o.type_params or [] }
+    sources = ob.type_params_sources or [ob]
+    refmap = {t.name:o.fullName() for o in sources
+               for t in o.type_params or [] }
               
     return refmap
 
@@ -821,8 +851,6 @@ class Class(CanContainImportsDocumentable):
     kind = DocumentableKind.CLASS
     parent: CanContainImportsDocumentable
     decorators: Sequence[Tuple[str, Optional[Sequence[ast.expr]]]]
-    type_params: Sequence[ast.TypeVar | ast.TypeVarTuple | ast.ParamSpec] | None = None
-    type_params_sources: Sequence[TypeParamSource] | None = None
 
     # set in post-processing:
     _finalbaseobjects: Optional[List[Optional['Class']]] = None 
@@ -955,9 +983,6 @@ class Class(CanContainImportsDocumentable):
 
 
 class Inheritable(Documentable):
-    type_params: Sequence[ast.TypeVar | ast.TypeVarTuple | ast.ParamSpec] | None = None
-    type_params_sources: Sequence[TypeParamSource] | None = None
-
     documentation_location = DocLocation.PARENT_PAGE
 
     parent: CanContainImportsDocumentable
@@ -1002,12 +1027,16 @@ class FunctionOverload:
     signature: Signature | None = None
     decorators: Sequence[ast.expr] | None = None
     type_params: Sequence[ast.TypeVar | ast.TypeVarTuple | ast.ParamSpec] | None = None
-    type_params_sources: Sequence[TypeParamSource] | None = None
+    type_params_sources: Sequence[DocumentableLike] | None = None
 
     parsed_signature: ParsedDocstring | None = None # set in get_parsed_signature()
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__} {self.fullName()!r}"
+    
+    @property
+    def context(self) -> Documentable:
+        return self.primary
 
     @property
     def parent(self) -> CanContainImportsDocumentable:
@@ -1020,8 +1049,10 @@ class FunctionOverload:
     def fullName(self) -> str:
         return self.primary.fullName()
 
-    def report(self, msg:str, **kw:str | int) -> None:
-        self.primary.report(msg, **kw) # type:ignore
+    def report(self, descr: str, section: str = 'parsing', lineno_offset: int = 0, thresh:int=-1) -> None:
+        self.primary.report(descr, section, lineno_offset, thresh=thresh)
+
+FunctionLike: TypeAlias = 'Function | FunctionOverload'
 
 class Attribute(Inheritable):
     kind: Optional[DocumentableKind] = DocumentableKind.ATTRIBUTE

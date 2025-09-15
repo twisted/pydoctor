@@ -1155,15 +1155,17 @@ class ModuleVistor(NodeVisitor):
         func.annotations = annotations
 
         # Only set main function signature if it is a non-overload
+        func_model: model.FunctionLike
         if is_overload_func:
-            func_model: model.FunctionOverload | model.Function = model.FunctionOverload(primary=func)
-            func.overloads.append(cast(model.FunctionOverload, func_model))
+            func_model = model.FunctionOverload(primary=func)
+            func.overloads.append(func_model)
         else:
             func_model = func
         
         # store type variables
         func_model.type_params = getattr(node, 'type_params', None)
-        func_model.type_params_sources = self.builder.current_type_param_sources()[:-1] + [func_model]
+        func_model.type_params_sources = [*self.builder.current_type_param_sources()[:-1], 
+                                          func_model]
         
         func_model.signature = signature
         func_model.decorators = node.decorator_list
@@ -1270,7 +1272,7 @@ class ASTBuilder:
         
         self._stack: List[model.Documentable] = []
 
-    def current_type_param_sources(self) -> List[model.TypeParamSource]:
+    def current_type_param_sources(self) -> Sequence[model.DocumentableLike]:
         # The first item in the stack is None, the second item is the Moddule instance.
         return self._stack[2:] + [self.current]
 

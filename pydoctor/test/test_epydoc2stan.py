@@ -1639,6 +1639,7 @@ def test_attribute_value_get_type_params_references(capsys: CapSys) -> None:
                 '<a href="t.C.html" class="internal-link" title="t.C">T</a>]</code></pre></td></tr></table>')
     mod = fromText(src, modname='t')
     thing = mod.contents['C'].contents['thing']
+    assert isinstance(thing, model.Attribute)
     assert ''.join(flatten(epydoc2stan.format_attribute_value(thing)).splitlines()) == expected
 
     

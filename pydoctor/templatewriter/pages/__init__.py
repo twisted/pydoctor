@@ -27,10 +27,10 @@ if TYPE_CHECKING:
     from pydoctor.templatewriter.pages.functionchild import FunctionChild
 
 
-def _format_decorators(obj: Union[model.Function, model.Attribute, model.FunctionOverload]) -> Iterator["Flattenable"]:
+def _format_decorators(obj: model.Attribute | model.FunctionLike) -> Iterator["Flattenable"]:
     # Since we use this function to colorize the FunctionOverload decorators and it's not an actual Documentable subclass, we use the overload's 
     # primary function for parts that requires an interface to Documentable methods or attributes
-    documentable_obj = obj if not isinstance(obj, model.FunctionOverload) else obj.primary
+    documentable_obj = obj.context
 
     for dec in obj.decorators or ():
         if isinstance(dec, ast.Call):
@@ -53,16 +53,16 @@ def _format_decorators(obj: Union[model.Function, model.Attribute, model.Functio
         
         yield tags.span('@', stan.children, tags.br(), class_='decorator')
 
-def format_decorators(obj: Union[model.Function, model.Attribute, model.FunctionOverload]) -> Tag:
+def format_decorators(obj: model.Attribute | model.FunctionLike) -> Tag:
     if decs:=list(_format_decorators(obj)):
         return tags.div(decs)
     return tags.transparent
 
-def format_type_params(ob: model.Function | model.FunctionOverload | model.Class | model.Attribute) -> Iterator[Flattenable]:
+def format_type_params(ob: model.FunctionLike | model.Class | model.Attribute) -> Iterator[Flattenable]:
     if not ob.type_params:
         return
     refmap = model.type_param_refs(ob)
-    ctx = ob.primary if isinstance(ob, model.FunctionOverload) else ob   
+    ctx = ob.context
     linker = ctx.docstring_linker 
     stan: list[Flattenable] = []
     for t in ob.type_params:
@@ -76,7 +76,7 @@ def format_type_params(ob: model.Function | model.FunctionOverload | model.Class
     yield from stan
     yield ']'
 
-def format_signature(func: Union[model.Function, model.FunctionOverload]) -> Flattenable:
+def format_signature(func: model.FunctionLike) -> Flattenable:
     """
     Return a stan representation of a nicely-formatted source-like function signature for the given L{Function}.
     Arguments default values are linked to the appropriate objects when possible.
@@ -85,7 +85,7 @@ def format_signature(func: Union[model.Function, model.FunctionOverload]) -> Fla
     parsed_sig = epydoc2stan.get_parsed_signature(func)
     if parsed_sig is None:
         return "(...)"
-    ctx = func.primary if isinstance(func, model.FunctionOverload) else func
+    ctx = func.context
     return epydoc2stan.safe_to_stan(
         parsed_sig, 
         ctx.docstring_linker, 
@@ -154,7 +154,7 @@ def format_overloads(func: model.Function) -> Iterator["Flattenable"]:
 
 _nbsp = CharRef(160) # non-breaking space.
 def format_function_def(func_name: str, is_async: bool, 
-                        func: Union[model.Function, model.FunctionOverload]) -> List["Flattenable"]:
+                        func: model.FunctionLike) -> List["Flattenable"]:
     """
     Format a function definition as nice HTML signature. 
     
