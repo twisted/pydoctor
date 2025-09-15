@@ -22,7 +22,7 @@ from inspect import signature, Signature
 from pathlib import Path
 from typing import (
     TYPE_CHECKING, Any, Collection, Dict, Iterable, Iterator, List, Mapping, Callable, 
-    Optional, Sequence, Set, Tuple, Type, TypeVar, Union, cast, overload
+    Optional, Sequence, Set, Tuple, Type, TypeVar, Union, cast, overload, runtime_checkable
 )
 from graphlib import TopologicalSorter
 from urllib.parse import quote
@@ -62,6 +62,12 @@ class LineFromAst(int):
 
 class LineFromDocstringField(int):
     "Simple L{int} wrapper for linenumbers coming from docstrings."
+
+class AttributeValueDisplay(Enum):
+    HIDDEN = 0
+    AS_CODE_BLOCK = 1
+    # Not used yet. Default values of Attrs-like classes' attributes will one day (and maybe others).
+    #INLINE = 2
 
 class DocLocation(Enum):
     OWN_PAGE = 1
@@ -116,6 +122,37 @@ class DocumentableKind(Enum):
     PROPERTY            = 150
     VARIABLE            = 100
 
+class DocumentableLike(Protocol):
+    """
+    Annotation to mark Documentable-ish classes.
+    """
+    @property
+    def context(self) -> Documentable:
+        ...
+
+    @property
+    def type_params(self) -> Sequence[ast.TypeVar | ast.TypeVarTuple | ast.ParamSpec] | None:
+        ...
+    
+    @property
+    def type_params_sources(self) -> Sequence[DocumentableLike] | None:
+        ...
+   
+    @property
+    def parent(self) -> Documentable | None:
+        ...
+    
+    @property
+    def module(self) -> Module:
+        ...
+    
+    def fullName(self) -> str:
+        ...
+
+    def report(self, descr: str, section: str = ..., 
+               lineno_offset: int = 0, thresh: int = ...) -> None:
+        ...
+
 class Documentable:
     """An object that can be documented.
 
@@ -156,12 +193,16 @@ class Documentable:
         self.setup()
 
     @property
-    def doctarget(self) -> 'Documentable':
+    def context(self) -> Documentable:
         return self
 
     def setup(self) -> None:
         self.contents: Dict[str, Documentable] = {}
         self._linker: Optional['linker.DocstringLinker'] = None
+
+        # python 3.12 type parameters
+        self.type_params: Sequence[ast.TypeVar | ast.TypeVarTuple | ast.ParamSpec] | None = None
+        self.type_params_sources: Sequence[DocumentableLike] | None = None
 
     def setDocstring(self, node: astutils.Str) -> None:
         lineno, doc = astutils.extract_docstring(node)
@@ -528,7 +569,7 @@ class Module(CanContainImportsDocumentable):
             return name
 
     @property
-    def module(self) -> 'Module':
+    def module(self) -> Module:
         return self
 
     @property
@@ -756,6 +797,23 @@ def _find_dunder_constructor(cls:'Class') -> Optional['Function']:
             return _init
     return None
 
+def type_param_refs(ob: DocumentableLike) -> Mapping[str, str]:
+    """
+    Starting with Python 3.12 classes and functions can include defintions of type variable -likes.
+    This function returns all mapping of all type variables- like defined in the context of the given object
+    to the full name of the class or function that defines it.
+
+    Type variables are not documentables per say, so we treat them separately. 
+    
+    They currently can't have embeded documentation, but it would nice to be able
+    to document them under a "Type Variables" section and/or @tvar: fields...
+    """
+    sources = ob.type_params_sources or [ob]
+    refmap = {t.name:o.fullName() for o in sources
+               for t in o.type_params or [] }
+              
+    return refmap
+
 def get_constructors(cls:Class) -> Iterator[Function]:
     """
     Look for python language powered constructors or classmethod constructors.
@@ -960,15 +1018,41 @@ class Function(Inheritable):
         self.signature = None
         self.overloads = []
 
-@attr.s(auto_attribs=True)
+@attr.s(auto_attribs=True, repr=False)
 class FunctionOverload:
     """
     @note: This is not an actual documentable type. 
     """
     primary: Function
-    signature: Signature | None 
-    decorators: Sequence[ast.expr]
+    signature: Signature | None = None
+    decorators: Sequence[ast.expr] | None = None
+    type_params: Sequence[ast.TypeVar | ast.TypeVarTuple | ast.ParamSpec] | None = None
+    type_params_sources: Sequence[DocumentableLike] | None = None
+
     parsed_signature: ParsedDocstring | None = None # set in get_parsed_signature()
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__} {self.fullName()!r}"
+    
+    @property
+    def context(self) -> Documentable:
+        return self.primary
+
+    @property
+    def parent(self) -> CanContainImportsDocumentable:
+        return self.primary.parent
+    
+    @property
+    def module(self) -> Module:
+        return self.primary.module
+    
+    def fullName(self) -> str:
+        return self.primary.fullName()
+
+    def report(self, descr: str, section: str = 'parsing', lineno_offset: int = 0, thresh:int=-1) -> None:
+        self.primary.report(descr, section, lineno_offset, thresh=thresh)
+
+FunctionLike: TypeAlias = 'Function | FunctionOverload'
 
 class Attribute(Inheritable):
     kind: Optional[DocumentableKind] = DocumentableKind.ATTRIBUTE
@@ -980,10 +1064,10 @@ class Attribute(Inheritable):
 
     None value means the value is not initialized at the current point of the the process. 
     """
-
 # Work around the attributes of the same name within the System class.
 _ModuleT = Module
 _PackageT = Package
+_AttributeT = Attribute
 
 def import_mod_from_file_location(module_full_name:str, path: Path) -> types.ModuleType:
     spec = importlib.util.spec_from_file_location(module_full_name, path)
@@ -1030,7 +1114,7 @@ _default_extensions = object()
 class System:
     """A collection of related documentable objects.
 
-    PyDoctor documents collections of objects, often the contents of a
+    Pydoctor documents collections of objects, often the contents of a
     package.
     """
 
@@ -1051,13 +1135,6 @@ class System:
     custom_extensions: List[str] = []
     """
     Additional list of extensions to load alongside default extensions.
-    """
-
-    show_attr_value = (DocumentableKind.CONSTANT, 
-                       DocumentableKind.TYPE_VARIABLE, 
-                       DocumentableKind.TYPE_ALIAS)
-    """
-    What kind of attributes we should display the value for?
     """
 
     def __init__(self, options: Optional['Options'] = None):
@@ -1245,6 +1322,21 @@ class System:
         for o in self.allobjects.values():
             if isinstance(o, cls):
                 yield o
+
+    # What kind of attributes we should pydoctor display the value for?
+    _show_attr_value = set((DocumentableKind.CONSTANT, 
+                    DocumentableKind.TYPE_VARIABLE, 
+                    DocumentableKind.TYPE_ALIAS))
+        
+    def showAttrValue(self, ob: _AttributeT) -> AttributeValueDisplay:
+        """
+        Whether to display the value of the given attribute.
+        """
+
+        if ob.kind not in self._show_attr_value or ob.value is None:
+            return AttributeValueDisplay.HIDDEN
+        # Attribute is a constant/type alias (with a value), then display it's value
+        return AttributeValueDisplay.AS_CODE_BLOCK
 
     def privacyClass(self, ob: Documentable) -> PrivacyClass:
         ob_fullName = ob.fullName()

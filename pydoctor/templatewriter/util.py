@@ -20,7 +20,7 @@ class DocGetter:
             return epydoc2stan.format_summary(ob)
         else:
             return epydoc2stan.format_docstring(ob)
-    def get_type(self, ob: model.Documentable) -> Optional[Tag]:
+    def get_type(self, ob: model.Attribute) -> Optional[Tag]:
         return epydoc2stan.type2stan(ob)
     def get_toc(self, ob: model.Documentable) -> Optional[Tag]:
         return epydoc2stan.format_toc(ob)

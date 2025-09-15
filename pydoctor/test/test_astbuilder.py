@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 from typing import Optional, Tuple, Type, List, overload, cast
 import ast
 
@@ -7,6 +8,7 @@ from pydoctor import astbuilder, astutils, model
 from pydoctor import epydoc2stan
 from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring
 from pydoctor.options import Options
+from pydoctor.astutils import unparse
 from pydoctor.stanutils import flatten, flatten_text
 from pydoctor.epydoc.markup.epytext import Element, ParsedEpytextDocstring
 from pydoctor.epydoc2stan import _get_docformat, format_summary, get_parsed_signature, get_parsed_type
@@ -107,7 +109,7 @@ def to_html(
         ) -> str:
     return flatten(parsed_docstring.to_stan(linker))
 
-def signature2str(func: model.Function | model.FunctionOverload, 
+def signature2str(func: model.FunctionLike, 
                   fails: bool = False) -> str:
     doc = get_parsed_signature(func)
     fromhtml = flatten_text(format_signature(func))
@@ -132,7 +134,7 @@ def type2str(type_expr: Optional[ast.expr]) -> Optional[str]:
         from .epydoc.test_pyval_repr import color2
         return color2(type_expr)
 
-def type2html(obj: model.Documentable) -> str:
+def type2html(obj: model.Attribute) -> str:
     """
     Uses the NotFoundLinker. 
     """
@@ -1235,6 +1237,10 @@ def test_variable_scopes(systemcls: Type[model.System]) -> None:
 @systemcls_param
 def test_variable_types(systemcls: Type[model.System]) -> None:
     mod = fromText('''
+    """
+    @type c: string
+    """
+    c = "C"
     class C:
         """class docstring
 
@@ -1276,6 +1282,10 @@ def test_variable_types(systemcls: Type[model.System]) -> None:
             self.g = g = "G"
             """seventh"""
     ''', modname='test', systemcls=systemcls)
+
+    c = mod.contents['c']
+    assert c.kind is model.DocumentableKind.VARIABLE
+
     C = mod.contents['C']
     assert sorted(C.contents.keys()) == [
         '__init__', 'a', 'b', 'c', 'd', 'e', 'f', 'g'
@@ -1352,30 +1362,39 @@ def test_annotated_variables(systemcls: Type[model.System]) -> None:
     C = mod.contents['C']
     a = C.contents['a']
     assert unwrap(a.parsed_docstring) == """first"""
+    assert isinstance(a, model.Attribute)
     assert type2html(a) == 'string'
     b = C.contents['b']
     assert unwrap(b.parsed_docstring) == """second"""
+    assert isinstance(b, model.Attribute)
     assert type2html(b) == 'string'
     c = C.contents['c']
     assert c.docstring == """third"""
+    assert isinstance(c, model.Attribute)
     assert type2html(c) == '<code><a>str</a></code>'
     d = C.contents['d']
     assert d.docstring == """fourth"""
+    assert isinstance(d, model.Attribute)
     assert type2html(d) == '<code><a>str</a></code>'
     e = C.contents['e']
     assert e.docstring == """fifth"""
+    assert isinstance(e, model.Attribute)
     assert type2html(e) == '<code><a>List</a>[<a>C</a>]</code>'
     f = C.contents['f']
     assert f.docstring == """sixth"""
+    assert isinstance(f, model.Attribute)
     assert type2html(f) == '<code><a>List</a>[<a>C</a>]</code>'
     g = C.contents['g']
     assert g.docstring == """seventh"""
+    assert isinstance(g, model.Attribute)
     assert type2html(g) == '<code><a>List</a>[<a>C</a>]</code>'
     s = C.contents['s']
     assert s.docstring == """instance"""
+    assert isinstance(s, model.Attribute)
     assert type2html(s) == '<code><a>List</a>[<a>str</a>]</code>'
     m = mod.contents['m']
     assert m.docstring == """module-level"""
+    assert isinstance(m, model.Attribute)
     assert type2html(m) == '<code><a>bytes</a></code>'
 
 @systemcls_param
@@ -1685,8 +1704,8 @@ def test_overload(systemcls: Type[model.System], capsys: CapSys) -> None:
     assert signature2str(func) == '(s: Union[str, bytes]) -> Union[str, bytes]'
     assert [astbuilder.node2dottedname(d) for d in (func.decorators or ())] == []
     assert len(func.overloads) == 2
-    assert [astbuilder.node2dottedname(d) for d in func.overloads[0].decorators] == [['dec'], ['overload']]
-    assert [astbuilder.node2dottedname(d) for d in func.overloads[1].decorators] == [['overload']]
+    assert [astbuilder.node2dottedname(d) for d in func.overloads[0].decorators or []] == [['dec'], ['overload']]
+    assert [astbuilder.node2dottedname(d) for d in func.overloads[1].decorators or []] == [['overload']]
     assert signature2str(func.overloads[0]) == '(s: str) -> str'
     assert signature2str(func.overloads[1]) == '(s: bytes) -> bytes'
     assert capsys.readouterr().out.splitlines() == [
@@ -2497,6 +2516,78 @@ def test_type_alias(systemcls: Type[model.System]) -> None:
     assert mod.contents['F'].contents['Pouet'].kind == model.DocumentableKind.INSTANCE_VARIABLE
     assert mod.contents['F'].contents['Q'].kind == model.DocumentableKind.INSTANCE_VARIABLE
 
+@pytest.mark.skipif(sys.version_info < (3,12), reason='Type variable introduced in Python 3.12')
+@systemcls_param
+def test_type_alias_definition(systemcls: Type[model.System]) -> None:
+    src = '''
+    import typing as t
+    type One = t.Literal['1', 1]
+    '''
+    mod = fromText(src, systemcls=systemcls)
+    attr = mod.contents['One']
+    assert isinstance(attr, model.Attribute)
+    assert attr.kind == model.DocumentableKind.TYPE_ALIAS
+    assert attr.value
+    assert unparse(attr.value).strip() == "t.Literal['1', 1]"
+
+@pytest.mark.skipif(sys.version_info < (3,12), reason='Type variable introduced in Python 3.12')
+@systemcls_param
+def test_nested_type_alias_definition(systemcls: Type[model.System]) -> None:
+    src = '''
+    import typing as t
+    class C:
+        type One = t.Literal['1', 1]
+        class B:
+            type Three = One[2]
+    '''
+    mod = fromText(src, systemcls=systemcls)
+    attr = mod.contents['C'].contents['One']
+    assert isinstance(attr, model.Attribute)
+    assert attr.kind == model.DocumentableKind.TYPE_ALIAS
+    assert attr.value
+    assert unparse(attr.value).strip() == "t.Literal['1', 1]"
+
+    attr2 = mod.contents['C'].contents['B'].contents['Three']
+    assert isinstance(attr2, model.Attribute)
+    assert attr2.kind == model.DocumentableKind.TYPE_ALIAS
+    assert attr2.value
+    assert unparse(attr2.value).strip() == "One[2]"
+
+@pytest.mark.skipif(sys.version_info < (3,12), reason='Type variable introduced in Python 3.12')
+@systemcls_param
+def test_typevar_source_of_instance_var(systemcls: Type[model.System]) -> None:
+    src = '''
+    class C:
+        def __init__[T](self, thing: T, stuff: T):
+            self.thing = thing, T
+    '''
+
+    mod = fromText(src, modname='t', systemcls=systemcls)
+    thing = mod.contents['C'].contents['thing']
+    assert isinstance(thing, model.Attribute)
+    assert repr(thing.type_params_sources) == "[Class 't.C', Function 't.C.__init__', Attribute 't.C.thing']"
+
+@pytest.mark.skipif(sys.version_info < (3,12), reason='Type variable introduced in Python 3.12')
+@systemcls_param
+def test_typevar_source_of_overloaded_function(systemcls: Type[model.System]) -> None:
+    src = '''
+    from typing import overload
+    class C[T, S]:
+        @overload
+        def foo(x: T, y: S) -> T:
+            ...
+        @overload
+        def foo(x: T, y: T) -> S:
+            ...
+    '''
+
+    mod = fromText(src, modname='t', systemcls=systemcls)
+    thing = mod.contents['C'].contents['foo']
+    assert isinstance(thing, model.Function)
+    thing1 = thing.overloads[0]
+    assert repr(thing1.type_params_sources) == "[Class 't.C', FunctionOverload 't.C.foo']"
+
+
 @systemcls_param
 def test_typevartuple(systemcls: Type[model.System]) -> None:
     """
@@ -2917,6 +3008,7 @@ def test_inferred_type_is_not_propagated_to_subclasses(systemcls: Type[model.Sys
         '''
     mod = fromText(src, systemcls=systemcls, modname='mod')
     thing = mod.system.allobjects['mod.Stuff.thing']
+    assert isinstance(thing, model.Attribute)
     assert epydoc2stan.type2stan(thing) is None
 
 
@@ -2945,6 +3037,7 @@ def test_inherited_type_is_not_propagated_to_subclasses(systemcls: Type[model.Sy
     builder.addModuleString(src2, 'mod')
     builder.buildModules()
     thing = system.allobjects['mod.Stuff.thing']
+    assert isinstance(thing, model.Attribute)
     assert epydoc2stan.type2stan(thing) is None
 
 @systemcls_param

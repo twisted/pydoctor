@@ -1,5 +1,6 @@
 from io import BytesIO
 import re
+import sys
 from typing import Callable, Union, cast, Type, TYPE_CHECKING
 import pytest
 import warnings
@@ -920,6 +921,145 @@ def test_class_hierarchy_links_top_level_names(theme: str) -> None:
     mod = fromText(src, system=system)
     index = flatten(ClassIndexPage(mod.system, _template_lookup(theme)))
     assert 'href="https://docs.python.org/3/library/socket.html#socket.socket"' in index
+
+# Cases for pep-0695
+@pytest.mark.skipif(sys.version_info < (3,12), reason='Usage of type variables')
+@systemcls_param
+def test_pep_695_generic_classes(systemcls: Type[model.System]) -> None:
+    src = '''
+    # The following generates no compiler error, but a type checker
+    # should generate an error because an upper bound type must be concrete,
+    # and ``Sequence[S]`` is generic. Future extensions to the type system may
+    # eliminate this limitation.
+    class ClassA[S, T: Sequence[S]]: ...
+
+    # The following generates no compiler error, because the bound for ``S``
+    # is lazily evaluated. However, type checkers should generate an error.
+    # But pydoctor is not a checker
+    class ClassB[S: Sequence[T], T]: ...
+    '''
+    mod = fromText(src, systemcls=systemcls, modname='t')
+    assert ('[<span class="rst-type-param">S</span>, '
+            '<span class="rst-type-param">T</span>: '
+            'Sequence[<wbr></wbr><a href="t.ClassA.html" class="internal-link" title="t.ClassA">S</a>]]') in flatten(
+                pages.format_class_signature(mod.contents['ClassA'])) # type:ignore
+    
+    assert ('[<span class="rst-type-param">S</span>: '
+            'Sequence[<wbr></wbr><a href="t.ClassB.html" class="internal-link" '
+            'title="t.ClassB">T</a>], <span class="rst-type-param">T</span>]') in flatten(
+                pages.format_class_signature(mod.contents['ClassB'])) # type:ignore
+
+@pytest.mark.skipif(sys.version_info < (3,12), reason='Usage of type variables')
+@systemcls_param
+def test_pep_695_generic_classes_and_methods(systemcls: Type[model.System]) -> None:
+    src = '''
+    class ClassA[T](Sequence[T]):
+        T = 1
+                                         # That's a type checker error, by pydoctor is not a checker.
+        def method3[T](self, x: T = T):  # Parameter 'x' has type T (scoped to method3)
+                                         # default value is 1
+            ...
+    '''
+
+    mod = fromText(src, systemcls=systemcls, modname='t')
+    meth = mod.contents['ClassA'].contents['method3']
+    assert isinstance(meth, model.Function)
+    assert model.type_param_refs(meth) == {'T': 't.ClassA.method3'}
+    html = flatten(pages.format_function_def('ClassA', False, meth))
+    assert 'x: <code><a href="#method3" class="internal-link" title="t.ClassA.method3">T</a>' in html
+    assert '= <a href="#T" class="internal-link" title="t.ClassA.T">T</a>' in html
+
+@pytest.mark.skipif(sys.version_info < (3,12), reason='Usage of type variables')
+@systemcls_param
+def test_pep_695_generic_functions(systemcls: Type[model.System]) -> None:
+    src = '''
+    def func1[T](a: T) -> T: ...  # OK
+
+    V = bool(T)  # Runtime error: 'T' is not defined
+
+    def func2[T](a = list[T]): ...  # Runtime error: 'T' is not defined
+
+    @dec(list[T])  # Runtime error: 'T' is not defined
+    def func3[T](): ...
+    '''
+    mod = fromText(src, systemcls=systemcls, modname='t')
+    f1, f2, f3 = (mod.contents['func1'], 
+                  mod.contents['func2'], 
+                  mod.contents['func3'])
+    v1 = mod.contents['V']
+
+    htmlv1 = flatten(epydoc2stan.format_attribute_value(v1)) # type:ignore
+    assert '<a href=' not in htmlv1
+
+    html1 = flatten(pages.format_function_def('func1', False, f1)) # type:ignore
+    assert 'a: <code><a href="#func1" class="internal-link" title="t.func1">T</a>' in html1
+    assert '-&gt; <code><a href="#func1" class="internal-link" title="t.func1">T</a>' in html1
+
+    html2 = flatten(pages.format_signature(f2)) # type:ignore
+    assert '<a href=' not in html2
+
+    html3 = flatten(pages.format_decorators(f3)) # type:ignore
+    assert '<a href=' not in html3
+
+@pytest.mark.skip()
+@pytest.mark.skipif(sys.version_info < (3,12), reason='Usage of type variables')
+@systemcls_param
+def test_pep_695_nested_generics(systemcls: Type[model.System]) -> None:
+    src = '''
+    class Outer:
+        class Private:
+            pass
+
+        # If the type parameter scope was like a traditional scope,
+        # the base class 'Private' would not be accessible here.
+        class Inner[T](Private, Sequence[T]):
+            pass
+
+        # Likewise, 'Inner' would not be available in these type annotations.
+        def method1[T](self, a: Inner[T]) -> Inner[T]:
+            return a
+    '''
+    raise NotImplementedError
+
+@pytest.mark.skip()
+@pytest.mark.skipif(sys.version_info < (3,12), reason='Usage of type variables')
+@systemcls_param
+def test_pep_695_nested_generics_bis(systemcls: Type[model.System]) -> None:
+    src = '''
+    T = 0
+
+    # T refers to the global variable
+    print(T)  # Prints 0
+
+    class Outer[T]:
+        T = 1
+
+        # T refers to the local variable scoped to class 'Outer'
+        print(T)  # Prints 1
+
+        class Inner1:
+            T = 2
+
+            # T refers to the local type variable within 'Inner1'
+            print(T)  # Prints 2
+
+            def inner_method(self):
+                # T refers to the type parameter scoped to class 'Outer';
+                # If 'Outer' did not use the new type parameter syntax,
+                # this would instead refer to the global variable 'T'
+                print(T)  # Prints 'T'
+
+        def outer_method(self):
+            T = 3
+
+            # T refers to the local variable within 'outer_method'
+            print(T)  # Prints 3
+
+            def inner_func():
+                # T refers to the variable captured from 'outer_method'
+                print(T)  # Prints 3
+    '''
+    raise NotImplementedError
 
 @theme_param
 def test_canonical_links(theme: str) -> None:

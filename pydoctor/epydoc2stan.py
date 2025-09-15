@@ -282,13 +282,18 @@ class FieldHandler:
     def set_param_types_from_annotations(
             self, annotations: Mapping[str, Optional[ast.expr]]
             ) -> None:
+        """This method MUST only be called for Function instances."""
+        assert isinstance(self.obj, model.Function)
         _linker = self.obj.docstring_linker
+
         formatted_annotations = {
             name: None if value is None
-                       else ParamType(safe_to_stan(colorize_inline_pyval(value, is_annotation=True), _linker,
-                                self.obj, fallback=colorized_pyval_fallback, section='annotation', report=False),
-                                # don't spam the log, invalid annotation are going to be reported when the signature gets colorized
-                                origin=FieldOrigin.FROM_AST)
+                       else ParamType(safe_to_stan(colorize_inline_pyval(value, 
+                                 refmap=model.type_param_refs(self.obj), 
+                                 is_annotation=True), _linker,
+                            self.obj, fallback=colorized_pyval_fallback, section='annotation', report=False),
+                            # don't spam the log, invalid annotation are going to be reported when the signature gets colorized
+                            origin=FieldOrigin.FROM_AST)
 
             for name, value in annotations.items()
             }
@@ -861,7 +866,7 @@ def format_undocumented_summary(obj: model.Documentable) -> str:
         return "Undocumented"
 
 
-def type2stan(obj: model.Documentable) -> Optional[Tag]:
+def type2stan(obj: model.Attribute) -> Optional[Tag]:
     """
     Get the formatted type of this attribute.
     """
@@ -873,7 +878,7 @@ def type2stan(obj: model.Documentable) -> Optional[Tag]:
         return safe_to_stan(parsed_type, obj.docstring_linker, obj,
             fallback=colorized_pyval_fallback, section='annotation')
 
-def get_parsed_type(obj: model.Documentable) -> Optional[ParsedDocstring]:
+def get_parsed_type(obj: model.Attribute) -> Optional[ParsedDocstring]:
     """
     Get the type of this attribute as parsed docstring.
     """
@@ -884,7 +889,8 @@ def get_parsed_type(obj: model.Documentable) -> Optional[ParsedDocstring]:
     # Only Attribute instances have the 'annotation' attribute.
     annotation: Optional[ast.expr] = getattr(obj, 'annotation', None)
     if annotation is not None:
-        return colorize_inline_pyval(annotation, is_annotation=True)
+        return colorize_inline_pyval(annotation, refmap=model.type_param_refs(obj),
+                                     is_annotation=True)
 
     return None
 
@@ -984,7 +990,7 @@ def colorized_pyval_fallback(_: List[ParseError], doc:ParsedDocstring, __:model.
     """
     return tags.code(doc.to_text())
 
-def _format_constant_value(obj: model.Attribute) -> Iterator["Flattenable"]:
+def _format_attribute_value(obj: model.Attribute) -> Iterator["Flattenable"]:
 
     # yield the table title, "Value"
     row = tags.tr(class_="fieldStart")
@@ -992,9 +998,12 @@ def _format_constant_value(obj: model.Attribute) -> Iterator["Flattenable"]:
     # yield the first row.
     yield row
 
+    refmap = model.type_param_refs(obj)
+
     doc = colorize_pyval(obj.value,
         linelen=obj.system.options.pyvalreprlinelen,
-        maxlines=obj.system.options.pyvalreprmaxlines)
+        maxlines=obj.system.options.pyvalreprmaxlines,
+        refmap=refmap)
 
     value_repr = safe_to_stan(doc, obj.docstring_linker, obj,
         fallback=colorized_pyval_fallback, section='rendering of constant')
@@ -1004,14 +1013,14 @@ def _format_constant_value(obj: model.Attribute) -> Iterator["Flattenable"]:
 
     # yield the value repr.
     row = tags.tr()
-    row(tags.td(tags.pre(class_='constant-value')(value_repr)))
+    row(tags.td(tags.pre(class_='attribute-value')(value_repr)))
     yield row
 
-def format_constant_value(obj: model.Attribute) -> "Flattenable":
+def format_attribute_value(obj: model.Attribute) -> "Flattenable":
     """
     Should be only called for L{Attribute} objects that have the L{Attribute.value} property set.
     """
-    rows = list(_format_constant_value(obj))
+    rows = list(_format_attribute_value(obj))
     return tags.table(class_='valueTable')(*rows)
 
 def _split_indentifier_parts_on_case(indentifier:str) -> List[str]:
@@ -1201,11 +1210,13 @@ _VAR_KEYWORD = inspect.Parameter.VAR_KEYWORD
 _VAR_POSITIONAL = inspect.Parameter.VAR_POSITIONAL
 _KEYWORD_ONLY = inspect.Parameter.KEYWORD_ONLY
 
-def _colorize_signature_annotation(annotation: object) -> list[nodes.Node]:
+def _colorize_signature_annotation(annotation: object, 
+                                   refmap: Mapping[str, str]) -> list[nodes.Node]:
     """
     Returns this annotation as a list of nodes
     """
-    return colorize_inline_pyval(annotation, is_annotation=True).to_node().children
+    return colorize_inline_pyval(annotation, is_annotation=True, 
+                                 refmap=refmap).to_node().children
 
 _METHOD = model.DocumentableKind.METHOD
 _CLASS_METHOD = model.DocumentableKind.CLASS_METHOD
@@ -1227,7 +1238,9 @@ def _is_less_important_param(param: inspect.Parameter, ctx: model.Documentable) 
 def _colorize_signature_param(param: inspect.Parameter, 
                               ctx: model.Documentable, 
                               has_next: bool, 
-                              is_first: bool, ) -> nodes.inline:
+                              is_first: bool, 
+                              refmap: Mapping[str, str], 
+                              ) -> nodes.inline:
     """
     Convert a single parameter to a docutils inline element.
     """
@@ -1246,7 +1259,8 @@ def _colorize_signature_param(param: inspect.Parameter,
     if param.annotation is not _empty:
         result.append(nodes.Text(': '))
         result.append(set_node_attributes(code('', ''), 
-                        children=_colorize_signature_annotation(param.annotation)))
+                        children=_colorize_signature_annotation(param.annotation, 
+                                                                refmap=refmap)))
 
     if param.default is not _empty:
         if param.annotation is not _empty:
@@ -1265,7 +1279,7 @@ def _colorize_signature_param(param: inspect.Parameter,
 
 # From inspect.Signature.format() (Python 3.13)
 def _colorize_signature(sig: inspect.Signature, 
-                        ctx: model.Documentable) -> ParsedDocstring:
+                        function: model.FunctionLike) -> ParsedDocstring:
     """
     Colorize this signature into a ParsedDocstring.
     """
@@ -1274,6 +1288,7 @@ def _colorize_signature(sig: inspect.Signature,
     render_kw_only_separator = True
     param_number = len(sig.parameters)
     result.append(nodes.Text('('))
+    refmap = model.type_param_refs(function)
 
     for i, param in enumerate(sig.parameters.values()):
         kind = param.kind
@@ -1300,9 +1315,9 @@ def _colorize_signature(sig: inspect.Signature,
             # reset the flag
             render_kw_only_separator = False
 
-        result.append(_colorize_signature_param(param, ctx, 
+        result.append(_colorize_signature_param(param, function.context, 
                         has_next=has_next or render_pos_only_separator, 
-                        is_first=i==0))
+                        is_first=i==0, refmap=refmap))
     
     if render_pos_only_separator:
         # There were only positional-only parameters, hence the
@@ -1314,29 +1329,29 @@ def _colorize_signature(sig: inspect.Signature,
     if sig.return_annotation is not _empty:
         result.append(nodes.Text(' -> '))
         result.append(set_node_attributes(code('', ''), 
-                        children=_colorize_signature_annotation(sig.return_annotation)))
+                        children=_colorize_signature_annotation(sig.return_annotation, 
+                                                                refmap=refmap)))
 
     return ParsedRstDocstring(set_node_attributes(
         new_document('code'), children=result), ())
 
-def get_parsed_signature(func: model.Function | model.FunctionOverload) -> ParsedDocstring | None:
+def get_parsed_signature(func: model.FunctionLike) -> ParsedDocstring | None:
     if (psig:=func.parsed_signature) is not None:
         return psig
     
     if (signature:=func.signature) is None:
         return None
 
-    ctx = func.primary if isinstance(func, model.FunctionOverload) else func
-    func.parsed_signature = psig = _colorize_signature(signature, ctx)
+    func.parsed_signature = psig = _colorize_signature(signature, func)
     return psig
 
-def function_signature_len(func: model.Function | model.FunctionOverload) -> int:
+def function_signature_len(func: model.FunctionLike) -> int:
     """
     The lenght of the a function def is defnied by the lenght of it's name plus the lenght of it's signature.
     On top of that, a function or method that takes no argument (expect unannotated 'self' for methods, and 'cls' for classmethods) 
     will always have a lenght equals to the function name len plus two for 'function()'.
     """
-    ctx = func.primary if isinstance(func, model.FunctionOverload) else func
+    ctx = func.context
     name_len = len(ctx.name)
 
     if (sig:=func.signature) is None or (

@@ -5,10 +5,10 @@ from typing import TYPE_CHECKING, List
 from twisted.web.iweb import ITemplateLoader
 from twisted.web.template import Tag, renderer, tags
 
-from pydoctor.model import Attribute
+from pydoctor.model import Attribute, AttributeValueDisplay, DocumentableKind
 from pydoctor import epydoc2stan
 from pydoctor.templatewriter import TemplateElement, util
-from pydoctor.templatewriter.pages import format_decorators
+from pydoctor.templatewriter.pages import format_decorators, format_type_params
 
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable
@@ -55,9 +55,14 @@ class AttributeChild(TemplateElement):
 
     @renderer
     def attribute(self, request: object, tag: Tag) -> "Flattenable":
-        attr: List["Flattenable"] = [tags.span(self.ob.name, class_='py-defname')]
+        is_type_alias = self.ob.kind is DocumentableKind.TYPE_ALIAS
+        attr: List["Flattenable"] = []
+        if is_type_alias:
+            attr += [tags.span('type', class_='py-keyword'), ' ',]
+        attr += [tags.span(self.ob.name, class_='py-defname'), 
+                 *format_type_params(self.ob)]
         _type = self.docgetter.get_type(self.ob)
-        if _type:
+        if _type and not is_type_alias:
             attr.extend([': ', _type])
         return attr
 
@@ -78,7 +83,16 @@ class AttributeChild(TemplateElement):
 
     @renderer
     def constantValue(self, request: object, tag: Tag) -> "Flattenable":
-        if self.ob.kind not in self.ob.system.show_attr_value or self.ob.value is None:
+        import warnings
+        warnings.warn('renderer "constantValue" is deprecated, please use "attributeValue" instead.')
+        return self.attributeValue(request, tag)
+    
+    @renderer
+    def attributeValue(self, request: object, tag: Tag) -> "Flattenable":
+        showval = self.ob.system.showAttrValue(self.ob)
+        if showval is AttributeValueDisplay.HIDDEN:
             return tag.clear()
-        # Attribute is a constant/type alias (with a value), then display it's value
-        return epydoc2stan.format_constant_value(self.ob)
+        elif showval is AttributeValueDisplay.AS_CODE_BLOCK:
+            return epydoc2stan.format_attribute_value(self.ob)
+        else:
+            assert False

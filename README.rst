@@ -73,6 +73,8 @@ What's New?
 in development
 ^^^^^^^^^^^^^^
 
+* Add support for rendering the ``type`` statement introduced in Python 3.12 (PEP-695).
+* Add support for rendering the embedded type variable declarations in class or function introduced in Python 3.12 (PEP-695).
 * Add support for doc-comments as found in Sphinx. Use the special comment formatting ``#:`` to start the comment instead of just ``#``.
   Comments need to be either on a line of their own before the definition, or immediately after the assignment on the same line. 
 * Fix a regression that prevented the source link on package' page to be rendered.

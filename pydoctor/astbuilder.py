@@ -279,6 +279,7 @@ class ModuleVistor(NodeVisitor):
         self._tweak_constants_annotations(self.builder.current)
         self._infer_attr_annotations(self.builder.current)
         self.builder.pop(self.module)
+        assert not self.builder.current
 
     def visit_ClassDef(self, node: ast.ClassDef) -> None:
         # Ignore classes within functions.
@@ -330,6 +331,12 @@ class ModuleVistor(NodeVisitor):
         cls: model.Class = self.builder.pushClass(node.name, lineno)
         cls.decorators = []
         cls.rawbases = rawbases
+        
+        if raw_type_params:=getattr(node, 'type_params', None):
+            supported_type_params = [t for t in raw_type_params if isinstance(t, 
+                                (ast.TypeVar, ast.TypeVarTuple, ast.ParamSpec))]
+            cls.type_params = supported_type_params
+            
         cls._initialbaseobjects = initialbaseobjects
         cls._initialbases = initialbases
 
@@ -637,21 +644,29 @@ class ModuleVistor(NodeVisitor):
             expr: Optional[ast.expr],
             lineno: int,
             augassign:Optional[ast.operator],
+            type_params:Sequence[ast.TypeVar | ast.TypeVarTuple | ast.ParamSpec] | None,
             ) -> None:
         if target in MODULE_VARIABLES_META_PARSERS:
             # This is metadata, not a variable that needs to be documented,
             # and therefore doesn't need an Attribute instance.
             raise IgnoreAssignment()
+        default_kind = (model.DocumentableKind.VARIABLE 
+                        if type_params is None else 
+                        model.DocumentableKind.TYPE_ALIAS)
         parent = self.builder.current
         obj = parent.contents.get(target)
         if obj is None:
             if augassign:
                 return
             obj = self.builder.addAttribute(name=target, 
-                                            kind=model.DocumentableKind.VARIABLE, 
+                                            kind=default_kind, 
                                             parent=parent, 
                                             lineno=lineno)
-        
+            # store type variables
+            if type_params is not None:
+                obj.type_params = type_params
+        if obj.kind is None:
+            obj.kind = default_kind
         # If it's not an attribute it means that the name is already denifed as function/class 
         # probably meaning that this attribute is a bound callable. 
         #
@@ -671,7 +686,7 @@ class ModuleVistor(NodeVisitor):
         obj.setLineNumber(lineno)
         
         self._handleConstant(obj, annotation, expr, lineno, 
-                                  model.DocumentableKind.VARIABLE)
+                             defaultKind=default_kind)
         self._storeAttrValue(obj, expr, augassign)
 
     def _handleAssignmentInModule(self,
@@ -680,11 +695,13 @@ class ModuleVistor(NodeVisitor):
             expr: Optional[ast.expr],
             lineno: int,
             augassign:Optional[ast.operator],
+            type_params:Sequence[ast.TypeVar | ast.TypeVarTuple | ast.ParamSpec] | None,
             ) -> None:
         module = self.builder.current
         assert isinstance(module, model.Module)
         if not _handleAliasing(module, target, expr):
-            self._handleModuleVar(target, annotation, expr, lineno, augassign=augassign)
+            self._handleModuleVar(target, annotation, expr, lineno, 
+                                  augassign=augassign, type_params=type_params)
         else:
             raise IgnoreAssignment()
 
@@ -694,6 +711,7 @@ class ModuleVistor(NodeVisitor):
             expr: Optional[ast.expr],
             lineno: int,
             augassign:Optional[ast.operator],
+            type_params:Sequence[ast.TypeVar | ast.TypeVarTuple | ast.ParamSpec] | None,
             ) -> None:
         
         cls = self.builder.current
@@ -701,6 +719,9 @@ class ModuleVistor(NodeVisitor):
         if not _maybeAttribute(cls, name):
             raise IgnoreAssignment()
 
+        default_kind = (model.DocumentableKind.CLASS_VARIABLE 
+                        if type_params is None else 
+                        model.DocumentableKind.TYPE_ALIAS)
         # Class variables can only be Attribute, so it's OK to cast
         obj = cast(Optional[model.Attribute], cls.contents.get(name))
 
@@ -708,16 +729,18 @@ class ModuleVistor(NodeVisitor):
             if augassign:
                 return
             obj = self.builder.addAttribute(name=name, kind=None, parent=cls, lineno=lineno)
+            # store type variables
+            if type_params is not None:
+                obj.type_params = type_params
 
         if obj.kind is None:
-            obj.kind = model.DocumentableKind.CLASS_VARIABLE
-
+            obj.kind = default_kind
         self._setAttributeAnnotation(obj, annotation)
         
         obj.setLineNumber(lineno)
 
         self._handleConstant(obj, annotation, expr, lineno, 
-                                  model.DocumentableKind.CLASS_VARIABLE)
+                             defaultKind=default_kind)
         self._storeAttrValue(obj, expr, augassign)
 
        
@@ -752,11 +775,13 @@ class ModuleVistor(NodeVisitor):
             expr: Optional[ast.expr],
             lineno: int,
             augassign:Optional[ast.operator],
+            type_params:Sequence[ast.TypeVar | ast.TypeVarTuple | ast.ParamSpec] | None,
             ) -> None:
         cls = self.builder.current
         assert isinstance(cls, model.Class)
         if not _handleAliasing(cls, target, expr):
-            self._handleClassVar(target, annotation, expr, lineno, augassign=augassign)
+            self._handleClassVar(target, annotation, expr, lineno, augassign=augassign,
+                                 type_params=type_params)
         else:
             raise IgnoreAssignment()
 
@@ -810,10 +835,11 @@ class ModuleVistor(NodeVisitor):
 
     def _handleAssignment(self,
             targetNode: ast.expr,
-            annotation: Optional[ast.expr],
-            expr: Optional[ast.expr],
+            annotation: ast.expr|None,
+            expr: ast.expr|None,
             lineno: int,
-            augassign:Optional[ast.operator]=None,
+            augassign:ast.operator|None=None,
+            type_params:Sequence[ast.TypeVar | ast.TypeVarTuple | ast.ParamSpec] | None = None,
             ) -> None:
         """
         @raises IgnoreAssignment: If the assignemnt should not be further processed.
@@ -824,10 +850,14 @@ class ModuleVistor(NodeVisitor):
             if self._ignore_name(scope, target):
                 raise IgnoreAssignment()
             if isinstance(scope, model.Module):
-                self._handleAssignmentInModule(target, annotation, expr, lineno, augassign=augassign)
+                self._handleAssignmentInModule(target, annotation, expr, lineno, 
+                                               augassign=augassign, 
+                                               type_params=type_params)
             elif isinstance(scope, model.Class):
                 if augassign or not self._handleOldSchoolMethodDecoration(target, expr):
-                    self._handleAssignmentInClass(target, annotation, expr, lineno, augassign=augassign)
+                    self._handleAssignmentInClass(target, annotation, expr, lineno, 
+                                                  augassign=augassign, 
+                                                  type_params=type_params)
         elif isinstance(targetNode, ast.Attribute) and not augassign:
             value = targetNode.value
             if targetNode.attr == '__doc__':
@@ -900,6 +930,23 @@ class ModuleVistor(NodeVisitor):
             return
         else:
             self._handleAssignmentDoc(node, node.target)
+
+    def visit_TypeAlias(self, node: ast.TypeAlias) -> None:
+        # what we do with type_params is (and this true for functions and classes as well):
+        # - map it to a dict of name to type var, the names are supposed to be unique like arguments of a function.
+        #   we do not trigger warnings if the names clashes: pydoctor is not a checker
+        # - when the annotations are rendered, manually link the typevar names to the definition.
+        #   so in the case of a class the type variables the bases will link to the class it self, and for all
+        #   methods the class's type var are accumulated with the eventual method's.
+
+        # Implemetation note: we determine a type alias kind by given a non-None value to
+        # type_param argument, even that is an empty list it's still relevant for 
+        # the rest of the code.
+        supported_type_params = [t for t in node.type_params if isinstance(t, 
+                                (ast.TypeVar, ast.TypeVarTuple, ast.ParamSpec))]
+        self._handleAssignment(node.name, None, node.value, 
+                                node.lineno, 
+                                type_params=supported_type_params)
 
     def _getClassFromMethodContext(self) -> Optional[model.Class]:
         func = self.builder.current
@@ -1041,7 +1088,10 @@ class ModuleVistor(NodeVisitor):
         else:
             func = self.builder.pushFunction(func_name, lineno)
 
-        func.is_async = is_async
+        # TODO: This might be misguided since the pricipal function might not be marked
+        # async while it's overloads might... 
+        func.is_async = is_async # if one overload is async, all overloads should be.
+
         if doc_node is not None:
             # Docstring not allowed on overload
             if is_overload_func:
@@ -1049,7 +1099,7 @@ class ModuleVistor(NodeVisitor):
                 func.report(f'{func.fullName()} overload has docstring, unsupported', lineno_offset=docline-func.linenumber)
             else:
                 func.setDocstring(doc_node)
-        func.decorators = node.decorator_list
+        
         if is_staticmethod:
             if is_classmethod:
                 func.report(f'{func.fullName()} is both classmethod and staticmethod')
@@ -1105,10 +1155,23 @@ class ModuleVistor(NodeVisitor):
         func.annotations = annotations
 
         # Only set main function signature if it is a non-overload
+        func_model: model.FunctionLike
         if is_overload_func:
-            func.overloads.append(model.FunctionOverload(primary=func, signature=signature, decorators=node.decorator_list))
+            func_model = model.FunctionOverload(primary=func)
+            func.overloads.append(func_model)
         else:
-            func.signature = signature
+            func_model = func
+        
+        # store type variables
+        func_model.type_params = getattr(node, 'type_params', None)
+        func_model.type_params_sources = [*self.builder.current_type_param_sources()[:-1], 
+                                          func_model]
+        
+        func_model.signature = signature
+        func_model.decorators = node.decorator_list
+        if isinstance(func_model, model.Function):
+            func_model.annotations = annotations
+            
 
     def depart_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:
         self.builder.popFunction()
@@ -1195,6 +1258,9 @@ DocumentableT = TypeVar('DocumentableT', bound=model.Documentable)
 class ASTBuilder:
     """
     Keeps tracks of the state of the AST build, creates documentable and adds objects to the system.
+
+    One AStBuilder instance can only be used to analyze one L{Module} instance in it's
+    lifecycle.
     """
     ModuleVistor = ModuleVistor
 
@@ -1205,6 +1271,10 @@ class ASTBuilder:
         self.currentMod: Optional[model.Module] = None #: module, set when visiting ast.Module
         
         self._stack: List[model.Documentable] = []
+
+    def current_type_param_sources(self) -> Sequence[model.DocumentableLike]:
+        # The first item in the stack is None, the second item is the Moddule instance.
+        return self._stack[2:] + [self.current]
 
     def _push(self, 
               cls: Type[DocumentableT], 
@@ -1260,7 +1330,9 @@ class ASTBuilder:
         """
         Create and a new class in the system.
         """
-        return self._push(self.system.Class, name, lineno)
+        cls = self._push(self.system.Class, name, lineno)
+        cls.type_params_sources = self.current_type_param_sources()
+        return cls
 
     def popClass(self) -> None:
         """
@@ -1272,7 +1344,9 @@ class ASTBuilder:
         """
         Create and enter a new function in the system.
         """
-        return self._push(self.system.Function, name, lineno)
+        fn = self._push(self.system.Function, name, lineno)
+        fn.type_params_sources = self.current_type_param_sources()
+        return fn
 
     def popFunction(self) -> None:
         """
@@ -1290,6 +1364,7 @@ class ASTBuilder:
         Add a new attribute to the system.
         """
         attr = self._push(self.system.Attribute, name, lineno, parent=parent)
+        attr.type_params_sources = self.current_type_param_sources()
         self._pop(self.system.Attribute)
         attr.kind = kind
         return attr

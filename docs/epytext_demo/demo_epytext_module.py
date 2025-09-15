@@ -6,7 +6,7 @@ Most part of this documentation is using Python type hinting.
 
 from abc import ABC
 import math
-from typing import overload, AnyStr, Dict, Generator, List, Union, Callable, Tuple, TYPE_CHECKING
+from typing import Hashable, overload, AnyStr, Dict, Generator, List, Union, Callable, Tuple, TYPE_CHECKING
 from somelib import SomeInterface
 import zope.interface
 import zope.schema
@@ -200,3 +200,10 @@ class IContact(zope.interface.Interface):
 
     def send_email(text: str) -> None:
         pass
+
+import typing as t
+type One = t.Literal['1', 1]
+type IntFunc[**P] = Callable[P, int]  # ParamSpec
+type LabeledTuple[*Ts] = tuple[str, *Ts]  # TypeVarTuple
+type HashableSequence[T: Hashable] = Sequence[T]  # TypeVar with bound
+type IntOrStrSequence[T: (int, str)] = Sequence[T]  # TypeVar with constraints

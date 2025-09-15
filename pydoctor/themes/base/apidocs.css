@@ -1156,6 +1156,7 @@ pre.constant-value              { padding: .5em; }
 .rst-variable-linewrap          { color: #604000; font-weight: bold; }
 .rst-variable-ellipsis          { color: #604000; font-weight: bold; }
 .rst-variable-quote             { color: #604000; font-weight: bold; }
+.rst-type-param                     { color: #7147b8 }
 
 /* Those two are currently not used */
 .rst-variable-group             { color: #000000; }

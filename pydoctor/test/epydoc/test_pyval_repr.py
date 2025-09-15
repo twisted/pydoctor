@@ -1569,6 +1569,43 @@ def test_expressions_parens(subtests:Any) -> None:
     check_src("{**{'y': 2}, 'x': 1, None: True}")
     check_src("{**{'y': 2}, **{'x': 1}}")
 
+if sys.version_info >= (3, 12):
+    def test_type_params() -> None:
+        src = dedent('''
+        type IntFunc[**P] = Callable[P, int]  # ParamSpec
+        type LabeledTuple[*Ts] = tuple[str, *Ts]  # TypeVarTuple
+        type HashableSequence[T: Hashable] = Sequence[T]  # TypeVar with bound
+        type IntOrStrSequence[T: (int, str)] = Sequence[T]  # TypeVar with constraints
+        ''')
+
+        t1, t2, t3, t4 = ast.parse(src).body
+        tv1, tv2, tv3, tv4 = (t1.type_params[0], t2.type_params[0], #type:ignore
+                              t3.type_params[0], t4.type_params[0]) #type:ignore
+        assert color(tv1) == '\n'.join(['<document source="code">',
+                              '    **',
+                              '    <inline classes="type-param">',
+                              '        P\n'])
+        assert color(tv2) == '\n'.join(['<document source="code">',
+                              '    *',
+                              '    <inline classes="type-param">',
+                              '        Ts\n'])
+        assert color(tv3) == '\n'.join(['<document source="code">',
+                              '    <inline classes="type-param">',
+                              '        T',
+                              '    : ',
+                              '    <obj_reference refuri="Hashable">',
+                              '        Hashable\n'])
+        assert color(tv4) == '\n'.join(['<document source="code">',
+                              '    <inline classes="type-param">',
+                              '        T',
+                              '    : ',
+                              '    (', '    <wbr>',
+                              '    <obj_reference refuri="int">',
+                              '        int',
+                              '    , ', '    <wbr>',
+                              '    <obj_reference refuri="str">',
+                              '        str',
+                              '    )\n',])
 
 def test_is_annotation_flag() -> None:
     # the is_annotation attribute is added to all links when is_annotation=True is passed.

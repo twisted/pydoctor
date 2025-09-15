@@ -32,6 +32,7 @@ B{Usage}:
 >>> 
 """
 from __future__ import annotations
+import sys
 
 __docformat__ = 'epytext en'
 
@@ -39,7 +40,7 @@ import re
 import ast
 import functools
 from inspect import signature
-from typing import Any, AnyStr, Union, Callable, Dict, Iterable, Sequence, Optional, List, Tuple, cast
+from typing import Any, AnyStr, Union, Callable, Dict, Iterable, Mapping, Sequence, Optional, List, Tuple, cast
 
 import attr
 from docutils import nodes
@@ -198,8 +199,8 @@ class ColorizedPyvalRepr(ParsedRstDocstring):
     def to_stan(self, docstring_linker: DocstringLinker) -> Tag:
         return Tag('code')(super().to_stan(docstring_linker))
 
-def colorize_pyval(pyval: Any, linelen:Optional[int], maxlines:int, 
-                   linebreakok:bool=True, refmap:Optional[Dict[str, str]]=None, 
+def colorize_pyval(pyval: Any, linelen:int | None, maxlines: int, 
+                   linebreakok: bool = True, refmap: Mapping[str, str] | None = None, 
                    is_annotation: bool = False) -> ColorizedPyvalRepr:
     """
     Get a L{ColorizedPyvalRepr} instance for this piece of ast. 
@@ -213,7 +214,7 @@ def colorize_pyval(pyval: Any, linelen:Optional[int], maxlines:int,
     return PyvalColorizer(linelen=linelen, maxlines=maxlines, linebreakok=linebreakok, 
                           refmap=refmap, is_annotation=is_annotation).colorize(pyval)
 
-def colorize_inline_pyval(pyval: Any, refmap:Optional[Dict[str, str]]=None, is_annotation: bool = False) -> ColorizedPyvalRepr:
+def colorize_inline_pyval(pyval: Any, refmap:Mapping[str, str]|None=None, is_annotation: bool = False) -> ColorizedPyvalRepr:
     """
     Used to colorize type annotations and parameters default values.
     @returns: C{L{colorize_pyval}(pyval, linelen=None, linebreakok=False)}
@@ -261,13 +262,15 @@ def _str_escape(s: str) -> str:
 def _bytes_escape(b: bytes) -> str:
     return repr(b)[2:-1]
 
+PY_312_PLUS = sys.version_info >= (3, 12)
+
 class PyvalColorizer:
     """
     Syntax highlighter for Python AST (and some builtins types).
     """
 
     def __init__(self, linelen:Optional[int], maxlines:int, linebreakok:bool=True, 
-                 refmap:Optional[Dict[str, str]]=None, is_annotation: bool = False):
+                 refmap:Optional[Mapping[str, str]]=None, is_annotation: bool = False):
         self.linelen: Optional[int] = linelen if linelen!=0 else None
         self.maxlines: Union[int, float] = maxlines if maxlines!=0 else float('inf')
         self.linebreakok = linebreakok
@@ -293,6 +296,7 @@ class PyvalColorizer:
     ELLIPSIS_TAG = 'variable-ellipsis'
     LINEWRAP_TAG = 'variable-linewrap'
     UNKNOWN_TAG = 'variable-unknown'
+    TYPE_PARAM_TAG = 'type-param'
 
     RE_CHAR_TAG = None
     RE_GROUP_TAG = 're-group'
@@ -574,6 +578,12 @@ class PyvalColorizer:
             else:
                 self._output('**', None, state)
             self._colorize_ast(pyval.value, state)
+        elif PY_312_PLUS and isinstance(pyval, ast.TypeVar):
+            self._colorize_ast_typevar(pyval, state)
+        elif PY_312_PLUS and isinstance(pyval, ast.TypeVarTuple):
+            self._colorize_ast_typevartuple(pyval, state)
+        elif PY_312_PLUS and isinstance(pyval, ast.ParamSpec):
+            self._colorize_ast_paramspec(pyval, state)
         else:
             self._colorize_ast_generic(pyval, state)
         assert state.stack.pop() is pyval
@@ -724,6 +734,21 @@ class PyvalColorizer:
             self._colorize_ast(ast_flags, state)
 
         self._output(')', self.GROUP_TAG, state)
+
+    # Python 3.12
+    def _colorize_ast_typevar(self, pyval:ast.TypeVar, state: _ColorizerState) -> None:
+        self._output(pyval.name, self.TYPE_PARAM_TAG, state)
+        if pyval.bound:
+            self._output(': ', self.COLON_TAG, state)
+            self._colorize_ast(pyval.bound, state)
+    # Python 3.12
+    def _colorize_ast_typevartuple(self, pyval:ast.TypeVarTuple, state: _ColorizerState) -> None:
+        self._output('*', None, state)
+        self._output(pyval.name, self.TYPE_PARAM_TAG, state)
+    # Python 3.12
+    def _colorize_ast_paramspec(self, pyval:ast.ParamSpec, state: _ColorizerState) -> None:
+        self._output('**', None, state)
+        self._output(pyval.name, self.TYPE_PARAM_TAG, state)
 
     def _colorize_ast_generic(self, pyval: ast.AST, state: _ColorizerState) -> None:
         try:

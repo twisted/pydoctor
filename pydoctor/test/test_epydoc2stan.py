@@ -1,6 +1,6 @@
 from typing import List, Optional, Type, cast, TYPE_CHECKING
 import re
-
+import sys
 from pytest import mark, raises
 import pytest
 from twisted.web.template import Tag, tags
@@ -1427,6 +1427,7 @@ def test_annotation_formatting(annotation: str) -> None:
     value: {expected_text}
     ''')
     obj = mod.contents['value']
+    assert isinstance(obj, model.Attribute)
     parsed = epydoc2stan.get_parsed_type(obj)
     assert parsed is not None
     linker = RecordingAnnotationLinker()
@@ -1586,7 +1587,7 @@ def test_cli_docformat_plaintext_overrides_module_docformat(capsys: CapSys) -> N
 
 def test_constant_values_rst(capsys: CapSys) -> None:
     """
-    Test epydoc2stan.format_constant_value().
+    Test epydoc2stan.format_attribute_value().
     """
     mod1 = '''
     def f(a, b): 
@@ -1613,7 +1614,7 @@ def test_constant_values_rst(capsys: CapSys) -> None:
 
     expected = ('<table class="valueTable"><tr class="fieldStart">'
                 '<td class="fieldName">Value</td></tr><tr><td>'
-                '<pre class="constant-value"><code>(<wbr></wbr>'
+                '<pre class="attribute-value"><code>(<wbr></wbr>'
                 '<a href="pack.mod1.html#f" class="internal-link" title="pack.mod1.f">f</a>)</code></pre></td></tr></table>')
     
     attr = mod.contents['CONST']
@@ -1621,7 +1622,25 @@ def test_constant_values_rst(capsys: CapSys) -> None:
 
     docstring2html(attr)
 
-    assert ''.join(flatten(epydoc2stan.format_constant_value(attr)).splitlines()) == expected
+    assert ''.join(flatten(epydoc2stan.format_attribute_value(attr)).splitlines()) == expected
+
+@pytest.mark.skipif(sys.version_info < (3,12), reason='type variables introduced in python 3.12')
+def test_attribute_value_get_type_params_references(capsys: CapSys) -> None:
+    # The outout is currently sub-optimal since the title of the type vaer links
+    # will hold the name of the class it's defined under, not the name of the type
+    # variable.  But this can be fixed later.
+    src = '''
+    from typing import Final
+    class C[T]:
+        thing: Final = bool[T]
+    '''
+    expected = ('<table class="valueTable"><tr class="fieldStart"><td class="fieldName">Value</td></tr>'
+                '<tr><td><pre class="attribute-value"><code>bool[<wbr></wbr>'
+                '<a href="t.C.html" class="internal-link" title="t.C">T</a>]</code></pre></td></tr></table>')
+    mod = fromText(src, modname='t')
+    thing = mod.contents['C'].contents['thing']
+    assert isinstance(thing, model.Attribute)
+    assert ''.join(flatten(epydoc2stan.format_attribute_value(thing)).splitlines()) == expected
 
     
 def test_warns_field(capsys: CapSys) -> None:

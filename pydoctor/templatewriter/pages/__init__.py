@@ -27,10 +27,10 @@ if TYPE_CHECKING:
     from pydoctor.templatewriter.pages.functionchild import FunctionChild
 
 
-def _format_decorators(obj: Union[model.Function, model.Attribute, model.FunctionOverload]) -> Iterator["Flattenable"]:
+def _format_decorators(obj: model.Attribute | model.FunctionLike) -> Iterator["Flattenable"]:
     # Since we use this function to colorize the FunctionOverload decorators and it's not an actual Documentable subclass, we use the overload's 
     # primary function for parts that requires an interface to Documentable methods or attributes
-    documentable_obj = obj if not isinstance(obj, model.FunctionOverload) else obj.primary
+    documentable_obj = obj.context
 
     for dec in obj.decorators or ():
         if isinstance(dec, ast.Call):
@@ -53,12 +53,30 @@ def _format_decorators(obj: Union[model.Function, model.Attribute, model.Functio
         
         yield tags.span('@', stan.children, tags.br(), class_='decorator')
 
-def format_decorators(obj: Union[model.Function, model.Attribute, model.FunctionOverload]) -> Tag:
+def format_decorators(obj: model.Attribute | model.FunctionLike) -> Tag:
     if decs:=list(_format_decorators(obj)):
         return tags.div(decs)
     return tags.transparent
 
-def format_signature(func: Union[model.Function, model.FunctionOverload]) -> "Flattenable":
+def format_type_params(ob: model.FunctionLike | model.Class | model.Attribute) -> Iterator[Flattenable]:
+    if not ob.type_params:
+        return
+    refmap = model.type_param_refs(ob)
+    ctx = ob.context
+    linker = ctx.docstring_linker 
+    stan: list[Flattenable] = []
+    for t in ob.type_params:
+        if stan:
+            stan += [', ']
+        stan += [*epydoc2stan.safe_to_stan(
+            colorize_inline_pyval(t, refmap=refmap), linker, ctx, 
+                    fallback=epydoc2stan.colorized_pyval_fallback, 
+                    section='rendering of type params').children]
+    yield '['
+    yield from stan
+    yield ']'
+
+def format_signature(func: model.FunctionLike) -> Flattenable:
     """
     Return a stan representation of a nicely-formatted source-like function signature for the given L{Function}.
     Arguments default values are linked to the appropriate objects when possible.
@@ -67,7 +85,7 @@ def format_signature(func: Union[model.Function, model.FunctionOverload]) -> "Fl
     parsed_sig = epydoc2stan.get_parsed_signature(func)
     if parsed_sig is None:
         return "(...)"
-    ctx = func.primary if isinstance(func, model.FunctionOverload) else func
+    ctx = func.context
     return epydoc2stan.safe_to_stan(
         parsed_sig, 
         ctx.docstring_linker, 
@@ -76,15 +94,17 @@ def format_signature(func: Union[model.Function, model.FunctionOverload]) -> "Fl
         section='signature'
     )
 
-def format_class_signature(cls: model.Class) -> "Flattenable":
+def format_class_signature(cls: model.Class) -> Flattenable:
     """
-    The class signature is the formatted list of bases this class extends. 
-    It's not the class constructor.
+    The class signature is the formatted list of 
+    type parameters and bases this class uses. 
+    It's not the constructor.
     """
-    r: List["Flattenable"] = []
+    r: List["Flattenable"] = [*format_type_params(cls),]
     # the linker will only be used to resolve the generic arguments of the base classes, 
     # it won't actually resolve the base classes (see comment few lines below).
     # this is why we're using the annotation linker.
+    base_refmap = model.type_param_refs(cls)
     _linker = cls.docstring_linker
     if cls.rawbases:
         r.append('(')
@@ -99,14 +119,15 @@ def format_class_signature(cls: model.Class) -> "Flattenable":
             # a class with the same name as a base class confused pydoctor and it would link 
             # to it self: https://github.com/twisted/pydoctor/issues/662
 
-            refmap = None
+            refmap = {}
             if base_obj is not None:
                 refmap = {str_base:base_obj.fullName()}
                 
             # link to external class, using the colorizer here
             # to link to classes with generics (subscripts and other AST expr).
             # we use is_annotation=True because bases are unstringed, they can contain annotations. 
-            stan = epydoc2stan.safe_to_stan(colorize_inline_pyval(base_node, refmap=refmap, is_annotation=True), _linker, cls, 
+            stan = epydoc2stan.safe_to_stan(colorize_inline_pyval(base_node, refmap={**base_refmap, **refmap},
+                                                                  is_annotation=True), _linker, cls, 
                 fallback=epydoc2stan.colorized_pyval_fallback, 
                 section='rendering of class signature')
             r.extend(stan.children)
@@ -133,7 +154,7 @@ def format_overloads(func: model.Function) -> Iterator["Flattenable"]:
 
 _nbsp = CharRef(160) # non-breaking space.
 def format_function_def(func_name: str, is_async: bool, 
-                        func: Union[model.Function, model.FunctionOverload]) -> List["Flattenable"]:
+                        func: model.FunctionLike) -> List["Flattenable"]:
     """
     Format a function definition as nice HTML signature. 
     
@@ -161,8 +182,10 @@ def format_function_def(func_name: str, is_async: bool,
     r.extend([
         tags.span(def_stmt, class_='py-keyword'), _nbsp,
         tags.span(func_name, class_='py-defname'), 
-        tags.span(format_signature(func), ':', 
-                  class_=func_signature_css_class),
+        
+        tags.span([*format_type_params(func),  
+                   format_signature(func)], 
+                  class_=func_signature_css_class), ':',
     ])
     return r
     

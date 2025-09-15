@@ -198,14 +198,17 @@ def test_zopeschema(capsys: CapSys, systemcls: Type[model.System]) -> None:
     mod = fromText(src, modname='mod', systemcls=systemcls)
     text = mod.contents['IMyInterface'].contents['text']
     assert text.docstring == 'fun in a bun'
+    assert isinstance(text, model.Attribute)
     assert type2html(text)==  "<code><a>schema.TextLine</a></code>"
     assert text.kind is model.DocumentableKind.SCHEMA_FIELD
     undoc = mod.contents['IMyInterface'].contents['undoc']
     assert undoc.docstring is None
+    assert isinstance(undoc, model.Attribute)
     assert type2html(undoc) == "<code><a>schema.Bool</a></code>"
     assert undoc.kind is model.DocumentableKind.SCHEMA_FIELD
     bad = mod.contents['IMyInterface'].contents['bad']
     assert bad.docstring is None
+    assert isinstance(bad, model.Attribute)
     assert type2html(bad) == "<code><a>schema.ASCII</a></code>"
     assert bad.kind is model.DocumentableKind.SCHEMA_FIELD
     captured = capsys.readouterr().out
