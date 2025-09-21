@@ -554,16 +554,16 @@ body.private-hidden .container > .private {
 
 /* Show private and other options */ 
 
-#showPrivate:hover {
+#show-private:hover {
     text-decoration: none;
 }
 
-#showPrivate button {
+#show-private button {
     padding: 5px;
     padding-bottom: 15px;
 }
 
-#showPrivate button:hover {
+#show-private button:hover {
     text-decoration: none;
 }
 
