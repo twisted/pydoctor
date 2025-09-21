@@ -825,7 +825,7 @@ div.rst-tip, div.rst-hint, div.rst-important {
 
   
 /* Style page content */
-#main {
+main {
     
      /* Same as the width of the sidebar + 20px*/
     display: flex;
@@ -921,7 +921,7 @@ body.sidebar-collapsed .sidebarcontainer {
     background-color: transparent;
 }
 
-body.sidebar-collapsed #main {
+body.sidebar-collapsed main {
     margin: 0 0 0 25px!important;
 }
 
@@ -945,7 +945,7 @@ body.sidebar-collapsed #collapseSideBar > a:hover {
     .sidebar {
         display: none;
     }
-    #main {
+    main {
         margin: 0;
     }
     .sidebarcontainer {
