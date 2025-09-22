@@ -330,4 +330,16 @@ def test_htmlbaseurl_option_all_pages(tmp_path: Path) -> None:
             filename = 'index.html' # since we have only one module it's linked as index.html
         assert f'<link rel="canonical" href="https://example.com.abcde/{filename}"' in t.read_text(encoding='utf-8')
     
-
+def test_html_ids_dont_look_like_python_names(tmp_path: Path) -> None:
+    exit_code = driver.main(args=['--html-output', str(tmp_path), 'pydoctor/test/testpackages/basic/'])
+    assert exit_code == 0
+    
+    for page in tmp_path.iterdir():
+        if not page.is_file() or not page.name.endswith('.html'):
+            continue
+        # None of the html section contains an ID that looks like a python name
+        text = page.read_text()
+        if page.name == 'all-documents.html':
+            assert re.findall(r'id="[a-z]+"', text, re.IGNORECASE) == ['id="basic"'], text
+        else:
+            assert re.findall(r'id="[a-z]+"', text, re.IGNORECASE) == [], text
