@@ -88,6 +88,8 @@ in development
   shortcuts the default processing order, leading to process the docstrings with system's docformat 
   instead of the one specified in the parent package `__docformat__`.
 * Prefer newer "tomli" package over "toml".
+* Fix a bug that made impossible to highlight some attributes or functions because 
+  their name clashed with other HTML IDs.
 
 pydoctor 25.4.0
 ^^^^^^^^^^^^^^^
