@@ -393,7 +393,7 @@ table .private {
 }
 
 
-#childList > div {
+#child-list > div {
     margin: 10px;
     padding: 10px;
     padding-bottom: 5px;
@@ -439,21 +439,21 @@ table .private {
 }
 
 /* When focuse, present each parameter onto a new line */
-#childList a:target ~ .functionHeader .function-signature.long-signature .rst-sig-param, 
-#childList a:target ~ .functionHeader .function-signature.long-signature .rst-sig-symbol {
+#child-list a:target ~ .functionHeader .function-signature.long-signature .rst-sig-param, 
+#child-list a:target ~ .functionHeader .function-signature.long-signature .rst-sig-symbol {
     display: block;
     margin-left: 1.5em;
     padding-left: 1.5em;
     text-indent: -1.5em;
 }
 /* Except the 'self' or 'cls' params, which are rendered on the same line as the function def */
-#childList a:target ~ .functionHeader .function-signature.long-signature .rst-sig-param:has(.rst-undocumented) {
+#child-list a:target ~ .functionHeader .function-signature.long-signature .rst-sig-param:has(.rst-undocumented) {
     display: initial;
     margin-left: 0;
     padding-left: 0;
 }
 
-#childList > div .functionHeader {
+#child-list > div .functionHeader {
     word-break: break-word;
 }
 
@@ -463,11 +463,11 @@ table .private {
   
 - 'functionHeader' is used for lines like `def func():` and `var =`
 */
-code, .rst-literal, .pre, #childList > div .functionHeader,
+code, .rst-literal, .pre, #child-list > div .functionHeader,
 #splitTables > table tr td:nth-child(2), .fieldArg {
     font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
 }
-code, .rst-literal, #childList > div .functionHeader, .fieldArg {
+code, .rst-literal, #child-list > div .functionHeader, .fieldArg {
     color: #222222;
 }
 
@@ -544,7 +544,7 @@ pre {
 /* Private stuff */
 
 body.private-hidden #splitTables .private,
-body.private-hidden #childList .private,
+body.private-hidden #child-list .private,
 body.private-hidden #summary-tree .private,
 body.private-hidden nav.sidebar .private,
 body.private-hidden #search-results .private,
@@ -1170,13 +1170,13 @@ pre.constant-value              { padding: .5em; }
 .rst-re-ref                     { color: #890000; }
 
 /* highlight the targeted item with "#" */
-#childList a:target ~ .functionHeader, #childList a:target ~ .functionBody{
+#child-list a:target ~ .functionHeader, #child-list a:target ~ .functionBody{
     background-color: rgba(253, 255, 223, 0.9);
 }
-#childList a:target ~ .functionHeader{
+#child-list a:target ~ .functionHeader{
     box-shadow: 0px 0px 0px 10px rgba(253, 255, 223, 0.9);
 }
-#childList a:target ~ .functionBody{
+#child-list a:target ~ .functionBody{
     box-shadow: -2px -8px 0px 13px rgb(253 255 223);
 }
 /* in class hierarchy */
@@ -1208,10 +1208,10 @@ pre.constant-value              { padding: .5em; }
         text-decoration:none;
         background-color: #ccc;
     }
-    #childList > div:hover .headerLink{
+    #child-list > div:hover .headerLink{
         display:inline-block;
     }
 }
-#childList a:target ~ .functionHeader .headerLink{
+#child-list a:target ~ .functionHeader .headerLink{
     display: inline-block
 }

@@ -87,7 +87,7 @@ body > footer > hr {
     font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
 }
 
-code, .pre, #childList > div .functionHeader,
+code, .pre, #child-list > div .functionHeader,
 #splitTables > table tr td:nth-child(2), .fieldArg {
     font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
 }
@@ -255,13 +255,13 @@ a:hover{
 
 /* Child list */
 
-#childList > div {
+#child-list > div {
     margin: 0;
     border: 0;
     padding-left: 0;
 }
 
-#childList > div .functionHeader {
+#child-list > div .functionHeader {
     background: rgb(240, 240, 240);
     border-left: 3px solid rgb(204, 204, 204);
     border-width: 0px 0px 0px 3px;
@@ -746,12 +746,12 @@ input[type="search"] {
 /* Active highlight */
 
 /* highlight the targeted item with "#" */
-#childList a:target ~ .functionHeader{
+#child-list a:target ~ .functionHeader{
     background-color: unset;
     border-left: 3px solid rgb(80, 80, 90);
 }
 
-#childList a:target ~ .functionBody{
+#child-list a:target ~ .functionBody{
     box-shadow: 7px 1px 0px 3px rgba(253, 255, 223, 0.9), -36px 1px 0px 3px rgba(253, 255, 223, 0.9);
 }
 
