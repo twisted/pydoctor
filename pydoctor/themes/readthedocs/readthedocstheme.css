@@ -88,7 +88,7 @@ body > footer > hr {
 }
 
 code, .pre, #child-list > div .functionHeader,
-#splitTables > table tr td:nth-child(2), .fieldArg {
+#split-tables > table tr td:nth-child(2), .fieldArg {
     font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
 }
 
@@ -235,7 +235,7 @@ a:hover{
 
 /* Summary tables */
 
-#splitTables > table {
+#split-tables > table {
     -webkit-border-horizontal-spacing: 0px;
     -webkit-border-vertical-spacing: 0px;
     border: 1px solid rgb(210, 220, 216);
@@ -243,12 +243,12 @@ a:hover{
     vertical-align: middle;
 }
 
-#splitTables > table td {
+#split-tables > table td {
     border-bottom: 1px solid rgb(210, 220, 216);
 }
 
 @media only screen and (max-width: 1000px){
-    #splitTables > table tr td:nth-child(2) {
+    #split-tables > table tr td:nth-child(2) {
         width: 35%;
     }
 }
