@@ -942,16 +942,15 @@ class ModuleVistor(NodeVisitor):
             parent, name = self._contextualizeTarget(target)
         except ValueError:
             return
-        
-        if not (docstring_node:=get_assign_docstring_node(assign)):
-            return
-        # Validate the docstring, it's not valid if there is a comment in between...
-        if has_comment_line(assign, docstring_node, self.module.parsed_ast.lines):
-            return
-        # Fetch the target of the inline docstring
-        if attr:=parent.contents.get(name):
-            attr.setDocstring(docstring_node)            
 
+        docstring_node = get_assign_docstring_node(assign)
+        if docstring_node:
+            # validate the docstring, it's not valid if there is a comment in between...
+            if has_comment_line(assign, docstring_node, self.module.parsed_ast.lines):
+                return
+            # fetch the target of the inline docstring
+            if attr:=parent.contents.get(name):
+                attr.setDocstring(docstring_node)
     
     def visit_AugAssign(self, node:ast.AugAssign) -> None:
         try:
