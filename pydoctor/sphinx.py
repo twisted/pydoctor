@@ -54,7 +54,7 @@ class SphinxInventory:
     def error(self, where: str, message: str) -> None:
         self._logger(where, message, thresh=-1)
 
-    def update(self, cache: CacheT, url: str) -> None:
+    def update(self, cache: CacheT, url: str, base_url: str | None) -> None:
         """
         Update inventory from URL.
         """
@@ -64,7 +64,8 @@ class SphinxInventory:
                 'sphinx', 'Failed to get remote base url for %s' % (url,))
             return
 
-        base_url = parts[0]
+        base_url = base_url or parts[0]
+        base_url = base_url.rstrip('/')
 
         data = cache.get(url)
 
@@ -73,10 +74,10 @@ class SphinxInventory:
                 'sphinx', 'Failed to get object inventory from %s' % (url, ))
             return
 
-        payload = self._getPayload(base_url, data)
+        payload = self._getPayload(parts[0], data)
         self._links.update(self._parseInventory(base_url, payload))
 
-    def update_file(self, path: str | os.PathLike[str], base_url: str | None) -> None:
+    def update_file(self, path: str, base_url: str | None) -> None:
         """
         Update inventory from local path. If base_url is supplied, the
         links are made relative to the supplied base url.
