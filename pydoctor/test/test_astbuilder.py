@@ -3428,6 +3428,7 @@ def test_inline_docstring_is_invalid_when_there_is_a_comment_in_between(systemcl
     for o in 'abcde':
         assert not mod.contents[o].docstring
 
+@systemcls_param
 def test_Final_constant_under_control_flow_block_is_still_constant(systemcls: Type[model.System], capsys: CapSys) -> None:
     """
     Test for issue https://github.com/twisted/pydoctor/issues/818
