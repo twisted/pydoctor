@@ -16,7 +16,7 @@ from typing import (
 from pydoctor import epydoc2stan, model, extensions
 from pydoctor.astutils import (is_none_literal, is_typing_annotation, is_using_annotations, is_using_typing_final, node2dottedname, node2fullname, 
                                is__name__equals__main__, unstring_annotation, upgrade_annotation, iterassign, extract_docstring_linenum, infer_type, get_parents,
-                               get_docstring_node, get_assign_docstring_node, unparse, NodeVisitor, Parentage, Str)
+                               get_docstring_node, get_assign_docstring_node, has_comment_line, unparse, NodeVisitor, Parentage, Str)
 from pydoctor.tokenutils import extract_doc_comment_before, extract_doc_comment_after
 
 
@@ -901,6 +901,7 @@ class ModuleVistor(NodeVisitor):
         else:
             self._handleAssignmentDoc(node, node.target)
 
+
     def _getClassFromMethodContext(self) -> Optional[model.Class]:
         func = self.builder.current
         if not isinstance(func, model.Function):
@@ -941,9 +942,13 @@ class ModuleVistor(NodeVisitor):
             parent, name = self._contextualizeTarget(target)
         except ValueError:
             return
-        
+
         docstring_node = get_assign_docstring_node(assign)
         if docstring_node:
+            # validate the docstring, it's not valid if there is a comment in between...
+            if self.module.parsed_ast and (lines:=self.module.parsed_ast.lines
+                ) and has_comment_line(assign, docstring_node, lines):
+                return
             # fetch the target of the inline docstring
             if attr:=parent.contents.get(name):
                 attr.setDocstring(docstring_node)

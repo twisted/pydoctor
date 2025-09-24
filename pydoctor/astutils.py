@@ -213,6 +213,9 @@ def get_assign_docstring_node(assign:ast.Assign | ast.AnnAssign) -> Str | None:
 
     This helper function relies on the non-standard C{.parent} attribute on AST nodes
     to navigate upward in the tree and determine this node direct siblings.
+
+    @note: This does not validate whether there is a comment in between the assigment and the 
+        docstring node since the function operates on AST solely. Use L{has_comment_line} for that.
     """
     # this call raises an ValueError if we're doing something nasty with the ast... please report
     parent_node, fieldname = get_node_block(assign)
@@ -741,6 +744,26 @@ del _op_data, _index, _precedence_data, _symbol_data, _deprecated
 # This was part of the astor library for Python AST manipulation.
 
 
+def has_comment_line(node1: ast.expr | ast.stmt, node2: ast.expr | ast.stmt, 
+                     lines: Sequence[str]) -> bool:
+    r"""
+    Returns True if the is a comment line in between node1 and node2. 
+
+    >>> from pydoctor.model import ParsedAstModule
+    >>> from pydoctor.astbuilder import SyntaxTreeParser
+    >>> src = 'var = 1\n# this is a comment\nfoo = 2\n\n\nplum = 3'
+    >>> parsed = SyntaxTreeParser().parseString(src, None)
+    >>> has_comment_line(parsed.root.body[0], parsed.root.body[1], parsed.lines)
+    True
+    >>> has_comment_line(parsed.root.body[1], parsed.root.body[2], parsed.lines)
+    False
+
+    @raise IndexError: If the line numbers coming from C{node1} or C{node2}
+        are not present in the given C{lines}.
+    """
+    start, stop = node1.lineno, node2.lineno - 1
+    return any(lines[i].lstrip().startswith('#') for i in range(start, stop))
+
 class _OldSchoolNamespacePackageVis(ast.NodeVisitor):
 
     is_namespace_package: bool = False
@@ -838,3 +861,4 @@ def is_old_school_namespace_package(tree: ast.Module) -> bool:
     v =_OldSchoolNamespacePackageVis()
     v.visit(tree)
     return v.is_namespace_package
+
