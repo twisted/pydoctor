@@ -16,7 +16,7 @@ from typing import (
 from pydoctor import epydoc2stan, model, extensions
 from pydoctor.astutils import (is_none_literal, is_typing_annotation, is_using_annotations, is_using_typing_final, node2dottedname, node2fullname, 
                                is__name__equals__main__, unstring_annotation, upgrade_annotation, iterassign, extract_docstring_linenum, infer_type, get_parents,
-                               get_docstring_node, get_assign_docstring_node, validate_inline_docstring_node, unparse, NodeVisitor, Parentage, Str)
+                               get_docstring_node, get_assign_docstring_node, has_comment_line, unparse, NodeVisitor, Parentage, Str)
 from pydoctor.tokenutils import extract_doc_comment_before, extract_doc_comment_after
 
 
@@ -857,26 +857,7 @@ class ModuleVistor(NodeVisitor):
                                 extract_doc_comment_after(node, lines)]:
                 if doc_comment:
                     lineno, doc = doc_comment
-                    attr._setDocstringValue(doc, lineno)
-
-    def _handleDocComment(self, node: ast.Assign | ast.AnnAssign, target: ast.expr) -> None:
-        # Process the doc-comments, this is very similiar to the inline docstrings.
-        try:
-            parent, name = self._contextualizeTarget(target)
-        except ValueError:
-            return
-        
-        # fetch the target of the doc-comment
-        if (attr:=parent.contents.get(name)) is None:
-            return
-        
-        lines = self.builder.lines_collection[self.module]
-        if lines:
-            for doc_comment in [extract_doc_comment_before(node, lines), 
-                                extract_doc_comment_after(node, lines)]:
-                if doc_comment:
-                    attr._setDocstringValue(doc_comment[1], doc_comment[0])
-        
+                    attr._setDocstringValue(doc, lineno)        
 
     def visit_Assign(self, node: ast.Assign) -> None:
         lineno = node.lineno
@@ -965,7 +946,7 @@ class ModuleVistor(NodeVisitor):
         docstring_node = get_assign_docstring_node(assign)
 
         # Validate the docstring, it's not valid if there is a comment in between...
-        if docstring_node and validate_inline_docstring_node(assign, 
+        if docstring_node and not has_comment_line(assign, 
                 docstring_node, self.module.parsed_ast.lines
                        # fetch the target of the inline docstring
                 ) and (attr:=parent.contents.get(name)):

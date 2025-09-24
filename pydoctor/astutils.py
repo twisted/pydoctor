@@ -215,7 +215,7 @@ def get_assign_docstring_node(assign:ast.Assign | ast.AnnAssign) -> Str | None:
     to navigate upward in the tree and determine this node direct siblings.
 
     @note: This does not validate whether there is a comment in between the assigment and the 
-        docstring node since the function operates on AST solely. Use L{validate_inline_docstring_node} for that.
+        docstring node since the function operates on AST solely. Use L{has_comment_line} for that.
     """
     # this call raises an ValueError if we're doing something nasty with the ast... please report
     parent_node, fieldname = get_node_block(assign)
@@ -744,11 +744,9 @@ del _op_data, _index, _precedence_data, _symbol_data, _deprecated
 # This was part of the astor library for Python AST manipulation.
 
 
-def validate_inline_docstring_node(node: ast.Assign | ast.AnnAssign, 
-                                   docstring: Str, 
-                                   lines: Sequence[str]) -> bool:
+def has_comment_line(node1: ast.AST, node2: ast.AST, lines: Sequence[str]) -> bool:
     """
-    Returns False if the docstring node associated with the given assignment node is not valid. 
+    Returns True if the is a comment line in between node1 and node2. 
     """
     start, stop = node.lineno, docstring.lineno - 1
     return not any(lines[i].lstrip().startswith('#') for i in range(start, stop))
