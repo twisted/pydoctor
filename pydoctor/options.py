@@ -331,6 +331,10 @@ def _parse_intersphinx(s: str, option:str='--interspinx') -> IntersphinxSource:
     IntersphinxSource(source='https://example.com/api/objects.inv', base_url='https://two/')
     >>> _parse_intersphinx('c:/one::https://two/')
     IntersphinxSource(source='c:/one', base_url='https://two/')
+    >>> _parse_intersphinx('https://example.com/api/objects.inv  ::  https://two/')
+    IntersphinxSource(source='https://example.com/api/objects.inv', base_url='https://two/')
+    >>> _parse_intersphinx('\tc:/one\t::\thttps://two/    ')
+    IntersphinxSource(source='c:/one', base_url='https://two/')
     >>> _parse_intersphinx('https://example.com/api/objects.inv')
     IntersphinxSource(source='https://example.com/api/objects.inv', base_url=None)
     >>> _parse_intersphinx('c:/one')
@@ -351,7 +355,27 @@ def _parse_intersphinx(s: str, option:str='--interspinx') -> IntersphinxSource:
     Traceback (most recent call last):
     ...
     ValueError: malformed --interspinx option
+    >>> _parse_intersphinx('three ::   c:/one \t :: https://two/')
+    Traceback (most recent call last):
+    ...
+    ValueError: malformed --interspinx option
+    >>> _parse_intersphinx('::\tone')
+    Traceback (most recent call last):
+    ...
+    ValueError: malformed --interspinx option
+    >>> _parse_intersphinx('one    ::')
+    Traceback (most recent call last):
+    ...
+    ValueError: malformed --interspinx option
+    >>> _parse_intersphinx('::  ::')
+    Traceback (most recent call last):
+    ...
+    ValueError: malformed --interspinx option
     >>> _parse_intersphinx('source::localhost')
+    Traceback (most recent call last):
+    ...
+    ValueError: malformed --interspinx option, providing a scheme is required for the base URL
+    >>> _parse_intersphinx('source ::    localhost')
     Traceback (most recent call last):
     ...
     ValueError: malformed --interspinx option, providing a scheme is required for the base URL
@@ -359,7 +383,10 @@ def _parse_intersphinx(s: str, option:str='--interspinx') -> IntersphinxSource:
     sep = '::'
     if sep in s:
         split = s.split(sep)
-        if len(split) != 2 or any(not v for v in split):
+        if len(split) != 2:
+            raise ValueError(f'malformed {option} option')
+        split = [p.strip() for p in split]
+        if any(not v for v in split):
             raise ValueError(f'malformed {option} option')
         source, base_url = split
         if not urlparse(base_url).scheme:
