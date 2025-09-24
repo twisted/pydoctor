@@ -3,7 +3,6 @@ The command-line parsing.
 """
 from __future__ import annotations
 
-import os
 import re
 from typing import NamedTuple, Sequence, List, Optional, Type, Tuple, TYPE_CHECKING
 import sys
