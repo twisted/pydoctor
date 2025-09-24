@@ -17,7 +17,7 @@ import pytest
 
 from twisted.web.template import Tag
 
-from pydoctor.options import IntersphinxFile, Options
+from pydoctor.options import IntersphinxSource, Options
 from pydoctor import model, stanutils, extensions
 from pydoctor.templatewriter import pages
 from pydoctor.utils import parse_privacy_tuple
@@ -155,8 +155,8 @@ def test_fetchIntersphinxInventories_content() -> None:
     """
     options = Options.defaults()
     options.intersphinx = [
-        'http://sphinx/objects.inv',
-        'file:///twisted/index.inv',
+        IntersphinxSource('http://sphinx/objects.inv', None),
+        IntersphinxSource('file:///twisted/index.inv', None),
         ]
     url_content = {
         'http://sphinx/objects.inv': zlib.compress(
@@ -204,7 +204,7 @@ def test_fetchIntersphinxInventories_content_file_with_base_url(tmp_path: Path) 
         pass
 
     options = Options.defaults()
-    options.intersphinx_file = [IntersphinxFile(path, "http://sphinx")]
+    options.intersphinx_file = [IntersphinxSource(str(path), "http://sphinx")]
 
     sut = model.System(options=options)
     log = []
@@ -240,7 +240,7 @@ def test_fetchIntersphinxInventories_content_file(tmp_path: Path) -> None:
         pass
         
     options = Options.defaults()
-    options.intersphinx_file = [IntersphinxFile(path, None)]
+    options.intersphinx_file = [IntersphinxSource(str(path), None)]
 
     sut = model.System(options=options)
     log = []

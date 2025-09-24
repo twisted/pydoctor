@@ -1728,8 +1728,8 @@ class System:
         """
         Download and parse intersphinx inventories based on configuration.
         """
-        for url in self.options.intersphinx:
-            self.intersphinx.update(cache, url)
+        for url, base_url in self.options.intersphinx:
+            self.intersphinx.update(cache, url, base_url)
         
         for path, base_url in self.options.intersphinx_file:
             self.intersphinx.update_file(path, base_url)

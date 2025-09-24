@@ -3,13 +3,13 @@ The command-line parsing.
 """
 from __future__ import annotations
 
-import os
 import re
 from typing import NamedTuple, Sequence, List, Optional, Type, Tuple, TYPE_CHECKING
 import sys
 import functools
 from pathlib import Path
 from argparse import SUPPRESS, Namespace
+from urllib.parse import urlparse
 
 from configargparse import ArgumentParser
 import attr
@@ -316,50 +316,88 @@ def _convert_htmlbaseurl(url:str | None) -> str | None:
     if url and not url.endswith('/'): 
         url += '/'
     return url
-class IntersphinxFile(NamedTuple):
-    filepath: str | os.PathLike[str]
+class IntersphinxSource(NamedTuple):
+    source: str
     base_url: str | None
-def _parse_intersphinx_file(s: str) -> IntersphinxFile:
+    def __str__(self) -> str:
+        return self.source
+def _parse_intersphinx(s: str, option:str='--interspinx') -> IntersphinxSource:
     '''
     Function returning a tuple (inventory file, base_url) for the 
     intersphinx-file commandline argument. Used double commas because the simple comma
     might conflict with windows drive names.
 
-    >>> _parse_intersphinx_file('c:/one::https://two/')
-    IntersphinxFile(filepath='c:/one', base_url='https://two/')
-    >>> _parse_intersphinx_file('c:/one')
-    IntersphinxFile(filepath='c:/one', base_url=None)
-    >>> _parse_intersphinx_file('three::c:/one::https://two/')
+    >>> _parse_intersphinx('https://example.com/api/objects.inv::https://two/')
+    IntersphinxSource(source='https://example.com/api/objects.inv', base_url='https://two/')
+    >>> _parse_intersphinx('c:/one::https://two/')
+    IntersphinxSource(source='c:/one', base_url='https://two/')
+    >>> _parse_intersphinx('https://example.com/api/objects.inv  ::  https://two/')
+    IntersphinxSource(source='https://example.com/api/objects.inv', base_url='https://two/')
+    >>> _parse_intersphinx('\tc:/one\t::\thttps://two/    ')
+    IntersphinxSource(source='c:/one', base_url='https://two/')
+    >>> _parse_intersphinx('https://example.com/api/objects.inv')
+    IntersphinxSource(source='https://example.com/api/objects.inv', base_url=None)
+    >>> _parse_intersphinx('c:/one')
+    IntersphinxSource(source='c:/one', base_url=None)
+    >>> _parse_intersphinx('three::c:/one::https://two/')
     Traceback (most recent call last):
     ...
-    ValueError: delimiter '::' when used, must be present only once per --interspinx-file option
-    >>> _parse_intersphinx_file('::one')
+    ValueError: malformed --interspinx option
+    >>> _parse_intersphinx('::one')
     Traceback (most recent call last):
     ...
-    ValueError: delimiter '::' must be present in between two non-empty strings
-    >>> _parse_intersphinx_file('one::')
+    ValueError: malformed --interspinx option
+    >>> _parse_intersphinx('one::')
     Traceback (most recent call last):
     ...
-    ValueError: delimiter '::' must be present in between two non-empty strings
-    >>> _parse_intersphinx_file('::::')
+    ValueError: malformed --interspinx option
+    >>> _parse_intersphinx('::::')
     Traceback (most recent call last):
     ...
-    ValueError: delimiter '::' when used, must be present only once per --interspinx-file option
+    ValueError: malformed --interspinx option
+    >>> _parse_intersphinx('three ::   c:/one \t :: https://two/')
+    Traceback (most recent call last):
+    ...
+    ValueError: malformed --interspinx option
+    >>> _parse_intersphinx('::\tone')
+    Traceback (most recent call last):
+    ...
+    ValueError: malformed --interspinx option
+    >>> _parse_intersphinx('one    ::')
+    Traceback (most recent call last):
+    ...
+    ValueError: malformed --interspinx option
+    >>> _parse_intersphinx('::  ::')
+    Traceback (most recent call last):
+    ...
+    ValueError: malformed --interspinx option
+    >>> _parse_intersphinx('source::localhost')
+    Traceback (most recent call last):
+    ...
+    ValueError: malformed --interspinx option, providing a scheme is required for the base URL
+    >>> _parse_intersphinx('source ::    localhost')
+    Traceback (most recent call last):
+    ...
+    ValueError: malformed --interspinx option, providing a scheme is required for the base URL
     '''
     sep = '::'
     if sep in s:
-        try:
-            filename, base_url = s.split(sep)
-        except ValueError:
-            raise ValueError(f'delimiter {sep!r} when used, must be present only once per --interspinx-file option')
-        if any(not v for v in [filename, base_url]):
-            raise ValueError(f'delimiter {sep!r} must be present in between two non-empty strings')
-        return IntersphinxFile(filename, base_url)
+        split = s.split(sep)
+        if len(split) != 2:
+            raise ValueError(f'malformed {option} option')
+        split = [p.strip() for p in split]
+        if any(not v for v in split):
+            raise ValueError(f'malformed {option} option')
+        source, base_url = split
+        if not urlparse(base_url).scheme:
+            raise ValueError(f'malformed {option} option, providing '
+                             'a scheme is required for the base URL')
+        return IntersphinxSource(source, base_url)
     else:
-        return IntersphinxFile(s, None)
-def _convert_intersphinx_file(files: list[str]) -> list[IntersphinxFile]:
+        return IntersphinxSource(s, None)
+def _convert_intersphinx(files: list[str], option:str) -> list[IntersphinxSource]:
     try:
-        return list(map(_parse_intersphinx_file, files))
+        return list(map(functools.partial(_parse_intersphinx, option=option), files))
     except ValueError as e:
         error(str(e))
 
@@ -432,12 +470,12 @@ class Options:
     verbosity:              int                                     = attr.ib()
     quietness:              int                                     = attr.ib()
     introspect_c_modules:   bool                                    = attr.ib()
-    intersphinx:            List[str]                               = attr.ib()
+    intersphinx:            List[IntersphinxSource]                 = attr.ib(converter=functools.partial(_convert_intersphinx, option='--intersphinx')) # type:ignore[misc]
     enable_intersphinx_cache:   bool                                = attr.ib()
     intersphinx_cache_path:     str                                 = attr.ib()
     clear_intersphinx_cache:    bool                                = attr.ib()
     intersphinx_cache_max_age:  str                                 = attr.ib()
-    intersphinx_file:       list[IntersphinxFile]                   = attr.ib(converter=_convert_intersphinx_file)
+    intersphinx_file:       list[IntersphinxSource]                 = attr.ib(converter=functools.partial(_convert_intersphinx, option='--intersphinx-file')) # type:ignore[misc]
     pyvalreprlinelen:       int                                     = attr.ib()
     pyvalreprmaxlines:      int                                     = attr.ib()
     sidebarexpanddepth:     int                                     = attr.ib()
