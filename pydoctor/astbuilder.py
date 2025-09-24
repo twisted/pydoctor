@@ -857,7 +857,7 @@ class ModuleVistor(NodeVisitor):
                                 extract_doc_comment_after(node, lines)]:
                 if doc_comment:
                     lineno, doc = doc_comment
-                    attr._setDocstringValue(doc, lineno)        
+                    attr._setDocstringValue(doc, lineno)
 
     def visit_Assign(self, node: ast.Assign) -> None:
         lineno = node.lineno
@@ -899,7 +899,7 @@ class ModuleVistor(NodeVisitor):
         except IgnoreAssignment:
             return
         else:
-          self._handleAssignmentDoc(node, node.target)
+            self._handleAssignmentDoc(node, node.target)
 
 
     def _getClassFromMethodContext(self) -> Optional[model.Class]:
@@ -943,14 +943,14 @@ class ModuleVistor(NodeVisitor):
         except ValueError:
             return
         
-        docstring_node = get_assign_docstring_node(assign)
-
+        if not (docstring_node:=get_assign_docstring_node(assign)):
+            return
         # Validate the docstring, it's not valid if there is a comment in between...
-        if docstring_node and not has_comment_line(assign, 
-                docstring_node, self.module.parsed_ast.lines
-                       # fetch the target of the inline docstring
-                ) and (attr:=parent.contents.get(name)):
-            attr.setDocstring(docstring_node)
+        if has_comment_line(assign, docstring_node, self.module.parsed_ast.lines):
+            return
+        # Fetch the target of the inline docstring
+        if attr:=parent.contents.get(name):
+            attr.setDocstring(docstring_node)            
 
     
     def visit_AugAssign(self, node:ast.AugAssign) -> None:
