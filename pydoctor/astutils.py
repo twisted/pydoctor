@@ -748,7 +748,7 @@ def has_comment_line(node1: ast.AST, node2: ast.AST, lines: Sequence[str]) -> bo
     """
     Returns True if the is a comment line in between node1 and node2. 
     """
-    start, stop = node.lineno, docstring.lineno - 1
+    start, stop = node1.lineno, node2.lineno - 1
     return not any(lines[i].lstrip().startswith('#') for i in range(start, stop))
 
 class _OldSchoolNamespacePackageVis(ast.NodeVisitor):
