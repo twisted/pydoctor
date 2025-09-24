@@ -3281,46 +3281,6 @@ def test_import_all_inside_else_branch_is_processed(systemcls: Type[model.System
     assert main.expandName('Callable') == 'typing.Callable'
     assert main.expandName('TypeAlias') == 'typing_extensions.TypeAlias'
 
-
-@systemcls_param
-def test_doc_comment_multiple_assigments(systemcls: Type[model.System], capsys: CapSys) -> None:
-    # TODO: this currently does not support nested tuple assignments.
-    src = '''
-    class C:
-        def __init__(self):
-            self.x, x = 1, 1 #: x docs
-            self.y = x = 1 #: y docs
-    x,y = 1,1 #: x and y docs
-    v = w = 1 #: v and w docs
-    '''
-    mod =  fromText(src, systemcls=systemcls)
-    assert not capsys.readouterr().out
-    assert mod.contents['x'].docstring == 'x and y docs'
-    assert mod.contents['y'].docstring == 'x and y docs'
-    assert mod.contents['v'].docstring == 'v and w docs'
-    assert mod.contents['w'].docstring == 'v and w docs'
-    assert mod.contents['C'].contents['x'].docstring == 'x docs'
-    assert mod.contents['C'].contents['y'].docstring == 'y docs'
-
-@systemcls_param
-def test_other_encoding(systemcls: Type[model.System], capsys: CapSys) -> None:
-    # Test for issue https://github.com/twisted/pydoctor/issues/805
-    # We're missing support for other kind of encodings.
-    processPackage('coding_not_utf8', 
-        systemcls=lambda: systemcls(model.Options.from_args(['-q'])))
-    assert not capsys.readouterr().out
-    
-@systemcls_param
-def test_alias_resets_attribute_state(systemcls: Type[model.System], capsys:CapSys) -> None:
-    # from https://github.com/lxml/lxml/blob/a56babb0013dc46baf480f49ebd5cc1ab65bc418/src/lxml/html/builder.py
-    src = '''
-    E = True #: Legit docstring
-    A = E.a  #: trash1
-    ABBR = E.abbr  #: trash2
-    '''
-    fromText(src, systemcls=systemcls)
-    assert not capsys.readouterr().out
-    
 @systemcls_param
 def test_inline_docstring_multiple_assigments(systemcls: Type[model.System], capsys: CapSys) -> None:
     # TODO: this currently does not support nested tuple assignments.
