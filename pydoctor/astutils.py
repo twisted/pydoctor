@@ -744,9 +744,22 @@ del _op_data, _index, _precedence_data, _symbol_data, _deprecated
 # This was part of the astor library for Python AST manipulation.
 
 
-def has_comment_line(node1: ast.AST, node2: ast.AST, lines: Sequence[str]) -> bool:
-    """
+def has_comment_line(node1: ast.expr | ast.stmt, node2: ast.expr | ast.stmt, 
+                     lines: Sequence[str]) -> bool:
+    r"""
     Returns True if the is a comment line in between node1 and node2. 
+
+    >>> from pydoctor.model import ParsedAstModule
+    >>> from pydoctor.astbuilder import SyntaxTreeParser
+    >>> src = 'var = 1\n# this is a comment\nfoo = 2\n\n\nplum = 3'
+    >>> parsed = SyntaxTreeParser().parseString(src, None)
+    >>> has_comment_line(parsed.root.body[0], parsed.root.body[1], parsed.lines)
+    True
+    >>> has_comment_line(parsed.root.body[1], parsed.root.body[2], parsed.lines)
+    False
+
+    @raise IndexError: If the line numbers coming from C{node1} or C{node2}
+        are not present in the given C{lines}.
     """
     start, stop = node1.lineno, node2.lineno - 1
     return any(lines[i].lstrip().startswith('#') for i in range(start, stop))

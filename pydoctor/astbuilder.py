@@ -946,7 +946,8 @@ class ModuleVistor(NodeVisitor):
         docstring_node = get_assign_docstring_node(assign)
         if docstring_node:
             # validate the docstring, it's not valid if there is a comment in between...
-            if has_comment_line(assign, docstring_node, self.module.parsed_ast.lines):
+            if self.module.parsed_ast and (lines:=self.module.parsed_ast.lines
+                ) and has_comment_line(assign, docstring_node, lines):
                 return
             # fetch the target of the inline docstring
             if attr:=parent.contents.get(name):
