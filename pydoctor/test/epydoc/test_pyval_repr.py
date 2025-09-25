@@ -5,6 +5,7 @@ from textwrap import dedent
 from typing import Any, Union
 import xml.sax
 
+import docutils
 import pytest
 
 from pydoctor.epydoc.markup._pyval_repr import PyvalColorizer, colorize_inline_pyval
@@ -1572,16 +1573,17 @@ def test_expressions_parens(subtests:Any) -> None:
 
 def test_is_annotation_flag() -> None:
     # the is_annotation attribute is added to all links when is_annotation=True is passed.
-    assert color(extract_expr(ast.parse('list[dict] + set()')), is_annotation=True) == '''<document source="code">
-    <obj_reference is_annotation="True" refuri="list">
+    docutils_0_22 = docutils.__version_info__ >= (0, 22)
+    assert color(extract_expr(ast.parse('list[dict] + set()')), is_annotation=True) == f'''<document source="code">
+    <obj_reference is_annotation="{1 if docutils_0_22 else True}" refuri="list">
         list
     [
     <wbr>
-    <obj_reference is_annotation="True" refuri="dict">
+    <obj_reference is_annotation="{1 if docutils_0_22 else True}" refuri="dict">
         dict
     ]
      + 
-    <obj_reference is_annotation="True" refuri="set">
+    <obj_reference is_annotation="{1 if docutils_0_22 else True}" refuri="set">
         set
     (
     )
