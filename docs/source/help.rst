@@ -39,6 +39,7 @@ Declaring section ``[pydoctor]`` is required.
     intersphinx = 
         https://docs.python.org/3/objects.inv
         https://docs.twisted.org/en/stable/api/objects.inv
+    intersphinx-file =
         /tmp/project/docs/objects.inv :: https://protected.docs/project/api
         
     docformat = restructuredtext
@@ -58,8 +59,8 @@ Declaring section ``[pydoctor]`` is required.
     [tool.pydoctor]
     add-package = ["src/mylib"]
     intersphinx = ["https://docs.python.org/3/objects.inv", 
-                   "https://docs.twisted.org/en/stable/api/objects.inv", 
-                   "/tmp/project/docs/objects.inv :: https://protected.docs/project/api"]
+                   "https://docs.twisted.org/en/stable/api/objects.inv"]
+    intersphinx-file = ["/tmp/project/docs/objects.inv :: https://protected.docs/project/api"]
     docformat = "restructuredtext"
     verbose = 1
     warnings-as-errors = true
@@ -81,6 +82,7 @@ Note that the config file fragment above is also valid INI format and could be p
     intersphinx = 
         https://docs.python.org/3/objects.inv
         https://docs.twisted.org/en/stable/api/objects.inv
+    intersphinx-file =
         /tmp/project/docs/objects.inv :: https://protected.docs/project/api
     docformat = restructuredtext
     verbose = 1
