@@ -95,7 +95,7 @@ pydoctor 25.10.0
 * Fix a bug that made impossible to highlight some attributes or functions because 
   their name clashed with other HTML IDs. Custom templates using HTML ID `main` should
   now use `<main>` tag instead. Custom templates using HTML ID `showPrivate`, `summaryTree`, 
-  `childList`, `splitTables` and `collapseSideBar` should use hyphen-separated ID instead like `show-private` instead.
+  `childList`, `splitTables` and `collapseSideBar` should use hyphen-separated ID instead (like `show-private`).
 
 
 pydoctor 25.4.0
