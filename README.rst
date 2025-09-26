@@ -70,8 +70,8 @@ You can select a different format using the ``--docformat`` option or the ``__do
 What's New?
 ~~~~~~~~~~~
 
-in development
-^^^^^^^^^^^^^^
+pydoctor 25.10.0
+^^^^^^^^^^^^^^^^
 
 * Add support for doc-comments as found in Sphinx. Use the special comment formatting ``#:`` to start the comment instead of just ``#``.
   Comments need to be either on a line of their own before the definition, or immediately after the assignment on the same line. 
