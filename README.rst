@@ -93,7 +93,10 @@ pydoctor 25.10.0
   instead of the one specified in the parent package `__docformat__`.
 * Prefer newer "tomli" package over "toml".
 * Fix a bug that made impossible to highlight some attributes or functions because 
-  their name clashed with other HTML IDs.
+  their name clashed with other HTML IDs. Custom templates using HTML ID `main` should
+  now use `<main>` tag instead. Custom templates using HTML ID `showPrivate`, `summaryTree`, 
+  `childList`, `splitTables` and `collapseSideBar` should use hyphen-separated ID instead like `show-private` instead.
+
 
 pydoctor 25.4.0
 ^^^^^^^^^^^^^^^
