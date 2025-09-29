@@ -73,6 +73,14 @@ What's New?
 in development
 ^^^^^^^^^^^^^^
 
+pydoctor 25.10.1
+^^^^^^^^^^^^^^^^
+
+* Fix the tag name of the release. 
+
+pydoctor 25.10.0
+^^^^^^^^^^^^^^^^
+
 * Add support for doc-comments as found in Sphinx. Use the special comment formatting ``#:`` to start the comment instead of just ``#``.
   Comments need to be either on a line of their own before the definition, or immediately after the assignment on the same line. 
 * Fix a bug with inline docstrings, if there is comment in between an assignment and literal string, 
@@ -93,7 +101,10 @@ in development
   instead of the one specified in the parent package `__docformat__`.
 * Prefer newer "tomli" package over "toml".
 * Fix a bug that made impossible to highlight some attributes or functions because 
-  their name clashed with other HTML IDs.
+  their name clashed with other HTML IDs. Custom templates using HTML ID `main` should
+  now use `<main>` tag instead. Custom templates using HTML ID `showPrivate`, `summaryTree`, 
+  `childList`, `splitTables` and `collapseSideBar` should use hyphen-separated ID instead (like `show-private`).
+
 
 pydoctor 25.4.0
 ^^^^^^^^^^^^^^^
