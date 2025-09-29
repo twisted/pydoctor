@@ -70,6 +70,11 @@ You can select a different format using the ``--docformat`` option or the ``__do
 What's New?
 ~~~~~~~~~~~
 
+pydoctor 25.10.1
+^^^^^^^^^^^^^^^^
+
+* Fix the tag name of the release. 
+
 pydoctor 25.10.0
 ^^^^^^^^^^^^^^^^
 
