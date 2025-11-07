@@ -73,6 +73,8 @@ What's New?
 in development
 ^^^^^^^^^^^^^^
 
+* Hide the sidebar title when all items under it are private.
+
 pydoctor 25.10.1
 ^^^^^^^^^^^^^^^^
 
