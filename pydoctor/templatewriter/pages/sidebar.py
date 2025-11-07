@@ -3,7 +3,7 @@ Classes for the sidebar generation.
 """
 from __future__ import annotations
 
-from typing import Any, Iterator, List, Optional, Sequence, Tuple, Type, Union
+from typing import Any, Iterator, List, Optional, Sequence, Tuple, Type, Union, TYPE_CHECKING
 from twisted.web.iweb import IRequest, ITemplateLoader
 from twisted.web.template import TagLoader, renderer, Tag, Element, tags
 
@@ -12,6 +12,9 @@ from pydoctor.model import Attribute, Class, Function, Documentable, Module
 from pydoctor.templatewriter import util, TemplateLookup, TemplateElement
 
 from pydoctor.napoleon.iterators import peek_iter
+
+if TYPE_CHECKING:
+    from typing import Literal
 
 class SideBar(TemplateElement):
     """
