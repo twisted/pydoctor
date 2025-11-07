@@ -108,9 +108,10 @@ def test_sidebar_contents_all_private(theme: str) -> None:
     mod = fromText(src, modname='mod')
     class_html = getHTMLOf(mod.contents['C'], theme)
     assert 'class="childrenKindTitle private"' in class_html
+    assert 'class="childrenKindTitle"' in class_html
 
     class2_html = getHTMLOf(mod.contents['C'].contents['D'], theme)
-    assert 'class="childrenKindTitle"' in class_html
+    assert 'class="childrenKindTitle"' in class2_html
 
 @theme_param
 def test_simple(theme: str) -> None:
