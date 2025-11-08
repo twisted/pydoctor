@@ -4,6 +4,7 @@ from __future__ import annotations
 from pathlib import Path
 import sys
 import functools
+import contextvars
 from typing import Any, Type, TypeVar, Tuple, Union, cast, TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -109,7 +110,7 @@ class PydoctorWarning(UserWarning):
     Base class for all warnings emitted by pydoctor thru the L{warnings} module.
     """
 
-_warned = False
+_warned = contextvars.ContextVar('warned', default=False)
 
 def warn(msg: str) -> None:
     """
@@ -117,11 +118,10 @@ def warn(msg: str) -> None:
     """
     import warnings
     warnings.warn(msg, category=PydoctorWarning)
-    global _warned
-    _warned = True
+    _warned.set(True)
 
 def warned() -> bool:
     """
     Return whether any pydoctor warning has been emitted.
     """
-    return _warned
+    return _warned.get()
