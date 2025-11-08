@@ -103,3 +103,25 @@ def partialclass(cls: Type[Any], *args: Any, **kwds: Any) -> Type[Any]:
         __class__ = cls
     assert isinstance(NewPartialCls, type)
     return NewPartialCls
+
+class PydoctorWarning(UserWarning):
+    """
+    Base class for all warnings emitted by pydoctor thru the L{warnings} module.
+    """
+
+_warned = False
+
+def warn(msg: str) -> None:
+    """
+    Emit a pydoctor warning message.
+    """
+    import warnings
+    warnings.warn(msg, category=PydoctorWarning)
+    global _warned
+    _warned = True
+
+def warned() -> bool:
+    """
+    Return whether any pydoctor warning has been emitted.
+    """
+    return _warned

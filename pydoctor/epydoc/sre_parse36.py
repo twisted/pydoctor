@@ -796,14 +796,8 @@ def _parse(source, state, verbose, nested, first=False):
                     flags = _parse_flags(source, state, char)
                     if flags is None:  # global flags
                         if not first or subpattern:
-                            import warnings
-                            warnings.warn(
-                                'Flags not at the start of the expression %r%s' % (
-                                    source.string[:20],  # truncate long regexes
-                                    ' (truncated)' if len(source.string) > 20 else '',
-                                ),
-                                DeprecationWarning, stacklevel=nested + 6
-                            )
+                            # changed: we don't trigger deprecated warning here
+                            pass
                         if (state.flags & SRE_FLAG_VERBOSE) and not verbose:
                             raise Verbose
                         continue
@@ -1008,9 +1002,8 @@ def parse_template(source, pattern):
                     this = chr(ESCAPES[this][1])
                 except KeyError:
                     if c in ASCIILETTERS:
-                        import warnings
-                        warnings.warn('bad escape %s' % this,
-                                      DeprecationWarning, stacklevel=4)
+                        # changed: we don't trigger deprecated warning here
+                        pass
                 lappend(this)
         else:
             lappend(this)

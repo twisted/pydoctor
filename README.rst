@@ -73,6 +73,8 @@ What's New?
 in development
 ^^^^^^^^^^^^^^
 
+* When option -W is used, all warnings issued with the warnings module now makes pydoctor exit with code 3.
+
 pydoctor 25.10.1
 ^^^^^^^^^^^^^^^^
 

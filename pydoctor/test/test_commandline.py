@@ -3,6 +3,7 @@ from io import StringIO
 from pathlib import Path
 import re
 import sys
+import warnings
 
 import pytest
 
@@ -343,3 +344,71 @@ def test_html_ids_dont_look_like_python_names(tmp_path: Path) -> None:
             assert re.findall(r'id="[a-z]+"', text, re.IGNORECASE) == ['id="basic"'], text
         else:
             assert re.findall(r'id="[a-z]+"', text, re.IGNORECASE) == [], text
+
+def test_no_such_option_exits_code0(tmp_path: Path) -> None:
+    """
+    When no such option is used in the config file it just ignores it and
+    continues normally, whith a warning message printed to stderr.
+    """
+    
+    tmp_path.mkdir(parents=True, exist_ok=True)
+    conf_file = (tmp_path / "pydoctor_temp_conf")
+    with conf_file.open('w') as f:
+        f.write("[pydoctor]\nno-such-option = somevalue\n")
+
+    with warnings.catch_warnings(record=True) as w:
+        exit_code = driver.main(args=[
+            '--config', str(conf_file),
+            '--html-output', str(tmp_path / 'output'),
+            'pydoctor/test/testpackages/basic/'
+            ])
+    
+    assert exit_code == 0
+    assert [str(warn.message) for warn in w] == ["No such config option: 'no-such-option'"]
+
+def test_warnings_as_errors_configured_from_config_file_no_such_option_exits_code3(tmp_path: Path) -> None:
+    """
+    When `warnings-as-errors = true` is used it returns 3 as exit code when there are warnings.
+    This is the test for the sh ort form of the CLI option.
+
+    We demonstrate this using a non existing configuration keyword
+    """
+    
+    tmp_path.mkdir(parents=True, exist_ok=True)
+    conf_file = (tmp_path / "pydoctor_temp_conf")
+    with conf_file.open('w') as f:
+        f.write("[pydoctor]\nno-such-option = somevalue\nwarnings-as-errors = true\n")
+
+    with warnings.catch_warnings(record=True) as w:
+        exit_code = driver.main(args=[
+            '--config', str(conf_file),
+            '--html-output', str(tmp_path / 'output'),
+            'pydoctor/test/testpackages/basic/'
+            ])
+
+    assert exit_code == 3
+    assert [str(warn.message) for warn in w] == ["No such config option: 'no-such-option'"]
+
+def test_warnings_as_errors_configured_from_cli_option_no_such_option_exits_code3(tmp_path: Path) -> None:
+    """
+    When `-W` is used it returns 3 as exit code when there are warnings.
+    This is the test for the sh ort form of the CLI option.
+
+    We demonstrate this using a non existing configuration keyword
+    """
+    
+    tmp_path.mkdir(parents=True, exist_ok=True)
+    conf_file = (tmp_path / "pydoctor_temp_conf")
+    with conf_file.open('w') as f:
+        f.write("[pydoctor]\nno-such-option = somevalue\n")
+
+    with warnings.catch_warnings(record=True) as w:
+        exit_code = driver.main(args=[
+            '-W',
+            '--config', str(conf_file),
+            '--html-output', str(tmp_path / 'output'),
+            'pydoctor/test/testpackages/basic/'
+            ])
+
+    assert exit_code == 3
+    assert [str(warn.message) for warn in w] == ["No such config option: 'no-such-option'"]

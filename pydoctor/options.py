@@ -287,9 +287,9 @@ def _warn_deprecated_options(options: Namespace) -> None:
     Check the CLI options and warn on deprecated options.
     """
     if options.enable_intersphinx_cache_deprecated:
-        print("The --enable-intersphinx-cache option is deprecated; "
-              "the cache is now enabled by default.",
-              file=sys.stderr, flush=True)
+        from pydoctor.utils import warn
+        warn("The --enable-intersphinx-cache option is deprecated; "
+              "the cache is now enabled by default.")
 
 # CONVERTERS
 
