@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import re
 from typing import NamedTuple, Sequence, List, Optional, Type, Tuple, TYPE_CHECKING
-import sys
 import functools
 from pathlib import Path
 from argparse import SUPPRESS, Namespace
