@@ -10,7 +10,7 @@ from pydoctor.epydoc.markup import get_supported_docformats
 from pydoctor.stanutils import flatten, flatten_text
 from pydoctor.epydoc.markup.epytext import ParsedEpytextDocstring
 from pydoctor.sphinx import SphinxInventory
-from pydoctor.test.test_astbuilder import fromText, unwrap
+from pydoctor.test.test_astbuilder import fromText, unwrap, type2html
 from pydoctor.test import CapSys, NotFoundLinker
 from pydoctor.templatewriter.search import stem_identifier
 from pydoctor.templatewriter.pages import format_signature, format_class_signature
@@ -904,7 +904,8 @@ def test_missing_field_name(capsys: CapSys) -> None:
     ''', modname='test')
     epydoc2stan.format_docstring(mod)
     captured = capsys.readouterr().out
-    assert captured == "test:5: Missing field name in @ivar\n" \
+    assert captured == "test:5: Field 'ivar' has no meaning on module\n" \
+                       "test:5: Missing field name in @ivar\n" \
                        "test:6: Missing field name in @type\n"
 
 
@@ -920,6 +921,131 @@ def test_unknown_field_name(capsys: CapSys) -> None:
     captured = capsys.readouterr().out
     assert captured == "test:5: Unknown field 'zap'\n"
 
+
+def test_param_on_module_warns(capsys: CapSys) -> None:
+    mod = fromText('''
+    """
+    Module docstring.
+
+    @param x: This makes no sense on a module.
+    """
+    ''', modname='test')
+    stan = epydoc2stan.format_docstring(mod)
+    captured = capsys.readouterr().out
+    assert captured == (
+        "test:5: Field 'param' has no meaning on module\n"
+        "test:5: Documented parameter \"x\" does not exist\n"
+    )
+    html = flatten_text(stan)
+    assert 'This makes no sense on a module.' in html
+
+def test_return_on_module_warns(capsys: CapSys) -> None:
+    mod = fromText('''
+    """
+    Module docstring.
+
+    @return: Nothing to return here.
+    """
+    ''', modname='test')
+    stan = epydoc2stan.format_docstring(mod)
+    captured = capsys.readouterr().out
+    assert captured == "test:5: Field 'return' has no meaning on module\n"
+    html = flatten_text(stan)
+    assert 'Nothing to return here.' in html
+
+def test_rtype_on_module_warns(capsys: CapSys) -> None:
+    mod = fromText('''
+    """
+    Module docstring.
+
+    @rtype: int
+    """
+    ''', modname='test')
+    stan = epydoc2stan.format_docstring(mod)
+    captured = capsys.readouterr().out
+    assert captured == "test:5: Field 'rtype' has no meaning on module\n"
+    html = flatten_text(stan)
+    assert 'int' in html
+
+def test_yields_on_module_warns(capsys: CapSys) -> None:
+    mod = fromText('''
+    """
+    Module docstring.
+
+    @yields: each
+    """
+    ''', modname='test')
+    stan = epydoc2stan.format_docstring(mod)
+    captured = capsys.readouterr().out
+    assert captured == "test:5: Field 'yields' has no meaning on module\n"
+    html = flatten_text(stan)
+    assert 'each' in html
+
+def test_ytype_on_module_warns(capsys: CapSys) -> None:
+    mod = fromText('''
+    """
+    Module docstring.
+
+    @ytype: str
+    """
+    ''', modname='test')
+    stan = epydoc2stan.format_docstring(mod)
+    captured = capsys.readouterr().out
+    assert captured == "test:5: Field 'ytype' has no meaning on module\n"
+    html = flatten_text(stan)
+    assert 'str' in html
+
+def test_keyword_on_module_warns(capsys: CapSys) -> None:
+    mod = fromText('''
+    """
+    Module docstring.
+
+    @keyword k: something
+    """
+    ''', modname='test')
+    stan = epydoc2stan.format_docstring(mod)
+    captured = capsys.readouterr().out
+    assert captured == "test:5: Field 'keyword' has no meaning on module\n"
+    html = flatten_text(stan)
+    assert 'something' in html
+
+def test_ivar_in_module_docstring_creates_attribute(capsys: CapSys) -> None:
+    mod = fromText('''
+    """
+    Module docstring.
+
+    @ivar foo: module-level instance var
+    @type foo: string
+    """
+
+    foo = 1
+    ''', modname='test')
+    epydoc2stan.format_docstring(mod)
+    captured = capsys.readouterr().out
+    assert captured == "test:5: Field 'ivar' has no meaning on module\n"
+    a = mod.resolveName('foo')
+    assert isinstance(a, model.Attribute)
+    assert unwrap(a.parsed_docstring) == "module-level instance var"
+    assert type2html(a) == 'string'
+
+def test_cvar_in_module_docstring_creates_attribute(capsys: CapSys) -> None:
+    mod = fromText('''
+    """
+    Module docstring.
+
+    @cvar bar: module-level class var
+    @type bar: int
+    """
+
+    bar = 2
+    ''', modname='test')
+    stan = epydoc2stan.format_docstring(mod)
+    captured = capsys.readouterr().out
+    assert captured == "test:5: Field 'cvar' has no meaning on module\n"
+    a = mod.resolveName('bar')
+    assert isinstance(a, model.Attribute)
+    assert unwrap(a.parsed_docstring) == "module-level class var"
+    assert str(unwrap(a.parsed_type)) == 'int'
 
 def test_inline_field_type(capsys: CapSys) -> None:
     """The C{type} field in a variable docstring updates the C{parsed_type}
