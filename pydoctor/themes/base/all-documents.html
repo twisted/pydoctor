@@ -9,20 +9,24 @@
 
     <div class="container" t:render="subheader" />
     
-    <div class="container">
-      <h1>All Documents</h1>
+    <div class="container-fluid">
+      <main>
 
-       <ul>
-          <li t:render="documents">
-            <t:attr name="id"><t:slot name="id" /></t:attr>
-            <div class="fullName"><t:slot name="fullName" /></div>
-            <div class="url"><t:slot name="url" /></div>
-            <div class="type"><t:slot name="type" /></div>
-            <div class="kind"><t:slot name="kind" /></div>
-            <div class="privacy"><t:slot name="privacy" /></div>
-            <div class="summary"><t:slot name="summary" /></div>
-          </li>
-       </ul>
+        <h1>All Documents</h1>
+
+        <ul>
+            <li t:render="documents">
+              <t:attr name="id"><t:slot name="id" /></t:attr>
+              <div class="fullName"><t:slot name="fullName" /></div>
+              <div class="url"><t:slot name="url" /></div>
+              <div class="type"><t:slot name="type" /></div>
+              <div class="kind"><t:slot name="kind" /></div>
+              <div class="privacy"><t:slot name="privacy" /></div>
+              <div class="summary"><t:slot name="summary" /></div>
+            </li>
+        </ul>
+        
+      </main>
     </div>
   </body>
 </html>
