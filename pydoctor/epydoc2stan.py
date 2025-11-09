@@ -260,7 +260,7 @@ class ParamType:
     stan: Tag
     origin: FieldOrigin
 
- def _report_field_has_no_meaning_on_module(obj: model.Documentable, field: Field) -> None:
+def _report_field_has_no_meaning_on_module(obj: model.Documentable, field: Field) -> None:
     if isinstance(obj, model.Module):
         msg = f"Field '{field.tag}' has no meaning on module"
         field.report(msg)
