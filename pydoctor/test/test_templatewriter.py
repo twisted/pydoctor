@@ -657,8 +657,8 @@ def test_index_contains_infos(tmp_path: Path, theme: str) -> None:
         for i in infos:
             assert i in page, page
 
-
-def test_project_version_shown_in_footer(tmp_path: Path) -> None:
+@theme_param
+def test_project_version_shown_in_footer(tmp_path: Path, theme:str) -> None:
     """
     Verify that when a project name and project version are provided, the
     generated HTML footer shows the project version.
@@ -672,9 +672,9 @@ def test_project_version_shown_in_footer(tmp_path: Path) -> None:
     builder.addModule(testpackages / "basic")
     builder.buildModules()
 
-    w = writer.TemplateWriter(tmp_path, _template_lookup('base'))
+    w = writer.TemplateWriter(tmp_path, _template_lookup(theme))
     w.writeSummaryPages(system)
-    
+
     assert '1.2.3' in (tmp_path / 'index.html').read_text(encoding='utf-8')
 
 @pytest.mark.parametrize('_order', ["alphabetical", "source"])
