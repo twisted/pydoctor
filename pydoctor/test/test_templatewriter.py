@@ -677,6 +677,25 @@ def test_project_version_shown_in_footer(tmp_path: Path, theme:str) -> None:
 
     assert '1.2.3' in (tmp_path / 'index.html').read_text(encoding='utf-8')
 
+@theme_param
+def test_project_version_is_None_not_in_footer(tmp_path: Path, theme:str) -> None:
+    """
+    Verify that when a project name and project version are provided, the
+    generated HTML footer shows the project version.
+    """
+    system = model.System(model.Options.from_args([]))
+
+    builder = system.systemBuilder(system)
+    builder.addModule(testpackages / "allgames")
+    builder.addModule(testpackages / "basic")
+    builder.buildModules()
+
+    w = writer.TemplateWriter(tmp_path, _template_lookup(theme))
+    w.writeSummaryPages(system)
+
+    assert 'API Documentation</a> for my project,\n' in (
+        tmp_path / 'index.html').read_text(encoding='utf-8')
+
 @pytest.mark.parametrize('_order', ["alphabetical", "source"])
 def test_objects_order_mixed_modules_and_packages(_order:str) -> None:
     """
