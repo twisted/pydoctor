@@ -242,7 +242,7 @@ def format_field_list(singular: str, plural: str, fields: Sequence[Field]) -> li
     return [tags.table(class_='fieldTable')(*rows())]
 
 
-def _report_field_no_meaning_on_module(nonsensical_tag: str, 
+def _report_field_no_meaning(nonsensical_tag: str, 
                                        on_what: str='module',
                                        field: Optional[Field]=None) -> None:
     """Report that a given field has no meaning on a module.
@@ -326,7 +326,7 @@ class FieldHandler:
     def handle_return(self, field: Field) -> None:
         # Returns documented on a module don't make sense.
         if isinstance(self.obj, model.Module):
-            _report_field_no_meaning_on_module('return', 'module', field=field)
+            _report_field_no_meaning('return', 'module', field=field)
 
         self._report_unexpected_argument(field)
         if not self.return_desc:
@@ -337,7 +337,7 @@ class FieldHandler:
     def handle_yield(self, field: Field) -> None:
         # Yields documented on a module don't make sense.
         if isinstance(self.obj, model.Module):
-            _report_field_no_meaning_on_module('yields', 'module', field=field)
+            _report_field_no_meaning('yields', 'module', field=field)
 
         self._report_unexpected_argument(field)
         if not self.yields_desc:
@@ -348,7 +348,7 @@ class FieldHandler:
     def handle_returntype(self, field: Field) -> None:
         # Return type documented on a module don't make sense.
         if isinstance(self.obj, model.Module):
-            _report_field_no_meaning_on_module('rtype', 'module', field=field)
+            _report_field_no_meaning('rtype', 'module', field=field)
 
         self._report_unexpected_argument(field)
         if not self.return_desc:
@@ -360,7 +360,7 @@ class FieldHandler:
     def handle_yieldtype(self, field: Field) -> None:
         # Yield type documented on a module don't make sense.
         if isinstance(self.obj, model.Module):
-            _report_field_no_meaning_on_module('ytype', 'module', field=field)
+            _report_field_no_meaning('ytype', 'module', field=field)
 
         self._report_unexpected_argument(field)
         if not self.yields_desc:
@@ -447,7 +447,7 @@ class FieldHandler:
     def handle_param(self, field: Field) -> None:
         # Parameters documented on a module are meaningless.
         if isinstance(self.obj, model.Module):
-            _report_field_no_meaning_on_module('param', 'module', field=field)
+            _report_field_no_meaning('param', 'module', field=field)
 
         name = self._handle_param_name(field)
         if name is not None:
@@ -462,7 +462,7 @@ class FieldHandler:
     def handle_keyword(self, field: Field) -> None:
         # Keywords documented on a module are meaningless.
         if isinstance(self.obj, model.Module):
-            _report_field_no_meaning_on_module('keyword', 'module', field=field)
+            _report_field_no_meaning('keyword', 'module', field=field)
 
         name = self._handle_param_name(field)
         if name is not None:
@@ -962,7 +962,7 @@ def extract_fields(obj: model.CanContainImportsDocumentable) -> None:
         # ivar and cvar fields on modules don't make sense: warn but still
         # allow them to be processed so their documentation is rendered.
         if tag in ('ivar', 'cvar') and isinstance(obj, model.Module):
-            _report_field_no_meaning_on_module(tag, 'module', 
+            _report_field_no_meaning(tag, 'module', 
                     field=Field.from_epydoc(field, obj))
 
         if tag in ['ivar', 'cvar', 'var', 'type']:
