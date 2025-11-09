@@ -1039,7 +1039,7 @@ def test_cvar_in_module_docstring_creates_attribute(capsys: CapSys) -> None:
 
     bar = 2
     ''', modname='test')
-    stan = epydoc2stan.format_docstring(mod)
+    epydoc2stan.format_docstring(mod)
     captured = capsys.readouterr().out
     assert captured == "test:5: Field 'cvar' has no meaning on module\n"
     a = mod.resolveName('bar')
