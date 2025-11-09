@@ -411,10 +411,13 @@ class HelpPage(Page):
     Search
     ------
 
-    You can search for definitions of modules, packages, classes, functions, methods and attributes. 
+    You can search for definitions of modules, packages, classes, functions, methods and attributes. The shorcut Ctrl+K (or Cmd+K on Mac) focuses the search box.
     
     These items can be searched using part or all of the name and/or from their docstrings if "search in docstrings" is enabled. 
     Multiple search terms can be provided separated by whitespace. 
+                                   
+    When the search box is focused, you can use the up and down arrow keys to navigate the results,
+    and press enter to open the selected result.
 
     The search is powered by `lunrjs <https://lunrjs.com/>`_.
 

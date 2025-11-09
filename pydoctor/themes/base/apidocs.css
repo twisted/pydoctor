@@ -1151,6 +1151,10 @@ input[type="search"]::-webkit-search-results-decoration { display: none; }
     cursor: pointer;
 }
 
+.search-result-selected {
+    box-shadow: inset -5px 0px 0px 1px rgb(109 161 219 / 70%);
+}
+
 /* Constant values repr */
 pre.constant-value              { padding: .5em; }
 .rst-variable-linewrap          { color: #604000; font-weight: bold; }

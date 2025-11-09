@@ -390,7 +390,7 @@ input.oninput = (event) => {
     searchAsYouType();
   }, 0);
 };
-input.onkeyup = (event) => {
+input.onkedown = (event) => {
   if (event.key === 'Enter') {
     launchSearch(true);
   }
@@ -436,6 +436,7 @@ window.addEventListener("click", (event) => {
       // 2. Show the dropdown if the user clicks inside the search box
       if (event.target.closest('#search-box')){
         if (input.value.length>0){
+          _resetSelectedSearchResult();
           showResultContainer();
           return;
         }
@@ -461,5 +462,95 @@ window.addEventListener("click", (event) => {
         }
         hideResultContainer();
       }
+  }
+});
+
+// Focus on the search bar when the user hit '/' or 'ctrl+k' key, the '/' shortcut is replaced by the default readthedocs search
+// box which is not going to include any of the API documentation in its index at the moment (see
+// issue #356), this is why we provide another shortcut which is commonly associated to searching.
+window.addEventListener('keydown', (event) => {
+  if((event.key === 'k' && (event.ctrlKey || event.metaKey) && !event.altKey) || (
+      event.key === '/' && !event.ctrlKey && !event.metaKey && !event.altKey)){
+
+    event.preventDefault();
+    input.focus();
+    if (input.value.length>0){
+        _resetSelectedSearchResult();
+        showResultContainer();
+        return;
+    }
+  }
+});
+
+function _getSelectedSearchResult(){
+  const results = results_list.getElementsByTagName('tr');
+  let selectedIndex = -1;
+  for (let i=0; i<results.length; i++){
+    if (results[i].classList.contains('search-result-selected')){
+      selectedIndex = i;
+      break;
+    }
+  }
+  return selectedIndex;
+}
+
+function _resetSelectedSearchResult(){
+  // Reset any selected search result
+    let selectedIndex = _getSelectedSearchResult();
+    if (selectedIndex >= 0){
+      const results = results_list.getElementsByTagName('tr');
+      results[selectedIndex].classList.remove('search-result-selected');
+    }
+  }
+
+// When the search box is focused, we can use top and down arrows to navigate the search results
+// and use the enter key to open the selected result.
+input.addEventListener('keydown', (event) => {
+  const results = results_list.getElementsByTagName('tr');
+  if (results.length === 0){
+    return;
+  }
+  let selectedIndex = _getSelectedSearchResult();
+  if (event.key === 'ArrowDown'){
+    // Move selection down
+    if (selectedIndex >= 0){
+      results[selectedIndex].classList.remove('search-result-selected');
+    }
+
+    selectedIndex = (selectedIndex + 1) % results.length;
+    // Ignore private items when the toogle is off
+    while (document.body.classList.contains('private-hidden') && results[selectedIndex].classList.contains('private')){
+      selectedIndex = (selectedIndex + 1) % results.length;
+    }
+
+    results[selectedIndex].classList.add('search-result-selected');
+    results[selectedIndex].scrollIntoView({block: "nearest"});
+    event.preventDefault();
+  }
+  else if (event.key === 'ArrowUp'){
+    // Move selection up
+    if (selectedIndex >= 0){
+      results[selectedIndex].classList.remove('search-result-selected');
+    }
+    
+    selectedIndex = (selectedIndex - 1 + results.length) % results.length;
+    // Ignore private items when the toogle is off
+    while (document.body.classList.contains('private-hidden') && results[selectedIndex].classList.contains('private')){
+      selectedIndex = (selectedIndex - 1 + results.length) % results.length;
+    }
+
+    results[selectedIndex].classList.add('search-result-selected');
+    results[selectedIndex].scrollIntoView({block: "nearest"});
+    event.preventDefault();
+  }
+  else if (event.key === 'Enter'){
+    // Open selected result
+    if (selectedIndex >= 0){
+      const link = results[selectedIndex].getElementsByTagName('a')[0];
+      if (link){
+        window.location.href = link.href;
+        event.preventDefault();
+      }
+    }
   }
 });
