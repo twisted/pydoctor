@@ -364,7 +364,15 @@ function displaySearchResults(_query, documentResults, lunrResults){
 }
 
 function _isSearchInDocstringsEnabled() {
-  return searchInDocstringsCheckbox.checked;
+  if (searchInDocstringsCheckbox.checked){
+    return true;
+  }
+  if (input.value.startsWith("docstring:") || input.value.indexOf(" docstring:") !== -1){
+    searchInDocstringsCheckbox.checked = true;
+    toggleSearchInDocstrings()
+    return true;
+  }
+  return false;
 }
 
 function toggleSearchInDocstrings() {

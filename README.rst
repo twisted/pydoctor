@@ -73,10 +73,12 @@ What's New?
 in development
 ^^^^^^^^^^^^^^
 
-* Improve the search box UX: There is now a keyboard shortcut ('Ctrl+K' or 'Cmd+K' on Mac or '/', 
-  but the later is overriden by ReadTheDocs) to focus the search box.
-  When the search box is focused, you can use the up and down arrow keys to navigate the results,
-  and press enter to open the selected result.
+* Improve the search box UX: 
+    - There is now a keyboard shortcut ('Ctrl+K' or 'Cmd+K' on Mac or '/', 
+      but the later is overriden by ReadTheDocs) to focus the search box.
+      When the search box is focused, you can use the up and down arrow keys to navigate the results,
+      and press enter to open the selected result.
+    - If the search box contains "docstring:<term>", the search will be performed in docstrings automatically.
 
 pydoctor 25.10.1
 ^^^^^^^^^^^^^^^^
