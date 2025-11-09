@@ -664,23 +664,18 @@ def test_project_version_shown_in_footer(tmp_path: Path) -> None:
     generated HTML footer shows the project version.
     """
     system = model.System(model.Options.from_args([
-        '--project-name', 'MyProject',
         '--project-version', '1.2.3',
     ]))
 
     builder = system.systemBuilder(system)
-    # Add a couple of modules so index.html gets generated like in other tests
     builder.addModule(testpackages / "allgames")
     builder.addModule(testpackages / "basic")
     builder.buildModules()
 
     w = writer.TemplateWriter(tmp_path, _template_lookup('base'))
     w.writeSummaryPages(system)
-
-    with open(tmp_path / 'index.html', encoding='utf-8') as f:
-        page = f.read()
-        # The project slot now includes the version when provided; check it appears
-        assert '1.2.3' in page
+    
+    assert '1.2.3' in (tmp_path / 'index.html').read_text(encoding='utf-8')
 
 @pytest.mark.parametrize('_order', ["alphabetical", "source"])
 def test_objects_order_mixed_modules_and_packages(_order:str) -> None:
