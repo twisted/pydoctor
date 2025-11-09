@@ -934,7 +934,7 @@ def extract_fields(obj: model.CanContainImportsDocumentable) -> None:
         tag = field.tag()
         # ivar and cvar fields on modules don't make sense: warn but still
         # allow them to be processed so their documentation is rendered.
-        if tag in ('ivar', 'cvar') and isinstance(obj, model.Module):
+        if tag in ('ivar', 'cvar'):
             _report_field_has_no_meaning_on_module(obj, Field.from_epydoc(field, obj)
 
         if tag in ['ivar', 'cvar', 'var', 'type']:
