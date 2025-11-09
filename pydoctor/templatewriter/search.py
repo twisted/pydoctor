@@ -63,7 +63,7 @@ class LunrIndexWriter:
     fields: List[str]
 
     _BOOSTS = {
-                'name':6,
+                'name':3,
                 'names': 1,
                 'qname':2,
                 'docstring':1,
@@ -160,12 +160,12 @@ def write_lunr_index(output_dir: Path, system: model.System) -> None:
     """
     LunrIndexWriter(output_dir / "searchindex.json", 
         system=system, 
-        fields=["name", "names", "qname"]
+        fields=["name", "names", "qname", "kind"]
         ).write()
 
     LunrIndexWriter(output_dir / "fullsearchindex.json", 
         system=system, 
-        fields=["name", "names", "qname", "docstring", "kind"]
+        fields=["name", "names", "qname", "kind", "docstring",]
         ).write()
 
 

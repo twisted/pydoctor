@@ -426,12 +426,12 @@ class HelpPage(Page):
     Possible fields are: 
     
     - ``name``, the name of the object (example: "MyClassAdapter" or "my_fmin_opti").
-    - ``qname``, the fully qualified name of the object (example: "lib.classses.MyClassAdapter").
-    - ``names``, the name splitted on camel case or snake case (example: "My Class Adapter" or "my fmin opti")
     - ``docstring``, the docstring of the object (example: "This is an adapter for HTTP json requests that logs into a file...")
     - ``kind``, can be one of: $kind_names
+    - ``qname``, the fully qualified name of the object (example: "lib.classses.MyClassAdapter").
+    - ``names``, the name splitted on camel case or snake case (example: "My Class Adapter" or "my fmin opti")
         
-    Last two fields are only applicable if "search in docstrings" is enabled. 
+    Field "docstring" is only applicable if "search in docstrings" is enabled. 
 
     **Term presence** 
                                    
