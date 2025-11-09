@@ -240,6 +240,7 @@ class Page(TemplateElement):
 
         return dict(
             project=project_tag,
+            project_version=system.options.projectversion,
             pydoctor_version=__version__,
             buildtime=system.buildtime.strftime("%Y-%m-%d %H:%M:%S"),
         )
