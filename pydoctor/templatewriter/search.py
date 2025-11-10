@@ -4,7 +4,7 @@ Code building ``all-documents.html``, ``searchindex.json`` and ``fullsearchindex
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Iterator, List, Optional, Tuple, Type, Dict, TYPE_CHECKING
+from typing import Iterator, List, Optional, Type, Dict, TYPE_CHECKING
 import json
 
 import attr
@@ -102,7 +102,7 @@ class LunrIndexWriter:
     def format_kind(self, ob:model.Documentable) -> str:
         return epydoc2stan.format_kind(ob.kind) if ob.kind else ''
 
-    def get_corpus(self) -> List[Tuple[Dict[str, Optional[str]], Dict[str, int]]]:
+    def get_corpus(self) -> list[dict[str, str | None]]:
         return [
             {
                 f:self.format(ob, f) for f in self.fields
