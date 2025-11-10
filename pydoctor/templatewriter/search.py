@@ -75,14 +75,6 @@ class LunrIndexWriter:
     _SKIP_PIPELINES = list(_BOOSTS)
     _SKIP_PIPELINES.remove('docstring')
     
-    @staticmethod
-    def get_ob_boost(ob: model.Documentable) -> int:
-        # Advantage container types because they hold more informations.
-        if isinstance(ob, (model.Class, model.Module)):
-            return 2
-        else:
-            return 1
-    
     def format(self, ob: model.Documentable, field:str) -> Optional[str]:
         try:
             return getattr(self, f'format_{field}')(ob) #type:ignore[no-any-return]
@@ -112,14 +104,9 @@ class LunrIndexWriter:
 
     def get_corpus(self) -> List[Tuple[Dict[str, Optional[str]], Dict[str, int]]]:
         return [
-            (
-                {
-                    f:self.format(ob, f) for f in self.fields
-                }, 
-                {
-                    "boost": self.get_ob_boost(ob)
-                }
-            )
+            {
+                f:self.format(ob, f) for f in self.fields
+            }
             for ob in (o for o in self.system.allobjects.values() if o.isVisible)
         ]
 
