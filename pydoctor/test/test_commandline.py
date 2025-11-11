@@ -369,7 +369,6 @@ def test_no_such_option_exits_code0(tmp_path: Path) -> None:
 def test_warnings_as_errors_configured_from_config_file_no_such_option_exits_code3(tmp_path: Path) -> None:
     """
     When `warnings-as-errors = true` is used it returns 3 as exit code when there are warnings.
-    This is the test for the sh ort form of the CLI option.
 
     We demonstrate this using a non existing configuration keyword
     """
@@ -392,7 +391,6 @@ def test_warnings_as_errors_configured_from_config_file_no_such_option_exits_cod
 def test_warnings_as_errors_configured_from_cli_option_no_such_option_exits_code3(tmp_path: Path) -> None:
     """
     When `-W` is used it returns 3 as exit code when there are warnings.
-    This is the test for the sh ort form of the CLI option.
 
     We demonstrate this using a non existing configuration keyword
     """
