@@ -680,8 +680,8 @@ def test_project_version_shown_in_footer(tmp_path: Path, theme:str) -> None:
 @theme_param
 def test_project_version_is_None_not_in_footer(tmp_path: Path, theme:str) -> None:
     """
-    Verify that when a project name and project version are provided, the
-    generated HTML footer shows the project version.
+    Verify that when a project version is NOT provided, the
+    generated HTML footer doesn't show 'None' as the version.
     """
     system = model.System(model.Options.from_args([]))
 
