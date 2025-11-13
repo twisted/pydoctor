@@ -210,11 +210,9 @@ class ObjContent(Element):
                                                  'variable', 'subModule', 
                                                  'inheritedFunction', 
                                                  'inheritedVariable']) -> str:
-        l = getattr(self, f'{kind}List')
-        if not l:
-            return ''
-        iterator = l.children
-        if iterator.peek().isPrivate:
+        iterator = getattr(getattr(self, f'{kind}List'), 
+                            'children', peek_iter([]))
+        if iterator.has_next() and iterator.peek().isPrivate:
             # if the first item is private, all items are private since they are sorted.
             return 'childrenKindTitle private'
         else:
