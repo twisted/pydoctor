@@ -239,7 +239,7 @@ class HTMLTranslator(html4css1.HTMLTranslator):
                     ">>>",
                     class_='doctest-toggle',
                     type='button',
-                    title='doctest toogle'
+                    title='Doctest toogle'
                 ),
                 pre_tag,
                 class_='doctest-output'
