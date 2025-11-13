@@ -392,18 +392,11 @@ def test_warnings_as_errors_configured_from_cli_option_no_such_option_exits_code
     """
     When `-W` is used it returns 3 as exit code when there are warnings.
 
-    We demonstrate this using a non existing configuration keyword
+    We demonstrate this using deprecated option --enable-intersphinx-cache. 
     """
-    
-    tmp_path.mkdir(parents=True, exist_ok=True)
-    conf_file = (tmp_path / "pydoctor_temp_conf")
-    with conf_file.open('w') as f:
-        f.write("[pydoctor]\nno-such-option = somevalue\n")
-
     with warnings.catch_warnings(record=True) as w:
         exit_code = driver.main(args=[
-            '-W',
-            '--config', str(conf_file),
+            '-W', '--enable-intersphinx-cache', 
             '--html-output', str(tmp_path / 'output'),
             'pydoctor/test/testpackages/basic/'
             ])
