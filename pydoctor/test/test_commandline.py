@@ -402,4 +402,4 @@ def test_warnings_as_errors_configured_from_cli_option_no_such_option_exits_code
             ])
 
     assert exit_code == 3
-    assert [str(warn.message) for warn in w] == ["No such config option: 'no-such-option'"]
+    assert [str(warn.message) for warn in w] == ["The --enable-intersphinx-cache option is deprecated; the cache is now enabled by default."]
