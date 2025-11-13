@@ -471,6 +471,7 @@ class HelpPage(Page):
                                    
     - ``doc``            -> matches names containing tokens that start with "doc" (equivalent to "doc*").
     - ``ensure doc``     -> matches object whose matches "doc*" and "ensure*".
+    - ``doc kind:class``     -> matches classes whose matches "doc*".
     - ``docstring:ansi`` -> matches object whose docstring matches "ansi*".
     - ``+doc``           -> matches only where a token equals "doc" exactly.
     - ``-test``          -> excludes any result containing a token equal to "test".
