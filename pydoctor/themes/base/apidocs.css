@@ -638,6 +638,8 @@ button.doctest-toggle:hover {
     border-color: #999;
 }
 
+.doctest-output.hide-output .py-prompt,
+.doctest-output.hide-output .py-more,
 .doctest-output.hide-output .py-output,
 .doctest-output.hide-output .py-except {
     display: none;
