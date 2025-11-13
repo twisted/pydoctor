@@ -611,6 +611,38 @@ pre.py-doctest {
     color: #c7254e;
 }
 
+/* Doctest output toggle */
+
+div.doctest-output {
+    position: relative;
+}
+
+button.doctest-toggle {
+    position: absolute;
+    top: 0.5em;
+    right: 0.5em;
+    background-color: #f0f0f0;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    padding: 0.25em 0.5em;
+    cursor: pointer;
+    font-size: 1em;
+    color: #666;
+    z-index: 10;
+    font-family: monospace;
+    line-height: 1;
+}
+
+button.doctest-toggle:hover {
+    background-color: #e8e8e8;
+    border-color: #999;
+}
+
+.doctest-output.hide-output .py-output,
+.doctest-output.hide-output .py-except {
+    display: none;
+}
+
 /* Admonitions */
 
 div.rst-admonition p.rst-admonition-title:after {

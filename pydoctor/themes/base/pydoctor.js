@@ -33,3 +33,28 @@ function updatePrivate() {
 }
 
 initPrivate();
+
+// Toggle doctest output visibility
+
+function initDoctest() {
+    // Add click handlers to all doctest toggle buttons
+    var buttons = document.querySelectorAll('button.doctest-toggle');
+    buttons.forEach(function(button) {
+        button.addEventListener('click', function() {
+            var container = button.closest('div.doctest-output');
+            if (container) {
+                container.classList.toggle('hide-output');
+                // Update button text to indicate state
+                button.innerText = container.classList.contains('hide-output') ? '«' : '»';
+            }
+        });
+    });
+}
+
+// Initialize doctest toggles when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initDoctest);
+} else {
+    initDoctest();
+}
+
