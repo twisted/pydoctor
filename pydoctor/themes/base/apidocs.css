@@ -645,6 +645,10 @@ button.doctest-toggle:hover {
     display: none;
 }
 
+.doctest-output.hide-output .doctest-toogle {
+    text-decoration: line-through;
+}
+
 /* Admonitions */
 
 div.rst-admonition p.rst-admonition-title:after {

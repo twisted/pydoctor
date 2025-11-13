@@ -51,10 +51,4 @@ function initDoctest() {
     });
 }
 
-// Initialize doctest toggles when DOM is ready
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initDoctest);
-} else {
-    initDoctest();
-}
-
+initDoctest()

@@ -226,19 +226,20 @@ class HTMLTranslator(html4css1.HTMLTranslator):
 
     def visit_doctest_block(self, node: nodes.doctest_block) -> None:
         pysrc = node[0].astext()
-        if node.get('codeblock'):
+        if is_code_block:=node.get('codeblock'):
             pre_tag = colorize_codeblock(pysrc)
         else:
             pre_tag = colorize_doctest(pysrc)
         
-        # Wrap doctest blocks with a container and toggle button
-        if not node.get('codeblock'):  # Only add button to actual doctest blocks
+        # If it's not a code block, then it must be a doctest block
+        if not is_code_block:
+            # Wrap doctest blocks with a container and toggle button
             container = tags.div(
                 tags.button(
-                    "»",
+                    ">>>",
                     class_='doctest-toggle',
                     type='button',
-                    title='Toggle output'
+                    title='doctest toogle'
                 ),
                 pre_tag,
                 class_='doctest-output'
