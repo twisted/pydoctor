@@ -44,8 +44,6 @@ function initDoctest() {
             var container = button.closest('div.doctest-output');
             if (container) {
                 container.classList.toggle('hide-output');
-                // Update button text to indicate state
-                button.innerText = container.classList.contains('hide-output') ? '«' : '»';
             }
         });
     });
