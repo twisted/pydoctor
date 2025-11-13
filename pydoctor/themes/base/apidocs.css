@@ -645,7 +645,7 @@ button.doctest-toggle:hover {
     display: none;
 }
 
-.doctest-output.hide-output .doctest-toogle {
+.doctest-output.hide-output .doctest-toggle {
     text-decoration: line-through;
 }
 
