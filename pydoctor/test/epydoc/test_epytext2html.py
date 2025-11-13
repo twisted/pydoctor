@@ -124,7 +124,7 @@ def test_epytext_complex_list() -> None:
         <ul class="rst-simple"><li>This is a sublist.</li><li>The sublist contains two items.
         <ul><li>The second item of the sublist has its own sublist.</li></ul></li></ul></li>
         <li><p class="rst-first">This list item contains two paragraphs and a doctest block.</p>
-        <div class="doctest-output"><button class="doctest-toggle" title="Toggle output" type="button">»</button><pre class="py-doctest"><span class="py-prompt">&gt;&gt;&gt; </span>
+        <div class="doctest-output"><button class="doctest-toggle" title="Doctest toggle" type="button">&gt;&gt;&gt;</button><pre class="py-doctest"><span class="py-prompt">&gt;&gt;&gt; </span>
         <span class="py-builtin">len</span>(<span class="py-string">'This is a doctest block'</span>)
         <span class="py-output">23</span></pre></div><p>This is the second paragraph.</p></li></ol>
         '''
