@@ -78,7 +78,9 @@ def format_type_params(ob: model.FunctionLike | model.Class | model.Attribute) -
 
 def format_signature(func: model.FunctionLike) -> Flattenable:
     """
-    Return a stan representation of a nicely-formatted source-like function signature for the given L{Function}.
+    Return a stan representation of a nicely-formatted source-like 
+    function signature (like C{(x, *, y=True, z:bytes) -> int}) for the given L{Function}.
+    
     Arguments default values are linked to the appropriate objects when possible.
     """
 
@@ -156,7 +158,7 @@ _nbsp = CharRef(160) # non-breaking space.
 def format_function_def(func_name: str, is_async: bool, 
                         func: model.FunctionLike) -> List["Flattenable"]:
     """
-    Format a function definition as nice HTML signature. 
+    Format a function definition as nice HTML function definition. 
     
     If the function is overloaded, it will return an empty list. 
     We use L{format_overloads} for these.

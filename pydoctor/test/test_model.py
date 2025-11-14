@@ -709,6 +709,11 @@ def test_name_defined() -> None:
     assert cls.isNameDefined('pydoctor')
     assert cls.isNameDefined('twisted.web')
     assert cls.isNameDefined('twisted')
+
+    assert not cls.isNameDefined('pydoctor', nonlocals=False)
+    assert not cls.isNameDefined('twisted.web', nonlocals=False)
+    assert not cls.isNameDefined('twisted', nonlocals=False)
+
     assert not mod.isNameDefined('m')
     assert cls.isNameDefined('c')
     assert cls.isNameDefined('c.anything')
@@ -720,6 +725,11 @@ def test_name_defined() -> None:
     assert var.isNameDefined('c')
     assert var.isNameDefined('var')
     assert var.isNameDefined('F')
+    
+    assert var.isNameDefined('var', nonlocals=False)
+    assert var.isNameDefined('F', nonlocals=False)
+    assert not var.isNameDefined('c', nonlocals=False)
+
     assert not var.isNameDefined('m')
     assert var.isNameDefined('pydoctor')
     assert var.isNameDefined('twisted.web')

@@ -346,12 +346,14 @@ class Documentable:
     def _localNameToFullName(self, name: str) -> str:
         raise NotImplementedError(self._localNameToFullName)
     
-    def isNameDefined(self, name:str) -> bool:
+    def isNameDefined(self, name:str, nonlocals:bool=True) -> bool:
         """
         Is the given name defined in the globals/locals of self-context?
         Only the first name of a dotted name is checked.
 
-        Returns True iff the given name can be loaded without raising `NameError`.
+        Returns True iff the given name refers to a know Documentable object.
+
+        @note: This does not support parameters or type parameters at the moment.
         """
         raise NotImplementedError(self.isNameDefined)
 
@@ -497,13 +499,13 @@ class CanContainImportsDocumentable(Documentable):
         super().setup()
         self._localNameToFullName_map: Dict[str, str] = {}
     
-    def isNameDefined(self, name: str) -> bool:
+    def isNameDefined(self, name: str, nonlocals:bool=True) -> bool:
         name = name.split('.')[0]
         if name in self.contents:
             return True
         if name in self._localNameToFullName_map:
             return True
-        if not isinstance(self, Module):
+        if not isinstance(self, Module) and nonlocals:
             return self.module.isNameDefined(name)
         else:
             return False
@@ -809,9 +811,11 @@ def type_param_refs(ob: DocumentableLike) -> Mapping[str, str]:
     to document them under a "Type Variables" section and/or @tvar: fields...
     """
     sources = ob.type_params_sources or [ob]
-    refmap = {t.name:o.fullName() for o in sources
-               for t in o.type_params or [] }
-              
+    ctx = ob.context
+    refmap = { t.name:o.fullName() for o in sources
+               for t in o.type_params or [] 
+               if True or not ctx.isNameDefined(t.name, nonlocals=False)}
+    # print(f'type params ref of {ob}: {refmap}')    
     return refmap
 
 def get_constructors(cls:Class) -> Iterator[Function]:
@@ -998,8 +1002,8 @@ class Inheritable(Documentable):
     def _localNameToFullName(self, name: str) -> str:
         return self.parent._localNameToFullName(name)
     
-    def isNameDefined(self, name: str) -> bool:
-        return self.parent.isNameDefined(name)
+    def isNameDefined(self, name: str, nonlocals:bool=True) -> bool:
+        return self.parent.isNameDefined(name, nonlocals=nonlocals)
 
 class Function(Inheritable):
     kind = DocumentableKind.FUNCTION
@@ -1017,6 +1021,10 @@ class Function(Inheritable):
             self.kind = DocumentableKind.METHOD
         self.signature = None
         self.overloads = []
+    
+    # def isNameDefined(self, name: str, nonlocals:bool=True) -> bool:
+    #     if not nonlocals: return False
+    #     return self.parent.isNameDefined(name, nonlocals=True)
 
 @attr.s(auto_attribs=True, repr=False)
 class FunctionOverload:
