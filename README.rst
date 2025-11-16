@@ -73,7 +73,7 @@ What's New?
 in development
 ^^^^^^^^^^^^^^
 
-* When option ``-W/--warnings-as-errors`` is used, all warnings issued with the warnings module now makes pydoctor exit with code 3.
+* When option ``-W/--warnings-as-errors`` is used, pydoctor exits with code 3 when it issues any warning.
 
 pydoctor 25.10.1
 ^^^^^^^^^^^^^^^^
