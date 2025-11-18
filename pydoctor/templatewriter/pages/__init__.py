@@ -7,6 +7,7 @@ from typing import (
 )
 import ast
 import abc
+import datetime
 from urllib.parse import urljoin
 
 from twisted.web.iweb import IRenderable, ITemplateLoader, IRequest
@@ -200,6 +201,29 @@ class Head(TemplateElement):
         return self._title
 
 
+class Footer(TemplateElement):
+    """
+    Common page footer. Loads the template file "footer.html" and provides the renderer
+    L{buildtime} to be used in a C{<t:transparent ...>} tag to render the build time
+    if it was not provided as C{--buildtime=None} on the command line.
+    """
+
+    filename = "footer.html"
+
+    def __init__(self, buildtime: datetime.datetime | None, loader: ITemplateLoader) -> None:
+        super().__init__(loader)
+        self._buildtime = buildtime
+
+    @renderer
+    def buildtime(self, request: IRequest, tag: Tag) -> str:
+        """Renders the build time as provided on the command line with a default of now."""
+        if self._buildtime is None:
+            return ""
+        ## FIXME: should we have the format as an option?
+        fmt = " at %Y-%m-%d %H:%M:%S"
+        text = self._buildtime.strftime(fmt)
+        return text
+
 class Page(TemplateElement):
     """
     Abstract base class for output pages.
@@ -241,7 +265,7 @@ class Page(TemplateElement):
         return dict(
             project=project_tag,
             pydoctor_version=__version__,
-            buildtime=system.buildtime.strftime("%Y-%m-%d %H:%M:%S"),
+            buildtime="" if system.buildtime is None else system.buildtime.strftime("%Y-%m-%d %H:%M:%S")
         )
 
     @abc.abstractmethod
@@ -267,7 +291,8 @@ class Page(TemplateElement):
 
     @renderer
     def footer(self, request: IRequest, tag: Tag) -> IRenderable:
-        return Element(self.template_lookup.get_loader('footer.html'))
+        buildtime = self.system.buildtime
+        return Footer(buildtime, Footer.lookup_loader(self.template_lookup))
 
 
 class CommonPage(Page):

@@ -1095,7 +1095,7 @@ class System:
 
         self.module_count = 0
         self.processing_modules: List[str] = []
-        self.buildtime = datetime.datetime.now()
+        self.buildtime: datetime.datetime | None = datetime.datetime.now()
         self.intersphinx = SphinxInventory(logger=self.msg)
         self._ast_parser = self.syntaxTreeParser()
 
