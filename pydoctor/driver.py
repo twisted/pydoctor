@@ -24,7 +24,8 @@ def get_system(options: model.Options) -> model.System:
     cache = prepareCache(clearCache=options.clear_intersphinx_cache,
                          enableCache=options.enable_intersphinx_cache,
                          cachePath=options.intersphinx_cache_path,
-                         maxAge=options.intersphinx_cache_max_age)
+                         maxAge=options.intersphinx_cache_max_age, 
+                         verbosity=options.verbosity)
 
     # step 1: make/find the system
     system = options.systemclass(options)
@@ -134,7 +135,7 @@ def make(system: model.System) -> None:
             subjects = system.rootobjects
         # Generate Sphinx inventory.
         sphinx_inventory = SphinxInventoryWriter(
-            logger=system.msg,
+            system.msg,
             project_name=system.projectname,
             project_version=system.options.projectversion,
             )

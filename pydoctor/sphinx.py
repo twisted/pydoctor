@@ -22,18 +22,21 @@ from cachecontrol.heuristics import ExpiresAfter
 
 if TYPE_CHECKING:
     from pydoctor.model import Documentable
-    from typing_extensions import Protocol
+    from typing_extensions import Protocol, NoReturn
 
     class CacheT(Protocol):
-        def get(self, url: str) -> Optional[bytes]: ...
+        def get(self, url: str) -> bytes | None: ...
         def close(self) -> None: ...
 else:
     Documentable = object
     CacheT = object
 
-
+#: Logger used to report full-tracebacks verbose mode activated.
 logger = logging.getLogger(__name__)
 
+class SphinxInventoryError(Exception):...
+
+_PROPOSE_VERBOSE = ' (use -v to log traceback)'
 
 class SphinxInventory:
     """
@@ -42,37 +45,52 @@ class SphinxInventory:
 
     def __init__(
             self,
-            logger: Callable[..., None],
-            project_name: Optional[str] = None
+            system_msg: Callable[..., None],
+            project_name: Optional[str] = None,
+            *, 
+            verbosity : int = 0,
             ):
         """
         @param project_name: Dummy argument.
         """
         self._links: Dict[str, Tuple[str, str]] = {}
-        self._logger = logger
+        self._system_msg = system_msg
+        self._verbosity = verbosity
 
-    def error(self, where: str, message: str) -> None:
-        self._logger(where, message, thresh=-1)
+    def error(self, message: str) -> NoReturn:
+        raise SphinxInventoryError(message)
+    
+    def _exception(self, msg: str, err: Exception) -> NoReturn:
+        if self._verbosity <= 0:
+            msg += _PROPOSE_VERBOSE
+        else:
+            # log full traceback when verbose mode
+            logger.exception(msg, exc_info=err)
+        self.error(msg)
+
+    def warning(self, message: str) -> None:
+        self._system_msg('sphinx', message, thresh=-1)
 
     def update(self, cache: CacheT, url: str, base_url: str | None) -> None:
         """
         Update inventory from URL.
+
+        @raises SphinxInventoryError: If the process fails
         """
         parts = url.rsplit('/', 1)
         if len(parts) != 2:
-            self.error(
-                'sphinx', 'Failed to get remote base url for %s' % (url,))
-            return
+            self.error('Failed to get remote base url for %s' % (url,))
 
         base_url = base_url or parts[0]
         base_url = base_url.rstrip('/')
 
         data = cache.get(url)
 
-        if not data:
-            self.error(
-                'sphinx', 'Failed to get object inventory from %s' % (url, ))
-            return
+        if data is None:
+            msg = f'Failed to get object inventory from {url}'
+            if self._verbosity <= 0:
+                msg += _PROPOSE_VERBOSE
+            self.error(msg)
 
         payload = self._getPayload(parts[0], data)
         self._links.update(self._parseInventory(base_url, payload))
@@ -81,11 +99,16 @@ class SphinxInventory:
         """
         Update inventory from local path. If base_url is supplied, the
         links are made relative to the supplied base url.
-        """
-        with open(path, 'rb') as f:
-            data = f.read()
 
-        payload = self._getPayload(str(path), data)
+        @raises SphinxInventoryError: If the process fails
+        """
+        try:
+            with open(path, 'rb') as f:
+                data = f.read()
+        except OSError as e:
+            self._exception(f'Failed to read object inventory file from {path}', e)
+
+        payload = self._getPayload(path, data)
         links = self._parseInventory(base_url or os.path.dirname(path), 
                                      payload)
         
@@ -107,18 +130,12 @@ class SphinxInventory:
             data = parts[1]
         try:
             decompressed = zlib.decompress(payload)
-        except zlib.error:
-            self.error(
-                'sphinx',
-                'Failed to uncompress inventory from %s' % (payload_source,))
-            return ''
+        except zlib.error as e:
+            self._exception(f'Failed to uncompress inventory from {payload_source}', e)
         try:
             return decompressed.decode('utf-8')
-        except UnicodeError:
-            self.error(
-                'sphinx',
-                'Failed to decode inventory from %s' % (payload_source,))
-            return ''
+        except UnicodeError as e:
+            self._exception(f'Failed to decode inventory from {payload_source}', e)
 
     def _parseInventory(
             self,
@@ -133,10 +150,7 @@ class SphinxInventory:
             try:
                 name, typ, prio, location, display = _parseInventoryLine(line)
             except ValueError:
-                self.error(
-                    'sphinx',
-                    'Failed to parse line "%s" for %s' % (line, base_url),
-                    )
+                self.warning('Failed to parse line "%s" for %s' % (line, base_url))
                 continue
 
             if not typ.startswith('py:'):
@@ -198,16 +212,16 @@ class SphinxInventoryWriter:
     Sphinx inventory handler.
     """
 
-    def __init__(self, logger: Callable[..., None], project_name: str, project_version: str):
+    def __init__(self, system_msg: Callable[..., None], project_name: str, project_version: str):
         self._project_name = project_name
         self._project_version = project_version
-        self._logger = logger
+        self._system_msg = system_msg
 
     def info(self, where: str, message: str) -> None:
-        self._logger(where, message)
+        self._system_msg(where, message)
 
-    def error(self, where: str, message: str) -> None:
-        self._logger(where, message, thresh=-1)
+    def warning(self, where: str, message: str) -> None:
+        self._system_msg(where, message, thresh=-1)
 
     def generate(self, subjects: Iterable[Documentable], basepath: str | os.PathLike[str]) -> None:
         """
@@ -280,7 +294,7 @@ class SphinxInventoryWriter:
             domainname = 'attribute'
         else:
             domainname = 'obj'
-            self.error(
+            self.warning(
                 'sphinx', "Unknown type %r for %s." % (type(obj), full_name,))
 
         return f'{full_name} py:{domainname} -1 {url} {display}\n'
@@ -374,17 +388,19 @@ class IntersphinxCache(CacheT):
     An Intersphinx cache.
     """
 
-    _session: requests.Session
+    session: requests.Session
     """A session that may or may not cache requests."""
 
-    _logger: logging.Logger = logger
+    verbosity: int = 0
 
     @classmethod
     def fromParameters(
             cls,
             sessionFactory: Callable[[], requests.Session],
             cachePath: str,
-            maxAgeDictionary: Mapping[str, int]
+            maxAgeDictionary: Mapping[str, int], 
+            *, 
+            verbosity: int = 0,
             ) -> 'IntersphinxCache':
         """
         Construct an instance with the given parameters.
@@ -399,9 +415,9 @@ class IntersphinxCache(CacheT):
         session = CacheControl(sessionFactory(),
                                cache=FileCache(cachePath),
                                heuristic=ExpiresAfter(**maxAgeDictionary))
-        return cls(session)
+        return cls(session, verbosity=verbosity)
 
-    def get(self, url: str) -> Optional[bytes]:
+    def get(self, url: str) -> bytes | None:
         """
         Retrieve a URL using the cache.
 
@@ -409,23 +425,27 @@ class IntersphinxCache(CacheT):
         @return: The body of the URL, or L{None} on failure.
         """
         try:
-            return self._session.get(url).content
+            return self.session.get(url).content
         except Exception:
-            self._logger.exception(
-                "Could not retrieve intersphinx object.inv from %s",
-                url
-            )
+            if self.verbosity > 0:
+                # log full traceback when verbose mode
+                logger.exception(
+                    "Could not retrieve intersphinx object.inv from %s",
+                    url
+                )
             return None
 
     def close(self) -> None:
-        self._session.close()
+        self.session.close()
 
 def prepareCache(
         clearCache: bool,
         enableCache: bool,
         cachePath: str,
         maxAge: str,
+        *, 
         sessionFactory: Callable[[], requests.Session] = requests.Session,
+        verbosity: int = 0,
         ) -> IntersphinxCache:
     """
     Prepare an Intersphinx cache.
@@ -447,5 +467,6 @@ def prepareCache(
             sessionFactory,
             cachePath,
             maxAgeDictionary,
+            verbosity=verbosity, 
         )
-    return IntersphinxCache(sessionFactory())
+    return IntersphinxCache(sessionFactory(), verbosity)
