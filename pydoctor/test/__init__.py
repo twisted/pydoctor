@@ -20,7 +20,7 @@ if TYPE_CHECKING:
     class CapLog(Protocol):
         text: str
         records: Sequence[LogRecord]
-        def set_level(self, level: int): ...
+        def set_level(self, level: int) -> None: ...
 
     class CaptureResult(Protocol):
         out: str
