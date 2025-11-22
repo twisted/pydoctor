@@ -44,7 +44,7 @@ def get_system(options: model.Options) -> model.System:
     # Load custom buildtime
     if options.buildtime:
         try:
-            if options.buildtime == "None":
+            if options.buildtime.lower() in ("false", "no", "off", "0"):
                 system.buildtime = None
             else:
                 system.buildtime = datetime.datetime.strptime(

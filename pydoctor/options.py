@@ -157,7 +157,8 @@ def get_parser() -> ArgumentParser:
     parser.add_argument(
         '--buildtime', dest='buildtime',
         help=("Use the specified build time over the current time. "
-              f"Format: {BUILDTIME_FORMAT_HELP}"), metavar='TIME')
+              f"Format: {BUILDTIME_FORMAT_HELP}. "
+              "Alternatively use 'false', 'no', 'off' or '0' to suppress build time output."), metavar='TIME')
     parser.add_argument(
         '--process-types', dest='processtypes', action='store_true', 
         help="Process the 'type' and 'rtype' fields, add links and inline markup automatically. "

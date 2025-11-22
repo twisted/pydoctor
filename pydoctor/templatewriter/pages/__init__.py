@@ -9,6 +9,7 @@ import ast
 import abc
 import datetime
 from urllib.parse import urljoin
+import warnings
 
 from twisted.web.iweb import IRenderable, ITemplateLoader, IRequest
 from twisted.web.template import Element, Tag, renderer, tags, CharRef
@@ -206,6 +207,10 @@ class Footer(TemplateElement):
     Common page footer. Loads the template file "footer.html" and provides the renderer
     L{buildtime} to be used in a C{<t:transparent ...>} tag to render the build time
     if it was not provided as C{--buildtime=None} on the command line.
+
+    The C{t:transparent} tag's content is ignored. If it has the attribute C{fmt}, its
+    value is used to format the built time with
+    U{datetime.datetime.strftime()<https://docs.python.org/3/library/datetime.html#datetime.datetime.strftime>}.
     """
 
     filename = "footer.html"
@@ -215,14 +220,23 @@ class Footer(TemplateElement):
         self._buildtime = buildtime
 
     @renderer
-    def buildtime(self, request: IRequest, tag: Tag) -> str:
-        """Renders the build time as provided on the command line with a default of now."""
+    def buildtime(self, request: IRequest, tag: Tag) -> Flattenable:
+        """
+        Renders the build time as provided on the command line with a default of now.
+        """
         if self._buildtime is None:
             return ""
-        ## FIXME: should we have the format as an option?
-        fmt = " at %Y-%m-%d %H:%M:%S"
-        text = self._buildtime.strftime(fmt)
-        return text
+
+        fmt = tag.attributes.get("fmt")
+        if not isinstance(fmt, str):
+            # Pity, but attribute values are Flattenable, not just str. But we don't
+            # really want to contemplate how arbitrary Flattenables may end up there,
+            # as we read the Footer straight from a file.
+            if fmt is not None:
+                warnings.warn("ignoring non-string type 'fmt' attribute: " + str(fmt))
+            fmt = "%Y-%m-%d %H:%M:%S"
+        return self._buildtime.strftime(fmt)
+
 
 class Page(TemplateElement):
     """
@@ -265,7 +279,6 @@ class Page(TemplateElement):
         return dict(
             project=project_tag,
             pydoctor_version=__version__,
-            buildtime="" if system.buildtime is None else system.buildtime.strftime("%Y-%m-%d %H:%M:%S")
         )
 
     @abc.abstractmethod

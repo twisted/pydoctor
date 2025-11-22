@@ -362,17 +362,17 @@ def test_buildtime_injection_date(tmp_path: Path) -> None:
     text = (tmp_path / "index.html").read_text()
     assert len(re.findall(" at " + fakedate, text)) == 1
 
-
-def test_buildtime_injection_none(tmp_path: Path) -> None:
+@pytest.mark.parametrize('buildtimeValue', ["no", "faLse", "Off", "0"])
+def test_buildtime_injection_no(tmp_path: Path, buildtimeValue: str) -> None:
     """
-    Check that --buildtime=None prevents adding the default build time text to the
+    Check that --buildtime=no prevents adding the default build time text to the
     footer, though we check only index.html.
     """
     args = [
         '--html-output',
         str(tmp_path),
         '--buildtime',
-        'None',
+        buildtimeValue,
         'pydoctor/test/testpackages/basic/__init__.py']
     exit_code = driver.main(args=args)
     assert exit_code == 0
