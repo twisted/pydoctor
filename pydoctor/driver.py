@@ -7,7 +7,7 @@ import os
 import sys
 from pathlib import Path
 
-from pydoctor.options import Options, BUILDTIME_FORMAT
+from pydoctor.options import Options, BUILDTIME_FORMAT, FALSE_VALUES
 from pydoctor.utils import error, warned
 from pydoctor import model
 from pydoctor.templatewriter import IWriter, TemplateLookup, TemplateError
@@ -44,11 +44,14 @@ def get_system(options: model.Options) -> model.System:
     # Load custom buildtime
     if options.buildtime:
         try:
-            system.buildtime = datetime.datetime.strptime(
-                options.buildtime, BUILDTIME_FORMAT)
+            if options.buildtime.lower() in FALSE_VALUES:
+                system.buildtime = None
+            else:
+                system.buildtime = datetime.datetime.strptime(
+                    options.buildtime, BUILDTIME_FORMAT)
         except ValueError as e:
             error(str(e))
-    
+
     # step 1.5: create the builder
 
     builderT = system.systemBuilder
@@ -187,7 +190,7 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
         if options.warnings_as_errors and (system.violations or warned()):
             # Update exit code if the run has produced warnings.
             exitcode = 3
-        
+
     except:
         if options.pdb:
             import pdb

@@ -25,6 +25,8 @@ if TYPE_CHECKING:
     from pydoctor import model
     from pydoctor.templatewriter import IWriter
 
+FALSE_VALUES = {"false", "no", "off", "0"}
+
 BUILDTIME_FORMAT = '%Y-%m-%d %H:%M:%S'
 BUILDTIME_FORMAT_HELP = 'YYYY-mm-dd HH:MM:SS'
 
@@ -156,7 +158,9 @@ def get_parser() -> ArgumentParser:
     parser.add_argument(
         '--buildtime', dest='buildtime',
         help=("Use the specified build time over the current time. "
-              f"Format: {BUILDTIME_FORMAT_HELP}"), metavar='TIME')
+              f"Format: {BUILDTIME_FORMAT_HELP}. "
+              f"Alternatively use {', '.join(map(repr, FALSE_VALUES))} to suppress build time output."), 
+              metavar='TIME')
     parser.add_argument(
         '--process-types', dest='processtypes', action='store_true', 
         help="Process the 'type' and 'rtype' fields, add links and inline markup automatically. "
