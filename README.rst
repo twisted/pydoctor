@@ -82,6 +82,7 @@ in development
     - Use a logical "and" in between search terms by default. Use leading '?' to make a term optional.
       (More on this in the embedded help page of the generated documentation.)
 * Allow suppressing the footer's buildtime altogether with option ``--buildtime=no``.
+* Add project version on each HTML page.
 
 
 pydoctor 25.10.1
