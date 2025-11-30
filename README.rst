@@ -81,6 +81,8 @@ in development
     - If the search box contains "docstring:<term>", the search will be performed in docstrings automatically.
     - Use a logical "and" in between search terms by default. Use leading '?' to make a term optional.
       (More on this in the embedded help page of the generated documentation.)
+* Allow suppressing the footer's buildtime altogether with option ``--buildtime=no``.
+
 
 pydoctor 25.10.1
 ^^^^^^^^^^^^^^^^
