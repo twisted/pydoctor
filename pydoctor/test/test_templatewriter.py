@@ -509,6 +509,17 @@ def test_template_buildtime_no_fmt_attr() -> None:
     text = flatten(footer)
     assert "|2011-12-13 14:15:16|" in text
 
+def test_template_buildtime_bool_fmt_attr() -> None:
+    testDatetime = datetime.datetime(2011, 12, 13, 14, 15, 16)
+
+    here = Path(__file__).parent
+    footerTmpl = Template.fromfile(here / 'testcustomtemplates' / 'buildtime_fmt_bool', PurePath("footer.html"))
+    assert isinstance(footerTmpl, HtmlTemplate)
+    
+    footer = pages.Footer(testDatetime, footerTmpl.loader)
+    text = flatten(footer)
+    assert "|2011-12-13 14:15:16|" in text
+
 @theme_param
 def test_themes_template_versions(theme: str) -> None:
     """

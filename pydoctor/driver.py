@@ -7,7 +7,7 @@ import os
 import sys
 from pathlib import Path
 
-from pydoctor.options import Options, BUILDTIME_FORMAT
+from pydoctor.options import Options, BUILDTIME_FORMAT, FALSE_VALUES
 from pydoctor.utils import error
 from pydoctor import model
 from pydoctor.templatewriter import IWriter, TemplateLookup, TemplateError
@@ -44,7 +44,7 @@ def get_system(options: model.Options) -> model.System:
     # Load custom buildtime
     if options.buildtime:
         try:
-            if options.buildtime.lower() in ("false", "no", "off", "0"):
+            if options.buildtime.lower() in FALSE_VALUES:
                 system.buildtime = None
             else:
                 system.buildtime = datetime.datetime.strptime(

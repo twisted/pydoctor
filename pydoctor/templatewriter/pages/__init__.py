@@ -15,7 +15,7 @@ from twisted.web.iweb import IRenderable, ITemplateLoader, IRequest
 from twisted.web.template import Element, Tag, renderer, tags, CharRef
 from pydoctor.extensions import zopeinterface
 
-from pydoctor import epydoc2stan, model, __version__
+from pydoctor import epydoc2stan, model, options, __version__
 from pydoctor.astbuilder import node2fullname
 from pydoctor.templatewriter import util, TemplateLookup, TemplateElement
 from pydoctor.templatewriter.pages.table import ChildTable
@@ -226,15 +226,7 @@ class Footer(TemplateElement):
         """
         if self._buildtime is None:
             return ""
-
-        fmt = tag.attributes.get("fmt")
-        if not isinstance(fmt, str):
-            # Pity, but attribute values are Flattenable, not just str. But we don't
-            # really want to contemplate how arbitrary Flattenables may end up there,
-            # as we read the Footer straight from a file.
-            if fmt is not None:
-                warnings.warn("ignoring non-string type 'fmt' attribute: " + str(fmt))
-            fmt = "%Y-%m-%d %H:%M:%S"
+        fmt = tag.attributes.get("fmt", options.BUILDTIME_FORMAT)
         return self._buildtime.strftime(fmt)
 
 
