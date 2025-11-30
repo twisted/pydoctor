@@ -227,6 +227,9 @@ class Footer(TemplateElement):
         if self._buildtime is None:
             return ""
         fmt = tag.attributes.get("fmt", options.BUILDTIME_FORMAT)
+        assert isinstance(fmt, str) 
+        # format string must be a string at this point since
+        # the XML format only allow strings as values of attributes
         return self._buildtime.strftime(fmt)
 
 
