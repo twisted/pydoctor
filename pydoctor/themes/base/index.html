@@ -12,35 +12,38 @@
       <t:transparent t:render="nav" /></nav>
 
     <div class="container-fluid">
+      <main>
+        
+        <div t:render="subheader" />
 
-      <div t:render="subheader" />
-
-      <h2>
-        Get Started
-      </h2>
-      <ul>
-        <li>
-          A listing of <a href="moduleIndex.html">all modules and
-          packages</a>, organized by package hierarchy.
-        </li>
-        <li>
-          A listing of <a href="classIndex.html">all classes</a>,
-          organized by inheritance hierarchy.
-        </li>
-        <li>
-          A listing of <a href="nameIndex.html">all functions, classes,
-          modules and packages</a>, ordered by name.
-        </li>
-        <li>
-          Or start at one of the root <t:transparent t:render="rootkind">
-          packages</t:transparent>:
-          <ul>
-            <li t:render="roots">
-              <t:slot name="root"/>
-            </li>
-          </ul>
-        </li>
-      </ul>
+        <h2>
+          Get Started
+        </h2>
+        <ul>
+          <li>
+            A listing of <a href="moduleIndex.html">all modules and
+            packages</a>, organized by package hierarchy.
+          </li>
+          <li>
+            A listing of <a href="classIndex.html">all classes</a>,
+            organized by inheritance hierarchy.
+          </li>
+          <li>
+            A listing of <a href="nameIndex.html">all functions, classes,
+            modules and packages</a>, ordered by name.
+          </li>
+          <li>
+            Or start at one of the root <t:transparent t:render="rootkind">
+            packages</t:transparent>:
+            <ul>
+              <li t:render="roots">
+                <t:slot name="root"/>
+              </li>
+            </ul>
+          </li>
+        </ul>
+      
+      </main>
     </div>
 
     <footer class="container-fluid" t:render="footer" />
