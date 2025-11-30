@@ -74,6 +74,7 @@ in development
 ^^^^^^^^^^^^^^
 
 * Hide sidebar element title when all items under it are private.
+* Allow suppressing the footer's buildtime altogether with option ``--buildtime=no``.
 
 pydoctor 25.10.1
 ^^^^^^^^^^^^^^^^

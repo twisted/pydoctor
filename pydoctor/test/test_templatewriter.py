@@ -1,3 +1,4 @@
+import datetime
 from io import BytesIO
 import re
 from typing import Callable, Union, cast, Type, TYPE_CHECKING
@@ -510,6 +511,22 @@ def test_template_subfolders_write_casing(tmp_path: Path) -> None:
 
     assert not test_build_dir.joinpath('Static/Fonts').is_dir()
     assert test_build_dir.joinpath('static/fonts/bar.svg').is_file()
+
+def test_template_buildtime_no_fmt_attr() -> None:
+    """
+    The public footer.html templates contain the fmt=... attribute for the buildtime,
+    which is tested by test_commandline.py. Here we merely check to get the default fmt if
+    the fmt=... attribute is not provided.
+    """
+    testDatetime = datetime.datetime(2011, 12, 13, 14, 15, 16)
+
+    here = Path(__file__).parent
+    footerTmpl = Template.fromfile(here / 'testcustomtemplates' / 'buildtime', PurePath("footer.html"))
+    assert isinstance(footerTmpl, HtmlTemplate)
+    
+    footer = pages.Footer(testDatetime, footerTmpl.loader)
+    text = flatten(footer)
+    assert "|2011-12-13 14:15:16|" in text
 
 @theme_param
 def test_themes_template_versions(theme: str) -> None:
