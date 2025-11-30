@@ -343,3 +343,49 @@ def test_html_ids_dont_look_like_python_names(tmp_path: Path) -> None:
             assert re.findall(r'id="[a-z]+"', text, re.IGNORECASE) == ['id="basic"'], text
         else:
             assert re.findall(r'id="[a-z]+"', text, re.IGNORECASE) == [], text
+
+
+def test_buildtime_injection_date(tmp_path: Path) -> None:
+    """
+    Check that a date passed to --buildtime ends up in the footer in all HTML files.
+    """
+    fakedate = '2010-11-12 13:14:15'
+    args = [
+        '--html-output',
+        str(tmp_path),
+        '--buildtime',
+        fakedate,
+        'pydoctor/test/testpackages/basic/__init__.py']
+    exit_code = driver.main(args=args)
+    assert exit_code == 0
+    for html_file in tmp_path.iterdir():
+        if not html_file.is_file():
+            continue
+        if html_file.suffix != '.html':
+            continue
+        text = html_file.read_text()
+        assert len(re.findall(" at " + fakedate, text)) == 1
+
+@pytest.mark.parametrize('buildtimeValue', ["no", "faLse", "Off", "0"])
+def test_buildtime_injection_no(tmp_path: Path, buildtimeValue: str) -> None:
+    """
+    Check that --buildtime=no prevents adding the default build time text to the
+    footer in all HTML files.
+    """
+    args = [
+        '--html-output',
+        str(tmp_path),
+        '--buildtime',
+        buildtimeValue,
+        'pydoctor/test/testpackages/basic/__init__.py']
+    exit_code = driver.main(args=args)
+    assert exit_code == 0
+    for html_file in tmp_path.iterdir():
+        if not html_file.is_file():
+            continue
+        if html_file.suffix != '.html':
+            continue
+        text = html_file.read_text()
+        # Since we want to prove the absence of something, don't be overly specific with
+        # the regex, because any small mistake could ruin the test.
+        assert len(re.findall(" at [0-9]{4}", text)) == 0
