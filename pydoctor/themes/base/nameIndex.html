@@ -12,27 +12,29 @@
     <nav class="navbar navbar-default mainnavbar">
       <t:transparent t:render="nav" /></nav>
 
-    <div class="container-fluid">
+      <div class="container-fluid">
+        <main>
 
-      <div class="page-header">
-        <h1 t:render="heading">Heading</h1>
-        <div id="show-private">
-          <button class="btn btn-link" onclick="togglePrivate()">Toggle Private API</button>
+        <div class="page-header">
+          <h1 t:render="heading">Heading</h1>
+          <div id="show-private">
+            <button class="btn btn-link" onclick="togglePrivate()">Toggle Private API</button>
+          </div>
         </div>
+
+        <t:transparent t:render="index">
+          <a>
+            <t:attr name="name" t:render="letter" />
+          </a>
+          <h2 t:render="letter" />
+          <p class="letterlinks" t:render="letterlinks" />
+          <ul id="summary-tree">
+            <li t:render="names" />
+          </ul>
+        </t:transparent>
+      
+      </main>
       </div>
-
-      <t:transparent t:render="index">
-        <a>
-          <t:attr name="name" t:render="letter" />
-        </a>
-        <h2 t:render="letter" />
-        <p class="letterlinks" t:render="letterlinks" />
-        <ul id="summary-tree">
-          <li t:render="names" />
-        </ul>
-      </t:transparent>
-
-    </div>
 
     <footer class="container-fluid" t:render="footer" />
     
