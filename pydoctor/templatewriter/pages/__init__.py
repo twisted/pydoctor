@@ -9,7 +9,6 @@ import ast
 import abc
 import datetime
 from urllib.parse import urljoin
-import warnings
 
 from twisted.web.iweb import IRenderable, ITemplateLoader, IRequest
 from twisted.web.template import Element, Tag, renderer, tags, CharRef
