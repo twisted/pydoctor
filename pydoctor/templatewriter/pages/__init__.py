@@ -206,7 +206,7 @@ class Footer(TemplateElement):
     """
     Common page footer. Loads the template file "footer.html" and provides the renderer
     L{buildtime} to be used in a C{<t:transparent ...>} tag to render the build time
-    if it was not provided as C{--buildtime=None} on the command line.
+    if it was not provided as C{--buildtime=no} on the command line.
 
     The C{t:transparent} tag's content is ignored. If it has the attribute C{fmt}, its
     value is used to format the built time with
