@@ -73,6 +73,8 @@ What's New?
 in development
 ^^^^^^^^^^^^^^
 
+* Allow suppressing the footer's buildtime altogether with option ``--buildtime=no``.
+
 pydoctor 25.10.1
 ^^^^^^^^^^^^^^^^
 
