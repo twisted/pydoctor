@@ -361,7 +361,7 @@ def test_buildtime_injection_date(tmp_path: Path) -> None:
     for html_file in tmp_path.iterdir():
         if not html_file.is_file():
             continue
-        if not html_file.suffix == '.html'
+        if html_file.suffix != '.html':
             continue
         text = html_file.read_text()
         assert len(re.findall(" at " + fakedate, text)) == 1
@@ -383,7 +383,7 @@ def test_buildtime_injection_no(tmp_path: Path, buildtimeValue: str) -> None:
     for html_file in tmp_path.iterdir():
         if not html_file.is_file():
             continue
-        if not html_file.suffix == '.html'
+        if html_file.suffix != '.html':
             continue
         text = html_file.read_text()
         # Since we want to prove the absence of something, don't be overly specific with
