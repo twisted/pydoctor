@@ -13,22 +13,23 @@
       <t:transparent t:render="nav" /></nav>
 
     <div class="container-fluid">
-
-      <div class="page-header">
-        <h1 t:render="heading">Heading</h1>
-        <div id="show-private">
-          <button class="btn btn-link" onclick="togglePrivate()">Toggle Private API</button>
+      <main>
+        
+        <div class="page-header">
+          <h1 t:render="heading">Heading</h1>
+          <div id="show-private">
+            <button class="btn btn-link" onclick="togglePrivate()">Toggle Private API</button>
+          </div>
         </div>
-      </div>
 
-    <div t:render="helpcontent" />
+        <div t:render="helpcontent" />
 
-    <hr />
-    
-    <p>
-      <a href="https://github.com/twisted/pydoctor/issues">Report a bug or suggest an enhancement</a>
-    </p>
-
+        <hr />
+        
+        <p>
+          <a href="https://github.com/twisted/pydoctor/issues">Report a bug or suggest an enhancement</a>
+        </p>
+      </main>
     </div>
     <footer class="container-fluid" t:render="footer" />
     
