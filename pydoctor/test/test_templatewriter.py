@@ -1,3 +1,4 @@
+import datetime
 from io import BytesIO
 import re
 from typing import Callable, Union, cast, Type, TYPE_CHECKING
@@ -492,6 +493,22 @@ def test_template_subfolders_write_casing(tmp_path: Path) -> None:
     assert not test_build_dir.joinpath('Static/Fonts').is_dir()
     assert test_build_dir.joinpath('static/fonts/bar.svg').is_file()
 
+def test_template_buildtime_no_fmt_attr() -> None:
+    """
+    The public footer.html templates contain the fmt=... attribute for the buildtime,
+    which is tested by test_commandline.py. Here we merely check to get the default fmt if
+    the fmt=... attribute is not provided.
+    """
+    testDatetime = datetime.datetime(2011, 12, 13, 14, 15, 16)
+
+    here = Path(__file__).parent
+    footerTmpl = Template.fromfile(here / 'testcustomtemplates' / 'buildtime', PurePath("footer.html"))
+    assert isinstance(footerTmpl, HtmlTemplate)
+    
+    footer = pages.Footer(testDatetime, footerTmpl.loader)
+    text = flatten(footer)
+    assert "|2011-12-13 14:15:16|" in text
+
 @theme_param
 def test_themes_template_versions(theme: str) -> None:
     """
@@ -656,6 +673,45 @@ def test_index_contains_infos(tmp_path: Path, theme: str) -> None:
         page = f.read()
         for i in infos:
             assert i in page, page
+
+@theme_param
+def test_project_version_shown_in_footer(tmp_path: Path, theme:str) -> None:
+    """
+    Verify that when a project name and project version are provided, the
+    generated HTML footer shows the project version.
+    """
+    system = model.System(model.Options.from_args([
+        '--project-version', '1.2.3',
+    ]))
+
+    builder = system.systemBuilder(system)
+    builder.addModule(testpackages / "allgames")
+    builder.addModule(testpackages / "basic")
+    builder.buildModules()
+
+    w = writer.TemplateWriter(tmp_path, _template_lookup(theme))
+    w.writeSummaryPages(system)
+
+    assert '1.2.3' in (tmp_path / 'index.html').read_text(encoding='utf-8')
+
+@theme_param
+def test_project_version_is_None_not_in_footer(tmp_path: Path, theme:str) -> None:
+    """
+    Verify that when a project version is NOT provided, the
+    generated HTML footer doesn't show 'None' as the version.
+    """
+    system = model.System(model.Options.from_args([]))
+
+    builder = system.systemBuilder(system)
+    builder.addModule(testpackages / "allgames")
+    builder.addModule(testpackages / "basic")
+    builder.buildModules()
+
+    w = writer.TemplateWriter(tmp_path, _template_lookup(theme))
+    w.writeSummaryPages(system)
+
+    assert 'API Documentation</a> for my project,\n' in (
+        tmp_path / 'index.html').read_text(encoding='utf-8')
 
 @pytest.mark.parametrize('_order', ["alphabetical", "source"])
 def test_objects_order_mixed_modules_and_packages(_order:str) -> None:

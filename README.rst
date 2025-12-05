@@ -73,6 +73,9 @@ What's New?
 in development
 ^^^^^^^^^^^^^^
 
+* Allow suppressing the footer's buildtime altogether with option ``--buildtime=no``.
+* Add project version on each HTML page.
+
 pydoctor 25.10.1
 ^^^^^^^^^^^^^^^^
 
