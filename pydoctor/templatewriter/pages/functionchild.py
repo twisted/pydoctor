@@ -54,7 +54,7 @@ class FunctionChild(TemplateElement):
 
     @renderer
     def decorator(self, request: object, tag: Tag) -> "Flattenable":
-        return list(format_decorators(self.ob))
+        return format_decorators(self.ob)
 
     @renderer
     def functionDef(self, request: object, tag: Tag) -> "Flattenable":
@@ -62,8 +62,8 @@ class FunctionChild(TemplateElement):
 
     @renderer
     def sourceLink(self, request: object, tag: Tag) -> "Flattenable":
-        if self.ob.sourceHref:
-            return tag.fillSlots(sourceHref=self.ob.sourceHref)
+        if self.ob.source_href:
+            return tag.fillSlots(sourceHref=self.ob.source_href)
         else:
             return ()
 

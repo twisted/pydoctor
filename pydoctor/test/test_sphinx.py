@@ -19,7 +19,7 @@ from hypothesis import assume, given, settings
 from hypothesis import strategies as st
 
 from . import CapLog, FixtureRequest, MonkeyPatch, TempPathFactory
-from pydoctor import model, sphinx
+from pydoctor import model, sphinx, driver
 
 
 
@@ -367,7 +367,7 @@ def test_update_functional(inv_reader_nolog: sphinx.SphinxInventory) -> None:
 
     url = 'http://some.url/api/objects.inv'
 
-    inv_reader_nolog.update(cast('sphinx.CacheT', {url: content}), url)
+    inv_reader_nolog.update(cast('sphinx.CacheT', {url: content}), url, None)
 
     assert 'http://some.url/api/module1.html' == inv_reader_nolog.getLink('some.module1')
     assert 'http://some.url/api/module2.html' == inv_reader_nolog.getLink('other.module2')
@@ -378,7 +378,7 @@ def test_update_bad_url(inv_reader: InvReader) -> None:
     Log an error when failing to get base url from url.
     """
 
-    inv_reader.update(cast('sphinx.CacheT', {}), 'really.bad.url')
+    inv_reader.update(cast('sphinx.CacheT', {}), 'really.bad.url', None)
 
     assert inv_reader._links == {}
     expected_log = [(
@@ -392,7 +392,7 @@ def test_update_fail(inv_reader: InvReader) -> None:
     Log an error when failing to get content from url.
     """
 
-    inv_reader.update(cast('sphinx.CacheT', {}), 'http://some.tld/o.inv')
+    inv_reader.update(cast('sphinx.CacheT', {}), 'http://some.tld/o.inv', None)
 
     assert inv_reader._links == {}
     expected_log = [(
@@ -579,37 +579,37 @@ def test_ClosingBytesIO() -> None:
     assert b''.join(buffer) == data # type:ignore[unreachable]
 
 
+@pytest.fixture
+def send_returns(monkeypatch: MonkeyPatch) -> Callable[[HTTPResponse], MonkeyPatch]:
+    """
+    Return a function that patches
+    L{requests.adapters.HTTPAdapter.send} so that it returns the
+    provided L{requests.Response}.
+    """
+    def send_returns(urllib3_response: HTTPResponse) -> MonkeyPatch:
+        def send(
+                self: requests.adapters.HTTPAdapter,
+                request: requests.PreparedRequest,
+                *args:object,
+                **kwargs: object
+                ) -> requests.Response:
+            response: requests.Response
+            response = self.build_response(request, urllib3_response)
+            return response
+
+        monkeypatch.setattr(
+            requests.adapters.HTTPAdapter,
+            "send",
+            send,
+        )
+
+        return monkeypatch
+    return send_returns
+
 class TestIntersphinxCache:
     """
     Tests for L{sphinx.IntersphinxCache}
     """
-
-    @pytest.fixture
-    def send_returns(self, monkeypatch: MonkeyPatch) -> Callable[[HTTPResponse], MonkeyPatch]:
-        """
-        Return a function that patches
-        L{requests.adapters.HTTPAdapter.send} so that it returns the
-        provided L{requests.Response}.
-        """
-        def send_returns(urllib3_response: HTTPResponse) -> MonkeyPatch:
-            def send(
-                    self: requests.adapters.HTTPAdapter,
-                    request: requests.PreparedRequest,
-                    *args:object,
-                    **kwargs: object
-                    ) -> requests.Response:
-                response: requests.Response
-                response = self.build_response(request, urllib3_response)
-                return response
-
-            monkeypatch.setattr(
-                requests.adapters.HTTPAdapter,
-                "send",
-                send,
-            )
-
-            return monkeypatch
-        return send_returns
 
     def test_cache(self, tmp_path: Path, send_returns: Callable[[HTTPResponse], None]) -> None:
         """
@@ -757,3 +757,154 @@ def test_prepareCache(
 
     if clearCache:
         assert not cacheDirectory.exists()
+
+
+def test_intersphinx_file(inv_reader_nolog: sphinx.SphinxInventory,
+                          tmp_path_factory: TempPathFactory) -> None:
+    """
+    Functional test for updating from a file
+    """
+
+    payload = (
+        b'some.module1 py:module -1 module1.html -\n'
+        b'other.module2 py:module 0 module2.html Other description\n'
+        )
+    # Patch URL loader to avoid hitting the system.
+    content = b"""# Sphinx inventory version 2
+# Project: some-name
+# Version: 2.0
+# The rest of this file is compressed with zlib.
+""" + zlib.compress(payload)
+
+    root_dir = tmp_path_factory.mktemp('test_intersphinx_file')
+    path = root_dir / 'objects.inv'
+    with open(path, 'wb') as f:
+        f.write(content)
+
+    with open(root_dir / 'module1.html', "w") as f:
+        pass
+
+    with open(root_dir / 'module2.html', "w") as f:
+        pass
+
+    inv_reader_nolog.update_file(str(path), None)
+
+    assert (root_dir / 'module1.html').samefile(inv_reader_nolog.getLink('some.module1')) # type: ignore
+    assert (root_dir / 'module2.html').samefile(inv_reader_nolog.getLink('other.module2')) # type: ignore
+
+
+def test_intersphinx_file_with_base_url(
+        inv_reader_nolog: sphinx.SphinxInventory,
+        tmp_path: Path) -> None:
+    """
+    Functional test for updating from a file
+    """
+
+    payload = (
+        b'some.module1 py:module -1 module1.html -\n'
+        b'other.module2 py:module 0 module2.html Other description\n'
+        )
+    # Patch URL loader to avoid hitting the system.
+    content = b"""# Sphinx inventory version 2
+# Project: some-name
+# Version: 2.0
+# The rest of this file is compressed with zlib.
+""" + zlib.compress(payload)
+
+    path = tmp_path / 'objects.inv'
+    with open(path, 'wb') as f:
+        f.write(content)
+
+    with open(tmp_path / 'module1.html', "w") as f:
+        pass
+
+    with open(tmp_path / 'module2.html', "w") as f:
+        pass
+
+    inv_reader_nolog.update_file(str(path), "https://sphinx")
+
+    assert ('https://sphinx/module1.html' == 
+            inv_reader_nolog.getLink('some.module1'))
+    assert ('https://sphinx/module2.html' == 
+            inv_reader_nolog.getLink('other.module2'))
+
+
+def test_generate_then_load_file(tmp_path: Path) -> None:
+    '''
+    Generate an inventory and save to file. Test --intersphinx-file to
+    correctly reproduce links to this.
+    '''
+    from pydoctor.test.test_astbuilder import fromText
+    from pydoctor.test.test_epydoc2stan import docstring2html
+
+    # Create a testing inventory file under tmp_path/objects.inv
+    src = '''
+    class C:
+        def __init__(self, a):
+            self.a = a
+    '''
+    system = fromText(src, modname='mylib').system
+    
+    inv_writer, logger = get_inv_writer_with_logger(
+        name='project-name',
+        version='1.2.0rc1',
+        )
+    inv_writer.generate(system.rootobjects, tmp_path)
+
+    # Then load this inventory file in a new system, include links to elements
+    src = '''
+    from mylib import C
+    class Client:
+        "L{C}"
+        a: bytes 
+        "L{C.a}"
+    '''
+    options2 = model.Options.from_args([f'--intersphinx-file={tmp_path / "objects.inv"}'])
+    model2 = fromText(src, 
+                      modname='myclient', 
+                      system=driver.get_system(options2))
+    system2 = model2.system
+    
+    Client_doc = docstring2html(system2.allobjects['myclient.Client'])
+    Client_a_doc = docstring2html(system2.allobjects['myclient.Client.a'])
+
+    assert f'<a href="{tmp_path}/mylib.C.html"' in Client_doc.replace('\n', '')
+    assert f'<a href="{tmp_path}/mylib.C.html#a"' in Client_a_doc.replace('\n', '')
+
+def test_intersphinx_url_with_base_url(
+        send_returns: Callable[[HTTPResponse], None], 
+        tmp_path: Path) -> None:
+    """
+    Functional test for intersphinx links from URL with a custom base URL.
+    """
+
+    payload = (
+        b'some.module1 py:module -1 module1.html -\n'
+        b'other.module2 py:module 0 module2.html Other description\n'
+        )
+
+    content = b"""# Sphinx inventory version 2
+# Project: some-name
+# Version: 2.0
+# The rest of this file is compressed with zlib.
+""" + zlib.compress(payload)
+
+    # Patch URL loader to avoid hitting the system.
+    send_returns(
+            HTTPResponse(
+                body=ClosingBytesIO(content),
+                headers={
+                    'date': 'Sun, 06 Nov 1994 08:49:37 GMT',
+                },
+                status=200,
+                preload_content=False,
+                decode_content=False,
+            ),
+        )
+    system = driver.get_system(model.Options.from_args(['--intersphinx=https://cache.example/objects.inv::https://project.ghi/api/']))
+    inv = system.intersphinx
+
+    assert ('https://project.ghi/api/module1.html' == 
+            inv.getLink('some.module1'))
+    assert ('https://project.ghi/api/module2.html' == 
+            inv.getLink('other.module2'))

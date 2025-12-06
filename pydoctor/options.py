@@ -4,11 +4,12 @@ The command-line parsing.
 from __future__ import annotations
 
 import re
-from typing import Sequence, List, Optional, Type, Tuple, TYPE_CHECKING
+from typing import NamedTuple, Sequence, List, Optional, Type, Tuple, TYPE_CHECKING
 import sys
 import functools
 from pathlib import Path
 from argparse import SUPPRESS, Namespace
+from urllib.parse import urlparse
 
 from configargparse import ArgumentParser
 import attr
@@ -24,6 +25,8 @@ if TYPE_CHECKING:
     from typing import Literal
     from pydoctor import model
     from pydoctor.templatewriter import IWriter
+
+FALSE_VALUES = {"false", "no", "off", "0"}
 
 BUILDTIME_FORMAT = '%Y-%m-%d %H:%M:%S'
 BUILDTIME_FORMAT_HELP = 'YYYY-mm-dd HH:MM:SS'
@@ -156,7 +159,9 @@ def get_parser() -> ArgumentParser:
     parser.add_argument(
         '--buildtime', dest='buildtime',
         help=("Use the specified build time over the current time. "
-              f"Format: {BUILDTIME_FORMAT_HELP}"), metavar='TIME')
+              f"Format: {BUILDTIME_FORMAT_HELP}. "
+              f"Alternatively use {', '.join(map(repr, FALSE_VALUES))} to suppress build time output."), 
+              metavar='TIME')
     parser.add_argument(
         '--process-types', dest='processtypes', action='store_true', 
         help="Process the 'type' and 'rtype' fields, add links and inline markup automatically. "
@@ -221,6 +226,15 @@ def get_parser() -> ArgumentParser:
         help=MAX_AGE_HELP,
         metavar='DURATION',
     )
+        
+    parser.add_argument(
+        '--intersphinx-file', action='append', dest='intersphinx_file',
+        metavar='PATH_TO_OBJECTS.INV[::BASE_URL]', default=[], 
+        help=(
+            "Use Sphinx objects inventory file to generate links to external "
+            "documentation. If the optional base URL is provided, the links "
+            "will be made relative to this base URL. Can be repeated."))
+    
     parser.add_argument(
         '--pyval-repr-maxlines', dest='pyvalreprmaxlines', default=7, type=int, metavar='INT',
         help='Maxinum number of lines for a constant value representation. Use 0 for unlimited.')
@@ -306,6 +320,90 @@ def _convert_htmlbaseurl(url:str | None) -> str | None:
     if url and not url.endswith('/'): 
         url += '/'
     return url
+class IntersphinxSource(NamedTuple):
+    source: str
+    base_url: str | None
+    def __str__(self) -> str:
+        return self.source
+def _parse_intersphinx(s: str, option:str='--interspinx') -> IntersphinxSource:
+    '''
+    Function returning a tuple (inventory file, base_url) for the 
+    intersphinx-file commandline argument. Used double commas because the simple comma
+    might conflict with windows drive names.
+
+    >>> _parse_intersphinx('https://example.com/api/objects.inv::https://two/')
+    IntersphinxSource(source='https://example.com/api/objects.inv', base_url='https://two/')
+    >>> _parse_intersphinx('c:/one::https://two/')
+    IntersphinxSource(source='c:/one', base_url='https://two/')
+    >>> _parse_intersphinx('https://example.com/api/objects.inv  ::  https://two/')
+    IntersphinxSource(source='https://example.com/api/objects.inv', base_url='https://two/')
+    >>> _parse_intersphinx('\tc:/one\t::\thttps://two/    ')
+    IntersphinxSource(source='c:/one', base_url='https://two/')
+    >>> _parse_intersphinx('https://example.com/api/objects.inv')
+    IntersphinxSource(source='https://example.com/api/objects.inv', base_url=None)
+    >>> _parse_intersphinx('c:/one')
+    IntersphinxSource(source='c:/one', base_url=None)
+    >>> _parse_intersphinx('three::c:/one::https://two/')
+    Traceback (most recent call last):
+    ...
+    ValueError: malformed --interspinx option
+    >>> _parse_intersphinx('::one')
+    Traceback (most recent call last):
+    ...
+    ValueError: malformed --interspinx option
+    >>> _parse_intersphinx('one::')
+    Traceback (most recent call last):
+    ...
+    ValueError: malformed --interspinx option
+    >>> _parse_intersphinx('::::')
+    Traceback (most recent call last):
+    ...
+    ValueError: malformed --interspinx option
+    >>> _parse_intersphinx('three ::   c:/one \t :: https://two/')
+    Traceback (most recent call last):
+    ...
+    ValueError: malformed --interspinx option
+    >>> _parse_intersphinx('::\tone')
+    Traceback (most recent call last):
+    ...
+    ValueError: malformed --interspinx option
+    >>> _parse_intersphinx('one    ::')
+    Traceback (most recent call last):
+    ...
+    ValueError: malformed --interspinx option
+    >>> _parse_intersphinx('::  ::')
+    Traceback (most recent call last):
+    ...
+    ValueError: malformed --interspinx option
+    >>> _parse_intersphinx('source::localhost')
+    Traceback (most recent call last):
+    ...
+    ValueError: malformed --interspinx option, providing a scheme is required for the base URL
+    >>> _parse_intersphinx('source ::    localhost')
+    Traceback (most recent call last):
+    ...
+    ValueError: malformed --interspinx option, providing a scheme is required for the base URL
+    '''
+    sep = '::'
+    if sep in s:
+        split = s.split(sep)
+        if len(split) != 2:
+            raise ValueError(f'malformed {option} option')
+        split = [p.strip() for p in split]
+        if any(not v for v in split):
+            raise ValueError(f'malformed {option} option')
+        source, base_url = split
+        if not urlparse(base_url).scheme:
+            raise ValueError(f'malformed {option} option, providing '
+                             'a scheme is required for the base URL')
+        return IntersphinxSource(source, base_url)
+    else:
+        return IntersphinxSource(s, None)
+def _convert_intersphinx(files: list[str], option:str) -> list[IntersphinxSource]:
+    try:
+        return list(map(functools.partial(_parse_intersphinx, option=option), files))
+    except ValueError as e:
+        error(str(e))
 
 _RECOGNIZED_SOURCE_HREF = {
         # Sourceforge
@@ -376,11 +474,12 @@ class Options:
     verbosity:              int                                     = attr.ib()
     quietness:              int                                     = attr.ib()
     introspect_c_modules:   bool                                    = attr.ib()
-    intersphinx:            List[str]                               = attr.ib()
+    intersphinx:            List[IntersphinxSource]                 = attr.ib(converter=functools.partial(_convert_intersphinx, option='--intersphinx')) # type:ignore[misc]
     enable_intersphinx_cache:   bool                                = attr.ib()
     intersphinx_cache_path:     str                                 = attr.ib()
     clear_intersphinx_cache:    bool                                = attr.ib()
     intersphinx_cache_max_age:  str                                 = attr.ib()
+    intersphinx_file:       list[IntersphinxSource]                 = attr.ib(converter=functools.partial(_convert_intersphinx, option='--intersphinx-file')) # type:ignore[misc]
     pyvalreprlinelen:       int                                     = attr.ib()
     pyvalreprmaxlines:      int                                     = attr.ib()
     sidebarexpanddepth:     int                                     = attr.ib()

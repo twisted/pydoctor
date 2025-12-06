@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html xmlns:t="http://twistedmatrix.com/ns/twisted.web.template/0.1">
-  <meta name="pydoctor-template-version" content="2" />
+  <meta name="pydoctor-template-version" content="3" />
   
   <t:transparent t:render="head">Head</t:transparent>
 
@@ -12,17 +12,19 @@
       <t:transparent t:render="nav" /></nav>
 
     <div class="container-fluid">
+      <main>
 
-      <div class="page-header">
-        <h1 t:render="heading">Heading</h1>
-        <div id="showPrivate">
-          <button class="btn btn-link" onclick="togglePrivate()">Toggle Private API</button>
+        <div class="page-header">
+          <h1 t:render="heading">Heading</h1>
+          <div id="show-private">
+            <button class="btn btn-link" onclick="togglePrivate()">Toggle Private API</button>
+          </div>
         </div>
-      </div>
 
-      <ul id="summaryTree" t:render="stuff">
-      </ul>
+        <ul id="summary-tree" t:render="stuff">
+        </ul>
 
+      </main>
     </div>
 
     <div class="container-fluid" t:render="footer" />

@@ -1,4 +1,5 @@
 from typing import Dict, Optional
+import sys
 import pytest
 
 from pydoctor.templatewriter.util import CaseInsensitiveDict
@@ -45,3 +46,11 @@ class TestCaseInsensitiveDict:
     )
     def test_instance_equality(self, other: Optional[Dict[str, str]], result: bool) -> None:
         assert (self.case_insensitive_dict == other) is result
+
+class TestDevMode:
+    """
+    Checks that the test are running in dev mode. 
+    """
+
+    def test_mode(self) -> None:
+        assert sys.flags.dev_mode == True

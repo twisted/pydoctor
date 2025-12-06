@@ -1,18 +1,20 @@
+from __future__ import annotations
+
 from typing import Optional, Tuple, Type, List, overload, cast
 import ast
-import sys
 
 from pydoctor import astbuilder, astutils, model
 from pydoctor import epydoc2stan
 from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring
 from pydoctor.options import Options
-from pydoctor.stanutils import flatten, html2stan, flatten_text
+from pydoctor.stanutils import flatten, flatten_text
 from pydoctor.epydoc.markup.epytext import Element, ParsedEpytextDocstring
-from pydoctor.epydoc2stan import _get_docformat, format_summary, get_parsed_type
+from pydoctor.epydoc2stan import _get_docformat, format_summary, get_parsed_signature, get_parsed_type
+from pydoctor.templatewriter.pages import format_signature
 from pydoctor.test.test_packages import processPackage
 from pydoctor.utils import partialclass
 
-from . import CapSys, NotFoundLinker, posonlyargs, typecomment
+from . import CapSys, NotFoundLinker
 import pytest
 
 class SimpleSystem(model.System):
@@ -104,6 +106,18 @@ def to_html(
         linker: DocstringLinker = NotFoundLinker()
         ) -> str:
     return flatten(parsed_docstring.to_stan(linker))
+
+def signature2str(func: model.Function | model.FunctionOverload, 
+                  fails: bool = False) -> str:
+    doc = get_parsed_signature(func)
+    fromhtml = flatten_text(format_signature(func))
+    if doc is not None:
+        fromdocutils = doc.to_text()
+        assert fromhtml == fromdocutils
+    else:
+        assert fails
+        assert func.signature is None
+    return fromhtml
 
 @overload
 def type2str(type_expr: None) -> None: ...
@@ -218,6 +232,9 @@ def test_function_async(systemcls: Type[model.System]) -> None:
     '(a, b=3, *c, **kw)',
     '(f=True)',
     '(x=0.1, y=-2)',
+    '(x, *v)',
+    '(x, *, v)',
+    '(x, *, v=1)',
     r"(s='theory', t='con\'text')",
     ))
 @systemcls_param
@@ -225,17 +242,14 @@ def test_function_signature(signature: str, systemcls: Type[model.System]) -> No
     """
     A round trip from source to inspect.Signature and back produces
     the original text.
-
-    @note: Our inspect.Signature Paramters objects are now tweaked such that they might produce HTML tags, handled by the L{PyvalColorizer}.
     """
     mod = fromText(f'def f{signature}: ...', systemcls=systemcls)
     docfunc, = mod.contents.values()
     assert isinstance(docfunc, model.Function)
     # This little trick makes it possible to back reproduce the original signature from the genrated HTML.
-    text = flatten_text(html2stan(str(docfunc.signature)))
+    text = signature2str(docfunc)
     assert text == signature
 
-@posonlyargs
 @pytest.mark.parametrize('signature', (
     '(x, y, /)',
     '(x, y=0, /)',
@@ -243,6 +257,9 @@ def test_function_signature(signature: str, systemcls: Type[model.System]) -> No
     '(x, y, /, z, w=42)',
     '(x, y, /, z=0, w=0)',
     '(x, y=3, /, z=5, w=7)',
+    '(x, /, *v)',
+    '(x, /, *, v)',
+    '(x, /, *, v=1)',
     '(x, /, *v, a=1, b=2)',
     '(x, /, *, a=1, b=2, **kwargs)',
     ))
@@ -266,7 +283,7 @@ def test_function_badsig(signature: str, systemcls: Type[model.System], capsys: 
     mod = fromText(f'def f{signature}: ...', systemcls=systemcls, modname='mod')
     docfunc, = mod.contents.values()
     assert isinstance(docfunc, model.Function)
-    assert str(docfunc.signature) == '()'
+    assert signature2str(docfunc, fails=True) == '(...)'
     captured = capsys.readouterr().out
     assert captured.startswith("mod:1: mod.f has invalid parameters: ")
 
@@ -1341,27 +1358,26 @@ def test_annotated_variables(systemcls: Type[model.System]) -> None:
     assert type2html(b) == 'string'
     c = C.contents['c']
     assert c.docstring == """third"""
-    assert type2html(c) == '<code>str</code>'
+    assert type2html(c) == '<code><a>str</a></code>'
     d = C.contents['d']
     assert d.docstring == """fourth"""
-    assert type2html(d) == '<code>str</code>'
+    assert type2html(d) == '<code><a>str</a></code>'
     e = C.contents['e']
     assert e.docstring == """fifth"""
-    assert type2html(e) == '<code>List[C]</code>'
+    assert type2html(e) == '<code><a>List</a>[<a>C</a>]</code>'
     f = C.contents['f']
     assert f.docstring == """sixth"""
-    assert type2html(f) == '<code>List[C]</code>'
+    assert type2html(f) == '<code><a>List</a>[<a>C</a>]</code>'
     g = C.contents['g']
     assert g.docstring == """seventh"""
-    assert type2html(g) == '<code>List[C]</code>'
+    assert type2html(g) == '<code><a>List</a>[<a>C</a>]</code>'
     s = C.contents['s']
     assert s.docstring == """instance"""
-    assert type2html(s) == '<code>List[str]</code>'
+    assert type2html(s) == '<code><a>List</a>[<a>str</a>]</code>'
     m = mod.contents['m']
     assert m.docstring == """module-level"""
-    assert type2html(m) == '<code>bytes</code>'
+    assert type2html(m) == '<code><a>bytes</a></code>'
 
-@typecomment
 @systemcls_param
 def test_type_comment(systemcls: Type[model.System], capsys: CapSys) -> None:
     mod = fromText('''
@@ -1666,14 +1682,13 @@ def test_overload(systemcls: Type[model.System], capsys: CapSys) -> None:
         """, systemcls=systemcls)
     func = mod.contents['parse']
     assert isinstance(func, model.Function)
-    # Work around different space arrangements in Signature.__str__ between python versions
-    assert flatten_text(html2stan(str(func.signature).replace(' ', ''))) == '(s:Union[str,bytes])->Union[str,bytes]'
+    assert signature2str(func) == '(s: Union[str, bytes]) -> Union[str, bytes]'
     assert [astbuilder.node2dottedname(d) for d in (func.decorators or ())] == []
     assert len(func.overloads) == 2
     assert [astbuilder.node2dottedname(d) for d in func.overloads[0].decorators] == [['dec'], ['overload']]
     assert [astbuilder.node2dottedname(d) for d in func.overloads[1].decorators] == [['overload']]
-    assert flatten_text(html2stan(str(func.overloads[0].signature).replace(' ', ''))) == '(s:str)->str'
-    assert flatten_text(html2stan(str(func.overloads[1].signature).replace(' ', ''))) == '(s:bytes)->bytes'
+    assert signature2str(func.overloads[0]) == '(s: str) -> str'
+    assert signature2str(func.overloads[1]) == '(s: bytes) -> bytes'
     assert capsys.readouterr().out.splitlines() == [
         '<test>:11: <test>.parse overload has docstring, unsupported',
         '<test>:15: <test>.parse overload appeared after primary function',
@@ -1953,7 +1968,7 @@ def test_not_a_constant_module(systemcls: Type[model.System], capsys:CapSys) -> 
         THING = 'EN'
     OTHER = 1
     OTHER += 1
-    E: typing.Final = 2
+    E: typing.Final = 2 # it's considered a constant because it's explicitely marked Final
     E = 4
     LIST = [2.14]
     LIST.insert(0,0)
@@ -1961,7 +1976,7 @@ def test_not_a_constant_module(systemcls: Type[model.System], capsys:CapSys) -> 
     assert mod.contents['LANG'].kind is model.DocumentableKind.VARIABLE
     assert mod.contents['THING'].kind is model.DocumentableKind.VARIABLE
     assert mod.contents['OTHER'].kind is model.DocumentableKind.VARIABLE
-    assert mod.contents['E'].kind is model.DocumentableKind.VARIABLE
+    assert mod.contents['E'].kind is model.DocumentableKind.CONSTANT
 
     # all-caps mutables variables are flagged as constant: this is a trade-off
     # in between our weeknesses in terms static analysis (that is we don't recognized list modifications) 
@@ -2941,7 +2956,7 @@ def test_augmented_assignment(systemcls: Type[model.System]) -> None:
     attr = mod.contents['var']
     assert isinstance(attr, model.Attribute)
     assert attr.value
-    assert astutils.unparse(attr.value).strip() == '1 + 3' if sys.version_info >= (3,9) else '(1 + 3)'
+    assert astutils.unparse(attr.value).strip() == '1 + 3'
 
 @systemcls_param
 def test_augmented_assignment_in_class(systemcls: Type[model.System]) -> None:
@@ -2953,7 +2968,7 @@ def test_augmented_assignment_in_class(systemcls: Type[model.System]) -> None:
     attr = mod.contents['c'].contents['var']
     assert isinstance(attr, model.Attribute)
     assert attr.value
-    assert astutils.unparse(attr.value).strip() == '1 + 3' if sys.version_info >= (3,9) else '(1 + 3)'
+    assert astutils.unparse(attr.value).strip() == '1 + 3'
 
 
 @systemcls_param
@@ -2971,7 +2986,7 @@ def test_augmented_assignment_conditionnal_else_ignored(systemcls: Type[model.Sy
     attr = mod.contents['var']
     assert isinstance(attr, model.Attribute)
     assert attr.value
-    assert astutils.unparse(attr.value).strip() == '1 + 3' if sys.version_info >= (3,9) else '(1 + 3)'
+    assert astutils.unparse(attr.value).strip() == '1 + 3'
 
 @systemcls_param
 def test_augmented_assignment_conditionnal_multiple_assignments(systemcls: Type[model.System]) -> None:
@@ -2989,7 +3004,7 @@ def test_augmented_assignment_conditionnal_multiple_assignments(systemcls: Type[
     attr = mod.contents['var']
     assert isinstance(attr, model.Attribute)
     assert attr.value
-    assert astutils.unparse(attr.value).strip() == '1 + 3 + 4' if sys.version_info >= (3,9) else '(1 + 3 + 4)'
+    assert astutils.unparse(attr.value).strip() == '1 + 3 + 4'
 
 @systemcls_param
 def test_augmented_assignment_instance_var(systemcls: Type[model.System]) -> None:
@@ -3005,7 +3020,7 @@ def test_augmented_assignment_instance_var(systemcls: Type[model.System]) -> Non
     attr = mod.contents['c'].contents['var']
     assert isinstance(attr, model.Attribute)
     assert attr.value
-    assert astutils.unparse(attr.value).strip() == '1' if sys.version_info >= (3,9) else '(1)'
+    assert astutils.unparse(attr.value).strip() == '1'
 
 @systemcls_param
 def test_augmented_assignment_not_suitable_for_inline_docstring(systemcls: Type[model.System]) -> None:
@@ -3060,6 +3075,84 @@ def test_typealias_unstring(systemcls: Type[model.System]) -> None:
         next(n for n in ast.walk(typealias.value) if isinstance(n, ast.Constant))
 
 @systemcls_param
+def test_doc_comment(systemcls: Type[model.System],  capsys: CapSys) -> None:
+    """
+    Tests for feature https://github.com/twisted/pydoctor/issues/800
+    """
+    code = ('class Foo(object):\n'
+            '    """class Foo!"""\n'
+            '    #: comment before attr1\n'
+            '    attr1 = None\n'
+            '    attr2 = None  # attribute comment for attr2 (without colon)\n'
+            '    attr3 = None  #: attribute comment for attr3\n'
+            '    attr4 = None  #: long attribute comment\n'
+            '                  #: for attr4\n'
+            '    #: comment before attr5\n'
+            '    attr5 = None  #: attribute comment for attr5\n'
+            '    attr6, attr7 = 1, 2  #: this comment is not ignored\n'
+            '\n'
+            '    def __init__(self):\n'
+            '       self.attr8 = None  #: first attribute comment (ignored)\n'
+            '       self.attr8 = None  #: attribute comment for attr8\n'
+            '       #: comment before attr9\n'
+            '       self.attr9 = None  #: comment after attr9\n'
+            '       "string after attr9"\n'
+            '\n'
+            '    def bar(self, arg1, arg2=True, *args, **kwargs):\n'
+            '       """method Foo.bar"""\n'
+            '       pass\n'
+            '\n'
+            'def baz():\n'
+            '   """function baz"""\n'
+            '   pass\n'
+            '\n'
+            'class Qux: attr1 = 1; attr2 = 2')
+    
+    mod = fromText(code, systemcls=systemcls)
+    
+    def docs(name: str) -> str | None:
+        return mod.contents['Foo'].contents[name].docstring
+    
+    assert docs('attr1') == 'comment before attr1'
+    assert docs('attr2') == None # not a doc comment
+    assert docs('attr3') == 'attribute comment for attr3'
+    assert docs('attr4') == 'long attribute comment'
+    assert docs('attr4') == 'long attribute comment'
+    assert docs('attr5') == 'attribute comment for attr5'
+    assert docs('attr6') == 'this comment is not ignored' 
+    assert docs('attr7') == 'this comment is not ignored'
+    assert docs('attr8') == 'attribute comment for attr8'
+    assert docs('attr9') == 'string after attr9'
+    
+@systemcls_param
+def test_doc_comment_module_var(systemcls: Type[model.System],  capsys: CapSys) -> None:
+    src = """
+    a: int = 42 #: This is a variable.
+
+    #: This is b variable.
+    b = None
+
+    #: This is c variable.
+    c: float #: This takes precedence!
+
+    d: None  #: This is also ignored.
+    '''Because I exist!'''
+
+    #: this is not documentation
+
+    e = 43
+    """
+    mod = fromText(src, systemcls=systemcls)
+
+    def docs(name: str) -> str | None:
+        return mod.contents[name].docstring
+
+    assert docs('a') == 'This is a variable.'
+    assert docs('c') == 'This takes precedence!'
+    assert docs('d') == 'Because I exist!'
+    assert docs('e') is None
+    
+@systemcls_param
 def test_mutilple_docstrings_warnings(systemcls: Type[model.System], capsys: CapSys) -> None:
     """
     When pydoctor encounters multiple places where the docstring is defined, it reports a warning.
@@ -3090,7 +3183,7 @@ def test_mutilple_docstrings_warnings(systemcls: Type[model.System], capsys: Cap
 def test_mutilple_docstring_with_doc_comments_warnings(systemcls: Type[model.System], capsys: CapSys) -> None:
     src = '''
     class C:
-        a: int;"docs" #: re-docs
+        a: int;"re-docs" #: docs
     
     class B:
         """
@@ -3107,10 +3200,56 @@ def test_mutilple_docstring_with_doc_comments_warnings(systemcls: Type[model.Sys
         a: int 
         "re-re-docs"
     '''
-    fromText(src, systemcls=systemcls)
-    # TODO: handle doc comments.x
-    assert capsys.readouterr().out == '<test>:18: Existing docstring at line 14 is overriden\n'
+    mod = fromText(src, systemcls=systemcls)
+    
+    assert capsys.readouterr().out == (
+        '<test>:3: Existing docstring at line 3 is overriden\n'
+        '<test>:9: Existing docstring at line 7 is overriden\n'
+        '<test>:16: Existing docstring at line 14 is overriden\n'
+        '<test>:18: Existing docstring at line 16 is overriden\n')
 
+    assert mod.contents['C'].contents['a'].docstring == 're-docs'
+    assert mod.contents['B'].contents['a'].docstring == 're-docs'
+    assert mod.contents['B2'].contents['a'].docstring == 're-re-docs'
+
+@systemcls_param
+def test_doc_comment_multiple_assigments(systemcls: Type[model.System], capsys: CapSys) -> None:
+    # TODO: this currently does not support nested tuple assignments.
+    src = '''
+    class C:
+        def __init__(self):
+            self.x, x = 1, 1 #: x docs
+            self.y = x = 1 #: y docs
+    x,y = 1,1 #: x and y docs
+    v = w = 1 #: v and w docs
+    '''
+    mod =  fromText(src, systemcls=systemcls)
+    assert not capsys.readouterr().out
+    assert mod.contents['x'].docstring == 'x and y docs'
+    assert mod.contents['y'].docstring == 'x and y docs'
+    assert mod.contents['v'].docstring == 'v and w docs'
+    assert mod.contents['w'].docstring == 'v and w docs'
+    assert mod.contents['C'].contents['x'].docstring == 'x docs'
+    assert mod.contents['C'].contents['y'].docstring == 'y docs'
+
+@systemcls_param
+def test_other_encoding(systemcls: Type[model.System], capsys: CapSys) -> None:
+    # Test for issue https://github.com/twisted/pydoctor/issues/805
+    processPackage('coding_not_utf8', 
+        systemcls=lambda: systemcls(model.Options.from_args(['-q'])))
+    assert not capsys.readouterr().out
+    
+@systemcls_param
+def test_alias_resets_attribute_state(systemcls: Type[model.System], capsys:CapSys) -> None:
+    # from https://github.com/lxml/lxml/blob/a56babb0013dc46baf480f49ebd5cc1ab65bc418/src/lxml/html/builder.py
+    src = '''
+    E = True #: Legit docstring
+    A = E.a  #: trash1
+    ABBR = E.abbr  #: trash2
+    '''
+    fromText(src, systemcls=systemcls)
+    assert not capsys.readouterr().out
+    
 @systemcls_param
 def test_import_all_inside_else_branch_is_processed(systemcls: Type[model.System], capsys: CapSys) -> None:
     src1 = '''
@@ -3250,3 +3389,109 @@ def test_inline_docstring_at_wrong_place(systemcls: Type[model.System], capsys: 
     assert not mod.contents['c'].docstring
     assert not mod.contents['d'].docstring
     assert not mod.contents['e'].docstring
+
+
+@systemcls_param
+def test_inline_docstring_is_invalid_when_there_is_a_comment_in_between(systemcls: Type[model.System], capsys: CapSys) -> None:
+    src = '''
+    a = True
+    #
+    'not documentation'
+
+    b = True
+    # b = False
+    'not documentation'
+
+    c = True
+
+    # c = False
+
+    'not documentation'
+
+    d = True
+
+    # d = False
+
+    """
+    not documentation
+    """
+
+    e = True
+    # e = False
+    """
+    not documentation
+    """
+    '''
+
+    mod =  fromText(src, systemcls=systemcls)
+    assert not capsys.readouterr().out
+    for o in 'abcde':
+        assert not mod.contents[o].docstring
+
+@systemcls_param
+def test_Final_constant_under_control_flow_block_is_still_constant(systemcls: Type[model.System], capsys: CapSys) -> None:
+    """
+    Test for issue https://github.com/twisted/pydoctor/issues/818
+    """
+    src = '''
+    import sys, random, typing as t
+    if sys.version_info > (3,10):
+        v:t.Final = 1
+    else:
+        v:t.Final = 2
+    
+    if random.choice([True, False]):
+        w:t.Final = 1
+    else:
+        w:t.Final = 2
+    
+    x: t.Final
+    x = 34
+    '''
+
+    mod =  fromText(src, systemcls=systemcls)
+    assert not capsys.readouterr().out
+
+    assert mod.contents['v'].kind == model.DocumentableKind.CONSTANT
+    assert mod.contents['w'].kind == model.DocumentableKind.CONSTANT
+    assert mod.contents['x'].kind == model.DocumentableKind.CONSTANT
+    
+def test_docformat_variable_ignored_corner_case(capsys: CapSys) -> None:
+    # test for https://github.com/twisted/pydoctor/pull/723/files#r2217424695
+
+    src_top = '''
+    # test
+    # epytext is used by default but let's be explicit
+    __docformat__ = 'epytext'
+
+    # this import might shortcut the processing of 
+    # test.sub such that __docformat__ variable will be ignored
+    from test.sub.subsub import thing
+    '''
+
+    src_sub = '''
+    # test.sub
+    __docformat__ = 'restructuredtext'
+    '''
+
+    src_sub_sub = '''
+    # test.sub.subsub
+    # should be restructuredtext formatting
+    """
+    `link <https://twisted.org>`_
+
+    :var thing: something `link <https://twisted.org>`_
+    """
+    thing = False
+    '''
+
+    builder = (s:=model.System()).systemBuilder(s)
+    builder.addModuleString(src_top, 'test', is_package=True)
+    builder.addModuleString(src_sub, 'sub', parent_name='test', is_package=True)
+    builder.addModuleString(src_sub_sub, 'subsub', parent_name='test.sub')
+    builder.buildModules()
+
+    from .test_epydoc2stan import docstring2html
+    assert 'href' in docstring2html(s.allobjects['test.sub.subsub'])
+    assert 'href' in docstring2html(s.allobjects['test.sub.subsub.thing'])
+

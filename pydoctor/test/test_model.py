@@ -1,5 +1,10 @@
 """
 Unit tests for model.
+
+@var test_introspection_pure_python_class_ivar: Test docstring, 
+    see test_introspection_pure_python_class_ivar() test.
+@var something_else_issue_903: Docstring for issue 903. 
+@type something_else_issue_903: set[bytes]
 """
 
 import subprocess
@@ -12,7 +17,7 @@ import pytest
 
 from twisted.web.template import Tag
 
-from pydoctor.options import Options
+from pydoctor.options import IntersphinxSource, Options
 from pydoctor import model, stanutils, extensions
 from pydoctor.templatewriter import pages
 from pydoctor.utils import parse_privacy_tuple
@@ -37,8 +42,9 @@ class FakeDocumentable:
     A fake of pydoctor.model.Documentable that provides a system and
     sourceHref attribute.
     """
+    kind = None
     system: model.System
-    sourceHref = None
+    source_href = None
     filepath: str
 
 
@@ -62,7 +68,7 @@ def test_setSourceHrefOption(projectBaseDir: Path) -> None:
     mod.system = system
     system.setSourceHref(mod, projectBaseDir / "package" / "module.py")
 
-    assert mod.sourceHref == "http://example.org/trac/browser/trunk/package/module.py"
+    assert mod.source_href == "http://example.org/trac/browser/trunk/package/module.py"
 
 def test_htmlsourcetemplate_auto_detect() -> None:
     """
@@ -90,7 +96,7 @@ def test_htmlsourcetemplate_auto_detect() -> None:
         system = model.System(options)
 
         processPackage('basic', systemcls=lambda:system)
-        assert system.allobjects['basic.mod.C'].sourceHref == var_href
+        assert system.allobjects['basic.mod.C'].source_href == var_href
 
 def test_htmlsourcetemplate_custom() -> None:
     """
@@ -103,7 +109,7 @@ def test_htmlsourcetemplate_custom() -> None:
     system = model.System(options)
 
     processPackage('basic', systemcls=lambda:system)
-    assert system.allobjects['basic.mod.C'].sourceHref == "http://example.org/trac/browser/trunk/pydoctor/test/testpackages/basic/mod.py#n7"
+    assert system.allobjects['basic.mod.C'].source_href == "http://example.org/trac/browser/trunk/pydoctor/test/testpackages/basic/mod.py#n7"
 
 def test_initialization_default() -> None:
     """
@@ -149,8 +155,8 @@ def test_fetchIntersphinxInventories_content() -> None:
     """
     options = Options.defaults()
     options.intersphinx = [
-        'http://sphinx/objects.inv',
-        'file:///twisted/index.inv',
+        IntersphinxSource('http://sphinx/objects.inv', None),
+        IntersphinxSource('file:///twisted/index.inv', None),
         ]
     url_content = {
         'http://sphinx/objects.inv': zlib.compress(
@@ -183,6 +189,77 @@ def test_fetchIntersphinxInventories_content() -> None:
         'file:///twisted/tm.html' ==
         sut.intersphinx.getLink('twisted.package')
         )
+
+
+def test_fetchIntersphinxInventories_content_file_with_base_url(tmp_path: Path) -> None:
+    """
+    Read and parse intersphinx inventories from file for each configured
+    intersphix.
+    """
+    path = tmp_path / 'objects.inv'
+    with open(path, 'wb') as f:
+        f.write(zlib.compress(b'twisted.package py:module -1 tm.html -'))
+    
+    with open(tmp_path / 'tm.html', "w") as _:
+        pass
+
+    options = Options.defaults()
+    options.intersphinx_file = [IntersphinxSource(str(path), "http://sphinx")]
+
+    sut = model.System(options=options)
+    log = []
+    def log_msg(part: str, msg: str) -> None:
+        log.append((part, msg))
+    sut.msg = log_msg # type: ignore[assignment]
+
+    class Cache(CacheT):
+        """Avoid touching the network."""
+        def get(self, url: str) -> bytes:
+            return b''
+        def close(self) -> None:
+            return None
+        
+
+    sut.fetchIntersphinxInventories(Cache())
+
+    assert [] == log
+    assert ('http://sphinx/tm.html' == 
+            sut.intersphinx.getLink('twisted.package'))
+
+
+def test_fetchIntersphinxInventories_content_file(tmp_path: Path) -> None:
+    """
+    Read and parse intersphinx inventories from file for each configured
+    intersphix.
+    """
+    path = tmp_path / 'objects.inv'
+    with open(path, 'wb') as f:
+        f.write(zlib.compress(b'twisted.package py:module -1 tm.html -'))
+    
+    with open(tmp_path / 'tm.html', "w") as _:
+        pass
+        
+    options = Options.defaults()
+    options.intersphinx_file = [IntersphinxSource(str(path), None)]
+
+    sut = model.System(options=options)
+    log = []
+    def log_msg(part: str, msg: str) -> None:
+        log.append((part, msg))
+    sut.msg = log_msg # type: ignore[assignment]
+
+    class Cache(CacheT):
+        """Avoid touching the network."""
+        def get(self, url: str) -> bytes:
+            return b''
+        def close(self) -> None:
+            return None
+        
+
+    sut.fetchIntersphinxInventories(Cache())
+
+    assert [] == log
+    assert ((tmp_path / 'tm.html').samefile(sut.intersphinx.getLink('twisted.package'))) # type: ignore
 
 
 def test_docsources_class_attribute() -> None:
@@ -302,6 +379,67 @@ def test_introspection_python() -> None:
     assert isinstance(func, model.Function)
     assert func.signature == signature(dummy_function_with_complex_signature)
 
+class Dummy2:
+    """
+    @ivar thing: My list of thing
+    @type thing: list[str]
+    """
+
+def test_introspection_pure_python_class_ivar() -> None:
+    # Test for issue https://github.com/twisted/pydoctor/issues/903
+    # part of the test rely on the fact that the docstring of this test function is defined
+    # as a var field at the top of this module. 
+
+    system = model.System()
+    system.introspectModule(Path(__file__), __name__, None)
+    system.process()
+
+    obj = system.objForFullName(__name__ + '.Dummy2.thing')
+    assert isinstance(obj, model.Attribute)
+    assert obj.parsed_docstring.to_text() == "My list of thing" # type: ignore
+    assert obj.parsed_type.to_text() == "list[str]" # type: ignore
+
+    obj2 = system.objForFullName(__name__ + '.test_introspection_pure_python_class_ivar')
+    assert isinstance(obj2, model.Function)
+    assert obj2.parsed_docstring.to_text().startswith('Test docstring') # type: ignore
+
+    obj3 =  system.objForFullName(__name__ + '.something_else_issue_903')
+    assert isinstance(obj3, model.Attribute)
+    assert obj3.parsed_docstring.to_text() == 'Docstring for issue 903.' # type: ignore
+    assert obj3.parsed_type.to_text() == 'set[bytes]' # type: ignore
+
+class Dummy3:
+    @property
+    def thing(self) -> None: pass
+    @property
+    def documented_thing(self) -> None: 
+        """Docs"""
+    @property
+    def settable_thing(self) -> None: pass
+    @settable_thing.setter
+    def settable_thing(self, v: object) -> None:
+        """Ignored"""
+
+def test_introspection_pure_python_class_property() -> None:
+    # Test for issue https://github.com/twisted/pydoctor/issues/907
+    
+    system = model.System()
+    system.introspectModule(Path(__file__), __name__, None)
+    system.process()
+
+    assert list(system.objForFullName(__name__ + '.Dummy3').contents) == ['thing', 'documented_thing', 'settable_thing'] # type: ignore
+
+    obj = system.objForFullName(__name__ + '.Dummy3.thing')
+    assert isinstance(obj, model.Attribute)
+
+    obj2 = system.objForFullName(__name__ + '.Dummy3.documented_thing')
+    assert isinstance(obj2, model.Attribute)
+    assert obj2.docstring == "Docs"
+
+    obj3 = system.objForFullName(__name__ + '.Dummy3.settable_thing')
+    assert isinstance(obj3, model.Attribute)
+    assert obj3.docstring is None
+
 def test_introspection_extension() -> None:
     """Find docstrings from this test using introspection of an extension."""
 
@@ -402,6 +540,55 @@ def test_c_module_python_module_name_clash(capsys:CapSys) -> None:
         assert [mod] == list(system.allobjects['mymod'].contents.values())
         assert len(mod.contents) == 1
         assert 'coming_from_c_module' == mod.contents.popitem()[0]
+
+    finally:
+        # cleanup
+        subprocess.getoutput(f'rm -f {package_path}/*.so')
+
+@pytest.mark.skipif("platform.python_implementation() == 'PyPy' or platform.system() == 'Windows'")
+def test_c_module_class_ivar_and_datadescriptors(capsys:CapSys) -> None:
+    # Test for issues 
+    # - https://github.com/twisted/pydoctor/issues/907 and
+    # - https://github.com/twisted/pydoctor/issues/903
+    # using a real C-module
+    project_path = testpackages / 'c_module_class_ivar_and_datadescriptors'
+    package_path = project_path / 'mymod'
+    
+    # build extension
+    try:
+        cwd = os.getcwd()
+        code, outstr = subprocess.getstatusoutput(f'cd {project_path} && python3 setup.py build_ext --inplace')
+        os.chdir(cwd)
+        
+        assert code==0, outstr
+        system = model.System()
+        system.options.introspect_c_modules = True
+
+        system.addPackage(package_path, None)
+        system.process()
+
+        mod = system.allobjects['mymod.base']
+        assert [mod] == list(system.allobjects['mymod'].contents.values())
+        assert list(mod.contents) == ['Base']
+        
+        # fetch the class
+        cls, = mod.contents.values()
+        assert isinstance(cls, model.Class)
+        assert cls.docstring
+        
+        # checks the attributes are there
+        attr = cls.contents['value']
+        assert isinstance(attr, model.Attribute)
+        assert attr.docstring == 'dummy value'
+
+        attr = cls.contents['number']
+        assert isinstance(attr, model.Attribute)
+        assert attr.docstring == 'dummy integer attribute'
+
+        attr = cls.contents['thing']
+        assert isinstance(attr, model.Attribute)
+        assert attr.parsed_docstring.to_text() == 'My list of thing' # type: ignore[union-attr]
+        assert attr.parsed_type.to_text() == 'list[str]' # type: ignore[union-attr]
 
     finally:
         # cleanup
@@ -573,3 +760,50 @@ def test_priority_processor(capsys:CapSys) -> None:
                                                             'priority 100 (bis)',
                                                             'priority 25',
                                                             ]
+
+def test_preprocess_step(capsys:CapSys) -> None:
+    """
+    Meta variables like __all__ and __docformat__ are computed before any module
+    gets processed.
+    """
+    
+    class PreProcessingTestSystem(model.System):
+        def preProcess(self) -> None:
+            assert not self.processing_modules
+            assert (p1:=self.unprocessed_modules)
+            assert all(isinstance(p, model.Module) 
+                       for p in self.unprocessed_modules)
+            assert (p2:=list(self.allobjects.values())) == self.unprocessed_modules
+
+            super().preProcess()
+
+            # check the pre processing doesn't change 
+            # the unprocessed or processing module list
+            assert not self.processing_modules
+            assert p1 == p2 == self.unprocessed_modules
+
+            # check the __all__ variable has been computed already
+            mod = self.allobjects['package.module']
+            assert isinstance(mod, model.Module)
+            assert mod.all == ['_thing', 'bar']
+
+            # check the __docformat__ variable has been computed as well
+            pack = self.allobjects['package']
+            assert isinstance(pack, model.Module)
+            assert pack.docformat == 'google'
+
+    src = '''
+    # package
+    __docformat__ = 'google'
+    '''
+
+    src2 = '''
+    # package.module
+    __all__ = ['_thing', 'bar']
+    '''
+
+    builder = (system:=PreProcessingTestSystem()).systemBuilder(system)
+    builder.addModuleString(src, 'package', is_package=True)
+    builder.addModuleString(src2, 'module', parent_name='package')
+    builder.buildModules()
+    assert not capsys.readouterr().out

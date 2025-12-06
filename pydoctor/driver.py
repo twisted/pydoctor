@@ -7,7 +7,7 @@ import os
 import sys
 from pathlib import Path
 
-from pydoctor.options import Options, BUILDTIME_FORMAT
+from pydoctor.options import Options, BUILDTIME_FORMAT, FALSE_VALUES
 from pydoctor.utils import error
 from pydoctor import model
 from pydoctor.templatewriter import IWriter, TemplateLookup, TemplateError
@@ -15,10 +15,7 @@ from pydoctor.sphinx import SphinxInventoryWriter, prepareCache
 
 # In newer Python versions, use importlib.resources from the standard library.
 # On older versions, a compatibility package must be installed from PyPI.
-if sys.version_info < (3, 9):
-    import importlib_resources
-else:
-    import importlib.resources as importlib_resources
+import importlib.resources as importlib_resources
 
 def get_system(options: model.Options) -> model.System:
     """
@@ -38,8 +35,8 @@ def get_system(options: model.Options) -> model.System:
     # Support source date epoch:
     # https://reproducible-builds.org/specs/source-date-epoch/
     try:
-        system.buildtime = datetime.datetime.utcfromtimestamp(
-            int(os.environ['SOURCE_DATE_EPOCH']))
+        system.buildtime = datetime.datetime.fromtimestamp(
+            int(os.environ['SOURCE_DATE_EPOCH']), datetime.UTC)
     except ValueError as e:
         error(str(e))
     except KeyError:
@@ -47,11 +44,14 @@ def get_system(options: model.Options) -> model.System:
     # Load custom buildtime
     if options.buildtime:
         try:
-            system.buildtime = datetime.datetime.strptime(
-                options.buildtime, BUILDTIME_FORMAT)
+            if options.buildtime.lower() in FALSE_VALUES:
+                system.buildtime = None
+            else:
+                system.buildtime = datetime.datetime.strptime(
+                    options.buildtime, BUILDTIME_FORMAT)
         except ValueError as e:
             error(str(e))
-    
+
     # step 1.5: create the builder
 
     builderT = system.systemBuilder
@@ -190,7 +190,7 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
         if system.violations and options.warnings_as_errors:
             # Update exit code if the run has produced warnings.
             exitcode = 3
-        
+
     except:
         if options.pdb:
             import pdb

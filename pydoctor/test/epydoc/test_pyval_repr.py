@@ -5,15 +5,15 @@ from textwrap import dedent
 from typing import Any, Union
 import xml.sax
 
+import docutils
 import pytest
 
 from pydoctor.epydoc.markup._pyval_repr import PyvalColorizer, colorize_inline_pyval
 from pydoctor.test import NotFoundLinker
 from pydoctor.stanutils import flatten, flatten_text, html2stan
-from pydoctor.node2stan import gettext
 
-def color(v: Any, linebreakok:bool=True, maxlines:int=5, linelen:int=40) -> str:
-    colorizer = PyvalColorizer(linelen=linelen, linebreakok=linebreakok, maxlines=maxlines)
+def color(v: Any, linebreakok:bool=True, maxlines:int=5, linelen:int=40, is_annotation: bool = False) -> str:
+    colorizer = PyvalColorizer(linelen=linelen, linebreakok=linebreakok, maxlines=maxlines, is_annotation=is_annotation)
     parsed_doc = colorizer.colorize(v)
     return parsed_doc.to_node().pformat()
 
@@ -27,15 +27,15 @@ def test_simple_types() -> None:
     Integers, floats, None, and complex numbers get printed using str,
     with no syntax highlighting.
     """
-    assert color(1) == """<document source="pyval_repr">
+    assert color(1) == """<document source="code">
     1\n"""
-    assert color(0) == """<document source="pyval_repr">
+    assert color(0) == """<document source="code">
     0\n"""
-    assert color(100) == """<document source="pyval_repr">
+    assert color(100) == """<document source="code">
     100\n"""
-    assert color(1./4) == """<document source="pyval_repr">
+    assert color(1./4) == """<document source="code">
     0.25\n"""
-    assert color(None) == """<document source="pyval_repr">
+    assert color(None) == """<document source="code">
     <obj_reference refuri="None">
         None\n"""
 
@@ -43,9 +43,9 @@ def test_long_numbers() -> None:
     """
     Long ints will get wrapped if they're big enough.
     """
-    assert color(10000000) == """<document source="pyval_repr">
+    assert color(10000000) == """<document source="code">
     10000000\n"""
-    assert color(10**90) == """<document source="pyval_repr">
+    assert color(10**90) == """<document source="code">
     1000000000000000000000000000000000000000
     <inline classes="variable-linewrap">
         ↵
@@ -61,7 +61,7 @@ def test_strings() -> None:
     Strings have their quotation marks tagged as 'quote'.  Characters are
     escaped using the 'string-escape' encoding.
     """
-    assert color(bytes(range(255)), maxlines=9999) == r"""<document source="pyval_repr">
+    assert color(bytes(range(255)), maxlines=9999) == r"""<document source="code">
     b
     <inline classes="variable-quote">
         '''
@@ -179,7 +179,7 @@ def test_strings_quote() -> None:
     Currently, the "'" quote is always used, because that's what the
     'string-escape' encoding expects.
     """
-    assert color('Hello') == """<document source="pyval_repr">
+    assert color('Hello') == """<document source="code">
     <inline classes="variable-quote">
         '
     <inline classes="variable-string">
@@ -188,7 +188,7 @@ def test_strings_quote() -> None:
         '
 """
 
-    assert color('"Hello"') == """<document source="pyval_repr">
+    assert color('"Hello"') == """<document source="code">
     <inline classes="variable-quote">
         '
     <inline classes="variable-string">
@@ -197,7 +197,7 @@ def test_strings_quote() -> None:
         '
 """
 
-    assert color("'Hello'") == r"""<document source="pyval_repr">
+    assert color("'Hello'") == r"""<document source="code">
     <inline classes="variable-quote">
         '
     <inline classes="variable-string">
@@ -207,7 +207,7 @@ def test_strings_quote() -> None:
 """
 
 def test_strings_special_chars() -> None:
-    assert color("'abc \t\r\n\f\v \xff 😀'\x0c\x0b\t\r \\") == r"""<document source="pyval_repr">
+    assert color("'abc \t\r\n\f\v \xff 😀'\x0c\x0b\t\r \\") == r"""<document source="code">
     <inline classes="variable-quote">
         '''
     <inline classes="variable-string">
@@ -224,7 +224,7 @@ def test_strings_multiline() -> None:
     """Strings containing newlines are automatically rendered as multiline
     strings."""
 
-    assert color("This\n  is a multiline\n string!") == """<document source="pyval_repr">
+    assert color("This\n  is a multiline\n string!") == """<document source="code">
     <inline classes="variable-quote">
         '''
     <inline classes="variable-string">
@@ -240,7 +240,7 @@ def test_strings_multiline() -> None:
 
     # Unless we ask for them not to be:
 
-    assert color("This\n  is a multiline\n string!", linebreakok=False)  == r"""<document source="pyval_repr">
+    assert color("This\n  is a multiline\n string!", linebreakok=False)  == r"""<document source="code">
     <inline classes="variable-quote">
         '
     <inline classes="variable-string">
@@ -253,7 +253,7 @@ def test_bytes_multiline() -> None:
 
     # The same should work also for binary strings (bytes):
 
-    assert color(b"This\n  is a multiline\n string!") == """<document source="pyval_repr">
+    assert color(b"This\n  is a multiline\n string!") == """<document source="code">
     b
     <inline classes="variable-quote">
         '''
@@ -268,7 +268,7 @@ def test_bytes_multiline() -> None:
     <inline classes="variable-quote">
         '''\n"""
 
-    assert color(b"This\n  is a multiline\n string!", linebreakok=False) == r"""<document source="pyval_repr">
+    assert color(b"This\n  is a multiline\n string!", linebreakok=False) == r"""<document source="code">
     b
     <inline classes="variable-quote">
         '
@@ -281,7 +281,7 @@ def test_bytes_multiline() -> None:
 def test_unicode_str() -> None:
     """Unicode strings are handled properly.
     """
-    assert color("\uaaaa And \ubbbb") == """<document source="pyval_repr">
+    assert color("\uaaaa And \ubbbb") == """<document source="code">
     <inline classes="variable-quote">
         '
     <inline classes="variable-string">
@@ -289,7 +289,7 @@ def test_unicode_str() -> None:
     <inline classes="variable-quote">
         '\n"""
 
-    assert color("ÉéèÈÜÏïü") == """<document source="pyval_repr">
+    assert color("ÉéèÈÜÏïü") == """<document source="code">
     <inline classes="variable-quote">
         '
     <inline classes="variable-string">
@@ -301,7 +301,7 @@ def test_bytes_str() -> None:
     """
     Binary strings (bytes) are handled properly:"""
 
-    assert color(b"Hello world") == """<document source="pyval_repr">
+    assert color(b"Hello world") == """<document source="code">
     b
     <inline classes="variable-quote">
         '
@@ -310,7 +310,7 @@ def test_bytes_str() -> None:
     <inline classes="variable-quote">
         '\n"""
 
-    assert color(b"\x00 And \xff") == r"""<document source="pyval_repr">
+    assert color(b"\x00 And \xff") == r"""<document source="code">
     b
     <inline classes="variable-quote">
         '
@@ -326,7 +326,7 @@ def test_inline_list() -> None:
     current line, it is displayed on one line.  Otherwise, each value is
     listed on a separate line, indented by the size of the open-bracket."""
 
-    assert color(list(range(10))) == """<document source="pyval_repr">
+    assert color(list(range(10))) == """<document source="code">
     [
     <wbr>
     0
@@ -361,7 +361,7 @@ def test_inline_list() -> None:
 
 def test_multiline_list() -> None:
 
-    assert color(list(range(100))) == """<document source="pyval_repr">
+    assert color(list(range(100))) == """<document source="code">
     [
     <wbr>
     0
@@ -392,7 +392,7 @@ def test_multiline_list() -> None:
 
 def test_multiline_list2() -> None:
 
-    assert color([1,2,[5,6,[(11,22,33),9],10],11]+[99,98,97,96,95]) == """<document source="pyval_repr">
+    assert color([1,2,[5,6,[(11,22,33),9],10],11]+[99,98,97,96,95]) == """<document source="code">
     [
     <wbr>
     1
@@ -450,7 +450,7 @@ def test_multiline_list2() -> None:
     
 def test_multiline_set() -> None:
 
-    assert color(set(range(20))) == """<document source="pyval_repr">
+    assert color(set(range(20))) == """<document source="code">
     set([
     <wbr>
     0
@@ -481,7 +481,7 @@ def test_multiline_set() -> None:
 
 def test_frozenset() -> None:
 
-    assert color(frozenset([1, 2, 3])) == """<document source="pyval_repr">
+    assert color(frozenset([1, 2, 3])) == """<document source="code">
     frozenset([
     <wbr>
     1
@@ -498,7 +498,7 @@ def test_custom_live_object() -> None:
         def __repr__(self) -> str:
             return '123'
     
-    assert color(Custom()) == """<document source="pyval_repr">
+    assert color(Custom()) == """<document source="code">
     123\n"""
 
 def test_buggy_live_object() -> None:
@@ -506,13 +506,13 @@ def test_buggy_live_object() -> None:
         def __repr__(self) -> str:
             raise NotImplementedError()
     
-    assert color(Buggy()) == """<document source="pyval_repr">
+    assert color(Buggy()) == """<document source="code">
     <inline classes="variable-unknown">
         ??\n"""
 
 def test_tuples_one_value() -> None:
     """Tuples that contains only one value need an ending comma."""
-    assert color((1,)) == """<document source="pyval_repr">
+    assert color((1,)) == """<document source="code">
     (
     <wbr>
     1
@@ -527,7 +527,7 @@ def extract_expr(_ast: ast.Module) -> ast.AST:
 def test_ast_constants() -> None:
     assert color(extract_expr(ast.parse(dedent("""
     'Hello'
-    """)))) == """<document source="pyval_repr">
+    """)))) == """<document source="code">
     <inline classes="variable-quote">
         '
     <inline classes="variable-string">
@@ -538,40 +538,40 @@ def test_ast_constants() -> None:
 def test_ast_unary_op() -> None:
     assert color(extract_expr(ast.parse(dedent("""
     not True
-    """)))) == """<document source="pyval_repr">
+    """)))) == """<document source="code">
     not 
     <obj_reference refuri="True">
         True\n"""
 
     assert color(extract_expr(ast.parse(dedent("""
     +3.0
-    """)))) == """<document source="pyval_repr">
+    """)))) == """<document source="code">
     +
     3.0\n"""
 
     assert color(extract_expr(ast.parse(dedent("""
     -3.0
-    """)))) == """<document source="pyval_repr">
+    """)))) == """<document source="code">
     -
     3.0\n"""
     
     assert color(extract_expr(ast.parse(dedent("""
     ~3.0
-    """)))) == """<document source="pyval_repr">
+    """)))) == """<document source="code">
     ~
     3.0\n"""
 
 def test_ast_bin_op() -> None:
     assert color(extract_expr(ast.parse(dedent("""
     2.3*6
-    """)))) == """<document source="pyval_repr">
+    """)))) == """<document source="code">
     2.3
      * 
     6\n"""
 
     assert color(extract_expr(ast.parse(dedent("""
     (3-6)*2
-    """)))) == """<document source="pyval_repr">
+    """)))) == """<document source="code">
     (
     3
      - 
@@ -582,7 +582,7 @@ def test_ast_bin_op() -> None:
 
     assert color(extract_expr(ast.parse(dedent("""
     101//4+101%4
-    """)))) == """<document source="pyval_repr">
+    """)))) == """<document source="code">
     101
      // 
     4
@@ -593,42 +593,42 @@ def test_ast_bin_op() -> None:
 
     assert color(extract_expr(ast.parse(dedent("""
     1 & 0
-    """)))) == """<document source="pyval_repr">
+    """)))) == """<document source="code">
     1
      & 
     0\n"""
 
     assert color(extract_expr(ast.parse(dedent("""
     1 | 0
-    """)))) == """<document source="pyval_repr">
+    """)))) == """<document source="code">
     1
      | 
     0\n"""
 
     assert color(extract_expr(ast.parse(dedent("""
     1 ^ 0
-    """)))) == """<document source="pyval_repr">
+    """)))) == """<document source="code">
     1
      ^ 
     0\n"""
 
     assert color(extract_expr(ast.parse(dedent("""
     1 << 0
-    """)))) == """<document source="pyval_repr">
+    """)))) == """<document source="code">
     1
      << 
     0\n"""
     
     assert color(extract_expr(ast.parse(dedent("""
     1 >> 0
-    """)))) == """<document source="pyval_repr">
+    """)))) == """<document source="code">
     1
      >> 
     0\n"""
 
     assert color(extract_expr(ast.parse(dedent("""
     H @ beta
-    """)))) == """<document source="pyval_repr">
+    """)))) == """<document source="code">
     <obj_reference refuri="H">
         H
      @ 
@@ -639,7 +639,7 @@ def test_operator_precedences() -> None:
 
     assert color(extract_expr(ast.parse(dedent("""
     (2 ** 3) ** 2
-    """)))) == """<document source="pyval_repr">
+    """)))) == """<document source="code">
     (
     2
      ** 
@@ -650,7 +650,7 @@ def test_operator_precedences() -> None:
 
     assert color(extract_expr(ast.parse(dedent("""
     2 ** 3 ** 2
-    """)))) == """<document source="pyval_repr">
+    """)))) == """<document source="code">
     2
      ** 
     (
@@ -661,7 +661,7 @@ def test_operator_precedences() -> None:
 
     assert color(extract_expr(ast.parse(dedent("""
     (1 + 2) * 3 / 4
-    """)))) == """<document source="pyval_repr">
+    """)))) == """<document source="code">
     (
     1
      + 
@@ -674,7 +674,7 @@ def test_operator_precedences() -> None:
 
     assert color(extract_expr(ast.parse(dedent("""
     ((1 + 2) * 3) / 4
-    """)))) == """<document source="pyval_repr">
+    """)))) == """<document source="code">
     (
     1
      + 
@@ -687,7 +687,7 @@ def test_operator_precedences() -> None:
 
     assert color(extract_expr(ast.parse(dedent("""
     (1 + 2) * 3 / 4
-    """)))) == """<document source="pyval_repr">
+    """)))) == """<document source="code">
     (
     1
      + 
@@ -700,7 +700,7 @@ def test_operator_precedences() -> None:
 
     assert color(extract_expr(ast.parse(dedent("""
     1 + 2 * 3 / 4 - 1
-    """)))) == """<document source="pyval_repr">
+    """)))) == """<document source="code">
     1
      + 
     2
@@ -714,7 +714,7 @@ def test_operator_precedences() -> None:
 def test_ast_bool_op() -> None:
     assert color(extract_expr(ast.parse(dedent("""
     True and 9
-    """)))) == """<document source="pyval_repr">
+    """)))) == """<document source="code">
     <obj_reference refuri="True">
         True
      and 
@@ -722,7 +722,7 @@ def test_ast_bool_op() -> None:
 
     assert color(extract_expr(ast.parse(dedent("""
     1 or 0 and 2 or 3 or 1
-    """)))) == """<document source="pyval_repr">
+    """)))) == """<document source="code">
     1
      or 
     0
@@ -736,7 +736,7 @@ def test_ast_bool_op() -> None:
 def test_ast_list_tuple() -> None:
     assert color(extract_expr(ast.parse(dedent("""
     [1,2,[5,6,[(11,22,33),9],10],11]+[99,98,97,96,95]
-    """)))) == """<document source="pyval_repr">
+    """)))) == """<document source="code">
     [
     <wbr>
     1
@@ -804,7 +804,7 @@ def test_ast_list_tuple() -> None:
     
     assert color(extract_expr(ast.parse(dedent("""
     (('1', 2, 3.14), (4, '5', 6.66))
-    """)))) == """<document source="pyval_repr">
+    """)))) == """<document source="code">
     (
     <wbr>
     (
@@ -847,7 +847,7 @@ def test_ast_dict() -> None:
     """
     assert color(extract_expr(ast.parse(dedent("""
     {'1':33, '2':[1,2,3,{7:'oo'*20}]}
-    """))), linelen=45) == """<document source="pyval_repr">
+    """))), linelen=45) == """<document source="code">
     {
     <wbr>
     <inline classes="variable-quote">
@@ -897,7 +897,7 @@ def test_ast_dict() -> None:
 def test_ast_annotation() -> None:
     assert color(extract_expr(ast.parse(dedent("""
     bar[typing.Sequence[dict[str, bytes]]]
-    """))), linelen=999) == """<document source="pyval_repr">
+    """))), linelen=999) == """<document source="code">
     <obj_reference refuri="bar">
         bar
     [
@@ -923,7 +923,7 @@ def test_ast_annotation() -> None:
 def test_ast_call() -> None:
     assert color(extract_expr(ast.parse(dedent("""
     list(range(100))
-    """)))) == """<document source="pyval_repr">
+    """)))) == """<document source="code">
     <obj_reference refuri="list">
         list
     (
@@ -939,7 +939,7 @@ def test_ast_call() -> None:
 def test_ast_call_args() -> None:
     assert color(extract_expr(ast.parse(dedent("""
     list(func(1, *two, three=2, **args))
-    """)))) == """<document source="pyval_repr">
+    """)))) == """<document source="code">
     <obj_reference refuri="list">
         list
     (
@@ -970,14 +970,14 @@ def test_ast_call_args() -> None:
 def test_ast_ellipsis() -> None:
     assert color(extract_expr(ast.parse(dedent("""
     ...
-    """)))) == """<document source="pyval_repr">
+    """)))) == """<document source="code">
     <inline classes="variable-ellipsis">
         ...\n"""
 
 def test_ast_set() -> None:
     assert color(extract_expr(ast.parse(dedent("""
     {1, 2}
-    """)))) == """<document source="pyval_repr">
+    """)))) == """<document source="code">
     set([
     <wbr>
     1
@@ -988,7 +988,7 @@ def test_ast_set() -> None:
 
     assert color(extract_expr(ast.parse(dedent("""
     set([1, 2])
-    """)))) == """<document source="pyval_repr">
+    """)))) == """<document source="code">
     <obj_reference refuri="set">
         set
     (
@@ -1005,7 +1005,7 @@ def test_ast_set() -> None:
 def test_ast_slice() -> None:
     assert color(extract_expr(ast.parse(dedent("""
     o[x:y]
-    """)))) == """<document source="pyval_repr">
+    """)))) == """<document source="code">
     <obj_reference refuri="o">
         o
     [
@@ -1015,19 +1015,13 @@ def test_ast_slice() -> None:
 
     assert color(extract_expr(ast.parse(dedent("""
     o[x:y,z]
-    """)))) == """<document source="pyval_repr">
-    <obj_reference refuri="o">
-        o
-    [
-    <wbr>
-    x:y, (z)
-    ]\n""" if sys.version_info < (3,9) else """<document source="pyval_repr">
+    """)))) == """<document source="code">
     <obj_reference refuri="o">
         o
     [
     <wbr>
     x:y
-    ,
+    , 
     <wbr>
     <obj_reference refuri="z">
         z
@@ -1036,21 +1030,21 @@ def test_ast_slice() -> None:
 def test_ast_attribute() -> None:
     assert color(extract_expr(ast.parse(dedent("""
     mod.attr
-    """)))) == ("""<document source="pyval_repr">
+    """)))) == ("""<document source="code">
     <obj_reference refuri="mod.attr">
         mod.attr\n""")
 
     # ast.Attribute nodes that contains something else as ast.Name nodes are not handled explicitely.
     assert color(extract_expr(ast.parse(dedent("""
     func().attr
-    """)))) == ("""<document source="pyval_repr">
+    """)))) == ("""<document source="code">
     func().attr\n""")
 
 def test_ast_regex() -> None:
     # invalid arguments
     assert color(extract_expr(ast.parse(dedent(r"""
     re.compile(invalidarg='[A-Za-z0-9]+')
-    """)))) == """<document source="pyval_repr">
+    """)))) == """<document source="code">
     <obj_reference refuri="re.compile">
         re.compile
     (
@@ -1068,7 +1062,7 @@ def test_ast_regex() -> None:
     # invalid arguments 2
     assert color(extract_expr(ast.parse(dedent("""
     re.compile()
-    """)))) == """<document source="pyval_repr">
+    """)))) == """<document source="code">
     <obj_reference refuri="re.compile">
         re.compile
     (
@@ -1077,7 +1071,7 @@ def test_ast_regex() -> None:
     # invalid arguments 3
     assert color(extract_expr(ast.parse(dedent("""
     re.compile(None)
-    """)))) == """<document source="pyval_repr">
+    """)))) == """<document source="code">
     <obj_reference refuri="re.compile">
         re.compile
     (
@@ -1089,7 +1083,7 @@ def test_ast_regex() -> None:
     # cannot colorize regex, be can't infer value
     assert color(extract_expr(ast.parse(dedent("""
     re.compile(get_re())
-    """)))) == """<document source="pyval_repr">
+    """)))) == """<document source="code">
     <obj_reference refuri="re.compile">
         re.compile
     (
@@ -1103,7 +1097,7 @@ def test_ast_regex() -> None:
     # cannot colorize regex, not a valid regex
     assert color(extract_expr(ast.parse(dedent("""
     re.compile(r"[.*")
-    """)))) == """<document source="pyval_repr">
+    """)))) == """<document source="code">
     <obj_reference refuri="re.compile">
         re.compile
     (
@@ -1119,7 +1113,7 @@ def test_ast_regex() -> None:
     # actually colorize regex, with flags
     assert color(extract_expr(ast.parse(dedent("""
     re.compile(r"[A-Za-z0-9]+", re.X)
-    """)))) == """<document source="pyval_repr">
+    """)))) == """<document source="code">
     <obj_reference refuri="re.compile">
         re.compile
     (
@@ -1153,6 +1147,12 @@ def test_ast_regex() -> None:
         re.X
     )\n"""
 
+# hard-coded repr constants
+_RE_BEGIN = 13
+_RE_R_PREFIX_EXPECTED = 11
+_RE_COMPILE_LEN = len(_re_compile:='<code><a>re.compile</a>(')
+_RE_COMPILE_SUFFIX_LEN = len(_re_compile_suffix:='</code>')
+
 def color_re(s: Union[bytes, str], 
              check_roundtrip:bool=True) -> str:
 
@@ -1160,11 +1160,12 @@ def color_re(s: Union[bytes, str],
     val = colorizer.colorize(extract_expr(ast.parse(f"re.compile({repr(s)})")))
 
     if check_roundtrip:
-        raw_text = ''.join(gettext(val.to_node()))
-        re_begin = 13
+        raw_text = val.to_text()
+        re_begin = _RE_BEGIN
+        re_end = -2
         raw_string = True
 
-        if raw_text[11] != 'r':
+        if raw_text[_RE_R_PREFIX_EXPECTED] != 'r':
             # the regex has failed to be colorized since we can't find the r prefix
             # meaning the string has been rendered as plaintext instead.
             raw_string = False
@@ -1172,7 +1173,6 @@ def color_re(s: Union[bytes, str],
         
         if isinstance(s, bytes):
             re_begin += 1
-        re_end = -2
 
         round_trip: Union[bytes, str] = raw_text[re_begin:re_end]
         if isinstance(s, bytes):
@@ -1187,7 +1187,10 @@ def color_re(s: Union[bytes, str],
         
         assert round_trip == expected, "%s != %s" % (repr(round_trip), repr(s))
     
-    return flatten(val.to_stan(NotFoundLinker()))[17:-8]
+    html = flatten(val.to_stan(NotFoundLinker()))
+    assert html.startswith(_re_compile)
+    assert html.endswith(_re_compile_suffix)
+    return html[_RE_COMPILE_LEN:-(_RE_COMPILE_SUFFIX_LEN+1)]
 
 
 def test_re_literals() -> None:
@@ -1332,7 +1335,7 @@ def test_re_multiline() -> None:
 
     assert color(extract_expr(ast.parse(dedent(r'''re.compile(r"""\d +  # the integral part
         \.    # the decimal point
-        \d *  # some fractional digits""")''')))) == r"""<document source="pyval_repr">
+        \d *  # some fractional digits""")''')))) == r"""<document source="code">
     <obj_reference refuri="re.compile">
         re.compile
     (
@@ -1356,7 +1359,7 @@ def test_re_multiline() -> None:
 
     assert color(extract_expr(ast.parse(dedent(r'''re.compile(rb"""\d +  # the integral part
         \.    # the decimal point
-        \d *  # some fractional digits""")'''))), linelen=70) == r"""<document source="pyval_repr">
+        \d *  # some fractional digits""")'''))), linelen=70) == r"""<document source="code">
     <obj_reference refuri="re.compile">
         re.compile
     (
@@ -1381,7 +1384,7 @@ def test_line_wrapping() -> None:
     # If a line goes beyond linelen, it is wrapped using the ``&crarr;`` element. 
     # Check that the last line gets a ``&crarr;`` when maxlines is exceeded:
 
-    assert color('x'*1000) == """<document source="pyval_repr">
+    assert color('x'*1000) == """<document source="code">
     <inline classes="variable-quote">
         '
     <inline classes="variable-string">
@@ -1414,7 +1417,7 @@ def test_line_wrapping() -> None:
 
     # If linebreakok is False, then line wrapping gives an ellipsis instead:
 
-    assert color('x'*100, linebreakok=False) == """<document source="pyval_repr">
+    assert color('x'*100, linebreakok=False) == """<document source="code">
     <inline classes="variable-quote">
         '
     <inline classes="variable-string">
@@ -1428,7 +1431,7 @@ def color2(v: Any, linelen:int=50) -> str:
     """
     colorizer = PyvalColorizer(linelen=linelen, maxlines=5)
     colorized = colorizer.colorize(v)
-    text1 = ''.join(gettext(colorized.to_node()))
+    text1 = colorized.to_text()
     text2 = flatten_text(html2stan(flatten(colorized.to_stan(NotFoundLinker()))))
     assert text1 == text2
     return text2
@@ -1473,7 +1476,7 @@ def test_summary() -> None:
     """
     summarizer = PyvalColorizer(linelen=60, maxlines=1, linebreakok=False)
     def summarize(v:Any) -> str:
-        return(''.join(gettext(summarizer.colorize(v).to_node())))
+        return summarizer.colorize(v).to_text()
 
     assert summarize(list(range(100))) == "[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16..."
     assert summarize('hello\nworld') == r"'hello\nworld'"
@@ -1535,32 +1538,21 @@ def test_expressions_parens(subtests:Any) -> None:
     check_src("(x if x else y).C")
     check_src("not (x == y)")
 
-    if sys.version_info>=(3,8):
-        check_src("(a := b)")
+    check_src("(a := b)")
     
     if sys.version_info >= (3,11):
         check_src("(lambda: int)()")
     else:
         check_src("(lambda : int)()")
     
-    if sys.version_info > (3,9):
-        check_src("3 .__abs__()")
-        check_src("await x")
-        check_src("x if x else y")
-        check_src("lambda x: x")
-        check_src("x == (not y)")
-        check_src("P * V if P and V else n * R * T")
-        check_src("lambda P, V, n: P * V == n * R * T")
-    else:
-        check_src("(3).__abs__()")
-        if sys.version_info>=(3,7):
-            check_src("(await x)")
-        check_src("(x if x else y)")
-        check_src("(lambda x: x)")
-        check_src("(x == (not y))")
-        check_src("(P * V if P and V else n * R * T)")
-        check_src("(lambda P, V, n: P * V == n * R * T)")
-    
+    check_src("3 .__abs__()")
+    check_src("await x")
+    check_src("x if x else y")
+    check_src("lambda x: x")
+    check_src("x == (not y)")
+    check_src("P * V if P and V else n * R * T")
+    check_src("lambda P, V, n: P * V == n * R * T")
+
     check_src("f(**x)")
     check_src("{**x}")
 
@@ -1577,3 +1569,22 @@ def test_expressions_parens(subtests:Any) -> None:
     check_src("{**({} == {})}")
     check_src("{**{'y': 2}, 'x': 1, None: True}")
     check_src("{**{'y': 2}, **{'x': 1}}")
+
+
+def test_is_annotation_flag() -> None:
+    # the is_annotation attribute is added to all links when is_annotation=True is passed.
+    docutils_0_22 = docutils.__version_info__ >= (0, 22)
+    assert color(extract_expr(ast.parse('list[dict] + set()')), is_annotation=True) == f'''<document source="code">
+    <obj_reference is_annotation="{1 if docutils_0_22 else True}" refuri="list">
+        list
+    [
+    <wbr>
+    <obj_reference is_annotation="{1 if docutils_0_22 else True}" refuri="dict">
+        dict
+    ]
+     + 
+    <obj_reference is_annotation="{1 if docutils_0_22 else True}" refuri="set">
+        set
+    (
+    )
+'''

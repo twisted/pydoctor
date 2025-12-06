@@ -1,6 +1,6 @@
 from io import StringIO
 from typing import Any, Dict, List
-import requests
+from pathlib import Path
 
 from pydoctor._configparser import parse_toml_section_name, is_quoted, unquote_str, IniConfigParser, TomlConfigParser
 
@@ -32,9 +32,11 @@ def test_unquote_str() -> None:
     assert unquote_str('""""value""""') == '""""value""""'
 
 def test_unquote_naughty_quoted_strings() -> None:
-    # See https://github.com/minimaxir/big-list-of-naughty-strings/blob/master/blns.txt
-    res = requests.get('https://raw.githubusercontent.com/minimaxir/big-list-of-naughty-strings/master/blns.txt')
-    text = res.text
+    # See https://github.com/minimaxir/big-list-of-naughty-strings
+    
+    text = Path(__file__).parent.joinpath('unquote_test_strings.txt'
+            ).read_text(encoding='utf-8', errors='replace')
+    
     for i, string in enumerate(text.split('\n')):
         if string.strip().startswith('#'):
             continue
