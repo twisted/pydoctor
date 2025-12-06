@@ -36,6 +36,13 @@ You can run pydoctor on your project like this::
 
 For more info, `Read The Docs <https://pydoctor.readthedocs.io/>`_.
 
+Reproducible builds
+-------------------
+
+If you need deterministic output for packaging or reproducible releases,
+see the documentation page `Reproducible builds <docs/source/reproducible-builds.rst>`_
+for instructions on using `SOURCE_DATE_EPOCH` or the `--buildtime` option.
+
 Markup
 ~~~~~~
 
