@@ -233,7 +233,7 @@ var _lastSearchInput = null;
  * Main entrypoint to [re]launch the search.
  * Called everytime the search bar is edited.
 */
-function launchSearch(noDelay){
+function launchSearch(noDelay, limit = 50){
   let _searchStartTime = performance.now();
 
   // Get the query terms 
@@ -283,7 +283,7 @@ function launchSearch(noDelay){
     isSearchReadyPromise = _getIsSearchReadyPromise()
   }
   return isSearchReadyPromise.then((r)=>{  
-  return lunrSearch(_query, indexURL, _fields, "lunr.js", !noDelay?searchDelay:0).then((lunrResults) => { 
+  return lunrSearch(_query, indexURL, _fields, "lunr.js", !noDelay?searchDelay:0, limit).then((lunrResults) => { 
 
       // outdated query results
       if (_searchStartTime != _lastSearchStartTime){return;}
@@ -309,7 +309,7 @@ function launchSearch(noDelay){
 
         // Edit DOM
         resetLongSearchTimerInfo();
-        displaySearchResults(_query, documentResults, lunrResults)
+        displaySearchResults(_query, documentResults, lunrResults, limit)
         
         // Log stats
         console.log('Search for "' + _query + '" took ' + 
@@ -339,11 +339,32 @@ function _handleErr(err){
  * Given the query string, documentResults and lunrResults as used in search(), 
  * edit the DOM to add them in the search results list.
  */
-function displaySearchResults(_query, documentResults, lunrResults){
+function displaySearchResults(_query, documentResults, lunrResults, limit){
   resetResultList();
   documentResults.forEach((dobj) => {
     results_list.appendChild(buildSearchResult(dobj));
   });
+
+  // Remove previous "Load all" button if any
+  const prevBtn = document.getElementById('search-load-all-results-btn');
+  if (prevBtn) { prevBtn.remove(); }
+
+  // If results were limited (heuristic: results length == current limit and limit != -1),
+  // show a button after the results table to allow loading all results.
+  if (limit !== -1 && lunrResults && lunrResults.length === limit) {
+    const btn = document.createElement('button');
+
+    btn.id = 'search-load-all-results-btn'
+    btn.textContent = 'Load all results';
+    btn.style.display = 'block';
+    btn.style.marginTop = '8px';
+    btn.onclick = function () {
+      // re-run search with no limit
+      launchSearch(true, -1);
+    };
+    // place the button after the results table
+    results_container.appendChild(btn);
+  }
 
   if (lunrResults.length > 500){
     setWarning("Your search yielded a lot of results! Maybe try with other terms?");
@@ -357,9 +378,15 @@ function displaySearchResults(_query, documentResults, lunrResults){
     setStatus('No results matches "' + htmlEncode(_query) + '". Some private objects matches your search though.');
   }
   else{
+    // If results are limited, mention that in the status
+    var _yielded = '" yielded ';
+    if (limit !== -1 && lunrResults && lunrResults.length === limit){
+      _yielded = '" yielded at least ';
+    }
+
     setStatus(
-      'Search for "' + htmlEncode(_query) + '" yielded ' + publicResults.length + ' ' +
-      (publicResults.length === 1 ? 'result' : 'results') + '.');
+        'Search for "' + htmlEncode(_query) + _yielded + publicResults.length + ' ' +
+        (publicResults.length === 1 ? 'result' : 'results') + '.');
   }
 }
 

@@ -18,6 +18,258 @@ let _lunrWorkerCode = `
 
 // The lunr.js code will be inserted here.
 
+// ============================================================================
+// Implement a queryWithLimit() with MinHeap
+// ============================================================================
+// A min-heap implementation for efficiently maintaining the top-k results
+// during search. This prevents the need to sort all results when only a
+// limited number are needed.
+lunr.MinHeap = function (maxSize) {
+  this.maxSize = maxSize
+  this.items = []
+}
+
+lunr.MinHeap.prototype.push = function (item) {
+  if (this.items.length < this.maxSize) {
+    this.items.push(item)
+    this._bubbleUp(this.items.length - 1)
+  } else if (item.score > this.items[0].score) {
+    this.items[0] = item
+    this._bubbleDown(0)
+  }
+}
+
+lunr.MinHeap.prototype._bubbleUp = function (index) {
+  if (index === 0) return
+  var parentIndex = Math.floor((index - 1) / 2)
+  if (this.items[index].score < this.items[parentIndex].score) {
+    var temp = this.items[index]
+    this.items[index] = this.items[parentIndex]
+    this.items[parentIndex] = temp
+    this._bubbleUp(parentIndex)
+  }
+}
+
+lunr.MinHeap.prototype._bubbleDown = function (index) {
+  var leftChildIndex = 2 * index + 1
+  var rightChildIndex = 2 * index + 2
+  var smallestIndex = index
+
+  if (
+    leftChildIndex < this.items.length &&
+    this.items[leftChildIndex].score < this.items[smallestIndex].score
+  ) {
+    smallestIndex = leftChildIndex
+  }
+
+  if (
+    rightChildIndex < this.items.length &&
+    this.items[rightChildIndex].score < this.items[smallestIndex].score
+  ) {
+    smallestIndex = rightChildIndex
+  }
+
+  if (smallestIndex !== index) {
+    var temp = this.items[index]
+    this.items[index] = this.items[smallestIndex]
+    this.items[smallestIndex] = temp
+    this._bubbleDown(smallestIndex)
+  }
+}
+
+lunr.MinHeap.prototype.toSortedArray = function () {
+  return this.items.slice().sort(function (a, b) {
+    return b.score - a.score
+  })
+}
+
+// Performs a query against the index with a limit on the number of results returned.
+// This is a performance-optimized version of the query method that uses a min-heap
+// to maintain only the top-k results, with early exit optimizations to skip low-scoring
+// documents when the result set is full.
+// When limit is -1, this method behaves identically to the original query() method.
+lunr.Index.prototype.queryWithLimit = function (fn, limit) {
+  if (limit === undefined) {
+    throw new Error('queryWithLimit requires a limit parameter. Use -1 for unlimited results.')
+  }
+
+  if (limit === -1) {
+    return this.query(fn)
+  }
+
+  if (typeof limit !== 'number' || limit <= 0 || Math.floor(limit) !== limit) {
+    throw new Error('limit must be a positive integer or -1 for unlimited results')
+  }
+
+  var query = new lunr.Query(this.fields),
+      matchingFields = Object.create(null),
+      queryVectors = Object.create(null),
+      termFieldCache = Object.create(null),
+      requiredMatches = Object.create(null),
+      prohibitedMatches = Object.create(null)
+
+  for (var i = 0; i < this.fields.length; i++) {
+    queryVectors[this.fields[i]] = new lunr.Vector
+  }
+
+  fn.call(query, query)
+
+  for (var i = 0; i < query.clauses.length; i++) {
+    var clause = query.clauses[i],
+        terms = null,
+        clauseMatches = lunr.Set.empty
+
+    if (clause.usePipeline) {
+      terms = this.pipeline.runString(clause.term, {
+        fields: clause.fields
+      })
+    } else {
+      terms = [clause.term]
+    }
+
+    for (var m = 0; m < terms.length; m++) {
+      var term = terms[m]
+      clause.term = term
+
+      var termTokenSet = lunr.TokenSet.fromClause(clause),
+          expandedTerms = this.tokenSet.intersect(termTokenSet).toArray()
+
+      if (expandedTerms.length === 0 && clause.presence === lunr.Query.presence.REQUIRED) {
+        for (var k = 0; k < clause.fields.length; k++) {
+          var field = clause.fields[k]
+          requiredMatches[field] = lunr.Set.empty
+        }
+        break
+      }
+
+      for (var j = 0; j < expandedTerms.length; j++) {
+        var expandedTerm = expandedTerms[j],
+            posting = this.invertedIndex[expandedTerm],
+            termIndex = posting._index
+
+        for (var k = 0; k < clause.fields.length; k++) {
+          var field = clause.fields[k],
+              fieldPosting = posting[field],
+              matchingDocumentRefs = Object.keys(fieldPosting),
+              termField = expandedTerm + "/" + field,
+              matchingDocumentsSet = new lunr.Set(matchingDocumentRefs)
+
+          if (clause.presence == lunr.Query.presence.REQUIRED) {
+            clauseMatches = clauseMatches.union(matchingDocumentsSet)
+            if (requiredMatches[field] === undefined) {
+              requiredMatches[field] = lunr.Set.complete
+            }
+          }
+
+          if (clause.presence == lunr.Query.presence.PROHIBITED) {
+            if (prohibitedMatches[field] === undefined) {
+              prohibitedMatches[field] = lunr.Set.empty
+            }
+            prohibitedMatches[field] = prohibitedMatches[field].union(matchingDocumentsSet)
+            continue
+          }
+
+          queryVectors[field].upsert(termIndex, clause.boost, function (a, b) { return a + b })
+
+          if (termFieldCache[termField]) {
+            continue
+          }
+
+          for (var l = 0; l < matchingDocumentRefs.length; l++) {
+            var matchingDocumentRef = matchingDocumentRefs[l],
+                matchingFieldRef = new lunr.FieldRef (matchingDocumentRef, field),
+                metadata = fieldPosting[matchingDocumentRef],
+                fieldMatch
+
+            if ((fieldMatch = matchingFields[matchingFieldRef]) === undefined) {
+              matchingFields[matchingFieldRef] = new lunr.MatchData (expandedTerm, field, metadata)
+            } else {
+              fieldMatch.add(expandedTerm, field, metadata)
+            }
+          }
+
+          termFieldCache[termField] = true
+        }
+      }
+    }
+
+    if (clause.presence === lunr.Query.presence.REQUIRED) {
+      for (var k = 0; k < clause.fields.length; k++) {
+        var field = clause.fields[k]
+        requiredMatches[field] = requiredMatches[field].intersect(clauseMatches)
+      }
+    }
+  }
+
+  var allRequiredMatches = lunr.Set.complete,
+      allProhibitedMatches = lunr.Set.empty
+
+  for (var i = 0; i < this.fields.length; i++) {
+    var field = this.fields[i]
+
+    if (requiredMatches[field]) {
+      allRequiredMatches = allRequiredMatches.intersect(requiredMatches[field])
+    }
+
+    if (prohibitedMatches[field]) {
+      allProhibitedMatches = allProhibitedMatches.union(prohibitedMatches[field])
+    }
+  }
+
+  var matchingFieldRefs = Object.keys(matchingFields),
+      results = new lunr.MinHeap(limit),
+      matches = Object.create(null)
+
+  if (query.isNegated()) {
+    matchingFieldRefs = Object.keys(this.fieldVectors)
+    for (var i = 0; i < matchingFieldRefs.length; i++) {
+      var matchingFieldRef = matchingFieldRefs[i]
+      var fieldRef = lunr.FieldRef.fromString(matchingFieldRef)
+      matchingFields[matchingFieldRef] = new lunr.MatchData
+    }
+  }
+
+  // OPTIMIZATION: Early exit threshold - skip documents that can't beat the current minimum
+  // Once the heap is full, we only need to check if a score is higher than the heap's minimum
+  for (var i = 0; i < matchingFieldRefs.length; i++) {
+    var fieldRef = lunr.FieldRef.fromString(matchingFieldRefs[i]),
+        docRef = fieldRef.docRef
+
+    if (!allRequiredMatches.contains(docRef)) {
+      continue
+    }
+
+    if (allProhibitedMatches.contains(docRef)) {
+      continue
+    }
+
+    var fieldVector = this.fieldVectors[fieldRef],
+        score = queryVectors[fieldRef.fieldName].similarity(fieldVector),
+        docMatch
+
+    // OPTIMIZATION: If heap is full and this score won't beat the minimum, skip it
+    if (results.items.length === limit && score <= results.items[0].score) {
+      continue
+    }
+
+    if ((docMatch = matches[docRef]) !== undefined) {
+      docMatch.score += score
+      docMatch.matchData.combine(matchingFields[fieldRef])
+    } else {
+      var match = {
+        ref: docRef,
+        score: score,
+        matchData: matchingFields[fieldRef]
+      }
+      matches[docRef] = match
+      results.push(match)
+    }
+  }
+
+  return results.toSortedArray()
+}
+// ============================================================================
+
 onmessage = (message) => {
     if (!message.data.query) {
         throw new Error('No search query provided.');
@@ -27,6 +279,9 @@ onmessage = (message) => {
     }
     if (!message.data.defaultFields) {
         throw new Error('No default fields provided.');
+    }
+    if (!message.data.limit) {
+        throw new Error('No valid limit provided.');
     }
 
     // Create index
@@ -84,10 +339,10 @@ onmessage = (message) => {
     }
 
     // Launch the search
-    var results = index.query(_queryfn)
+    var results = index.queryWithLimit(_queryfn, message.data.limit)
 
     // Post message with results
-    postMessage({'results':results});
+      postMessage({'results':results});
 };
 `;
 
@@ -180,8 +435,9 @@ function _getWorkerPromise(lunJsSourceCode){ // -> Promise of a fresh worker to 
  * @param lunrJsURL: URL pointing to a copy of lunr.js.
  * @param searchDelay: Number of miliseconds to wait before actually launching the query. This is useful to set for "search as you type" kind of search box
  *                     because it let a chance to users to continue typing without triggering useless searches (because previous search is aborted on launching a new one).
+ * @param limit: Maximum number of results to return. If -1, returns all results.
 */
-function lunrSearch(query, indexURL, defaultFields, lunrJsURL, searchDelay){
+function lunrSearch(query, indexURL, defaultFields, lunrJsURL, searchDelay, limit = -1){
     // Abort ongoing search
     abortSearch();
 
@@ -225,6 +481,7 @@ function lunrSearch(query, indexURL, defaultFields, lunrJsURL, searchDelay){
                 'query': query,
                 'indexJSONData': lunrIndexData,
                 'defaultFields': defaultFields,
+                'limit': limit,
             }
             
             if (!_aborted){
