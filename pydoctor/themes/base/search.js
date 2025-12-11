@@ -202,6 +202,7 @@ function searchAsYouType(){
   if (input.value.length>0){
     showResultContainer();
   }
+  setStatus("Loading...");
   _getIndexSizePromise("searchindex.json").then((indexSizeApprox) => {
     if (indexSizeApprox > SEARCH_INDEX_SIZE_TRESH_DISABLE_SEARCH_AS_YOU_TYPE){
       // Not searching as we type if "default" index size if greater than 20MB.
