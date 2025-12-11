@@ -205,7 +205,7 @@ function searchAsYouType(){
   setStatus("Loading...");
   _getIndexSizePromise("searchindex.json").then((indexSizeApprox) => {
     if (indexSizeApprox > SEARCH_INDEX_SIZE_TRESH_DISABLE_SEARCH_AS_YOU_TYPE){
-      // Not searching as we type if "default" index size if greater than 20MB.
+      // Not searching as we type if "default" index size is greater than a certain treshold.
       if (input.value.length===0){ // No actual query, this only resets some UI components.
         launchSearch(); 
       }
@@ -399,11 +399,14 @@ input.oninput = (event) => {
     searchAsYouType();
   }, 0);
 };
-input.onkedown = (event) => {
+input.addEventListener('keydown', (event) => {
   if (event.key === 'Enter') {
-    launchSearch(true);
+    if (_getSelectedSearchResult() === -1){
+      // Only manually launch the search when no result is selected.
+      launchSearch(true);
+    }
   }
-};
+});
 input.onfocus = (event) => {
   // Ensure the search bar is set-up.
   // Load fullsearchindex.json, searchindex.json and all-documents.html to have them in the cache asap.
