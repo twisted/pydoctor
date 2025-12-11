@@ -1152,7 +1152,7 @@ input[type="search"]::-webkit-search-results-decoration { display: none; }
 }
 
 .search-result-selected {
-    box-shadow: inset -5px 0px 0px 1px rgb(109 161 219 / 70%);
+    box-shadow: 5px 0px 4px 1px rgba(109, 161, 219, 0.7), inset 5px 0px 4px 0px rgba(109, 161, 219, 0.7);
 }
 
 /* Constant values repr */
