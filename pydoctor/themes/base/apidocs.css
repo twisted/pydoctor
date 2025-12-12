@@ -1151,8 +1151,8 @@ input[type="search"]::-webkit-search-results-decoration { display: none; }
     cursor: pointer;
 }
 
-.search-result-selected {
-    box-shadow: 5px 0px 4px 1px rgba(109, 161, 219, 0.7), inset 5px 0px 4px 0px rgba(109, 161, 219, 0.7);
+.search-result-selected > * {
+    background-color: rgba(109, 161, 219, 0.2)!important;;
 }
 
 /* Constant values repr */
