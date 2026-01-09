@@ -13,7 +13,7 @@ import inspect
 from itertools import chain
 from collections import defaultdict
 import datetime
-import importlib
+import importlib.util, importlib.abc
 import sys
 import textwrap
 import types
