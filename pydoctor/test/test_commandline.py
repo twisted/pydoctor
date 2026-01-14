@@ -9,6 +9,7 @@ import pytest
 
 from pydoctor.options import Options
 from pydoctor import driver
+from pydoctor.test.test_templatewriter import theme_param 
 
 from . import CapSys
 
@@ -403,6 +404,27 @@ def test_warnings_as_errors_configured_from_cli_option_no_such_option_exits_code
 
     assert exit_code == 3
     assert [str(warn.message) for warn in w] == ["The --enable-intersphinx-cache option is deprecated; the cache is now enabled by default."]
+
+@theme_param
+def test_html_main_tag_present(tmp_path: Path, theme: str) -> None:
+    """
+    Test that all generated HTML pages have a main tag.
+    This includes both regular pages (like module/class documentation) 
+    and summary pages (like module index, class hierarchy, etc).
+    """
+
+    exit_code = driver.main(args=['--html-output', str(tmp_path), 
+                        f'--theme={theme}',
+                        'pydoctor/test/testpackages/basic/', 
+                        'pydoctor/test/testpackages/allgames/'])
+    assert exit_code == 0
+
+    for html_file in tmp_path.glob("*.html"):
+        with open(html_file, encoding='utf-8') as f:
+            content = f.read()
+            assert "<main" in content, f"No main tag found in {html_file.name}"
+        run = True
+    assert run, "No HTML files were tested, invalid glob pattern?"
 
 def test_buildtime_injection_date(tmp_path: Path) -> None:
     """
