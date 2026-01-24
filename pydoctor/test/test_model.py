@@ -35,6 +35,7 @@ class FakeOptions:
     htmlsourcebase: Optional[str] = None
     projectbasedirectory: Path
     docformat = 'epytext'
+    verbosity = 0
 
 
 class FakeDocumentable:
@@ -166,7 +167,7 @@ def test_fetchIntersphinxInventories_content() -> None:
         }
     sut = model.System(options=options)
     log = []
-    def log_msg(part: str, msg: str) -> None:
+    def log_msg(part: str, msg: str, thresh:int=0) -> None:
         log.append((part, msg))
     sut.msg = log_msg # type: ignore[assignment]
 
@@ -204,11 +205,12 @@ def test_fetchIntersphinxInventories_content_file_with_base_url(tmp_path: Path) 
         pass
 
     options = Options.defaults()
+    options.intersphinx = [] # override any configuration coming from files at ./setup.cfg etc...
     options.intersphinx_file = [IntersphinxSource(str(path), "http://sphinx")]
 
     sut = model.System(options=options)
     log = []
-    def log_msg(part: str, msg: str) -> None:
+    def log_msg(part: str, msg: str, thresh:int=0) -> None:
         log.append((part, msg))
     sut.msg = log_msg # type: ignore[assignment]
 
@@ -240,11 +242,13 @@ def test_fetchIntersphinxInventories_content_file(tmp_path: Path) -> None:
         pass
         
     options = Options.defaults()
+
+    options.intersphinx = [] # override any configuration coming from files at ./setup.cfg etc...
     options.intersphinx_file = [IntersphinxSource(str(path), None)]
 
     sut = model.System(options=options)
     log = []
-    def log_msg(part: str, msg: str) -> None:
+    def log_msg(part: str, msg: str, thresh:int=0) -> None:
         log.append((part, msg))
     sut.msg = log_msg # type: ignore[assignment]
 

@@ -83,6 +83,8 @@ in development
       (More on this in the embedded help page of the generated documentation.)
 * Allow suppressing the footer's buildtime altogether with option ``--buildtime=no``.
 * Add project version on each HTML page.
+* When an  intersphinx inventory file fails to read, do not print the whole stack trace by default. 
+  The -v flag will log exceptions' tracebacks.
 
 
 pydoctor 25.10.1

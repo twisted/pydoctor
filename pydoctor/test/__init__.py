@@ -18,7 +18,9 @@ if TYPE_CHECKING:
     from typing_extensions import Protocol
 
     class CapLog(Protocol):
+        text: str
         records: Sequence[LogRecord]
+        def set_level(self, level: int) -> None: ...
 
     class CaptureResult(Protocol):
         out: str
