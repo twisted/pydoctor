@@ -32,7 +32,7 @@ import attr
 from pydoctor.options import Options
 from pydoctor import factory, qnmatch, utils, linker, astutils, mro
 from pydoctor.epydoc.markup import ParsedDocstring
-from pydoctor.sphinx import CacheT, SphinxInventory
+from pydoctor.sphinx import CacheT, SphinxInventory, SphinxInventoryError
 
 if TYPE_CHECKING:
     from typing import Literal, Protocol, TypeAlias
@@ -1085,7 +1085,6 @@ class System:
         Typically the renderable element is the C{docstring}, but it can be the decorators, parameter default values or any other colorized AST.
         """
 
-        self.verboselevel = 0
         self.needsnl = False
         self.once_msgs: Set[Tuple[str, str]] = set()
 
@@ -1096,7 +1095,7 @@ class System:
         self.module_count = 0
         self.processing_modules: List[str] = []
         self.buildtime: datetime.datetime | None = datetime.datetime.now()
-        self.intersphinx = SphinxInventory(logger=self.msg)
+        self.intersphinx = SphinxInventory(self.msg, verbosity=self.options.verbosity)
         self._ast_parser = self.syntaxTreeParser()
 
         # Since privacy handling now uses fnmatch, we cache results so we don't re-run matches all the time.
@@ -1729,10 +1728,18 @@ class System:
         Download and parse intersphinx inventories based on configuration.
         """
         for url, base_url in self.options.intersphinx:
-            self.intersphinx.update(cache, url, base_url)
+            try:
+                self.intersphinx.update(cache, url, base_url)
+            except SphinxInventoryError as e:
+                self.msg('sphinx', str(e), thresh=-1)
+                self.parse_errors['sphinx inventory'].add(url)
         
         for path, base_url in self.options.intersphinx_file:
-            self.intersphinx.update_file(path, base_url)
+            try:
+                self.intersphinx.update_file(path, base_url)
+            except SphinxInventoryError as e:
+                self.msg('sphinx', str(e), thresh=-1)
+                self.parse_errors['sphinx inventory file'].add(path)
 
 
 def defaultPostProcess(system:'System') -> None:
