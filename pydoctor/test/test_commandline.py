@@ -4,6 +4,7 @@ from pathlib import Path
 import re
 import sys
 import warnings
+import logging
 
 import pytest
 
@@ -11,7 +12,7 @@ from pydoctor.options import Options
 from pydoctor import driver
 from pydoctor.test.test_templatewriter import theme_param 
 
-from . import CapSys
+from . import CapLog, CapSys
 
 
 def geterrtext(*options: str) -> str:
@@ -404,6 +405,64 @@ def test_warnings_as_errors_configured_from_cli_option_no_such_option_exits_code
 
     assert exit_code == 3
     assert [str(warn.message) for warn in w] == ["The --enable-intersphinx-cache option is deprecated; the cache is now enabled by default."]
+
+def test_invalid_intersphinx_url_exits_code2(tmp_path: Path, capsys: CapSys, caplog: CapLog) -> None:
+    caplog.set_level(logging.ERROR)
+    # test for issue https://github.com/twisted/pydoctor/issues/751
+    exit_code = driver.main(args=['--html-output', 
+                                  str(tmp_path), 'pydoctor/test/testpackages/basic/', 
+                                  '--intersphinx=https://non-existing-website/56789/objects.inv'])
+    
+    assert ("Failed to get object inventory from https://non-existing-website/56789/objects.inv"
+        " (use -v to log traceback)") in capsys.readouterr().out
+    assert len(caplog.records) == 0
+    assert exit_code == 2
+
+def test_invalid_intersphinx_url_exits_code2_verbose(tmp_path: Path, capsys: CapSys, caplog: CapLog) -> None:
+    caplog.set_level(logging.ERROR)
+
+    # test for issue https://github.com/twisted/pydoctor/issues/751
+    exit_code = driver.main(args=['--html-output', 
+                                  str(tmp_path), 'pydoctor/test/testpackages/basic/', 
+                                  '--intersphinx=https://non-existing-website/56789/objects.inv', 
+                                  '-v'])
+    
+    assert ("Failed to get object inventory from https://non-existing-website/56789/objects.inv") in (out:=capsys.readouterr().out)
+    assert len(caplog.records) == 1
+    assert ("Could not retrieve intersphinx object.inv "
+        "from https://non-existing-website/56789/objects.inv") in caplog.text
+    assert "Traceback (most recent call last):" in caplog.text
+    from pydoctor.sphinx import _PROPOSE_VERBOSE
+    assert _PROPOSE_VERBOSE not in out
+    assert exit_code == 2
+    
+
+def test_invalid_intersphinx_file_exits_code2(tmp_path: Path, capsys: CapSys) -> None:
+    # test for issue https://github.com/twisted/pydoctor/issues/751
+    exit_code = driver.main(args=['--html-output', 
+                                  str(tmp_path), 'pydoctor/test/testpackages/basic/', 
+                                  '--intersphinx-file=/non-existing-file/56789/objects.inv'])
+    
+    assert ("Failed to read object inventory file from /non-existing-file/56789/objects.inv "
+            "(use -v to log traceback)") in capsys.readouterr().out
+    assert exit_code == 2
+
+def test_invalid_intersphinx_file_exits_code2_verbose(tmp_path: Path, capsys: CapSys, caplog: CapLog) -> None:
+    caplog.set_level(logging.ERROR)
+
+    # test for issue https://github.com/twisted/pydoctor/issues/751
+    exit_code = driver.main(args=['--html-output', 
+                                  str(tmp_path), 'pydoctor/test/testpackages/basic/', 
+                                  '--intersphinx-file=/non-existing-file/56789/objects.inv', 
+                                  '-v'])
+    
+    assert ("Failed to read object inventory file from /non-existing-file/56789/objects.inv") in (out:=capsys.readouterr().out)
+    assert len(caplog.records) == 1
+    assert "No such file or directory" in caplog.text
+    assert "Traceback (most recent call last):" in caplog.text
+    from pydoctor.sphinx import _PROPOSE_VERBOSE
+    assert _PROPOSE_VERBOSE not in out
+    assert exit_code == 2
 
 @theme_param
 def test_html_main_tag_present(tmp_path: Path, theme: str) -> None:
