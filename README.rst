@@ -74,9 +74,10 @@ in development
 ^^^^^^^^^^^^^^
 
 * When option ``-W/--warnings-as-errors`` is used, pydoctor exits with code 3 when it issues any warning.
+* Hide sidebar element title when all items under it are private.
 * Allow suppressing the footer's buildtime altogether with option ``--buildtime=no``.
 * Add project version on each HTML page.
-* When an  intersphinx inventory file fails to read, do not print the whole stack trace by default. 
+* When an  intersphinx inventory file fails to read, exit with code 2 and do not print the whole stack trace by default. 
   The -v flag will log exceptions' tracebacks.
 
 pydoctor 25.10.1
