@@ -81,9 +81,10 @@ in development
     - If the search box contains "docstring:<term>", the search will be performed in docstrings automatically.
     - Use a logical "and" in between search terms by default. Use leading '?' to make a term optional.
       (More on this in the embedded help page of the generated documentation.)
+* Hide sidebar element title when all items under it are private.
 * Allow suppressing the footer's buildtime altogether with option ``--buildtime=no``.
 * Add project version on each HTML page.
-* When an  intersphinx inventory file fails to read, do not print the whole stack trace by default. 
+* When an  intersphinx inventory file fails to read, exit with code 2 and do not print the whole stack trace by default. 
   The -v flag will log exceptions' tracebacks.
 
 

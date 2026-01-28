@@ -1,5 +1,5 @@
 <nav class="sidebar" xmlns:t="http://twistedmatrix.com/ns/twisted.web.template/0.1">
-  <meta name="pydoctor-template-version" content="1" />
+  <meta name="pydoctor-template-version" content="2" />
 
   <div t:render="sections">
 
@@ -14,22 +14,34 @@
           <ul><t:slot name="titles" /></ul>
         </t:transparent>
 
-        <div t:render="subModulesTitle" class="childrenKindTitle">Modules?</div>
+        <div t:render="subModulesTitle">
+          <t:attr name="class" t:render="subModulesTitleClass" />
+          Modules?</div>
         <code t:render="subModules">Some modules</code> 
 
-        <div t:render="classesTitle" class="childrenKindTitle">Classes?</div>
+        <div t:render="classesTitle">
+          <t:attr name="class" t:render="classesTitleClass" />
+          Classes?</div>
         <code t:render="classes">Some classes</code>
 
-        <div t:render="functionsTitle" class="childrenKindTitle">Functions?</div>
+        <div t:render="functionsTitle">
+          <t:attr name="class" t:render="functionsTitleClass" />
+          Functions?</div>
         <code t:render="functions">Some functions</code> 
 
-        <div t:render="inheritedFunctionsTitle" class="childrenKindTitle">Inherited Functions?</div>
+        <div t:render="inheritedFunctionsTitle">
+          <t:attr name="class" t:render="inheritedFunctionsTitleClass" />
+          Inherited Functions?</div>
         <code t:render="inheritedFunctions">Some inherited functions</code> 
 
-        <div t:render="variablesTitle" class="childrenKindTitle">Variables?</div>
+        <div t:render="variablesTitle">
+          <t:attr name="class" t:render="variablesTitleClass" />
+          Variables?</div>
         <code t:render="variables">Some variables</code> 
 
-        <div t:render="inheritedVariablesTitle" class="childrenKindTitle">Inherited Variables?</div>
+        <div t:render="inheritedVariablesTitle">
+          <t:attr name="class" t:render="inheritedVariablesTitleClass" />
+          Inherited Variables?</div>
         <code t:render="inheritedVariables">Some inherited variables</code> 
         
       </div>
