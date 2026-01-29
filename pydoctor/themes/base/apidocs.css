@@ -1152,11 +1152,11 @@ input[type="search"]::-webkit-search-results-decoration { display: none; }
 }
 
 .search-result-selected{
-    background-color: rgba(109, 161, 219, 0.2);
+    background-color: rgba(109, 161, 219, 0.2)!important;
 }
 
 .search-result-selected > *:first-child{
-    background-color: transparent;
+    background-color: transparent!important;
 }
 
 /* Constant values repr */
