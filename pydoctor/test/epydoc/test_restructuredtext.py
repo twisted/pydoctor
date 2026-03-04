@@ -205,6 +205,24 @@ def test_rst_directive_deprecated() -> None:
 """
     assert html==expected_html, html
     
+def test_rst_directive_deprecated_no_version() -> None:
+    """
+    When the C{deprecated} directive is used without a version argument,
+    it should render gracefully without treating the body content as the
+    version string.  The body text must appear as the description, not the
+    version.
+
+    Regression test for https://github.com/twisted/pydoctor/issues/950
+    """
+    html = rst2html(""".. deprecated::
+    Legacy API, see the docs above for new usage""")
+    # Must NOT contain 'version Legacy' – body text must not be used as version
+    assert 'version Legacy' not in html, html
+    # Must contain the full body text as the description
+    assert 'Legacy API, see the docs above for new usage' in html, html
+    # Must still use the 'rst-deprecated' class for styling
+    assert 'rst-deprecated' in html, html
+
 def test_rst_directive_seealso() -> None:
 
     html = rst2html(".. seealso:: Hey")
