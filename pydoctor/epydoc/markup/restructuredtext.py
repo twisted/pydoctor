@@ -443,9 +443,8 @@ class VersionChange(Directive):
         # We detect this by checking the raw directive source line.
         directive_line = self.block_text.splitlines()[0] if self.block_text else ''
         # Strip '.. <name>::' and see if anything follows it on that line.
-        import re as _re
-        _header_re = _re.compile(
-            r'\.\.\s+' + _re.escape(self.name) + r'::\s*(.*)', _re.IGNORECASE)
+        _header_re = re.compile(
+            r'\.\.\s+' + re.escape(self.name) + r'::\s*(.*)', re.IGNORECASE)
         _m = _header_re.match(directive_line)
         after_directive = _m.group(1).strip() if _m else ''
 
