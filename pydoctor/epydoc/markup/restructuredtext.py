@@ -404,6 +404,12 @@ versionlabels = {
     'deprecated':     'Deprecated since version %s',
 }
 
+versionlabels_nover = {
+    'versionadded':   'New in a future version',
+    'versionchanged': 'Changed',
+    'deprecated':     'Deprecated',
+}
+
 versionlabel_classes = {
     'versionadded':     'added',
     'versionchanged':   'changed',
@@ -421,16 +427,56 @@ class VersionChange(Directive):
         """
     
     has_content = True
-    required_arguments = 1
-    optional_arguments = 1
+    required_arguments = 0
+    optional_arguments = 2
     final_argument_whitespace = True
 
     def run(self) -> List[nodes.Node]:
         node = self.versionmodified()
         node.document = self.state.document
         node['type'] = self.name
-        node['version'] = self.arguments[0]
-        text = versionlabels[self.name] % self.arguments[0]
+
+        # Determine whether a version argument was actually provided on the
+        # directive line (after '::').  When none is given, docutils may
+        # silently promote the directive body to self.arguments, which
+        # causes the body text to be rendered as the version string.
+        # We detect this by checking the raw directive source line.
+        directive_line = self.block_text.splitlines()[0] if self.block_text else ''
+        # Strip '.. <name>::' and see if anything follows it on that line.
+        _header_re = re.compile(
+            r'\.\.\s+' + re.escape(self.name) + r'::\s*(.*)', re.IGNORECASE)
+        _m = _header_re.match(directive_line)
+        after_directive = _m.group(1).strip() if _m else ''
+
+        if after_directive:
+            # Version (and optionally inline description) were on the directive line.
+            # Split into at most 2 parts: version and optional inline description.
+            parts = after_directive.split(None, 1)
+            version = parts[0]
+            node['version'] = version
+            text = versionlabels[self.name] % version
+            # Rebuild self.arguments.  If docutils promoted the body (no blank
+            # line after the directive) into self.arguments[1], move it into
+            # self.content so it is rendered as the body, not an inline description.
+            if len(self.arguments) == 2 and len(parts) == 1:
+                # The second argument came from the body, not from the directive line.
+                self.content.data = [self.arguments[1]] + list(self.content)
+                self.arguments = [version]
+            else:
+                self.arguments = parts
+        else:
+            node['version'] = ''
+            text = versionlabels_nover[self.name]
+            # When no version is on the directive line, docutils may have
+            # promoted the body content into self.arguments.  Move it back
+            # to self.content so it is rendered as the description, not version.
+            if self.arguments:
+                body_text = ' '.join(
+                    arg.replace('\n', ' ') for arg in self.arguments
+                )
+                self.content.data = [body_text] + list(self.content)
+                self.arguments = []
+
         if len(self.arguments) == 2:
             inodes, messages = self.state.inline_text(self.arguments[1],
                                                       self.lineno + 1)
