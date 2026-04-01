@@ -1151,6 +1151,14 @@ input[type="search"]::-webkit-search-results-decoration { display: none; }
     cursor: pointer;
 }
 
+.search-result-selected{
+    background-color: rgba(109, 161, 219, 0.2)!important;
+}
+
+.search-result-selected > *:first-child{
+    background-color: transparent!important;
+}
+
 /* Constant values repr */
 pre.constant-value              { padding: .5em; }
 .rst-variable-linewrap          { color: #604000; font-weight: bold; }

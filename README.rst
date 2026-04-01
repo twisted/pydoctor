@@ -73,11 +73,20 @@ What's New?
 in development
 ^^^^^^^^^^^^^^
 
+* Improve the search box UX: 
+    - There is now a keyboard shortcut ('Ctrl+K' or 'Cmd+K' on Mac or '/', 
+      but the later is overriden by ReadTheDocs) to focus the search box.
+      When the search box is focused, you can use the up and down arrow keys to navigate the results,
+      and press enter to open the selected result.
+    - If the search box contains "docstring:<term>", the search will be performed in docstrings automatically.
+    - Use a logical "and" in between search terms by default. Use leading '?' to make a term optional.
+      (More on this in the embedded help page of the generated documentation.)
 * Hide sidebar element title when all items under it are private.
 * Allow suppressing the footer's buildtime altogether with option ``--buildtime=no``.
 * Add project version on each HTML page.
 * When an  intersphinx inventory file fails to read, exit with code 2 and do not print the whole stack trace by default. 
   The -v flag will log exceptions' tracebacks.
+
 
 pydoctor 25.10.1
 ^^^^^^^^^^^^^^^^
