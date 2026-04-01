@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 
 from pydoctor.options import Options, BUILDTIME_FORMAT, FALSE_VALUES
-from pydoctor.utils import error
+from pydoctor.utils import error, warned
 from pydoctor import model
 from pydoctor.templatewriter import IWriter, TemplateLookup, TemplateError
 from pydoctor.sphinx import SphinxInventoryWriter, prepareCache
@@ -188,7 +188,7 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
         elif any(system.parse_errors.values()):
             exitcode = 2
 
-        if system.violations and options.warnings_as_errors:
+        if options.warnings_as_errors and (system.violations or warned()):
             # Update exit code if the run has produced warnings.
             exitcode = 3
 

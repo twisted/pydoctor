@@ -10,7 +10,6 @@ else:
         return f
 import abc
 from pathlib import Path, PurePath
-import warnings
 from xml.dom import minidom
 
 # Newer APIs from importlib_resources should arrive to stdlib importlib.resources in Python 3.9.
@@ -241,7 +240,8 @@ class HtmlTemplate(Template):
             meta.parentNode.removeChild(meta)
 
             if not meta.hasAttribute("content"):
-                warnings.warn(f"Could not read '{template_name}' template version: "
+                from pydoctor.utils import warn
+                warn(f"Could not read '{template_name}' template version: "
                     f"the 'content' attribute is missing")
                 continue
 
@@ -250,7 +250,8 @@ class HtmlTemplate(Template):
             try:
                 version = int(version_str)
             except ValueError:
-                warnings.warn(f"Could not read '{template_name}' template version: "
+                from pydoctor.utils import warn
+                warn(f"Could not read '{template_name}' template version: "
                         "the 'content' attribute must be an integer")
             else:
                 break
@@ -295,7 +296,8 @@ class TemplateLookup:
         template_version = template.version
         if default_version != -1 and template_version != -1:
             if template_version < default_version:
-                warnings.warn(f"Your custom template '{template.name}' is out of date, "
+                from pydoctor.utils import warn
+                warn(f"Your custom template '{template.name}' is out of date, "
                                 "information might be missing. "
                                 "Latest templates are available to download from our github." )
             elif template_version > default_version:

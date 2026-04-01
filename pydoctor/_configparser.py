@@ -31,7 +31,6 @@ import csv
 import functools
 import configparser
 from ast import literal_eval
-import warnings
 
 from configargparse import ConfigFileParserException, ConfigFileParser, ArgumentParser
 
@@ -435,7 +434,8 @@ class ValidatorParser(ConfigFileParser):
             action = known_config_keys.get(key)
             if not action:
                 # Warn "no such config option"
-                warnings.warn(f"No such config option: {key!r}")
+                from pydoctor.utils import warn
+                warn(f"No such config option: {key!r}")
                 # Remove option
             else:
                 new_data[key] = value

@@ -1,7 +1,6 @@
 """Miscellaneous utilities for the HTML writer."""
 from __future__ import annotations
 
-import warnings
 from typing import (Any, Callable, Dict, Generic, Iterable, Iterator, List, Mapping, 
                     Optional, MutableMapping, Tuple, TypeVar, Union, Sequence, TYPE_CHECKING)
 from pydoctor import epydoc2stan
@@ -164,7 +163,8 @@ def inherited_members(cls: model.Class) -> List[model.Documentable]:
 
 def templatefile(filename: str) -> None:
     """Deprecated: can be removed once Twisted stops patching this."""
-    warnings.warn("pydoctor.templatewriter.util.templatefile() "
+    from pydoctor.utils import warn
+    warn("pydoctor.templatewriter.util.templatefile() "
         "is deprecated and returns None. It will be remove in future versions. "
         "Please use the templating system.")
     return None

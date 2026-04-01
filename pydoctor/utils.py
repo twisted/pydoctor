@@ -4,6 +4,7 @@ from __future__ import annotations
 from pathlib import Path
 import sys
 import functools
+import contextvars
 from typing import Any, Type, TypeVar, Tuple, Union, cast, TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -103,3 +104,24 @@ def partialclass(cls: Type[Any], *args: Any, **kwds: Any) -> Type[Any]:
         __class__ = cls
     assert isinstance(NewPartialCls, type)
     return NewPartialCls
+
+class PydoctorWarning(UserWarning):
+    """
+    Base class for all warnings emitted by pydoctor thru the L{warnings} module.
+    """
+
+_warned = contextvars.ContextVar('warned', default=False)
+
+def warn(msg: str) -> None:
+    """
+    Emit a pydoctor warning message.
+    """
+    import warnings
+    warnings.warn(msg, category=PydoctorWarning)
+    _warned.set(True)
+
+def warned() -> bool:
+    """
+    Return whether any pydoctor warning has been emitted.
+    """
+    return _warned.get()
