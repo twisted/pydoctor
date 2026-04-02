@@ -4,7 +4,7 @@ Code building ``all-documents.html``, ``searchindex.json`` and ``fullsearchindex
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Iterator, List, Optional, Tuple, Type, Dict, TYPE_CHECKING
+from typing import Iterator, List, Optional, Type, Dict, TYPE_CHECKING
 import json
 
 import attr
@@ -63,7 +63,7 @@ class LunrIndexWriter:
     fields: List[str]
 
     _BOOSTS = {
-                'name':6,
+                'name':3,
                 'names': 1,
                 'qname':2,
                 'docstring':1,
@@ -74,14 +74,6 @@ class LunrIndexWriter:
     # docstring field.
     _SKIP_PIPELINES = list(_BOOSTS)
     _SKIP_PIPELINES.remove('docstring')
-    
-    @staticmethod
-    def get_ob_boost(ob: model.Documentable) -> int:
-        # Advantage container types because they hold more informations.
-        if isinstance(ob, (model.Class, model.Module)):
-            return 2
-        else:
-            return 1
     
     def format(self, ob: model.Documentable, field:str) -> Optional[str]:
         try:
@@ -110,16 +102,11 @@ class LunrIndexWriter:
     def format_kind(self, ob:model.Documentable) -> str:
         return epydoc2stan.format_kind(ob.kind) if ob.kind else ''
 
-    def get_corpus(self) -> List[Tuple[Dict[str, Optional[str]], Dict[str, int]]]:
+    def get_corpus(self) -> list[dict[str, str | None]]:
         return [
-            (
-                {
-                    f:self.format(ob, f) for f in self.fields
-                }, 
-                {
-                    "boost": self.get_ob_boost(ob)
-                }
-            )
+            {
+                f:self.format(ob, f) for f in self.fields
+            }
             for ob in (o for o in self.system.allobjects.values() if o.isVisible)
         ]
 
@@ -160,12 +147,12 @@ def write_lunr_index(output_dir: Path, system: model.System) -> None:
     """
     LunrIndexWriter(output_dir / "searchindex.json", 
         system=system, 
-        fields=["name", "names", "qname"]
+        fields=["name", "names", "qname", "kind"]
         ).write()
 
     LunrIndexWriter(output_dir / "fullsearchindex.json", 
         system=system, 
-        fields=["name", "names", "qname", "docstring", "kind"]
+        fields=["name", "names", "qname", "kind", "docstring",]
         ).write()
 
 

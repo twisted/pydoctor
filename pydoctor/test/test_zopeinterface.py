@@ -2,7 +2,7 @@
 from typing import Any, Dict, Iterable, List, Type, cast
 from pydoctor.test.test_astbuilder import fromText, type2html, ZopeInterfaceSystem
 from pydoctor.test.test_packages import processPackage
-from pydoctor.test.test_templatewriter import getHTMLOf
+from pydoctor.test.test_templatewriter import getHTMLOf, theme_param
 from pydoctor.extensions.zopeinterface import ZopeInterfaceClass
 from pydoctor.epydoc.markup import ParsedDocstring
 from pydoctor import model
@@ -538,7 +538,8 @@ def test_classimplements_badarg(capsys: CapSys, systemcls: Type[model.System]) -
         )
 
 @zope_interface_systemcls_param
-def test_implements_renders_ok(systemcls: Type[model.System]) -> None:
+@theme_param
+def test_implements_renders_ok(systemcls: Type[model.System], theme: str) -> None:
     """
     The Class renderer effectively includes the implemented interfaces.
     """
@@ -551,8 +552,8 @@ def test_implements_renders_ok(systemcls: Type[model.System]) -> None:
         pass
     '''
     mod = fromText(src, modname='zi', systemcls=systemcls)
-    ifoo_html = getHTMLOf(mod.contents['IFoo'])
-    foo_html = getHTMLOf(mod.contents['Foo'])
+    ifoo_html = getHTMLOf(mod.contents['IFoo'], theme)
+    foo_html = getHTMLOf(mod.contents['Foo'], theme)
     
     assert 'Known implementations:' in ifoo_html
     assert 'zi.Foo' in ifoo_html
@@ -588,9 +589,10 @@ def _get_modules_test_zope_interface_imports_cycle_proof() -> List[Iterable[Dict
         (mod_top,mod_impl,mod_interface),
         ]
 
+@theme_param
 @pytest.mark.parametrize('modules', _get_modules_test_zope_interface_imports_cycle_proof())
 @zope_interface_systemcls_param
-def test_zope_interface_imports_cycle_proof(systemcls: Type[model.System], modules:Iterable[Dict[str, Any]]) -> None:
+def test_zope_interface_imports_cycle_proof(systemcls: Type[model.System], modules:Iterable[Dict[str, Any]], theme: str) -> None:
     """
     Zope interface informations is collected no matter the cyclics imports and the order of processing of modules.
     This test only check some basic cyclic imports examples.
@@ -608,8 +610,8 @@ def test_zope_interface_imports_cycle_proof(systemcls: Type[model.System], modul
     assert isinstance(interface, model.Class)
     assert isinstance(impl, model.Class)
 
-    ihtml = getHTMLOf(interface)
-    html = getHTMLOf(impl)
+    ihtml = getHTMLOf(interface, theme)
+    html = getHTMLOf(impl, theme)
     
     assert 'top.impl.Address' in ihtml
     assert 'top.interface.IAddress' in html

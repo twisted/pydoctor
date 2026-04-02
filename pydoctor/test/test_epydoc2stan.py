@@ -52,9 +52,7 @@ def test_multiple_types() -> None:
     epydoc2stan.format_docstring(mod.contents['E'])
 
 
-def docstring2html(obj: model.Documentable, docformat: Optional[str] = None) -> str:
-    if docformat:
-        obj.module.docformat = docformat
+def docstring2html(obj: model.Documentable) -> str:
     stan = epydoc2stan.format_docstring(obj)
     assert stan.tagName == 'div', stan
     # We strip off break lines for the sake of simplicity.
@@ -643,6 +641,7 @@ def test_func_starargs_more(capsys: CapSys) -> None:
     ''', modname='<great>')
 
     mod_rst_with_asterixes = fromText(r'''
+    __docformat__ = 'restructuredtext'
     def f(args, kwargs, *a, **kwa) -> None:
         r"""
         Do something with var-positional and var-keyword arguments.
@@ -655,6 +654,7 @@ def test_func_starargs_more(capsys: CapSys) -> None:
     ''', modname='<great>')
 
     mod_rst_without_asterixes = fromText('''
+    __docformat__ = 'restructuredtext'
     def f(args, kwargs, *a, **kwa) -> None:
         """
         Do something with var-positional and var-keyword arguments.
@@ -679,8 +679,8 @@ def test_func_starargs_more(capsys: CapSys) -> None:
     ''', modname='<good>')
 
     epy_with_asterixes_fmt = docstring2html(mod_epy_with_asterixes.contents['f'])
-    rst_with_asterixes_fmt = docstring2html(mod_rst_with_asterixes.contents['f'], docformat='restructuredtext')
-    rst_without_asterixes_fmt = docstring2html(mod_rst_without_asterixes.contents['f'], docformat='restructuredtext')
+    rst_with_asterixes_fmt = docstring2html(mod_rst_with_asterixes.contents['f'])
+    rst_without_asterixes_fmt = docstring2html(mod_rst_without_asterixes.contents['f'])
     epy_without_asterixes_fmt = docstring2html(mod_epy_without_asterixes.contents['f'])
 
     assert epy_with_asterixes_fmt == rst_with_asterixes_fmt == rst_without_asterixes_fmt == epy_without_asterixes_fmt
@@ -2016,7 +2016,7 @@ def test_not_found_annotation_does_not_create_link() -> None:
 
     mod = fromText(src)
 
-    html = getHTMLOf(mod)
+    html = getHTMLOf(mod, 'base')
 
     assert '<a>NotFound</a>' not in html
 
@@ -2065,8 +2065,7 @@ def test_invalid_epytext_renders_as_plaintext(capsys: CapSys) -> None:
     """
     An invalid epytext docstring will be rederered as plaintext.
     """
-
-    mod = fromText(''' 
+    src = '''
     def func():
         """
             Title
@@ -2078,7 +2077,8 @@ def test_invalid_epytext_renders_as_plaintext(capsys: CapSys) -> None:
         """
         pass
     
-    ''', modname='invalid')
+    '''
+    mod = fromText(src, modname='invalid')
 
     expected = """<div>
 <p class="pre">Title
@@ -2095,7 +2095,8 @@ Hello
                         'invalid:8: bad docstring: Wrong underline character for heading.\n')
     assert actual  == expected
 
-    assert docstring2html(mod.contents['func'], docformat='plaintext') == expected
+    mod = fromText('    __docformat__="plaintext"\n' + src, modname='invalid')
+    assert docstring2html(mod.contents['func']) == expected
     captured = capsys.readouterr().out
     assert captured == ''
 
@@ -2170,7 +2171,7 @@ def test_does_not_loose_type_linenumber(capsys: CapSys) -> None:
     from pydoctor.test.test_templatewriter import getHTMLOf 
     # we use this function as a shortcut to trigger
     # the link not found warnings.
-    getHTMLOf(mod.contents['C'])
+    getHTMLOf(mod.contents['C'], 'base')
     assert capsys.readouterr().out == ('<test>:16: Existing docstring at line 10 is overriden\n'
                                        '<test>:10: Cannot find link target for "bool"\n')
 

@@ -5,7 +5,7 @@ import pytest
 from io import StringIO
 
 from pydoctor import model
-from pydoctor.options import PydoctorConfigParser, Options
+from pydoctor.options import PydoctorConfigParser, Options, IntersphinxSource
 
 from pydoctor.test import FixtureRequest, TempPathFactory
 
@@ -168,8 +168,8 @@ def test_config_parsers(project_conf:str, pydoctor_conf:str, tempDir:Path) -> No
     assert options.verbosity == -1
     assert options.warnings_as_errors == True
     assert options.privacy == [(model.PrivacyClass.HIDDEN, 'pydoctor.test')]
-    assert options.intersphinx[0] == "https://docs.python.org/3/objects.inv"
-    assert options.intersphinx[-1] == "https://tristanlatr.github.io/apidocs/docutils/objects.inv"
+    assert str(options.intersphinx[0]) == "https://docs.python.org/3/objects.inv"
+    assert str(options.intersphinx[-1]) == "https://tristanlatr.github.io/apidocs/docutils/objects.inv"
 
 def test_repeatable_options_multiple_configs_and_args(tempDir:Path) -> None:
     config1 = """
@@ -204,21 +204,21 @@ project-name = "Hello World!"
         options = Options.defaults()
 
         assert options.verbosity == 1
-        assert options.intersphinx == ["https://docs.python.org/3/objects.inv",]
+        assert options.intersphinx == [IntersphinxSource(source='https://docs.python.org/3/objects.inv', base_url=None),]
         assert options.projectname == "Hello World!"
         assert options.projectversion == "2050.4C"
 
         options = Options.from_args(['-vv'])
 
         assert options.verbosity == 3 
-        assert options.intersphinx == ["https://docs.python.org/3/objects.inv",]
+        assert options.intersphinx == [IntersphinxSource(source='https://docs.python.org/3/objects.inv', base_url=None),]
         assert options.projectname == "Hello World!"
         assert options.projectversion == "2050.4C"
 
         options = Options.from_args(['-vv', '--intersphinx=https://twistedmatrix.com/documents/current/api/objects.inv', '--intersphinx=https://urllib3.readthedocs.io/en/latest/objects.inv'])
 
         assert options.verbosity == 3
-        assert options.intersphinx == ["https://twistedmatrix.com/documents/current/api/objects.inv", "https://urllib3.readthedocs.io/en/latest/objects.inv"]
+        assert list(map(str, options.intersphinx)) == ["https://twistedmatrix.com/documents/current/api/objects.inv", "https://urllib3.readthedocs.io/en/latest/objects.inv"]
         assert options.projectname == "Hello World!"
         assert options.projectversion == "2050.4C"
 

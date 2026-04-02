@@ -49,46 +49,38 @@ onmessage = (message) => {
 
         });
         // Auto wilcard feature, see issue https://github.com/twisted/pydoctor/issues/648
-        var new_clauses = [];
-
         _query.clauses.forEach(clause => {
-            if (clause.presence === 1) { // ignore clauses that have explicit presence (+/-)
-                // Setting clause.wildcard is useless, and clause.wildcard is actually always NONE 
+            let excplicitlyOptional = clause.term.slice(0,1) == '?' && clause.term.length > 1;
+            if (excplicitlyOptional){
+                // Remove leading '?' from term
+                clause.term = clause.term.slice(1);
+            }
+
+            if (clause.presence === lunr.Query.presence.OPTIONAL) { // ignore clauses that have explicit presence (+/-)
+                if (!excplicitlyOptional){
+                    clause.presence = lunr.Query.presence.REQUIRED
+                }
+                // Setting clause.wildcard is useless (but we do it anyway for clarty), 
                 // due to https://github.com/olivernn/lunr.js/issues/495
-                // But this works...
+                // But appending to .term works...
                 if (clause.term.slice(-1) != '*'){
-                    let new_clause = {...clause}
-                    new_clause.term = new_clause.term + '*'
-                    clause.boost = 2
-                    new_clause.boost = 1
-                    new_clauses.push(new_clause)
+                    // Adding a trailing wildcard
+                    clause.wildcard = lunr.Query.wildcard.TRAILING
+                    clause.term = clause.term + '*'
                 }
                 
-                // Adding a leading wildcard if the dot is included as well.
-                // This should only apply to terms that are applicable to name-like fields. 
-                // so we refer to the default fields
                 if (clause.term.indexOf('.') != -1) {
                     if (clause.term.slice(0,1) != '*'){
-                        let second_new_clause = {...clause}
-                        second_new_clause.boost = 1
-                        if (clause.term.slice(0,1) != '.'){ 
-                            second_new_clause.term = '.' + second_new_clause.term
-                        }
-                        second_new_clause.term = '*' + second_new_clause.term
-                        if (clause.term.slice(-1) != '*'){
-                            second_new_clause.term = second_new_clause.term + '*'
-                        }
-                        new_clauses.push(second_new_clause)
+                        // Adding a leading wildcard if the dot is included as well.
+                        clause.wildcard = lunr.Query.wildcard.LEADING | lunr.Query.wildcard.TRAILING
+                        clause.term = '*' + clause.term
                     }
                 }
             }
         });
 
-        new_clauses.forEach(clause => {
-            _query.clauses.push(clause)
-        });
         console.log('Parsed query:')
-        console.dir(_query.clauses)
+        console.dir(_query)
     }
 
     // Launch the search

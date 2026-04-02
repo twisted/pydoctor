@@ -1,3 +1,4 @@
+import datetime
 from io import BytesIO
 import re
 from typing import Callable, Union, cast, Type, TYPE_CHECKING
@@ -30,7 +31,15 @@ else:
 
 import importlib.resources as importlib_resources
 
-template_dir = importlib_resources.files("pydoctor.themes") / "base"
+base_template_dir = importlib_resources.files("pydoctor.themes") / "base"
+
+def _template_lookup(theme: str) -> TemplateLookup:
+    tl = TemplateLookup(base_template_dir)
+    if theme != 'base':
+        tl.add_templatedir(importlib_resources.files("pydoctor.themes") / theme)
+    return tl
+
+theme_param = pytest.mark.parametrize('theme', list(get_themes()))
 
 def filetext(path: Union[Path, Traversable]) -> str:
     with path.open('r', encoding='utf-8') as fobj:
@@ -43,20 +52,21 @@ def flatten(t: "Flattenable") -> str:
     return io.getvalue().decode()
 
 
-def getHTMLOf(ob: model.Documentable) -> str:
-    wr = templatewriter.TemplateWriter(Path(), TemplateLookup(template_dir))
+def getHTMLOf(ob: model.Documentable, theme: str) -> str:
+    wr = templatewriter.TemplateWriter(Path(), _template_lookup(theme))
     f = BytesIO()
     wr._writeDocsForOne(ob, f)
     return f.getvalue().decode()
 
-def getHTMLOfAttribute(ob: model.Attribute) -> str:
+def getHTMLOfAttribute(ob: model.Attribute, theme: str) -> str:
     assert isinstance(ob, model.Attribute)
-    tlookup = TemplateLookup(template_dir)
+    tlookup = _template_lookup(theme)
     stan = AttributeChild(util.DocGetter(), ob, [], 
         AttributeChild.lookup_loader(tlookup),)
     return flatten(stan)
 
-def test_sidebar() -> None:
+@theme_param
+def test_sidebar(theme: str) -> None:
     src = '''
     class C:
 
@@ -72,7 +82,7 @@ def test_sidebar() -> None:
 
     mod = fromText(src, modname='mod', system=system)
     
-    mod_html = getHTMLOf(mod)
+    mod_html = getHTMLOf(mod, theme)
 
     mod_parts = [
         '<a href="mod.C.html"',
@@ -85,27 +95,50 @@ def test_sidebar() -> None:
     for p in mod_parts:
         assert p in mod_html, f"{p!r} not found in HTML: {mod_html}"
    
+@theme_param
+def test_sidebar_contents_all_private(theme: str) -> None:
+    src = '''
+    class C:
+        # all functions are private
+        def _f(): ...
+        def _h(): ...
+        
+        class D:
+            def l(): ...
+    '''
+    mod = fromText(src, modname='mod')
+    class_html = getHTMLOf(mod.contents['C'], theme)
+    assert 'class="childrenKindTitle private"' in class_html
+    assert 'class="childrenKindTitle"' in class_html
 
-def test_simple() -> None:
+    class2_html = getHTMLOf(mod.contents['C'].contents['D'], theme)
+    assert 'class="childrenKindTitle"' in class2_html
+
+@theme_param
+def test_simple(theme: str) -> None:
     src = '''
     def f():
         """This is a docstring."""
     '''
     mod = fromText(src)
-    v = getHTMLOf(mod.contents['f'])
+    v = getHTMLOf(mod.contents['f'], theme)
     assert 'This is a docstring' in v
 
-def test_empty_table() -> None:
+@theme_param
+def test_empty_table(theme: str) -> None:
     mod = fromText('')
-    t = ChildTable(util.DocGetter(), mod, [], ChildTable.lookup_loader(TemplateLookup(template_dir)))
+    t = ChildTable(util.DocGetter(), mod, [], ChildTable.lookup_loader(_template_lookup(theme)))
     flattened = flatten(t)
-    assert 'The renderer named' not in flattened
+    assert '<tr' not in flattened
+    assert '<td' not in flattened
 
-def test_nonempty_table() -> None:
+@theme_param
+def test_nonempty_table(theme: str) -> None:
     mod = fromText('def f(): pass')
-    t = ChildTable(util.DocGetter(), mod, mod.contents.values(), ChildTable.lookup_loader(TemplateLookup(template_dir)))
+    t = ChildTable(util.DocGetter(), mod, mod.contents.values(), ChildTable.lookup_loader(_template_lookup(theme)))
     flattened = flatten(t)
-    assert 'The renderer named' not in flattened
+    assert '<tr' in flattened
+    assert '<td' in flattened
 
 def test_rest_support() -> None:
     system = model.System()
@@ -116,17 +149,19 @@ def test_rest_support() -> None:
         """This is a docstring for f."""
     '''
     mod = fromText(src, system=system)
-    html = getHTMLOf(mod.contents['f'])
+    html = getHTMLOf(mod.contents['f'], 'base')
     assert "<pre>" not in html
 
-def test_document_code_in_init_module() -> None:
+@theme_param
+def test_document_code_in_init_module(theme: str) -> None:
     system = processPackage("codeininit")
-    html = getHTMLOf(system.allobjects['codeininit'])
+    html = getHTMLOf(system.allobjects['codeininit'], theme)
     assert 'functionInInit' in html
 
-def test_basic_package(tmp_path: Path) -> None:
+@theme_param
+def test_basic_package(tmp_path: Path, theme: str) -> None:
     system = processPackage("basic")
-    w = writer.TemplateWriter(tmp_path, TemplateLookup(template_dir))
+    w = writer.TemplateWriter(tmp_path, _template_lookup(theme))
     w.prepOutputDirectory()
     root, = system.rootobjects
     w._writeDocsFor(root)
@@ -155,9 +190,8 @@ def test_missing_variable() -> None:
     @type thisVariableDoesNotExist: Type for non-existent variable.
     """
     ''')
-    html = getHTMLOf(mod)
+    html = getHTMLOf(mod, 'base')
     assert 'thisVariableDoesNotExist' not in html
-
 
 @pytest.mark.parametrize(
     'className',
@@ -165,7 +199,8 @@ def test_missing_variable() -> None:
      'OldClassThatMultiplyInherits',
      'Diamond'],
 )
-def test_multipleInheritanceNewClass(className: str) -> None:
+@theme_param
+def test_multipleInheritanceNewClass(className: str, theme: str) -> None:
     """
     A class that has multiple bases has all methods in its MRO
     rendered.
@@ -179,7 +214,7 @@ def test_multipleInheritanceNewClass(className: str) -> None:
     )
 
     assert isinstance(cls, model.Class)
-    html = getHTMLOf(cls)
+    html = getHTMLOf(cls, theme)
 
     assert "methodA" in html
     assert "methodB" in html
@@ -217,21 +252,22 @@ def test_multipleInheritanceNewClass(className: str) -> None:
                 getob('multipleinheritance.mod.Diamond')),
                 [getob('multipleinheritance.mod.CommonBase.fullName')]) ]
 
-def test_html_template_version() -> None:
-    lookup = TemplateLookup(template_dir)
+@theme_param
+def test_html_template_version(theme: str) -> None:
+    lookup = _template_lookup(theme)
     for template in lookup._templates.values():
         if isinstance(template, HtmlTemplate) and not len(template.text.strip()) == 0:
             assert template.version >= 1
 
 def test_template_lookup_get_template() -> None:
 
-    lookup = TemplateLookup(template_dir)
+    lookup = _template_lookup('base')
 
     here = Path(__file__).parent
 
     index = lookup.get_template('index.html')
     assert isinstance(index, HtmlTemplate)
-    assert index.text == filetext(template_dir / 'index.html')
+    assert index.text == filetext(base_template_dir / 'index.html')
 
     lookup.add_template(HtmlTemplate(name='footer.html', 
                             text=filetext(here / 'testcustomtemplates' / 'faketemplate' / 'footer.html')))
@@ -242,13 +278,13 @@ def test_template_lookup_get_template() -> None:
 
     index2 = lookup.get_template('index.html')
     assert isinstance(index2, HtmlTemplate)
-    assert index2.text == filetext(template_dir / 'index.html')
+    assert index2.text == filetext(base_template_dir / 'index.html')
 
-    lookup = TemplateLookup(template_dir)
+    lookup = _template_lookup('base')
 
     footer = lookup.get_template('footer.html')
     assert isinstance(footer, HtmlTemplate)
-    assert footer.text == filetext(template_dir / 'footer.html')
+    assert footer.text == filetext(base_template_dir / 'footer.html')
 
     subheader = lookup.get_template('subheader.html')
     assert isinstance(subheader, HtmlTemplate)
@@ -258,9 +294,10 @@ def test_template_lookup_get_template() -> None:
     assert isinstance(table, HtmlTemplate)
     assert table.version == 1
 
-def test_template_lookup_add_template_warns() -> None:
+@theme_param
+def test_template_lookup_add_template_warns(theme: str) -> None:
 
-    lookup = TemplateLookup(template_dir)
+    lookup = _template_lookup(theme)
 
     here = Path(__file__).parent
 
@@ -286,21 +323,23 @@ def test_template_lookup_add_template_warns() -> None:
         lookup.add_templatedir(here / 'testcustomtemplates' / 'faketemplate')
     assert len(catch_warnings) == 2, [str(w.message) for w in catch_warnings]
 
-def test_template_lookup_add_template_allok() -> None:
+@theme_param
+def test_template_lookup_add_template_allok(theme: str) -> None:
 
     here = Path(__file__).parent
 
     with warnings.catch_warnings(record=True) as catch_warnings:
         warnings.simplefilter("always")
-        lookup = TemplateLookup(template_dir)
+        lookup = _template_lookup(theme)
         lookup.add_templatedir(here / 'testcustomtemplates' / 'allok')
     assert len(catch_warnings) == 0, [str(w.message) for w in catch_warnings]
 
-def test_template_lookup_add_template_raises() -> None:
+@theme_param
+def test_template_lookup_add_template_raises(theme: str) -> None:
 
     here = Path(__file__).parent
 
-    lookup = TemplateLookup(template_dir)
+    lookup = _template_lookup(theme)
 
     with pytest.raises(UnsupportedTemplateVersion):
         lookup.add_template(HtmlTemplate(name="nav.html", text="""
@@ -473,17 +512,32 @@ def test_template_subfolders_write_casing(tmp_path: Path) -> None:
     assert not test_build_dir.joinpath('Static/Fonts').is_dir()
     assert test_build_dir.joinpath('static/fonts/bar.svg').is_file()
 
-def test_themes_template_versions() -> None:
+def test_template_buildtime_no_fmt_attr() -> None:
+    """
+    The public footer.html templates contain the fmt=... attribute for the buildtime,
+    which is tested by test_commandline.py. Here we merely check to get the default fmt if
+    the fmt=... attribute is not provided.
+    """
+    testDatetime = datetime.datetime(2011, 12, 13, 14, 15, 16)
+
+    here = Path(__file__).parent
+    footerTmpl = Template.fromfile(here / 'testcustomtemplates' / 'buildtime', PurePath("footer.html"))
+    assert isinstance(footerTmpl, HtmlTemplate)
+    
+    footer = pages.Footer(testDatetime, footerTmpl.loader)
+    text = flatten(footer)
+    assert "|2011-12-13 14:15:16|" in text
+
+@theme_param
+def test_themes_template_versions(theme: str) -> None:
     """
     All our templates should be up to date.
     """
-
-    for theme in get_themes():
-        with warnings.catch_warnings(record=True) as w:
-            warnings.simplefilter("always")
-            lookup = TemplateLookup(importlib_resources.files('pydoctor.themes') / 'base')
-            lookup.add_templatedir(importlib_resources.files('pydoctor.themes') / theme)
-            assert len(w) == 0, [str(_w) for _w in w]
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        lookup = TemplateLookup(importlib_resources.files('pydoctor.themes') / 'base')
+        lookup.add_templatedir(importlib_resources.files('pydoctor.themes') / theme)
+        assert len(w) == 0, [str(_w) for _w in w]
 
 @pytest.mark.parametrize('func', [isPrivate, isClassNodePrivate])
 def test_isPrivate(func: Callable[[model.Class], bool]) -> None:
@@ -605,8 +659,8 @@ def test_compact_module_summary() -> None:
     assert ul.tagName == 'ul'       # type: ignore
     assert len(ul.children) == 51   # type: ignore
 
-    
-def test_index_contains_infos(tmp_path: Path) -> None:
+@theme_param
+def test_index_contains_infos(tmp_path: Path, theme: str) -> None:
     """
     Test if index.html contains the following informations:
 
@@ -631,13 +685,52 @@ def test_index_contains_infos(tmp_path: Path) -> None:
     builder.addModule(testpackages / "allgames")
     builder.addModule(testpackages / "basic")
     builder.buildModules()
-    w = writer.TemplateWriter(tmp_path, TemplateLookup(template_dir))
+    w = writer.TemplateWriter(tmp_path, _template_lookup(theme))
     w.writeSummaryPages(system)
 
     with open(tmp_path / 'index.html', encoding='utf-8') as f:
         page = f.read()
         for i in infos:
             assert i in page, page
+
+@theme_param
+def test_project_version_shown_in_footer(tmp_path: Path, theme:str) -> None:
+    """
+    Verify that when a project name and project version are provided, the
+    generated HTML footer shows the project version.
+    """
+    system = model.System(model.Options.from_args([
+        '--project-version', '1.2.3',
+    ]))
+
+    builder = system.systemBuilder(system)
+    builder.addModule(testpackages / "allgames")
+    builder.addModule(testpackages / "basic")
+    builder.buildModules()
+
+    w = writer.TemplateWriter(tmp_path, _template_lookup(theme))
+    w.writeSummaryPages(system)
+
+    assert '1.2.3' in (tmp_path / 'index.html').read_text(encoding='utf-8')
+
+@theme_param
+def test_project_version_is_None_not_in_footer(tmp_path: Path, theme:str) -> None:
+    """
+    Verify that when a project version is NOT provided, the
+    generated HTML footer doesn't show 'None' as the version.
+    """
+    system = model.System(model.Options.from_args([]))
+
+    builder = system.systemBuilder(system)
+    builder.addModule(testpackages / "allgames")
+    builder.addModule(testpackages / "basic")
+    builder.buildModules()
+
+    w = writer.TemplateWriter(tmp_path, _template_lookup(theme))
+    w.writeSummaryPages(system)
+
+    assert 'API Documentation</a> for my project,\n' in (
+        tmp_path / 'index.html').read_text(encoding='utf-8')
 
 @pytest.mark.parametrize('_order', ["alphabetical", "source"])
 def test_objects_order_mixed_modules_and_packages(_order:str) -> None:
@@ -731,7 +824,7 @@ def test_ivar_field_order_precedence(capsys: CapSys) -> None:
     ''', system=system)
     
     Foo = mod.contents['Foo']
-    getHTMLOf(Foo)
+    getHTMLOf(Foo, 'base')
     assert Foo.docstring_lineno == 7
     
     assert Foo.parsed_docstring.fields[0].lineno == 0 # type:ignore
@@ -804,8 +897,8 @@ def test_crash_xmlstring_entities(capsys:CapSys, processtypes:bool) -> None:
     mod = fromText(src_crash_xml_entities, system=system, modname='test')
     for o in mod.system.allobjects.values():
         epydoc2stan.ensure_parsed_docstring(o)
-    getHTMLOf(mod)
-    getHTMLOf(mod.contents['C'])
+    getHTMLOf(mod, 'base')
+    getHTMLOf(mod.contents['C'], 'base')
 
     warnings = '''\
 test:2: bad docstring: SAXParseException: <unknown>.+ undefined entity
@@ -833,8 +926,8 @@ def test_crash_xmlstring_entities_rst(capsys:CapSys, processtypes:bool) -> None:
     mod = fromText(src_crash_xml_entities.replace('@type', ':type').replace('@rtype', ':rtype').replace('==', "--"), modname='test', system=system)
     for o in mod.system.allobjects.values():
         epydoc2stan.ensure_parsed_docstring(o)
-    getHTMLOf(mod)
-    getHTMLOf(mod.contents['C'])
+    getHTMLOf(mod, 'base')
+    getHTMLOf(mod.contents['C'], 'base')
 
     warnings = '''\
 test:2: bad docstring: SAXParseException: <unknown>.+ undefined entity
@@ -852,7 +945,8 @@ test:36: bad rendering of class signature: SAXParseException: <unknown>.+ undefi
     for a,e in zip(actual, warnings):
         assert re.match(e, a), (f'{a!r} doesn not match {e}')
 
-def test_constructor_renders(capsys:CapSys) -> None:
+@theme_param
+def test_constructor_renders(capsys:CapSys, theme: str) -> None:
     src = '''\
     class Animal(object):
         # pydoctor can infer the constructor to be: "Animal(name)"
@@ -861,11 +955,12 @@ def test_constructor_renders(capsys:CapSys) -> None:
     '''
 
     mod = fromText(src)
-    html = getHTMLOf(mod.contents['Animal'])
+    html = getHTMLOf(mod.contents['Animal'], theme)
     assert 'Constructor: ' in html
     assert 'Animal(name)' in html
 
-def test_typealias_string_form_linked() -> None:
+@theme_param
+def test_typealias_string_form_linked(theme: str) -> None:
     """
     The type aliases should be unstring before beeing presented to reader, such that
     all elements can be linked. 
@@ -884,11 +979,12 @@ def test_typealias_string_form_linked() -> None:
 
     typealias = mod.contents['ParserFunction']
     assert isinstance(typealias, model.Attribute)
-    html = getHTMLOfAttribute(typealias)
+    html = getHTMLOfAttribute(typealias, theme)
     assert 'href="pydoctor.epydoc.markup.ParseError.html"' in html
     assert 'href="pydoctor.epydoc.markup.ParsedDocstring.html"' in html
 
-def test_class_hierarchy_links_top_level_names() -> None:
+@theme_param
+def test_class_hierarchy_links_top_level_names(theme: str) -> None:
     system = model.System()
     system.intersphinx = InMemoryInventory() # type:ignore
     src = '''\
@@ -897,10 +993,11 @@ def test_class_hierarchy_links_top_level_names() -> None:
         ...
     '''
     mod = fromText(src, system=system)
-    index = flatten(ClassIndexPage(mod.system, TemplateLookup(template_dir)))
+    index = flatten(ClassIndexPage(mod.system, _template_lookup(theme)))
     assert 'href="https://docs.python.org/3/library/socket.html#socket.socket"' in index
 
-def test_canonical_links() -> None:
+@theme_param
+def test_canonical_links(theme: str) -> None:
     src = '''
     var = True
     class Cls:
@@ -909,13 +1006,14 @@ def test_canonical_links() -> None:
     mod = fromText(src, modname='t', system=model.System(model.Options.from_args(
         ['--html-base-url=https://example.org/t/docs']
     )))
-    html1 = getHTMLOf(mod)
-    html2 = getHTMLOf(mod.contents['Cls'])
+    html1 = getHTMLOf(mod, theme)
+    html2 = getHTMLOf(mod.contents['Cls'], theme)
 
     assert '<link rel="canonical" href="https://example.org/t/docs/index.html"' in html1
     assert '<link rel="canonical" href="https://example.org/t/docs/t.Cls.html"' in html2
 
-def test_canonical_links_two_root_modules() -> None:
+@theme_param
+def test_canonical_links_two_root_modules(theme: str) -> None:
     src = '''
     var = True
     class Cls:
@@ -925,14 +1023,14 @@ def test_canonical_links_two_root_modules() -> None:
         ['--html-base-url=https://example.org/t/docs']
     )))
     mod2 = fromText(src, modname='t2', system=mod.system)
-    html1 = getHTMLOf(mod)
-    html2 = getHTMLOf(mod.contents['Cls'])
+    html1 = getHTMLOf(mod, theme)
+    html2 = getHTMLOf(mod.contents['Cls'], theme)
 
     assert '<link rel="canonical" href="https://example.org/t/docs/t.html"' in html1
     assert '<link rel="canonical" href="https://example.org/t/docs/t.Cls.html"' in html2
 
-    html3 = getHTMLOf(mod2)
-    html4 = getHTMLOf(mod2.contents['Cls'])
+    html3 = getHTMLOf(mod2, theme)
+    html4 = getHTMLOf(mod2.contents['Cls'], theme)
 
     assert '<link rel="canonical" href="https://example.org/t/docs/t2.html"' in html3
     assert '<link rel="canonical" href="https://example.org/t/docs/t2.Cls.html"' in html4
@@ -951,15 +1049,16 @@ def test_namespace_package_doesnt_show_as_undocumented() -> None:
     assert isinstance(nested:=root.contents['lvl2'], model.Package)
     assert nested.kind is model.DocumentableKind.NAMESPACE_PACKAGE
 
-    html1 = getHTMLOf(root)
+    html1 = getHTMLOf(root, 'base')
 
     assert 'Undocumented' not in html1
     assert 'Contains 1 known namespace package.' in html1
 
-    html2 = getHTMLOf(nested)
+    html2 = getHTMLOf(nested, 'base')
     assert 'Contains 2 known packages.' in html2
 
-def test_namespace_package_source_links() -> None:
+@theme_param
+def test_namespace_package_source_links(theme: str) -> None:
     systemcls = lambda: model.System(model.Options.from_args(
         ['--html-viewsource-base=https://github.com/some/repo/tree/master',
          f'--project-base-dir={testpackages / "namespaces"}']))
@@ -973,11 +1072,25 @@ def test_namespace_package_source_links() -> None:
     assert isinstance(nested:=root.contents['lvl2'], model.Package)
     assert nested.kind is model.DocumentableKind.NAMESPACE_PACKAGE
 
-    html1 = getHTMLOf(root)
-    html2 = getHTMLOf(nested)
+    html1 = getHTMLOf(root, theme)
+    html2 = getHTMLOf(nested, theme)
 
     assert ('<a href="https://github.com/some/repo/tree/master/project1/lvl1" class="sourceLink">(source)</a>, '
         '<a href="https://github.com/some/repo/tree/master/project2/lvl1" class="sourceLink">(source)</a>') in html1
     
     assert ('<a href="https://github.com/some/repo/tree/master/project1/lvl1/lvl2" class="sourceLink">(source)</a>, '
         '<a href="https://github.com/some/repo/tree/master/project2/lvl1/lvl2" class="sourceLink">(source)</a>') in html2
+
+@theme_param
+def test_regular_package_source_links(theme: str) -> None:
+    systemcls = lambda: model.System(model.Options.from_args(
+        ['--html-viewsource-base=https://github.com/some/repo/tree/master',
+         f'--project-base-dir={testpackages}']))
+    
+    system = processPackage('basic', systemcls)
+    assert isinstance(root:=system.allobjects['basic'], model.Package)
+    assert root.kind is model.DocumentableKind.PACKAGE
+    assert root.source_href == 'https://github.com/some/repo/tree/master/basic/__init__.py'
+    assert root.source_hrefs == ['https://github.com/some/repo/tree/master/basic/__init__.py']
+    html1 = getHTMLOf(root, theme)
+    assert (f'<a href="{root.source_href}" class="sourceLink">(source)</a>') in html1

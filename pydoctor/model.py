@@ -9,10 +9,11 @@ from __future__ import annotations
 
 import abc
 import ast
+import inspect
 from itertools import chain
 from collections import defaultdict
 import datetime
-import importlib
+import importlib.util, importlib.abc
 import sys
 import textwrap
 import types
@@ -31,7 +32,7 @@ import attr
 from pydoctor.options import Options
 from pydoctor import factory, qnmatch, utils, linker, astutils, mro
 from pydoctor.epydoc.markup import ParsedDocstring
-from pydoctor.sphinx import CacheT, SphinxInventory
+from pydoctor.sphinx import CacheT, SphinxInventory, SphinxInventoryError
 
 if TYPE_CHECKING:
     from typing import Literal, Protocol, TypeAlias
@@ -470,9 +471,22 @@ class CanContainImportsDocumentable(Documentable):
         return chain(self.contents.keys(),
                      self._localNameToFullName_map.keys())
 
+@attr.s(auto_attribs=True)
+class ParsedAstModule:
+    root: ast.Module
+    lines: Sequence[str]
+    # lines enables to process tokens and eventually
+    # generate HTML for source code, see issue #477
+
 class Module(CanContainImportsDocumentable):
     kind = DocumentableKind.MODULE
     state = ProcessingState.UNPROCESSED
+
+    parsed_ast: ParsedAstModule | None = None
+    """
+    When the AST of a module is succesfully parsed, it is encapsulated
+    in a L{ParsedAstModule} instance and stored here to be processed later.
+    """
 
     @property
     def privacyClass(self) -> PrivacyClass:
@@ -985,17 +999,30 @@ def import_mod_from_file_location(module_full_name:str, path: Path) -> types.Mod
 
 # Declare the types that we consider as functions (also when they are coming
 # from a C extension)
-func_types: Tuple[Type[Any], ...] = (types.BuiltinFunctionType, types.FunctionType)
-if hasattr(types, "MethodDescriptorType"):
-    # This is Python >= 3.7 only
-    func_types += (types.MethodDescriptorType, )
-else:
-    func_types += (type(str.join), )
-if hasattr(types, "ClassMethodDescriptorType"):
-    # This is Python >= 3.7 only
-    func_types += (types.ClassMethodDescriptorType, )
-else:
-    func_types += (type(dict.__dict__["fromkeys"]), )
+func_types = (types.BuiltinFunctionType, 
+                types.FunctionType, 
+                types.MethodDescriptorType, 
+                types.ClassMethodDescriptorType)
+
+def _isfunction(thing: Any) -> bool:
+    return (isinstance(thing, func_types)
+        # In PyPy 7.3.1, functions from extensions are not
+        # instances of the abstract types in func_types, it will have the type 'builtin_function_or_method'.
+        # Additionnaly cython3 produces function of type 'cython_function_or_method', 
+        # so se use a heuristic on the class name as a fall back detection.
+        or (hasattr(thing, "__class__") and 
+            thing.__class__.__name__.endswith('function_or_method')))
+
+def _isdatadescriptor(thing: Any) -> bool:
+    return inspect.isdatadescriptor(thing)
+
+_ignorable_dunders = frozenset({' __class__', ' __bases__', 
+                                ' __mro__', ' __subclasses__', 
+                                '__weakref__', ' __flags__', 
+                                ' __doc__', '__dict__', 
+                                '__docformat__', '__all__'})
+def _isignorable(name: str) -> bool:
+    return name in _ignorable_dunders
 
 class ModuleNotAdded(Exception):
     ...
@@ -1059,7 +1086,6 @@ class System:
         Typically the renderable element is the C{docstring}, but it can be the decorators, parameter default values or any other colorized AST.
         """
 
-        self.verboselevel = 0
         self.needsnl = False
         self.once_msgs: Set[Tuple[str, str]] = set()
 
@@ -1069,8 +1095,8 @@ class System:
 
         self.module_count = 0
         self.processing_modules: List[str] = []
-        self.buildtime = datetime.datetime.now()
-        self.intersphinx = SphinxInventory(logger=self.msg)
+        self.buildtime: datetime.datetime | None = datetime.datetime.now()
+        self.intersphinx = SphinxInventory(self.msg, verbosity=self.options.verbosity)
         self._ast_parser = self.syntaxTreeParser()
 
         # Since privacy handling now uses fnmatch, we cache results so we don't re-run matches all the time.
@@ -1333,8 +1359,7 @@ class System:
                 mod.source_href = href
             # Support for namespace packages: their location can be split off
             # several distributions, needing several hrefs.
-            if mod.kind is DocumentableKind.NAMESPACE_PACKAGE:
-                assert isinstance(mod, Package)
+            if isinstance(mod, Package):
                 mod.source_hrefs.append(href)
 
     @overload
@@ -1447,13 +1472,9 @@ class System:
 
     def _introspectThing(self, thing: object, parent: CanContainImportsDocumentable, parentMod: _ModuleT) -> None:
         for k, v in thing.__dict__.items():
-            if (isinstance(v, func_types)
-                    # In PyPy 7.3.1, functions from extensions are not
-                    # instances of the abstract types in func_types, it will have the type 'builtin_function_or_method'.
-                    # Additionnaly cython3 produces function of type 'cython_function_or_method', 
-                    # so se use a heuristic on the class name as a fall back detection.
-                    or (hasattr(v, "__class__") and 
-                        v.__class__.__name__.endswith('function_or_method'))):
+            if _isignorable(k):
+                continue
+            if _isfunction(v):
                 f = self.Function(self, k, parent)
                 f.parentMod = parentMod
                 f.docstring = v.__doc__
@@ -1479,6 +1500,11 @@ class System:
                 c.docstring = v.__doc__
                 self.addObject(c)
                 self._introspectThing(v, c, parentMod)
+            elif _isdatadescriptor(v):
+                p = self.Attribute(self, k, parent)
+                p.docstring = getattr(v, '__doc__', None)
+                p.parentMod = parentMod
+                self.addObject(p)
         # This function is called for every introspected objects potentially having children, 
         # i.e. modules and classes. So this is a good place to process ivar and friends.
         if parent.docstring:
@@ -1561,9 +1587,9 @@ class System:
     
     def _is_oldschool_namespace_package(self, path: Path) -> bool:
         try:
-            tree = self._ast_parser.parseFile(
+            tree = self._ast_parser.parseFileOnly(
                 path.joinpath('__init__.py'))
-        except Exception:
+        except SyntaxError:
             return False
         return astutils.is_old_school_namespace_package(tree)
 
@@ -1634,18 +1660,11 @@ class System:
             assert head == mod.fullName()
         else:
             builder = self.defaultBuilder(self)
-            ast = None
-            if mod._py_string is not None:
-                ast = builder.parseString(mod._py_string, mod)
-            elif mod.kind is not DocumentableKind.NAMESPACE_PACKAGE:
-                # There is no AST for namespace packages.
-                assert mod.source_path is not None
-                ast = builder.parseFile(mod.source_path, mod)
-            if ast:
+            if mod.parsed_ast:
                 self.processing_modules.append(mod.fullName())
                 if mod._py_string is None:
                     self.msg("processModule", "processing %s"%(self.processing_modules), 1)
-                builder.processModuleAST(ast, mod)
+                builder.processModuleAST(mod.parsed_ast.root, mod)
                 mod.state = ProcessingState.PROCESSED
                 head = self.processing_modules.pop()
                 assert head == mod.fullName()
@@ -1655,8 +1674,39 @@ class System:
             self.module_count,
             f"modules processed, {self.violations} warnings")
 
+    def preProcess(self) -> None:
+        """
+        Called before any module gets processed, at this point the only existing
+        objects are L{Modules <Module>}.
+
+        Pre-processing is the place to compute informations needed at any point of
+        of the processing. Analysis of relations between documentables SHALL NOT be done here.
+        """
+        # 1. parse ASTs of all modules
+        for mod in self.unprocessed_modules:
+            if mod._py_string is not None:
+                mod.parsed_ast = self._ast_parser.parseString(mod._py_string, mod)
+            elif mod.kind is not DocumentableKind.NAMESPACE_PACKAGE:
+                # There is no AST for namespace packages.
+                assert mod.source_path is not None
+                mod.parsed_ast = self._ast_parser.parseFile(mod.source_path, mod)
+        
+        # 2. (one-day we might need this) do some pre analysis 
+        # 3. process meta-variables
+        from . import astbuilder
+        for mod in self.unprocessed_modules:
+            if not (parsed_ast:=mod.parsed_ast):
+                continue
+            for name, node in astbuilder.findModuleLevelAssign(parsed_ast.root):
+                try:
+                    module_var_parser = astbuilder.MODULE_VARIABLES_META_PARSERS[name]
+                except KeyError:
+                    continue
+                else:
+                    module_var_parser(node, mod)
 
     def process(self) -> None:
+        self.preProcess()
         while self.unprocessed_modules:
             mod = next(iter(self.unprocessed_modules))
             self.processModule(mod)
@@ -1678,11 +1728,19 @@ class System:
         """
         Download and parse intersphinx inventories based on configuration.
         """
-        for url in self.options.intersphinx:
-            self.intersphinx.update(cache, url)
+        for url, base_url in self.options.intersphinx:
+            try:
+                self.intersphinx.update(cache, url, base_url)
+            except SphinxInventoryError as e:
+                self.msg('sphinx', str(e), thresh=-1)
+                self.parse_errors['sphinx inventory'].add(url)
         
         for path, base_url in self.options.intersphinx_file:
-            self.intersphinx.update_file(path, base_url)
+            try:
+                self.intersphinx.update_file(path, base_url)
+            except SphinxInventoryError as e:
+                self.msg('sphinx', str(e), thresh=-1)
+                self.parse_errors['sphinx inventory file'].add(path)
 
 
 def defaultPostProcess(system:'System') -> None:

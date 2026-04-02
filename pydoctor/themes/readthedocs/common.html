@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html xmlns:t="http://twistedmatrix.com/ns/twisted.web.template/0.1">
-  <meta name="pydoctor-template-version" content="3" />
+  <meta name="pydoctor-template-version" content="4" />
 
   <t:transparent t:render="head">Head</t:transparent>
 
@@ -23,7 +23,7 @@
     
     <div class="container-fluid">
 
-      <div id="main">
+      <main>
         <t:attr name="class" t:render="maindivclass" />
 
         <div t:render="subheader" />
@@ -31,7 +31,7 @@
 
         <div class="page-header">
           <t:slot name="heading"><h1>Heading</h1></t:slot>
-          <div id="showPrivate">
+          <div id="show-private">
             <button class="btn btn-link" onclick="togglePrivate()">Toggle Private API</button>
           </div>
         </div>
@@ -44,7 +44,6 @@
           <t:slot name="extras">
             Inheritance info.
           </t:slot>
-          <p><a t:render="inhierarchy">View In Hierarchy</a></p>
         </div>
 
         <div class="moduleDocstring">
@@ -53,7 +52,7 @@
           </t:slot>
         </div>
 
-        <div id="splitTables">
+        <div id="split-tables">
           <t:slot name="mainTable" />
           <t:transparent t:render="baseTables">
             <p class="inheritedFrom">
@@ -65,11 +64,11 @@
             <t:slot name="packageInitTable"> </t:slot>
         </div>
 
-        <div id="childList">
+        <div id="child-list">
           <t:slot name="childlist"> </t:slot>
         </div>
       
-      </div>
+      </main>
     </div>
 
     <footer class="container-fluid" t:render="footer" />

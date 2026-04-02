@@ -82,6 +82,28 @@ Assignments to ``__doc__`` inside functions are ignored by pydoctor. This can be
 
 Augmented assignments like ``+=`` are currently ignored as well, but that is an implementation limitation rather than a design decision, so this might change in the future.
 
+Doc-comments
+------------
+
+Documentation can also be put into a comment with special formatting, using a ``#:`` to start the comment instead of just ``#``.
+Comments need to be either on their own before the definition, OR immediately after the assignment on the same line. 
+The latter form is restricted to one line only.::
+
+    var = True #: Doc comment for module attribute.
+
+    class Foo:
+
+        #: Doc comment for class attribute Foo.bar.
+        #: It can have multiple lines.
+        #: @type: int
+        bar = 1
+
+        flox = 1.5   #: Doc comment for Foo.flox. One line only.
+
+        def __init__(self):
+            #: Doc comment for instance attribute qux.
+            self.qux = 3
+
 Constants
 ---------
 

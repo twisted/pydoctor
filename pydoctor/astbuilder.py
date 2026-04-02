@@ -2,34 +2,50 @@
 from __future__ import annotations
 
 import ast
+import tokenize
 import contextlib
 import sys
 
-from functools import partial
 from inspect import Parameter, Signature
 from pathlib import Path
 from typing import (
     Any, Callable, Collection, Dict, Iterable, Iterator, List, Mapping, Optional, Sequence, Tuple,
-    Type, TypeVar, Union, Set, cast, TYPE_CHECKING
+    Type, TypeVar, Union, Set, cast, Protocol, TYPE_CHECKING
 )
 from pydoctor import epydoc2stan, model, extensions
 from pydoctor.astutils import (is_none_literal, is_typing_annotation, is_using_annotations, is_using_typing_final, node2dottedname, node2fullname, 
                                is__name__equals__main__, unstring_annotation, upgrade_annotation, iterassign, extract_docstring_linenum, infer_type, get_parents,
-                               get_docstring_node, get_assign_docstring_node, unparse, NodeVisitor, Parentage, Str)
+                               get_docstring_node, get_assign_docstring_node, has_comment_line, unparse, NodeVisitor, Parentage, Str)
+from pydoctor.tokenutils import extract_doc_comment_before, extract_doc_comment_after
 
 
-if TYPE_CHECKING:
-    from typing import Protocol
-else:
-    Protocol = object
+def parseFile(path: Path) -> model.ParsedAstModule:
+    """
+    Parse the contents of a Python source file.
 
-def parseFile(path: Path) -> ast.Module:
-    """Parse the contents of a Python source file."""
-    with open(path, 'rb') as f:
-        src = f.read() + b'\n'
-    return _parse(src, filename=str(path))
+    @returns: The parsed ast module
+    @raises SyntaxError: If any exception is raised by L{ast.parse}
+    """
+    with tokenize.open(path) as f: 
+        src = f.read() + '\n'
+    node = _parse(src, filename=str(path))
+    return model.ParsedAstModule(node, src.splitlines(keepends=True))
 
-_parse = partial(ast.parse, type_comments=True)
+def _parse(source: str, *, filename: str = "<unknown>") -> ast.Module:
+    """
+    Wraps L{ast.parse}.
+
+    @raises SyntaxError: If any exception is raised by L{ast.parse}
+    """
+    try:
+        node = ast.parse(source, filename=filename, type_comments=True)
+    except SyntaxError:
+        raise
+    except Exception as e:
+        # this could be UnicodeDecodeError, MemoryError, RecursionError, SystemError
+        # but we keep in large in case Python evolves into raising more kind of exceptions.
+        raise SyntaxError(str(e)) from e
+    return node
 
 def _maybeAttribute(cls: model.Class, name: str) -> bool:
     """Check whether a name is a potential attribute of the given class.
@@ -820,6 +836,27 @@ class ModuleVistor(NodeVisitor):
                 self._handleInstanceVar(targetNode.attr, annotation, expr, lineno)
         else:
             raise IgnoreAssignment()
+        
+    def _handleAssignmentDoc(self, node: ast.Assign | ast.AnnAssign, target: ast.expr) -> None:
+        """Process doc-comments and inline docstrings of the given assignment."""
+        self._handleDocComment(node, target)
+        self._handleInlineDocstrings(node, target)
+
+    def _handleDocComment(self, node: ast.Assign | ast.AnnAssign, target: ast.expr) -> None:
+        """Process the doc-comments, this is very similar to the inline docstrings."""
+        try:
+            parent, name = self._contextualizeTarget(target)
+        except ValueError:
+            return
+        
+        # fetch the target of the doc-comment and the source code of the current module.
+        if (attr:=parent.contents.get(name)) and self.module.parsed_ast and (
+            lines:=self.module.parsed_ast.lines):
+            for doc_comment in [extract_doc_comment_before(node, lines), 
+                                extract_doc_comment_after(node, lines)]:
+                if doc_comment:
+                    lineno, doc = doc_comment
+                    attr._setDocstringValue(doc, lineno)
 
     def visit_Assign(self, node: ast.Assign) -> None:
         lineno = node.lineno
@@ -848,10 +885,10 @@ class ModuleVistor(NodeVisitor):
                 continue
             else:
                 if not isTupleAssignment:
-                    self._handleInlineDocstrings(node, target)
+                    self._handleAssignmentDoc(node, target)
                 else:
                     for elem in cast(ast.Tuple, target).elts: # mypy is not as smart as pyright yet.
-                        self._handleInlineDocstrings(node, elem)
+                        self._handleAssignmentDoc(node, elem)
 
     def visit_AnnAssign(self, node: ast.AnnAssign) -> None:
         annotation = upgrade_annotation(unstring_annotation(
@@ -861,7 +898,8 @@ class ModuleVistor(NodeVisitor):
         except IgnoreAssignment:
             return
         else:
-            self._handleInlineDocstrings(node, node.target)
+            self._handleAssignmentDoc(node, node.target)
+
 
     def _getClassFromMethodContext(self) -> Optional[model.Class]:
         func = self.builder.current
@@ -898,17 +936,20 @@ class ModuleVistor(NodeVisitor):
         return parent, dottedname[0]
 
     def _handleInlineDocstrings(self, assign:Union[ast.Assign, ast.AnnAssign], target:ast.expr) -> None:
-        # Process the inline docstrings
+        """Process the inline docstrings"""
         try:
             parent, name = self._contextualizeTarget(target)
         except ValueError:
             return
-        
+
         docstring_node = get_assign_docstring_node(assign)
         if docstring_node:
+            # validate the docstring, it's not valid if there is a comment in between...
+            if self.module.parsed_ast and (lines:=self.module.parsed_ast.lines
+                ) and has_comment_line(assign, docstring_node, lines):
+                return
             # fetch the target of the inline docstring
-            attr = parent.contents.get(name)
-            if attr:
+            if attr:=parent.contents.get(name):
                 attr.setDocstring(docstring_node)
     
     def visit_AugAssign(self, node:ast.AugAssign) -> None:
@@ -1164,25 +1205,10 @@ class ASTBuilder:
     def __init__(self, system: model.System):
         self.system = system
         
-        self.current = cast(model.Documentable, None) # current visited object.
-        self.currentMod: Optional[model.Module] = None # current module, set when visiting ast.Module.
+        self.current = cast(model.Documentable, None) #: current visited object
+        self.currentMod: Optional[model.Module] = None #: module, set when visiting ast.Module
         
         self._stack: List[model.Documentable] = []
-
-    
-    def parseFile(self, path: Path, ctx: model.Module) -> Optional[ast.Module]:
-        try:
-            return self.system._ast_parser.parseFile(path)
-        except Exception as e:
-            ctx.report(f"cannot parse file, {e}")
-            return None
-    
-    def parseString(self, string:str, ctx: model.Module) -> Optional[ast.Module]:
-        try:
-            return self.system._ast_parser.parseString(string)
-        except Exception:
-            ctx.report("cannot parse string")
-            return None
 
     def _push(self, 
               cls: Type[DocumentableT], 
@@ -1275,66 +1301,73 @@ class ASTBuilder:
 
     def processModuleAST(self, mod_ast: ast.Module, mod: model.Module) -> None:
 
-        for name, node in findModuleLevelAssign(mod_ast):
-            try:
-                module_var_parser = MODULE_VARIABLES_META_PARSERS[name]
-            except KeyError:
-                continue
-            else:
-                module_var_parser(node, mod)
-
         vis = self.ModuleVistor(self, mod)
         vis.extensions.add(*self.system._astbuilder_visitors)
         vis.extensions.attach_visitor(vis)
         vis.walkabout(mod_ast)
 
+class AstParseError:
+    """
+    Parse errors are cached as instances of this class instead of bare exceptions
+    in order to avoid cycles with the locals. 
+    """
+
+    def __init__(self, exception: type[SyntaxError], args: tuple[Any, ...]):
+        self._exce = exception
+        self._args = args
+    
+    def exception(self) -> SyntaxError:
+        return self._exce(*self._args)
+
 class SyntaxTreeParser:
     """
     Responsible to read files and cache their parsed tree.
     """
-
-    class _Error:
-        """
-        Errors are cached as instances of this class instead of base exceoptions
-        in order to avoid cycles with the locals. 
-        """
-
-        def __init__(self, exception: type[Exception], args: tuple[Any, ...]):
-            self._exce = exception
-            self._args = args
-        
-        def exception(self) -> Exception:
-            return self._exce(*self._args)
-
     def __init__(self) -> None:
-        self.ast_cache: Dict[Path, ast.Module | SyntaxTreeParser._Error] = {}
+        self.ast_cache: Dict[Path, model.ParsedAstModule | AstParseError] = {}
 
-    def parseFile(self, path: Path) -> ast.Module:
+    def _parseFile(self, path: Path) -> model.ParsedAstModule:
+        # handles caching
         try:
             r = self.ast_cache[path]
         except KeyError:
-            tree: ast.Module | SyntaxTreeParser._Error
+            parsed: model.ParsedAstModule | AstParseError
             try:
-                tree = parseFile(path)
-                return tree
-            except Exception as e:
-                tree = SyntaxTreeParser._Error(type(e), e.args)
+                parsed = parseFile(path)
+            except SyntaxError as e:
+                parsed = AstParseError(type(e), e.args)
                 raise
             finally:
-                self.ast_cache[path] = tree
+                self.ast_cache[path] = parsed
+            return parsed
         else:
-            if isinstance(r, SyntaxTreeParser._Error):
+            if isinstance(r, AstParseError):
                 raise r.exception()
             return r
     
-    def parseString(self, string:str) -> ast.Module:
-        mod = None
-        try:
-            mod = _parse(string)
-        except (SyntaxError, ValueError) as e:
-            raise SyntaxError("cannot parse string") from e
-        return mod
+    def parseFileOnly(self, path: Path) -> ast.Module:
+        return self._parseFile(path).root
+    
+    def parseStringOnly(self, string:str) -> ast.Module:
+        return _parse(string)
 
+    def parseFile(self, path: Path, ctx: model.Module) -> model.ParsedAstModule | None:
+        try:
+            return self._parseFile(path)
+        except SyntaxError as e:
+            ctx.report(f"cannot parse file, {e}")
+            return None
+    
+    def parseString(self, string:str, ctx: model.Module) -> model.ParsedAstModule | None:
+        try: 
+            node = self.parseStringOnly(string)
+        except SyntaxError:
+            ctx.report("cannot parse string")
+            return None
+        return model.ParsedAstModule(
+                node, string.splitlines(keepends=True))
+        
+        
 model.System.defaultBuilder = ASTBuilder
 model.System.syntaxTreeParser = SyntaxTreeParser
 

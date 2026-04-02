@@ -9,6 +9,13 @@ from pydoctor import model
 testpackages = Path(__file__).parent / 'testpackages'
 
 def processPackage(pack: str | Sequence[str], systemcls: Callable[[], model.System] = model.System) -> model.System:
+    """
+    Given the name of one or several packages located in the directory ./testpackages/, 
+    return the processed System instance holding references to all objects discovered in the packages.
+
+    @note: Whereas the test_astbuilder.py's fromText() function that builds systems from strings directly, 
+        this function reads real packages from files and directory structures. 
+    """
     system = systemcls()
     builderT = system.systemBuilder
     if system.options.prependedpackage:

@@ -87,8 +87,8 @@ body > footer > hr {
     font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
 }
 
-code, .pre, #childList > div .functionHeader,
-#splitTables > table tr td:nth-child(2), .fieldArg {
+code, .pre, #child-list > div .functionHeader,
+#split-tables > table tr td:nth-child(2), .fieldArg {
     font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
 }
 
@@ -97,7 +97,7 @@ code, .literal, .rst-literal {
     font-size: 14px;
 }
 
-#main code, .literal, .rst-literal {
+main code, .literal, .rst-literal {
     border: 1px solid rgb(225, 228, 229);
     padding:1px 2px;
 }
@@ -235,7 +235,7 @@ a:hover{
 
 /* Summary tables */
 
-#splitTables > table {
+#split-tables > table {
     -webkit-border-horizontal-spacing: 0px;
     -webkit-border-vertical-spacing: 0px;
     border: 1px solid rgb(210, 220, 216);
@@ -243,25 +243,25 @@ a:hover{
     vertical-align: middle;
 }
 
-#splitTables > table td {
+#split-tables > table td {
     border-bottom: 1px solid rgb(210, 220, 216);
 }
 
 @media only screen and (max-width: 1000px){
-    #splitTables > table tr td:nth-child(2) {
+    #split-tables > table tr td:nth-child(2) {
         width: 35%;
     }
 }
 
 /* Child list */
 
-#childList > div {
+#child-list > div {
     margin: 0;
     border: 0;
     padding-left: 0;
 }
 
-#childList > div .functionHeader {
+#child-list > div .functionHeader {
     background: rgb(240, 240, 240);
     border-left: 3px solid rgb(204, 204, 204);
     border-width: 0px 0px 0px 3px;
@@ -376,7 +376,7 @@ pre code {
 
 /* Sidebar containers */
 
-#main {
+main {
     margin-left:0!important;
 }
 
@@ -746,12 +746,12 @@ input[type="search"] {
 /* Active highlight */
 
 /* highlight the targeted item with "#" */
-#childList a:target ~ .functionHeader{
+#child-list a:target ~ .functionHeader{
     background-color: unset;
     border-left: 3px solid rgb(80, 80, 90);
 }
 
-#childList a:target ~ .functionBody{
+#child-list a:target ~ .functionBody{
     box-shadow: 7px 1px 0px 3px rgba(253, 255, 223, 0.9), -36px 1px 0px 3px rgba(253, 255, 223, 0.9);
 }
 

@@ -80,12 +80,53 @@ in development
    - ``attr.Factory(list)``
   It does not support the decorators based syntax for setting the validator/factory/default or converter.
 * Better ``dataclasses``support:  generate precise ``__init__`` method from analyzed fields. 
+* Improve the search box UX: 
+    - There is now a keyboard shortcut ('Ctrl+K' or 'Cmd+K' on Mac or '/', 
+      but the later is overriden by ReadTheDocs) to focus the search box.
+      When the search box is focused, you can use the up and down arrow keys to navigate the results,
+      and press enter to open the selected result.
+    - If the search box contains "docstring:<term>", the search will be performed in docstrings automatically.
+    - Use a logical "and" in between search terms by default. Use leading '?' to make a term optional.
+      (More on this in the embedded help page of the generated documentation.)
+* Hide sidebar element title when all items under it are private.
+* Allow suppressing the footer's buildtime altogether with option ``--buildtime=no``.
+* Add project version on each HTML page.
+* When an  intersphinx inventory file fails to read, exit with code 2 and do not print the whole stack trace by default. 
+  The -v flag will log exceptions' tracebacks.
+
+
+pydoctor 25.10.1
+^^^^^^^^^^^^^^^^
+
+* Fix the tag name of the release. 
+
+pydoctor 25.10.0
+^^^^^^^^^^^^^^^^
+
+* Add support for doc-comments as found in Sphinx. Use the special comment formatting ``#:`` to start the comment instead of just ``#``.
+  Comments need to be either on a line of their own before the definition, or immediately after the assignment on the same line. 
+* Fix a bug with inline docstrings, if there is comment in between an assignment and literal string, 
+  the string will not be misinterpreted as being a docstring.
+* Fix a regression that prevented the source link on package' page to be rendered.
+* Improve introspection of C-modules to support data descriptors.
+* Dunders that are not supposed to be part of the API are now ignored when introspecting code.
 * Fix bug, ``ivar`` field and fiends are not ignored anymore in introspected C-modules.
 * Fix bug that would result in duplicated "Cannot find link target" warnings when the 
   types under a docstring *Attributes* section failed to resolved.
 * Introduce --intersphinx-file option: Use local Sphinx objects inventory file to generate 
   links to external documentation. If the optional base URL is provided, the links will be 
   made relative to this base URL. Can be repeated. Format is *PATH_TO_OBJECTS.INV[::BASE_URL]*. 
+* Allow to pass a custom base URL when loading inventory files from URL. The format is
+  *URL_TO_OBJECTS.INV[::BASE_URL]*.
+* Fixes a bug where the `__docformat__` variable of a parent package would be ignored if an import 
+  shortcuts the default processing order, leading to process the docstrings with system's docformat 
+  instead of the one specified in the parent package `__docformat__`.
+* Prefer newer "tomli" package over "toml".
+* Fix a bug that made impossible to highlight some attributes or functions because 
+  their name clashed with other HTML IDs. Custom templates using HTML ID `main` should
+  now use `<main>` tag instead. Custom templates using HTML ID `showPrivate`, `summaryTree`, 
+  `childList`, `splitTables` and `collapseSideBar` should use hyphen-separated ID instead (like `show-private`).
+
 
 pydoctor 25.4.0
 ^^^^^^^^^^^^^^^
@@ -145,6 +186,7 @@ pydoctor 24.11.0
 * The generated documentation now includes a help page under the path ``/apidocs-help.html``. 
   This page is accessible by clicking on the information icon in the navbar (``ℹ``).
 * Improve the javascript searching code to better understand terms that contains a dot (``.``).
+
 
 pydoctor 24.3.3
 ^^^^^^^^^^^^^^^

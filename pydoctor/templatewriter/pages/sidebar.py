@@ -3,7 +3,7 @@ Classes for the sidebar generation.
 """
 from __future__ import annotations
 
-from typing import Any, Iterator, List, Optional, Sequence, Tuple, Type, Union
+from typing import Any, Iterator, List, Optional, Sequence, Tuple, Type, Union, TYPE_CHECKING
 from twisted.web.iweb import IRequest, ITemplateLoader
 from twisted.web.template import TagLoader, renderer, Tag, Element, tags
 
@@ -12,6 +12,9 @@ from pydoctor.model import Attribute, Class, Function, Documentable, Module
 from pydoctor.templatewriter import util, TemplateLookup, TemplateElement
 
 from pydoctor.napoleon.iterators import peek_iter
+
+if TYPE_CHECKING:
+    from typing import Literal
 
 class SideBar(TemplateElement):
     """
@@ -203,9 +206,25 @@ class ObjContent(Element):
         else:
             return ""
 
+    def _section_title_class(self, kind: Literal['class', 'function', 
+                                                 'variable', 'subModule', 
+                                                 'inheritedFunction', 
+                                                 'inheritedVariable']) -> str:
+        iterator: peek_iter[Documentable] = getattr(getattr(self, f'{kind}List'), 
+                            'children', peek_iter([]))
+        if iterator.has_next() and iterator.peek().isPrivate:
+            # if the first item is private, all items are private since they are sorted.
+            return 'childrenKindTitle private'
+        else:
+            return 'childrenKindTitle'
+
     @renderer
     def classesTitle(self, request: IRequest, tag: Tag) -> Union[Tag, str]:
         return tag.clear()("Classes") if self.classList else ""
+    
+    @renderer
+    def classesTitleClass(self, request: IRequest, tag: Tag) -> str:
+        return self._section_title_class('class')
 
     @renderer
     def classes(self, request: IRequest, tag: Tag) -> Union[Element, str]:
@@ -215,6 +234,10 @@ class ObjContent(Element):
     def functionsTitle(self, request: IRequest, tag: Tag) -> Union[Tag, str]:
         return (tag.clear()("Functions") if not isinstance(self.ob, Class) 
                 else tag.clear()("Methods")) if self.functionList else ""
+    
+    @renderer
+    def functionsTitleClass(self, request: IRequest, tag: Tag) -> str:
+        return self._section_title_class('function')
 
     @renderer
     def functions(self, request: IRequest, tag: Tag) -> Union[Element, str]:
@@ -223,6 +246,10 @@ class ObjContent(Element):
     @renderer
     def inheritedFunctionsTitle(self, request: IRequest, tag: Tag) -> Union[Tag, str]:
         return tag.clear()("Inherited Methods") if self.inheritedFunctionList else ""
+    
+    @renderer
+    def inheritedFunctionsTitleClass(self, request: IRequest, tag: Tag) -> str:
+        return self._section_title_class('inheritedFunction')
 
     @renderer
     def inheritedFunctions(self, request: IRequest, tag: Tag) -> Union[Element, str]:
@@ -234,12 +261,20 @@ class ObjContent(Element):
                 else tag.clear()("Attributes")) if self.variableList else ""
     
     @renderer
+    def variablesTitleClass(self, request: IRequest, tag: Tag) -> str:
+        return self._section_title_class('variable')
+    
+    @renderer
     def variables(self, request: IRequest, tag: Tag) -> Union[Element, str]:
         return self.variableList or ""
 
     @renderer
     def inheritedVariablesTitle(self, request: IRequest, tag: Tag) -> Union[Tag, str]:
         return tag.clear()("Inherited Attributes") if self.inheritedVariableList else ""
+
+    @renderer
+    def inheritedVariablesTitleClass(self, request: IRequest, tag: Tag) -> str:
+        return self._section_title_class('inheritedVariable')
 
     @renderer
     def inheritedVariables(self, request: IRequest, tag: Tag) -> Union[Element, str]:
@@ -249,6 +284,10 @@ class ObjContent(Element):
     def subModulesTitle(self, request: IRequest, tag: Tag) -> Union[Tag, str]:
         return tag.clear()("Modules") if self.subModuleList else ""
     
+    @renderer
+    def subModulesTitleClass(self, request: IRequest, tag: Tag) -> str:
+        return self._section_title_class('subModule')
+
     @renderer
     def subModules(self, request: IRequest, tag: Tag) -> Union[Element, str]:
         return self.subModuleList or ""    
@@ -274,7 +313,7 @@ class ContentList(TemplateElement):
     filename = 'sidebar-list.html'
 
     def __init__(self, ob: Documentable, 
-                 children: Iterator[Documentable], documented_ob: Documentable, 
+                 children: peek_iter[Documentable], documented_ob: Documentable, 
                  expand: bool, nested_content_loader: ITemplateLoader, template_lookup: TemplateLookup,
                  level_depth: Tuple[int, int]):
         super().__init__(loader=self.lookup_loader(template_lookup))

@@ -47,34 +47,34 @@ class PydoctorNoLogger:
 
 
 class InvReader(sphinx.SphinxInventory):
-    _logger: PydoctorLogger
+    _system_msg: PydoctorLogger
 
 
 class InvWriter(sphinx.SphinxInventoryWriter):
-    _logger: PydoctorLogger
+    _system_msg: PydoctorLogger
 
 
 @pytest.fixture
 def inv_reader() -> InvReader:
-    return InvReader(logger=PydoctorLogger())
+    return InvReader(PydoctorLogger())
 
 
 @pytest.fixture
 def inv_reader_nolog() -> sphinx.SphinxInventory:
-    return sphinx.SphinxInventory(logger=PydoctorNoLogger())
+    return sphinx.SphinxInventory(PydoctorNoLogger())
 
 
 def get_inv_writer_with_logger(name: str = 'project_name', version: str = '1.2') -> Tuple[InvWriter, PydoctorLogger]:
     """
     @return: Tuple of a Sphinx inventory writer connected to the logger.
     """
-    logger = PydoctorLogger()
+    sys_msg = PydoctorLogger()
     writer = InvWriter(
-        logger=logger,
+        sys_msg,
         project_name=name,
         project_version=version,
         )
-    return writer, logger
+    return writer, sys_msg
 
 
 @pytest.fixture
@@ -83,7 +83,7 @@ def inv_writer_nolog() -> sphinx.SphinxInventoryWriter:
     @return: A Sphinx inventory writer that is connected to a null logger.
     """
     return sphinx.SphinxInventoryWriter(
-        logger=PydoctorNoLogger(),
+        PydoctorNoLogger(),
         project_name='project_name',
         project_version='2.3.0',
         )
@@ -295,12 +295,8 @@ def test_getPayload_invalid_uncompress(inv_reader: InvReader) -> None:
 # Version: 2.0
 not-valid-zlib-content"""
 
-    result = inv_reader._getPayload(base_url, content)
-
-    assert '' == result
-    assert [(
-        'sphinx', 'Failed to uncompress inventory from http://tm.tld', -1,
-        )] == inv_reader._logger.messages
+    with pytest.raises(sphinx.SphinxInventoryError, match='Failed to uncompress inventory from http://tm.tld'):
+        inv_reader._getPayload(base_url, content)
 
 
 def test_getPayload_invalid_decode(inv_reader: InvReader) -> None:
@@ -312,13 +308,8 @@ def test_getPayload_invalid_decode(inv_reader: InvReader) -> None:
     content = b"""# Project: some-name
 # Version: 2.0
 """ + zlib.compress(payload)
-
-    result = inv_reader._getPayload(base_url, content)
-
-    assert '' == result
-    assert [(
-        'sphinx', 'Failed to decode inventory from http://tm.tld', -1,
-        )] == inv_reader._logger.messages
+    with pytest.raises(sphinx.SphinxInventoryError, match='Failed to decode inventory from http://tm.tld'):
+        inv_reader._getPayload(base_url, content)
 
 
 def test_getLink_not_found(inv_reader_nolog: sphinx.SphinxInventory) -> None:
@@ -367,7 +358,7 @@ def test_update_functional(inv_reader_nolog: sphinx.SphinxInventory) -> None:
 
     url = 'http://some.url/api/objects.inv'
 
-    inv_reader_nolog.update(cast('sphinx.CacheT', {url: content}), url)
+    inv_reader_nolog.update(cast('sphinx.CacheT', {url: content}), url, None)
 
     assert 'http://some.url/api/module1.html' == inv_reader_nolog.getLink('some.module1')
     assert 'http://some.url/api/module2.html' == inv_reader_nolog.getLink('other.module2')
@@ -377,30 +368,17 @@ def test_update_bad_url(inv_reader: InvReader) -> None:
     """
     Log an error when failing to get base url from url.
     """
-
-    inv_reader.update(cast('sphinx.CacheT', {}), 'really.bad.url')
-
-    assert inv_reader._links == {}
-    expected_log = [(
-        'sphinx', 'Failed to get remote base url for really.bad.url', -1
-        )]
-    assert expected_log == inv_reader._logger.messages
+    with pytest.raises(sphinx.SphinxInventoryError, 
+                       match='Failed to get remote base url for really.bad.url'):
+        inv_reader.update(cast('sphinx.CacheT', {}), 'really.bad.url', None)
 
 
 def test_update_fail(inv_reader: InvReader) -> None:
     """
     Log an error when failing to get content from url.
     """
-
-    inv_reader.update(cast('sphinx.CacheT', {}), 'http://some.tld/o.inv')
-
-    assert inv_reader._links == {}
-    expected_log = [(
-        'sphinx',
-        'Failed to get object inventory from http://some.tld/o.inv',
-        -1,
-        )]
-    assert expected_log == inv_reader._logger.messages
+    with pytest.raises(sphinx.SphinxInventoryError, match='Failed to get object inventory from http://some.tld/o.inv'):
+        inv_reader.update(cast('sphinx.CacheT', {}), 'http://some.tld/o.inv', None)
 
 
 def test_parseInventory_empty(inv_reader_nolog: sphinx.SphinxInventory) -> None:
@@ -487,7 +465,7 @@ def test_parseInventory_invalid_lines(inv_reader: InvReader) -> None:
             ),
         ('sphinx', 'Failed to parse line "very.bad" for http://tm.tld', -1),
         ('sphinx', 'Failed to parse line "" for http://tm.tld', -1),
-        ] == inv_reader._logger.messages
+        ] == inv_reader._system_msg.messages
 
 
 def test_parseInventory_type_filter(inv_reader: InvReader) -> None:
@@ -507,7 +485,7 @@ def test_parseInventory_type_filter(inv_reader: InvReader) -> None:
     assert {
         'dict': (base_url, 'library/stdtypes.html#$'),
         } == result
-    assert [] == inv_reader._logger.messages
+    assert [] == inv_reader._system_msg.messages
 
 
 maxAgeAmounts = st.integers() | st.just("\x00")
@@ -579,37 +557,37 @@ def test_ClosingBytesIO() -> None:
     assert b''.join(buffer) == data # type:ignore[unreachable]
 
 
+@pytest.fixture
+def send_returns(monkeypatch: MonkeyPatch) -> Callable[[HTTPResponse], MonkeyPatch]:
+    """
+    Return a function that patches
+    L{requests.adapters.HTTPAdapter.send} so that it returns the
+    provided L{requests.Response}.
+    """
+    def send_returns(urllib3_response: HTTPResponse) -> MonkeyPatch:
+        def send(
+                self: requests.adapters.HTTPAdapter,
+                request: requests.PreparedRequest,
+                *args:object,
+                **kwargs: object
+                ) -> requests.Response:
+            response: requests.Response
+            response = self.build_response(request, urllib3_response)
+            return response
+
+        monkeypatch.setattr(
+            requests.adapters.HTTPAdapter,
+            "send",
+            send,
+        )
+
+        return monkeypatch
+    return send_returns
+
 class TestIntersphinxCache:
     """
     Tests for L{sphinx.IntersphinxCache}
     """
-
-    @pytest.fixture
-    def send_returns(self, monkeypatch: MonkeyPatch) -> Callable[[HTTPResponse], MonkeyPatch]:
-        """
-        Return a function that patches
-        L{requests.adapters.HTTPAdapter.send} so that it returns the
-        provided L{requests.Response}.
-        """
-        def send_returns(urllib3_response: HTTPResponse) -> MonkeyPatch:
-            def send(
-                    self: requests.adapters.HTTPAdapter,
-                    request: requests.PreparedRequest,
-                    *args:object,
-                    **kwargs: object
-                    ) -> requests.Response:
-                response: requests.Response
-                response = self.build_response(request, urllib3_response)
-                return response
-
-            monkeypatch.setattr(
-                requests.adapters.HTTPAdapter,
-                "send",
-                send,
-            )
-
-            return monkeypatch
-        return send_returns
 
     def test_cache(self, tmp_path: Path, send_returns: Callable[[HTTPResponse], None]) -> None:
         """
@@ -666,7 +644,7 @@ class TestIntersphinxCache:
     def test_getRaisesException(self, caplog: CapLog) -> None:
         """
         L{IntersphinxCache.get} returns L{None} if an exception is
-        raised while C{GET}ing a URL and logs the exception.
+        raised while C{GET}ing a URL and logs the exception, if verbosity is 1 or more.
         """
 
         class _TestException(Exception):
@@ -679,7 +657,7 @@ class TestIntersphinxCache:
                 raise _TestException()
 
         session = cast(requests.Session, _RaisesOnGet)
-        cache = sphinx.IntersphinxCache(session=session)
+        cache = sphinx.IntersphinxCache(session=session, verbosity=1)
 
         assert cache.get("some url") is None
 
@@ -747,7 +725,7 @@ def test_prepareCache(
         assert isinstance(cache, sphinx.IntersphinxCache)
         for scheme in ('https://', 'http://'):
             hasCacheControl = isinstance(
-                cache._session.adapters[scheme],
+                cache.session.adapters[scheme],
                 cachecontrol.CacheControlAdapter,
             )
             if enableCache:
@@ -787,7 +765,7 @@ def test_intersphinx_file(inv_reader_nolog: sphinx.SphinxInventory,
     with open(root_dir / 'module2.html', "w") as f:
         pass
 
-    inv_reader_nolog.update_file(path, None)
+    inv_reader_nolog.update_file(str(path), None)
 
     assert (root_dir / 'module1.html').samefile(inv_reader_nolog.getLink('some.module1')) # type: ignore
     assert (root_dir / 'module2.html').samefile(inv_reader_nolog.getLink('other.module2')) # type: ignore
@@ -821,7 +799,7 @@ def test_intersphinx_file_with_base_url(
     with open(tmp_path / 'module2.html', "w") as f:
         pass
 
-    inv_reader_nolog.update_file(path, "https://sphinx")
+    inv_reader_nolog.update_file(str(path), "https://sphinx")
 
     assert ('https://sphinx/module1.html' == 
             inv_reader_nolog.getLink('some.module1'))
@@ -871,3 +849,40 @@ def test_generate_then_load_file(tmp_path: Path) -> None:
     assert f'<a href="{tmp_path}/mylib.C.html"' in Client_doc.replace('\n', '')
     assert f'<a href="{tmp_path}/mylib.C.html#a"' in Client_a_doc.replace('\n', '')
 
+def test_intersphinx_url_with_base_url(
+        send_returns: Callable[[HTTPResponse], None], 
+        tmp_path: Path) -> None:
+    """
+    Functional test for intersphinx links from URL with a custom base URL.
+    """
+
+    payload = (
+        b'some.module1 py:module -1 module1.html -\n'
+        b'other.module2 py:module 0 module2.html Other description\n'
+        )
+
+    content = b"""# Sphinx inventory version 2
+# Project: some-name
+# Version: 2.0
+# The rest of this file is compressed with zlib.
+""" + zlib.compress(payload)
+
+    # Patch URL loader to avoid hitting the system.
+    send_returns(
+            HTTPResponse(
+                body=ClosingBytesIO(content),
+                headers={
+                    'date': 'Sun, 06 Nov 1994 08:49:37 GMT',
+                },
+                status=200,
+                preload_content=False,
+                decode_content=False,
+            ),
+        )
+    system = driver.get_system(model.Options.from_args(['--intersphinx=https://cache.example/objects.inv::https://project.ghi/api/']))
+    inv = system.intersphinx
+
+    assert ('https://project.ghi/api/module1.html' == 
+            inv.getLink('some.module1'))
+    assert ('https://project.ghi/api/module2.html' == 
+            inv.getLink('other.module2'))
