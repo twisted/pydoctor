@@ -10,7 +10,7 @@ from inspect import Parameter, Signature
 from pathlib import Path
 from typing import (
     Any, Callable, Collection, Dict, Iterable, Iterator, List, Mapping, Optional, Sequence, Tuple,
-    Type, TypeVar, Union, Set, cast, Protocol, TYPE_CHECKING
+    Type, TypeVar, Union, Set, cast
 )
 from pydoctor import epydoc2stan, model, extensions
 from pydoctor.astutils import (is_none_literal, is_typing_annotation, is_using_annotations, is_using_typing_final, node2dottedname, node2fullname, 
