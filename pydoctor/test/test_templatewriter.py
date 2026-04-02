@@ -838,8 +838,8 @@ def test_ivar_field_order_precedence(capsys: CapSys) -> None:
 
     _sorted = sorted(Foo.contents.values(), key=system.membersOrder(Foo))
     names = [s.name for s in _sorted]
-    
-    assert names == ['b', 'a'] # should be 'b', 'a'.
+                     # auto-generated __init__
+    assert names == ['__init__', 'b', 'a'] # should be 'b', 'a'.
 
 
 src_crash_xml_entities = '''\

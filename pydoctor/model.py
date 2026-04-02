@@ -767,7 +767,7 @@ def get_constructors(cls:Class) -> Iterator[Function]:
     dunder_constructor = _find_dunder_constructor(cls)
     if dunder_constructor:
         yield dunder_constructor
-
+    
     # Then look for staticmethod/classmethod constructors,
     # This only happens at the local scope level (i.e not looking in super-classes).
     for fun in cls.contents.values():
@@ -788,6 +788,7 @@ def get_constructors(cls:Class) -> Iterator[Function]:
         if return_ann == cls.fullName() or \
             return_ann in ('typing.Self', 'typing_extensions.Self'):
             yield fun
+
 
 class Class(CanContainImportsDocumentable):
     kind = DocumentableKind.CLASS
