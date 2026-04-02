@@ -636,7 +636,7 @@ def get_literal_arg(args:BoundArguments, name:str, default:_T,
         if the argument is not found.
     @param typecheck: The type of the literal value this argument is expected to have.
     @param lineno: The lineumber of the callsite, used for error reporting.
-    @param module: Module that contains the call, used for error reporting.
+    @param ctx: Context of the call, used for error reporting.
     @return: The value of the argument if we can infer it, otherwise returns
         the default value.
     """
