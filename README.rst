@@ -75,10 +75,13 @@ in development
 
 * Better ``attrs`` support: generate precise ``__init__`` method from analyzed fields, supports 
   principal ``attrs`` idioms: 
-    - ``attr.s(auto_attribs, kw_only, auto_detect, init)``/``attrs.define(...)``
-    - ``attr.ib(init, default, factory, converter, type, kw_only)``/``attrs.field(...)``
-    - ``attr.Factory(list)``
-  It does not support the decorators based syntax for setting the validator/factory/default or converter.
+
+  - ``attr.s(auto_attribs, kw_only, auto_detect, init)``/``attrs.define(...)``
+  - ``attr.ib(init, default, factory, converter, type, kw_only)``/``attrs.field(...)``
+  - ``attr.Factory(list)``
+  
+ It does not support the decorators based syntax for setting the validator/factory/default or converter.
+
 * Better ``dataclasses``support:  generate precise ``__init__`` method from analyzed fields. 
 * Improve the search box UX: 
     - There is now a keyboard shortcut ('Ctrl+K' or 'Cmd+K' on Mac or '/', 
