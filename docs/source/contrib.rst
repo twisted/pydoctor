@@ -91,6 +91,15 @@ Read more about reviewing:
 - `How to be a good reviewer <https://twistedmatrix.com/trac/wiki/ReviewProcess#Howtobeagoodreviewer>`_.
 - `Leave well enough alone <https://mail.python.org/archives/list/twisted@python.org/thread/53LZTRNRYLZJ4QLEF3YPAE53CWSL6LXD/>`_.
 
+Reproducible builds
+-------------------
+
+If you want reproducible output from `pydoctor` builds (for example in
+release packaging), see the dedicated documentation page:
+
+`Reproducible builds <reproducible-builds.html>`_.
+
+
 Releasing and publishing a new package
 --------------------------------------
 
