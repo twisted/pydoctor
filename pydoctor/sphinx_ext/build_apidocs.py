@@ -67,7 +67,8 @@ def on_build_finished(app: Sphinx, exception: Exception) -> None:
 
         temp_path = output_path.with_suffix('.pydoctor_temp')
         shutil.rmtree(sphinx_files, ignore_errors=True)
-        output_path.rename(sphinx_files)
+        if output_path.exists():
+          output_path.rename(sphinx_files)
         temp_path.rename(output_path)
 
 
