@@ -11,7 +11,7 @@ from typing import Any, Callable, Iterable, List, Union, TYPE_CHECKING
 from docutils.writers import html4css1
 from docutils import nodes, frontend, __version_info__ as docutils_version_info
 
-from twisted.web.template import Tag
+from twisted.web.template import Tag, tags
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable
     from pydoctor.epydoc.markup import DocstringLinker
@@ -226,10 +226,27 @@ class HTMLTranslator(html4css1.HTMLTranslator):
 
     def visit_doctest_block(self, node: nodes.doctest_block) -> None:
         pysrc = node[0].astext()
-        if node.get('codeblock'):
-            self.body.append(flatten(colorize_codeblock(pysrc)))
+        if is_code_block:=node.get('codeblock'):
+            pre_tag = colorize_codeblock(pysrc)
         else:
-            self.body.append(flatten(colorize_doctest(pysrc)))
+            pre_tag = colorize_doctest(pysrc)
+        
+        # If it's not a code block, then it must be a doctest block
+        if not is_code_block:
+            # Wrap doctest blocks with a container and toggle button
+            container = tags.div(
+                tags.button(
+                    ">>>",
+                    class_='doctest-toggle',
+                    type='button',
+                    title='Doctest toggle'
+                ),
+                pre_tag,
+                class_='doctest-output'
+            )
+            self.body.append(flatten(container))
+        else:
+            self.body.append(flatten(pre_tag))
         raise nodes.SkipNode()
 
 

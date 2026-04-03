@@ -33,3 +33,20 @@ function updatePrivate() {
 }
 
 initPrivate();
+
+// Toggle doctest output visibility
+
+function initDoctest() {
+    // Add click handlers to all doctest toggle buttons
+    var buttons = document.querySelectorAll('button.doctest-toggle');
+    buttons.forEach(function(button) {
+        button.addEventListener('click', function() {
+            var container = button.closest('div.doctest-output');
+            if (container) {
+                container.classList.toggle('hide-output');
+            }
+        });
+    });
+}
+
+initDoctest()

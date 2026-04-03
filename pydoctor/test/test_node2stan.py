@@ -6,8 +6,8 @@ Tests for the L{node2stan} module.
 
 from pydoctor.epydoc.docutils import get_lineno
 from pydoctor.test import CapSys
-from pydoctor.test.epydoc.test_epytext2html import epytext2node
-from pydoctor.test.epydoc.test_restructuredtext import rst2node, parse_rst
+from pydoctor.test.epydoc.test_epytext2html import epytext2node, epytext2html
+from pydoctor.test.epydoc.test_restructuredtext import rst2node, parse_rst, rst2html
 
 from pydoctor.node2stan import gettext
 from docutils import nodes
@@ -154,3 +154,44 @@ bla blab balba.
     parsed_doc.fields[0].body().to_node().walk(TitleReferenceDump(doc))
     assert capsys.readouterr().out == r'''||title_reference line: None, get_lineno: 28, rawsource: `link <notfound>`
 '''
+
+
+
+def test_epytext_doctest_contains_toggle() -> None:
+    doc = '''
+    A short paragraph.
+
+    >>> 2 + 3
+    5
+    '''
+    html = epytext2html(doc)
+    assert '<div class="doctest-output"' in html
+    assert 'class="doctest-toggle"' in html
+    assert 'py-prompt' in html and 'py-output' in html
+
+
+def test_rst_doctest_contains_toggle() -> None:
+    doc = '''
+    Some text.
+
+    >>> sum([1, 2, 3])
+    6
+    '''
+    html = rst2html(doc)
+    assert '<div class="doctest-output"' in html
+    assert 'class="doctest-toggle"' in html
+    assert 'py-prompt' in html and 'py-output' in html
+
+
+def test_rst_codeblock_has_no_toggle() -> None:
+    doc = '''
+    .. code:: python
+
+       >>> 1 + 1
+       2
+    '''
+    html = rst2html(doc)
+    # Code blocks should be colorized but must not include the toggle button
+    assert '<div class="doctest-output"' not in html
+    assert 'class="doctest-toggle"' not in html
+    assert 'py-doctest' in html
