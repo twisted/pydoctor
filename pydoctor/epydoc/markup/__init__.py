@@ -238,7 +238,6 @@ def parsed_text(text: str,
     return ParsedRstDocstring(set_node_attributes(new_document(source), 
             children=[text_node(text, klass) 
                       if klass else nodes.Text(text)]), ())
-
       
 ##################################################
 ## Fields

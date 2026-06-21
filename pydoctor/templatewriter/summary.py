@@ -372,16 +372,14 @@ class HelpPage(Page):
     There is one page per class, module and package. 
     Each page present summary table(s) which feature the members of the object.
 
-    Package or Module page
-    ~~~~~~~~~~~~~~~~~~~~~~~
+    **Package or Module page**
 
     Each of these pages has two main sections consisting of:
 
     - summary tables submodules and subpackages and the members of the module or in the ``__init__.py`` file. 
     - detailed descriptions of function and attribute members.
 
-    Class page
-    ~~~~~~~~~~
+    **Class page**
 
     Each class has its own separate page. 
     Each of these pages has three main sections consisting of:
@@ -392,18 +390,15 @@ class HelpPage(Page):
     
     Entries in each of these sections are omitted if they are empty or not applicable.
 
-    Module Index
-    ~~~~~~~~~~~~
+    **Module Index**
     
     Provides a high level overview of the packages and modules structure.
     
-    Class Hierarchy
-    ~~~~~~~~~~~~~~~
+    **Class Hierarchy**
     
     Provides a list of classes organized by inheritance structure. Note that ``object`` is ommited.
 
-    Index Of Names
-    ~~~~~~~~~~~~~~
+    **Index Of Names**
     
     The Index contains an alphabetic index of all objects in the documentation.
 
@@ -411,63 +406,77 @@ class HelpPage(Page):
     Search
     ------
 
-    You can search for definitions of modules, packages, classes, functions, methods and attributes. 
+    You can search for definitions of modules, packages, classes, functions, methods and attributes. The shorcut Ctrl+K (or Cmd+K on Mac) focuses the search box.
     
     These items can be searched using part or all of the name and/or from their docstrings if "search in docstrings" is enabled. 
     Multiple search terms can be provided separated by whitespace. 
+                                   
+    When the search box is focused, you can use the up and down arrow keys to navigate the results,
+    and press enter to open the selected result.
 
     The search is powered by `lunrjs <https://lunrjs.com/>`_.
 
-    Indexing
-    ~~~~~~~~
+    **Indexing**
     
     By default the search only matches on the name of the object. 
     Enable the full text search in the docstrings with the checkbox option. 
 
     You can instruct the search to look only in specific fields by passing the field name in the search like ``docstring:term``. 
     
-    **Possible fields are**: 
+    Possible fields are: 
     
     - ``name``, the name of the object (example: "MyClassAdapter" or "my_fmin_opti").
-    - ``qname``, the fully qualified name of the object (example: "lib.classses.MyClassAdapter").
-    - ``names``, the name splitted on camel case or snake case (example: "My Class Adapter" or "my fmin opti")
     - ``docstring``, the docstring of the object (example: "This is an adapter for HTTP json requests that logs into a file...")
     - ``kind``, can be one of: $kind_names
+    - ``qname``, the fully qualified name of the object (example: "lib.classses.MyClassAdapter").
+    - ``names``, the name splitted on camel case or snake case (example: "My Class Adapter" or "my fmin opti")
         
-    Last two fields are only applicable if "search in docstrings" is enabled. 
+    Field "docstring" is only applicable if "search in docstrings" is enabled. 
 
-    Other search features
-    ~~~~~~~~~~~~~~~~~~~~~
-
-    Term presence. 
-        The default behaviour is to give a better ranking to object matching multiple terms of your query,
-        but still show entries that matches only one of the two terms. 
-        To change this behavour, you can use the sign ``+``.
-        
-        - To indicate a term must exactly match use the plus sing: ``+``. 
-        - To indicate a term must not match use the minus sing: ``-``.
+    **Term presence** 
+                                   
+    By default, multiple terms in the query are combined with logical AND:
+    all (non-optional) terms must match for a result to be returned.
+    
+    You can change how an individual term participates in the query by
+    prefixing it with one of three modifiers:
+                                
+    - ``+term``: The '+' prefix indicates an exact/required presence for that term.
+      When '+' is used the automatic trailing wildcard is suppressed and the
+      search treats the term as an exact token match (rather than a
+      prefix/wildcard search). The term must be present for a result to
+      match.
+    - ``-term``: The '-' prefix marks the term as an exclusion. Matches that contain
+      that term are filtered out. Like '+', the '-' prefix suppresses the
+      automatic trailing wildcard and treats the term as an exact token to
+      be excluded.
+    - ``?term``: The '?' prefix marks the term as optional. Optional terms are not
+      required for a result to match; they are used to increase relevance
+      if present but do not enforce inclusion.
         
     
-    Wildcards
-        A trailling wildcard is automatically added to each term of your query if they don't contain an explicit term presence (``+`` or ``-``). 
-        Searching for ``foo`` is the same as searching for ``foo*``. 
+    **Wildcards**
+                                   
+    - By default each plain term (without a presence modifier) gets an
+      automatic trailing wildcard, so "foo" is treated like "foo*".
+      In addition to this automatic feature, you can manually add a wildcard 
+      anywhere else in the query.
+    - If a term is prefixed with '+' or '-' the automatic trailing wildcard
+      is not added, turning the term into an exact token match/exclusion.
+    - If a term contains a dot ('.'), a leading wildcard is also added to
+      enable matching across dotted module/class boundaries. For example,
+      "model." behaves like "*model.*".
         
-        If the query include a dot (``.``), a leading wildcard will to also added, 
-        searching for ``model.`` is the same as ``*model.*`` and ``.model`` is the same as ``*.model*``.
-
-        In addition to this automatic feature, you can manually add a wildcard anywhere else in the query.
-
-
-    Query examples
-    ~~~~~~~~~~~~~~
-
-    - "doc" matches "pydoctor.model.Documentable" and "pydoctor.model.DocLocation".
-    - "+doc" matches "pydoctor.model.DocLocation" but won't match "pydoctor.model.Documentable".
-    - "ensure doc" matches "pydoctor.epydoc2stan.ensure_parsed_docstring" and other object whose matches either "doc" or "ensure".
-    - "inp str" matches "java.io.InputStream" and other object whose matches either "in" or "str".
-    - "model." matches everything in the pydoctor.model module.
-    - ".web.*tag" matches "twisted.web.teplate.Tag" and related.
-    - "docstring:ansi" matches object whose docstring matches "ansi".
+    **Examples**
+                                   
+    - ``doc``            -> matches names containing tokens that start with "doc" (equivalent to "doc*").
+    - ``ensure doc``     -> matches object whose matches "doc*" and "ensure*".
+    - ``doc kind:class``     -> matches classes whose matches "doc*".
+    - ``docstring:ansi`` -> matches object whose docstring matches "ansi*".
+    - ``+doc``           -> matches only where a token equals "doc" exactly.
+    - ``-test``          -> excludes any result containing a token equal to "test".
+    - ``?input ?str``    -> matches results that contain either "input" or "str" but neither is required.
+    - ``+doc -deprecated ?helper``  -> requires an exact "doc" token, excludes "deprecated", and treats "helper" as optional.
     ''')
 
     def title(self) -> str:

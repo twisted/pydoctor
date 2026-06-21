@@ -13,7 +13,7 @@ import inspect
 from itertools import chain
 from collections import defaultdict
 import datetime
-import importlib
+import importlib.util, importlib.abc
 import sys
 import textwrap
 import types
@@ -32,7 +32,7 @@ import attr
 from pydoctor.options import Options
 from pydoctor import factory, qnmatch, utils, linker, astutils, mro
 from pydoctor.epydoc.markup import ParsedDocstring
-from pydoctor.sphinx import CacheT, SphinxInventory
+from pydoctor.sphinx import CacheT, SphinxInventory, SphinxInventoryError
 
 if TYPE_CHECKING:
     from typing import Literal, Protocol, TypeAlias
@@ -767,7 +767,7 @@ def get_constructors(cls:Class) -> Iterator[Function]:
     dunder_constructor = _find_dunder_constructor(cls)
     if dunder_constructor:
         yield dunder_constructor
-
+    
     # Then look for staticmethod/classmethod constructors,
     # This only happens at the local scope level (i.e not looking in super-classes).
     for fun in cls.contents.values():
@@ -788,6 +788,7 @@ def get_constructors(cls:Class) -> Iterator[Function]:
         if return_ann == cls.fullName() or \
             return_ann in ('typing.Self', 'typing_extensions.Self'):
             yield fun
+
 
 class Class(CanContainImportsDocumentable):
     kind = DocumentableKind.CLASS
@@ -1085,7 +1086,6 @@ class System:
         Typically the renderable element is the C{docstring}, but it can be the decorators, parameter default values or any other colorized AST.
         """
 
-        self.verboselevel = 0
         self.needsnl = False
         self.once_msgs: Set[Tuple[str, str]] = set()
 
@@ -1095,8 +1095,8 @@ class System:
 
         self.module_count = 0
         self.processing_modules: List[str] = []
-        self.buildtime = datetime.datetime.now()
-        self.intersphinx = SphinxInventory(logger=self.msg)
+        self.buildtime: datetime.datetime | None = datetime.datetime.now()
+        self.intersphinx = SphinxInventory(self.msg, verbosity=self.options.verbosity)
         self._ast_parser = self.syntaxTreeParser()
 
         # Since privacy handling now uses fnmatch, we cache results so we don't re-run matches all the time.
@@ -1729,10 +1729,18 @@ class System:
         Download and parse intersphinx inventories based on configuration.
         """
         for url, base_url in self.options.intersphinx:
-            self.intersphinx.update(cache, url, base_url)
+            try:
+                self.intersphinx.update(cache, url, base_url)
+            except SphinxInventoryError as e:
+                self.msg('sphinx', str(e), thresh=-1)
+                self.parse_errors['sphinx inventory'].add(url)
         
         for path, base_url in self.options.intersphinx_file:
-            self.intersphinx.update_file(path, base_url)
+            try:
+                self.intersphinx.update_file(path, base_url)
+            except SphinxInventoryError as e:
+                self.msg('sphinx', str(e), thresh=-1)
+                self.parse_errors['sphinx inventory file'].add(path)
 
 
 def defaultPostProcess(system:'System') -> None:
