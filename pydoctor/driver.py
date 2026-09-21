@@ -165,6 +165,13 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
         if not options.sourcepath:
             error("No source paths given.")
 
+        # Validate custom template directories before expensive semantic analysis.
+        # Matches FailedToCreateTemplate message from Template.fromdir().
+        # See https://github.com/twisted/pydoctor/issues/857
+        for path in options.templatedir:
+            if not path.is_dir():
+                error(f"Template folder do not exist or is not a directory: {path}")
+
         # Build model
         system = get_system(options)
         
