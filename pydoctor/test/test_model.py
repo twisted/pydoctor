@@ -474,7 +474,7 @@ def test_introspection_extension() -> None:
 
     cls = module.contents['RaiserException']
     assert cls.docstring is not None
-    assert cls.docstring.strip() == "A speficic exception only used to be identified in tests."
+    assert cls.docstring.strip() == "A specific exception only used to be identified in tests."
 
     func = module.contents['raiseException']
     assert func.docstring is not None

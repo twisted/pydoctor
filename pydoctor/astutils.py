@@ -621,7 +621,7 @@ def _get_literal_arg(args:BoundArguments, name:str,
             ).replace("'", '"')
         raise ValueError(message)
 
-    return value #type:ignore
+    return value
 
 def get_literal_arg(args:BoundArguments, name:str, default:_T, 
                           typecheck: Union[Type[_T], Tuple[Type[_T],...]], 
@@ -841,7 +841,7 @@ for _index in range(1, len(_op_data)):
 _deprecated: Collection[str] = ()
 if sys.version_info >= (3, 12):
     _deprecated = ('Num', 'Str', 'Bytes', 'Ellipsis', 'NameConstant')
-_precedence_data = dict((getattr(ast, x, None), z) for x, y, z in _op_data if x not in _deprecated) # type:ignore
+_precedence_data: dict[type[ast.AST]|None, int] = dict((getattr(ast, x, None), z) for x, y, z in _op_data if x not in _deprecated) # type:ignore
 _symbol_data = dict((getattr(ast, x, None), y) for x, y, z in _op_data if x not in _deprecated) # type:ignore
 
 class op_util:
