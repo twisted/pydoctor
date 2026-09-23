@@ -729,7 +729,7 @@ class ClassHierarchyFinalizer:
         generic = cls.system.allobjects.get(_d:='typing.Generic', _d)
         if generic in bases and any(generic in _mro for _mro in bases_mros):
             # this is safe since we checked 'generic in bases'.
-            bases.remove(generic) # type: ignore[arg-type]
+            bases.remove(generic)
         
         try:
             return result + mro.c3_merge(*bases_mros, bases)
@@ -1156,7 +1156,7 @@ class System:
             print('\r'+d, msg, end='')
             sys.stdout.flush()
             if d == n:
-                self.needsnl = False
+                self.needsnl = False # type: ignore[unreachable]
                 print()
             else:
                 self.needsnl = True

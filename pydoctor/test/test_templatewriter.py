@@ -25,7 +25,7 @@ from pydoctor.themes import get_themes
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable
     # Newer APIs from importlib_resources should arrive to stdlib importlib.resources in Python 3.9.
-    from importlib.abc import Traversable
+    from importlib.resources.abc import Traversable
 else:
     Traversable = object
 
