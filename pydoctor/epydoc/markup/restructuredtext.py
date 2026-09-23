@@ -404,11 +404,31 @@ versionlabels = {
     'deprecated':     'Deprecated since version %s',
 }
 
+versionlabels_no_version = {
+    'deprecated': 'Deprecated',
+}
+
 versionlabel_classes = {
     'versionadded':     'added',
     'versionchanged':   'changed',
     'deprecated':       'deprecated',
 }
+
+# Matches numeric versions (1, 0.2, 1.0.0rc1, v2.0) and Twisted's "NEXT".
+_VERSION_LIKE = re.compile(
+    r'(?i)^(?:NEXT|v?\d+(?:\.\d+)*(?:(?:a|b|rc|dev|post)\d*)?)$'
+)
+
+def _looks_like_version(value: str) -> bool:
+    """
+    Return True if C{value} looks like a version string.
+
+    Docutils may pull an indented explanation into the directive arguments when
+    the version is omitted (C{.. deprecated::} followed by indented text). The
+    first word of that explanation must not be treated as a version number.
+    """
+    return bool(_VERSION_LIKE.match(value))
+
 
 class VersionChange(Directive):
     """
@@ -419,7 +439,7 @@ class VersionChange(Directive):
         Currently used for "versionadded", "versionchanged" and "deprecated"
         directives.
         """
-    
+
     has_content = True
     required_arguments = 1
     optional_arguments = 1
@@ -429,12 +449,29 @@ class VersionChange(Directive):
         node = self.versionmodified()
         node.document = self.state.document
         node['type'] = self.name
-        node['version'] = self.arguments[0]
-        text = versionlabels[self.name] % self.arguments[0]
-        if len(self.arguments) == 2:
-            inodes, messages = self.state.inline_text(self.arguments[1],
+
+        explanation: Optional[str] = None
+        if self.arguments and _looks_like_version(self.arguments[0]):
+            node['version'] = self.arguments[0]
+            text = versionlabels[self.name] % self.arguments[0]
+            if len(self.arguments) == 2:
+                explanation = self.arguments[1]
+        elif self.name in versionlabels_no_version:
+            # Version omitted (or explanation mis-parsed as the version).
+            node['version'] = ''
+            text = versionlabels_no_version[self.name]
+            if self.arguments:
+                explanation = ' '.join(self.arguments)
+        else:
+            node['version'] = self.arguments[0]
+            text = versionlabels[self.name] % self.arguments[0]
+            if len(self.arguments) == 2:
+                explanation = self.arguments[1]
+
+        if explanation is not None:
+            inodes, messages = self.state.inline_text(explanation,
                                                       self.lineno + 1)
-            para = nodes.paragraph(self.arguments[1], '', *inodes)
+            para = nodes.paragraph(explanation, '', *inodes)
             node.append(para)
         else:
             messages = []
@@ -460,6 +497,18 @@ class VersionChange(Directive):
         ret = [node]  # type: List[nodes.Node]
         ret += messages
         return ret
+
+
+class Deprecated(VersionChange):
+    """
+    Like L{VersionChange}, but the version argument is optional.
+
+    When the version is omitted, the admonition is labelled simply "Deprecated"
+    instead of "Deprecated since version ...".
+    """
+
+    required_arguments = 0
+    optional_arguments = 2
 
 # Do like Sphinx does for the seealso directive. 
 class SeeAlso(BaseAdmonition):
@@ -514,5 +563,5 @@ directives.register_directive('code', DocutilsAndSphinxCodeBlockAdapter)
 directives.register_directive('code-block', DocutilsAndSphinxCodeBlockAdapter)
 directives.register_directive('versionadded', VersionChange)
 directives.register_directive('versionchanged', VersionChange)
-directives.register_directive('deprecated', VersionChange)
+directives.register_directive('deprecated', Deprecated)
 directives.register_directive('seealso', SeeAlso)
