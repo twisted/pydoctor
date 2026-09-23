@@ -204,6 +204,40 @@ def test_rst_directive_deprecated() -> None:
 <span class="rst-deprecated rst-versionmodified">Deprecated since version 0.2: </span><span>For security reasons</span></div>
 """
     assert html==expected_html, html
+
+def test_rst_directive_deprecated_without_version() -> None:
+    """
+    When the version is omitted, do not treat the explanation as a version
+    number (see issue #950).
+    """
+    html = rst2html(""".. deprecated::
+    Legacy API, see the docs above for new usage""")
+    expected_html="""<div class="rst-deprecated">
+<span class="rst-deprecated rst-versionmodified">Deprecated: </span><span>Legacy API, see the docs above for new usage</span></div>
+"""
+    assert html==expected_html, html
+
+def test_rst_directive_deprecated_without_version_blank_line() -> None:
+    """
+    Omitting the version with a blank line before the explanation also works.
+    """
+    html = rst2html(""".. deprecated::
+
+    Legacy API, see the docs above for new usage""")
+    expected_html="""<div class="rst-deprecated">
+<span class="rst-deprecated rst-versionmodified">Deprecated: </span><span>Legacy API, see the docs above for new usage</span></div>
+"""
+    assert html==expected_html, html
+
+def test_rst_directive_deprecated_version_only() -> None:
+    """
+    A deprecated directive with only a version still renders the usual label.
+    """
+    html = rst2html(""".. deprecated:: 1.0""")
+    expected_html="""<div class="rst-deprecated">
+<span class="rst-deprecated rst-versionmodified">Deprecated since version 1.0.</span></div>
+"""
+    assert html==expected_html, html
     
 def test_rst_directive_seealso() -> None:
 
