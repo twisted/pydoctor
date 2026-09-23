@@ -46,7 +46,8 @@ jobs:
       run: |
         tox -e test-cov
 
-    - name: Run unit tests with latest Twisted version
+    - name: Run unit tests with latest Twisted version and mordern Python version
+      if: ${{ matrix.python-version == '3.14' }}
       run: |
         tox -e test-latest-twisted
 
