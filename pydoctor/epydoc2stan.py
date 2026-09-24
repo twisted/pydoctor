@@ -260,6 +260,11 @@ class ParamType:
     stan: Tag
     origin: FieldOrigin
 
+def _report_field_has_no_meaning_on_module(obj: model.Documentable, field: Field) -> None:
+    if isinstance(obj, model.Module):
+        msg = f"Field '{field.tag}' has no meaning on module"
+        field.report(msg)
+
 class FieldHandler:
 
     def __init__(self, obj: model.Documentable):
@@ -310,6 +315,7 @@ class FieldHandler:
             field.report('Unexpected argument in %s field' % (field.tag,))
 
     def handle_return(self, field: Field) -> None:
+        _report_field_has_no_meaning_on_module(self.obj, field)
         self._report_unexpected_argument(field)
         if not self.return_desc:
             self.return_desc = ReturnDesc()
@@ -317,6 +323,7 @@ class FieldHandler:
     handle_returns = handle_return
 
     def handle_yield(self, field: Field) -> None:
+        _report_field_has_no_meaning_on_module(self.obj, field)
         self._report_unexpected_argument(field)
         if not self.yields_desc:
             self.yields_desc = FieldDesc()
@@ -324,6 +331,7 @@ class FieldHandler:
     handle_yields = handle_yield
 
     def handle_returntype(self, field: Field) -> None:
+        _report_field_has_no_meaning_on_module(self.obj, field)
         self._report_unexpected_argument(field)
         if not self.return_desc:
             self.return_desc = ReturnDesc()
@@ -332,6 +340,7 @@ class FieldHandler:
     handle_rtype = handle_returntype
 
     def handle_yieldtype(self, field: Field) -> None:
+        _report_field_has_no_meaning_on_module(self.obj, field)
         self._report_unexpected_argument(field)
         if not self.yields_desc:
             self.yields_desc = FieldDesc()
@@ -415,6 +424,7 @@ class FieldHandler:
             self.types[name] = ParamType(field.format(), origin=FieldOrigin.FROM_DOCSTRING)
 
     def handle_param(self, field: Field) -> None:
+        _report_field_has_no_meaning_on_module(self.obj, field)
         name = self._handle_param_name(field)
         if name is not None:
             if any(desc.name == name for desc in self.parameter_descs):
@@ -426,6 +436,7 @@ class FieldHandler:
     handle_arg = handle_param
 
     def handle_keyword(self, field: Field) -> None:
+        _report_field_has_no_meaning_on_module(self.obj, field)
         name = self._handle_param_name(field)
         if name is not None:
             # TODO: How should this be matched to the type annotation?
@@ -921,6 +932,11 @@ def extract_fields(obj: model.CanContainImportsDocumentable) -> None:
 
     for field in parsed_doc.fields:
         tag = field.tag()
+        # ivar and cvar fields on modules don't make sense: warn but still
+        # allow them to be processed so their documentation is rendered.
+        if tag in ('ivar', 'cvar'):
+            _report_field_has_no_meaning_on_module(obj, Field.from_epydoc(field, obj))
+
         if tag in ['ivar', 'cvar', 'var', 'type']:
             arg = field.arg()
             if arg is None:
