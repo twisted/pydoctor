@@ -268,6 +268,32 @@ def test_docsources_includes_interface(systemcls: Type[model.System]) -> None:
     method = mod.contents['Implementation'].contents['method']
     assert imethod in method.docsources(), list(method.docsources())
 
+def test_ivar_link_resolved_from_implementor_not_interface(capsys: CapSys) -> None:
+    """
+    An C{@ivar} on an implementor documents an interface attribute.
+    Its text is written by the implementor, so its links are resolved
+    from the implementor and not from the interface (#940).
+    """
+    src = '''
+    from zope.interface import Attribute, Interface, implementer
+    class IThing(Interface):
+        username = Attribute("The user name.")
+    @implementer(IThing)
+    class Thing:
+        """
+        @ivar username: See L{__init__}.
+        """
+        def __init__(self, username):
+            self.username = username
+    @implementer(IThing)
+    class Other:
+        def __init__(self): pass
+    '''
+    mod = fromText(src, modname='ifaces', systemcls=ZopeInterfaceSystem)
+    html = getHTMLOf(mod.contents['Thing'], 'classic')
+    assert 'Cannot find link target' not in capsys.readouterr().out
+    assert 'href="ifaces.Thing.html#__init__"' in html
+
 @zope_interface_systemcls_param
 def test_docsources_includes_baseinterface(systemcls: Type[model.System]) -> None:
     src = '''

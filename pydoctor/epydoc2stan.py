@@ -670,11 +670,11 @@ def ensure_parsed_docstring(obj: model.Documentable) -> Optional[model.Documenta
     # Use cached or split version if possible.
     parsed_doc = obj.parsed_docstring
 
-    if source is None and parsed_doc is not None:
-        # No docstring found
+    if parsed_doc is not None and (source is None or (obj.parsed_docstring_from_field and source is not obj)):
         # A split field is documented by its parent: meaning the parsed_docstring
         # attribute has been set directly by extract_fields() with @ivar:, @cvar:, etc
-        # Get the source of the docs
+        # Get the source of the docs. This must win over an inherited docstring
+        # (e.g. from an interface attribute): the text was written by the parent.
         source = obj.parent
 
     if parsed_doc is None and doc is not None:
@@ -941,6 +941,7 @@ def extract_fields(obj: model.CanContainImportsDocumentable) -> None:
                 attrobj.parsed_type = field.body()
             else:
                 attrobj.parsed_docstring = field.body()
+                attrobj.parsed_docstring_from_field = True
                 attrobj.kind = field_name_to_kind[tag]
 
 def format_kind(kind: model.DocumentableKind, plural: bool = False) -> str:

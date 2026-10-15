@@ -127,6 +127,8 @@ class Documentable:
     """
     docstring: Optional[str] = None
     parsed_docstring: Optional[ParsedDocstring] = None
+    parsed_docstring_from_field = False
+    """Whether L{parsed_docstring} comes from a field of the parent's docstring, like C{@ivar}."""
     parsed_summary: Optional[ParsedDocstring] = None
     parsed_type: Optional[ParsedDocstring] = None
     docstring_lineno = 0
@@ -180,6 +182,7 @@ class Documentable:
         # This is an unfortunate behaviour but it’s too big of a refactor for now (see https://github.com/twisted/pydoctor/issues/798).
         if self.parsed_docstring:
             self.parsed_docstring = None
+            self.parsed_docstring_from_field = False
 
     def setLineNumber(self, lineno: LineFromDocstringField | LineFromAst | int) -> None:
         """
