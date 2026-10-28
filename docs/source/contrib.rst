@@ -68,6 +68,11 @@ Other things hapenning when a PR is open
   Then it reports in comments the result for a PR. The source code of this tool is here: https://github.com/twisted/pydoctor_primer.
 - Readthedocs build: For every PR, the sphinx documentation is built and available at ``https://pydoctor--{pr-number}.org.readthedocs.build/en/``.
 
+AI Policy
+---------
+
+pydoctor generally follows the coding and documentation standards of the Twisted project, including the `AI Policy <https://docs.twisted.org/en/latest/development/ai-policy.html>`_. This means this project does not allow the inclusion of the outputs of generative AI tools.
+
 Review process and requirements
 -------------------------------
 
