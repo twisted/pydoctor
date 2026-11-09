@@ -940,8 +940,7 @@ def extract_fields(obj: model.CanContainImportsDocumentable) -> None:
             if tag == 'type':
                 attrobj.parsed_type = field.body()
             else:
-                attrobj.parsed_docstring = field.body()
-                attrobj.parsed_docstring_from_field = True
+                attrobj.parsed_docstring = model.ExtractedFromParentsFields(field.body())
                 attrobj.kind = field_name_to_kind[tag]
 
 def format_kind(kind: model.DocumentableKind, plural: bool = False) -> str:
