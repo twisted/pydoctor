@@ -671,10 +671,14 @@ def ensure_parsed_docstring(obj: model.Documentable) -> Optional[model.Documenta
     parsed_doc = obj.parsed_docstring
 
     if parsed_doc is not None and (source is None or (obj.parsed_docstring_from_field and source is not obj)):
-        # A split field is documented by its parent: meaning the parsed_docstring
-        # attribute has been set directly by extract_fields() with @ivar:, @cvar:, etc
-        # Get the source of the docs. This must win over an inherited docstring
-        # (e.g. from an interface attribute): the text was written by the parent.
+        # Two cases lead here, and in both the docs come from the parent:
+        #  - There is no docstring at all, but extract_fields() already set the
+        #    parsed_docstring from an @ivar:, @cvar:, etc field of the parent.
+        #  - The parsed_docstring comes from such a field, and get_docstring() found
+        #    another docstring on a different object, e.g. the interface attribute
+        #    that this attribute implements. The field text wins, because the
+        #    author of the parent docstring wrote it for this attribute.
+        # Either way, the source used to resolve links is the parent.
         source = obj.parent
 
     if parsed_doc is None and doc is not None:
