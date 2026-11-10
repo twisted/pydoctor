@@ -37,6 +37,8 @@ from pydoctor.sphinx import CacheT, SphinxInventory, SphinxInventoryError
 if TYPE_CHECKING:
     from typing import Literal, Protocol, TypeAlias
     from pydoctor.astbuilder import ASTBuilder, DocumentableT, SyntaxTreeParser
+    from docutils import nodes
+    from twisted.web.template import Tag
 else:
     Literal = {True: bool, False: bool}
     ASTBuilder = Protocol = object
