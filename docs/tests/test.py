@@ -196,6 +196,7 @@ def test_lunr_index() -> None:
                     'pydoctor.epydoc.markup.ParsedDocstring.to_stan', 
                     'pydoctor.epydoc.markup.plaintext.ParsedPlaintextDocstring.to_stan',
                     'pydoctor.epydoc.markup._pyval_repr.ColorizedPyvalRepr.to_stan',
+                    'pydoctor.model.ExtractedFromParentsFields.to_stan',
                 ]
         test_search('to_stan*', to_stan_results, order_is_important=False)
         test_search('to_stan', to_stan_results, order_is_important=False)
@@ -206,6 +207,7 @@ def test_lunr_index() -> None:
                     'pydoctor.epydoc.markup._types.ParsedTypeDocstring.to_node',
                     'pydoctor.epydoc.markup.restructuredtext.ParsedRstDocstring.to_node',
                     'pydoctor.epydoc.markup.epytext.ParsedEpytextDocstring.to_node',
+                    'pydoctor.model.ExtractedFromParentsFields.to_node',
                 ]
         test_search('to_node*', to_node_results, order_is_important=False)
         test_search('to_node', to_node_results, order_is_important=False)
