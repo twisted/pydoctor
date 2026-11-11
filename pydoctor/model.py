@@ -37,6 +37,8 @@ from pydoctor.sphinx import CacheT, SphinxInventory, SphinxInventoryError
 if TYPE_CHECKING:
     from typing import Literal, Protocol, TypeAlias
     from pydoctor.astbuilder import ASTBuilder, DocumentableT, SyntaxTreeParser
+    from docutils import nodes
+    from twisted.web.template import Tag
 else:
     Literal = {True: bool, False: bool}
     ASTBuilder = Protocol = object
@@ -116,6 +118,34 @@ class DocumentableKind(Enum):
     PROPERTY            = 150
     VARIABLE            = 100
 
+class ExtractedFromParentsFields(ParsedDocstring):
+    """
+    A docstring that comes from a field of the parent's docstring, like C{@ivar}.
+    It wraps the parsed field body and delegates to it.
+    """
+    def __init__(self, wrapped: ParsedDocstring):
+        super().__init__(wrapped.fields)
+        self.wrapped = wrapped
+
+    @property
+    def has_body(self) -> bool:
+        return self.wrapped.has_body
+
+    def to_node(self) -> 'nodes.document':
+        return self.wrapped.to_node()
+
+    def to_stan(self, docstring_linker: 'linker.DocstringLinker') -> 'Tag':
+        return self.wrapped.to_stan(docstring_linker)
+
+    def to_text(self) -> str:
+        return self.wrapped.to_text()
+
+    def get_summary(self) -> ParsedDocstring:
+        return self.wrapped.get_summary()
+
+    def get_toc(self, depth: int) -> Optional[ParsedDocstring]:
+        return self.wrapped.get_toc(depth)
+
 class Documentable:
     """An object that can be documented.
 
@@ -181,6 +211,10 @@ class Documentable:
         if self.parsed_docstring:
             self.parsed_docstring = None
 
+    @property
+    def parsed_docstring_from_field(self) -> bool:
+        """Whether L{parsed_docstring} comes from a field of the parent's docstring, like C{@ivar}."""
+        return isinstance(self.parsed_docstring, ExtractedFromParentsFields)
     def setLineNumber(self, lineno: LineFromDocstringField | LineFromAst | int) -> None:
         """
         Save the linenumber of this object.

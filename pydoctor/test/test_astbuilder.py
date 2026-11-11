@@ -88,6 +88,8 @@ def unwrap(parsed_docstring: Optional[ParsedDocstring]) -> str:
     
     if parsed_docstring is None:
         raise TypeError("parsed_docstring cannot be None")
+    if isinstance(parsed_docstring, model.ExtractedFromParentsFields):
+        parsed_docstring = parsed_docstring.wrapped
     if not isinstance(parsed_docstring, ParsedEpytextDocstring):
         raise TypeError(f"parsed_docstring must be a ParsedEpytextDocstring instance, not {parsed_docstring.__class__.__name__}")
     epytext = parsed_docstring._tree

@@ -96,6 +96,7 @@ in development
 * Add project version on each HTML page.
 * When an  intersphinx inventory file fails to read, exit with code 2 and do not print the whole stack trace by default. 
   The -v flag will log exceptions' tracebacks.
+* Fix the "Cannot find link target" warning and missing link for an ``@ivar`` that documents an attribute of an implemented interface and links to a name defined by the implementor, such as ``__init__``.
 
 
 pydoctor 25.10.1
