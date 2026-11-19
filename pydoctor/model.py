@@ -1144,8 +1144,9 @@ class System:
 
     @property
     def root_names(self) -> Collection[str]:
-        """The top-level package/module names in this system."""
-        return {obj.name for obj in self.rootobjects}
+        """The top-level package/module names in this system, in processing order."""
+        # Keep insertion order: these names feed the default project name, which must be reproducible.
+        return dict.fromkeys(obj.name for obj in self.rootobjects).keys()
 
     def progress(self, section: str, i: int, n: Optional[int], msg: str) -> None:
         if n is None:

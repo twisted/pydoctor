@@ -96,6 +96,8 @@ in development
 * Add project version on each HTML page.
 * When an  intersphinx inventory file fails to read, exit with code 2 and do not print the whole stack trace by default. 
   The -v flag will log exceptions' tracebacks.
+* Make HTML output reproducible when multiple source paths are passed: the guessed project name
+  no longer varies with ``PYTHONHASHSEED`` (fixes issue #138).
 
 
 pydoctor 25.10.1
