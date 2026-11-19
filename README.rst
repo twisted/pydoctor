@@ -73,6 +73,7 @@ What's New?
 in development
 ^^^^^^^^^^^^^^
 
+* Drop support for Python 3.9.
 * Better ``attrs`` support: generate precise ``__init__`` method from analyzed fields, supports 
   principal ``attrs`` idioms: 
 

@@ -1858,19 +1858,14 @@ class SystemBuilder(ISystemBuilder):
             return
         # Path validity check
         projBaseDir = self.system.options.projectbasedirectory
-        if projBaseDir is not None:
-            # Note: Path.is_relative_to() was only added in Python 3.9,
-            #       so we have to use this workaround for now.
-            try:
-                path.relative_to(projBaseDir)
-            except ValueError:
-                if self.system.options.htmlsourcebase:  
-                    # We now support building documentation when the source path is outside of the build directory.
-                    # We simply leave a warning and skip the sourceHref attribute.
-                    # https://github.com/twisted/pydoctor/issues/658
-                    # https://github.com/twisted/pydoctor/issues/870
-                    _warn_msg = f"No source links can be generated for module {path}: source path lies outside base directory {projBaseDir}"
-                    self.system.msg('addPackage', _warn_msg, once=True)
+        if projBaseDir is not None and not path.is_relative_to(projBaseDir):
+            if self.system.options.htmlsourcebase:
+                # We now support building documentation when the source path is outside of the build directory.
+                # We simply leave a warning and skip the sourceHref attribute.
+                # https://github.com/twisted/pydoctor/issues/658
+                # https://github.com/twisted/pydoctor/issues/870
+                _warn_msg = f"No source links can be generated for module {path}: source path lies outside base directory {projBaseDir}"
+                self.system.msg('addPackage', _warn_msg, once=True)
         parent: Optional[Package] = None
         if parent_name:
             _p = self.system.allobjects[parent_name]
