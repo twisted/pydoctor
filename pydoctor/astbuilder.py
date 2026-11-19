@@ -86,8 +86,7 @@ _CONTROL_FLOW_BLOCKS:Tuple[Type[ast.stmt],...] = (ast.If, ast.While, ast.For, as
 """
 AST types that introduces a new control flow block, potentially conditionnal.
 """
-if sys.version_info >= (3, 10):
-    _CONTROL_FLOW_BLOCKS += (ast.Match,)
+_CONTROL_FLOW_BLOCKS += (ast.Match,)
 if sys.version_info >= (3, 11):
     _CONTROL_FLOW_BLOCKS += (ast.TryStar,)
 
